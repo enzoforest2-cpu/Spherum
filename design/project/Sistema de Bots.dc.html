@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@500;700;900&family=Figtree:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap">
+<style>
+body{margin:0;background:#ECEAE5;font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#2a5bd6}a:hover{color:#1b3f9e}
+.dv-turn{padding:44px 48px 40px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 'Geist',system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 'Geist',system-ui,sans-serif;color:rgba(0,0,0,.6)}.dv-card{max-width:100%;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06),0 12px 40px rgba(0,0,0,.06)}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:26px 0 0;font:13px/1.6 'Geist',system-ui,sans-serif;color:rgba(0,0,0,.6);max-width:1400px}
+@keyframes pg-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.045,.95)}}
+@keyframes pg-tilt{0%,100%{transform:rotate(-7deg) scale(1.02,.98)}50%{transform:rotate(5deg) scale(.99,1.01)}}
+@keyframes pg-hop{0%,100%{transform:translateY(0) scale(1.06,.94)}35%{transform:translateY(-9%) scale(.95,1.06)}60%{transform:translateY(-11%) scale(1,1)}85%{transform:translateY(0) scale(1.08,.92)}}
+@keyframes pg-jump{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:translateY(0) scale(1.14,.86)}45%{transform:translateY(-22%) scale(.9,1.12)}70%{transform:translateY(0) scale(1.1,.9)}85%{transform:translateY(0) scale(.98,1.02)}}
+@keyframes pg-pop{0%{transform:translate(0,0) scale(0);opacity:1}30%{transform:translate(calc(var(--dx)*.45),calc(var(--dy)*.45)) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.4);opacity:0}}
+@keyframes bot-blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes bot-ripple{0%{transform:scale(.5);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+@keyframes bot-bob{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-45%);opacity:1}}
+@keyframes bot-spin{to{transform:rotate(360deg)}}
+@keyframes bot-bubble{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14%) rotate(6deg)}}
+@keyframes bb-bob{0%{transform:translateY(0)}50%{transform:translateY(-3%)}}
+@keyframes bb-tilt{0%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes bb-hop{0%{transform:translateY(0)}25%{transform:translateY(-8%)}50%{transform:translateY(0)}75%{transform:translateY(-4%)}}
+@keyframes bb-jump{0%{transform:translateY(0)}20%{transform:translateY(-6%)}40%{transform:translateY(-12%)}60%{transform:translateY(-6%)}80%{transform:translateY(0)}}
+@keyframes bb-blink{0%{opacity:1}50%{opacity:.25}}
+@keyframes ok-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+@keyframes ok-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes ok-hop{0%,100%{transform:translateY(0) rotate(0)}40%{transform:translateY(-8%) rotate(-6deg)}70%{transform:translateY(0) rotate(3deg)}}
+</style>
+</helmet>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Três direções · forma do personagem, paleta e estilo de animação</span></div>
+
+<div style="width:2456px;display:flex;flex-direction:column;gap:20px;margin:0 0 40px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:10px;max-width:920px">
+<div style="font:600 38px/1.08 'Geist',sans-serif;color:#1a1a1a;letter-spacing:-.025em;text-wrap:pretty">Bots com personalidade — e cérebro trocável.</div>
+<div style="font:400 17px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">Cada bot é um colega persistente: tem nome, rosto, memória e um computador só dele. O cérebro vem de qualquer API de IA e pode ser trocado a qualquer momento — sem perder o que ele aprendeu sobre você.</div>
+<div style="font:400 14px/1.45 'Geist',sans-serif;color:#5f5f5f">Persistent AI teammates with a face, a memory and their own computer — powered by whichever model you choose.</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;font:500 12px/1.6 'Geist Mono',monospace;color:#5f5f5f;max-width:560px">O sistema abaixo vale para as três direções. Entre <a class="dv-oid" href="#1a">1a</a><a class="dv-oid" href="#1b">1b</a><a class="dv-oid" href="#1c">1c</a> mudam a forma do personagem, a paleta e o jeito de se mexer.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px">
+<div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(0,0,0,.06)"><span style="font:500 11px/1 'Geist Mono',monospace;color:#7a7a7a">01</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#1a1a1a">Rosto <span style="font-weight:400;color:#7a7a7a">· Face</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">Nome, personalidade, voz e expressões. Cada bot é um personagem com jeito próprio — não uma aba de chat.</span></div>
+<div style="background:#1a1a1a;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:500 11px/1 'Geist Mono',monospace;color:#a8a8a8">02</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#FFFFFF">Cérebro <span style="font-weight:400;color:#a8a8a8">· Brain</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#e4e4e4;text-wrap:pretty">Qualquer modelo via API, com sua chave ou com créditos. Dá pra combinar: um cérebro para pensar fundo, outro rápido para o dia a dia.</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:2px"><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">OpenAI</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">Anthropic</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">xAI</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">Google</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">Mistral</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">DeepSeek</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#1a1a1a;background:#FFFFFF;border-radius:99px;padding:5px 8px">Ollama · local</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#FFFFFF;border:1px solid #5a5a5a;border-radius:99px;padding:4px 8px">+ API compatível</span></div></div>
+<div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(0,0,0,.06)"><span style="font:500 11px/1 'Geist Mono',monospace;color:#7a7a7a">03</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#1a1a1a">Memória <span style="font-weight:400;color:#7a7a7a">· Memory</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">A memória pertence ao bot, não ao modelo. Trocou de cérebro? Ele continua lembrando de você, do seu tom e das suas regras.</span></div>
+<div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(0,0,0,.06)"><span style="font:500 11px/1 'Geist Mono',monospace;color:#7a7a7a">04</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#1a1a1a">Computador <span style="font-weight:400;color:#7a7a7a">· Computer</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">Cada bot tem um computador na nuvem só dele — navegador, arquivos e terminal — isolado dos outros bots. Você pode espiar a tela a qualquer hora.</span></div>
+<div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(0,0,0,.06)"><span style="font:500 11px/1 'Geist Mono',monospace;color:#7a7a7a">05</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#1a1a1a">Mãos <span style="font-weight:400;color:#7a7a7a">· Apps</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">Conecta Gmail, Slack, WhatsApp, Notion, GitHub e o que mais você usar. Continua trabalhando com seu laptop fechado.</span></div>
+<div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(0,0,0,.06)"><span style="font:500 11px/1 'Geist Mono',monospace;color:#7a7a7a">06</span><span style="font:600 19px/1.1 'Geist',sans-serif;color:#1a1a1a">Limites <span style="font-weight:400;color:#7a7a7a">· Guardrails</span></span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3d3d3d;text-wrap:pretty">Pede aprovação antes de ações sensíveis e respeita um orçamento de API por bot. Tudo o que ele faz fica registrado.</span></div>
+</div>
+</div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a" data-screen-label="1a Pingo">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Pingo · gota de brinquedo · squash &amp; stretch · paleta quente</div>
+<div class="dv-card" style="width:800px;background:#FBF4EA;border-radius:24px;color:#2B1D16;font-family:'Figtree',sans-serif">
+<div style="padding:36px 36px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font:700 12px/1 'Figtree',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#B8401F">Direção A · Brinquedo quente</div>
+<div style="font:700 104px/.86 'Fredoka',sans-serif;letter-spacing:-.02em">Pingo</div>
+<div style="font:500 19px/1.35 'Figtree',sans-serif;max-width:440px;text-wrap:pretty">Uma gota curiosa que cai bem onde precisam dela. Fofa por fora, trabalhadora por dentro.</div>
+<div style="font:400 14px/1.35 'Figtree',sans-serif;color:#7A6656">A curious little drop that lands right where it's needed.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end;text-align:right;font:500 12px/1.3 'Figtree',sans-serif;color:#7A6656">
+<span>Forma · gota (pingo)</span><span>Movimento · squash &amp; stretch</span><span>Tipo · Fredoka + Figtree</span>
+</div>
+</div>
+<div style="margin:0 20px;height:350px;border-radius:30px;background:#F6C443;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:36px">
+<div style="position:absolute;width:540px;height:540px;border-radius:50%;background:#F8D063;left:-150px;top:120px"></div>
+<div style="position:absolute;width:96px;height:96px;border-radius:50%;background:#3E64DE;right:46px;top:-34px"></div>
+<div style="position:absolute;width:26px;height:26px;border-radius:50%;background:#EF5B3B;right:156px;top:58px"></div>
+<div style="position:absolute;width:14px;height:14px;border-radius:50%;background:#FFFFFF;left:70px;top:60px"></div>
+<div style="position:relative;display:flex">{{ aHero }}</div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px;max-width:250px;background:#FFFFFF;border-radius:26px 26px 26px 6px;padding:18px 20px;box-shadow:0 6px 0 rgba(43,29,22,.12)">
+<div style="font:600 21px/1.2 'Fredoka',sans-serif">Oi! Eu sou o Pingo. Me passa uma tarefa?</div>
+<div style="font:400 14px/1.35 'Figtree',sans-serif;color:#7A6656">Hi! I'm Pingo. Got a task for me?</div>
+</div>
+<div style="position:absolute;left:26px;bottom:20px;font:600 12px/1 'Figtree',sans-serif;color:#5A4318">passe o mouse — ele te olha · clique — ele comemora</div>
+</div>
+<div style="padding:30px 36px 6px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><span style="font:600 22px/1 'Fredoka',sans-serif">Estados <span style="font:500 14px/1 'Figtree',sans-serif;color:#7A6656">· States</span></span><span style="font:500 13px/1.3 'Figtree',sans-serif;color:#7A6656">amassa, estica e quica — cada ação tem antecipação</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+<sc-for list="{{ aStates }}" as="s" hint-placeholder-count="6">
+<div style="background:#FFFFFF;border-radius:20px;padding:22px 6px 14px;display:flex;flex-direction:column;align-items:center;gap:4px">
+<div style="height:96px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px">{{ s.el }}</div>
+<div style="font:600 15px/1.15 'Fredoka',sans-serif;text-align:center">{{ s.pt }}</div>
+<div style="font:400 12px/1.2 'Figtree',sans-serif;color:#7A6656">{{ s.en }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="padding:24px 36px 8px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px">
+<div style="background:#FFFFFF;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="font:600 13px/1 'Figtree',sans-serif;color:#7A6656">Cores · Colors</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:12px;background:#EF5B3B"></div><span style="font:600 12px/1 'Figtree',sans-serif">Tomate</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#EF5B3B</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:12px;background:#F6C443"></div><span style="font:600 12px/1 'Figtree',sans-serif">Girassol</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#F6C443</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:12px;background:#3E64DE"></div><span style="font:600 12px/1 'Figtree',sans-serif">Cobalto</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#3E64DE</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:12px;background:#3DBB8E"></div><span style="font:600 12px/1 'Figtree',sans-serif">Menta</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#3DBB8E</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:12px;background:#FF9DA6"></div><span style="font:600 12px/1 'Figtree',sans-serif">Bochecha</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#FF9DA6</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:10px;background:#FBF4EA;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Figtree',sans-serif">Creme</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#FBF4EA</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Figtree',sans-serif">Branco</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#FFFFFF</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:10px;background:#2B1D16"></div><span style="font:600 12px/1 'Figtree',sans-serif">Tinta</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#2B1D16</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:10px;background:#1C1511"></div><span style="font:600 12px/1 'Figtree',sans-serif">Noite</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#1C1511</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:10px;background:#2A201A"></div><span style="font:600 12px/1 'Figtree',sans-serif">Carvão</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#7A6656">#2A201A</span></div>
+</div>
+</div>
+<div style="background:#2B1D16;color:#FBF4EA;border-radius:20px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+<div style="font:600 13px/1 'Figtree',sans-serif;color:#CDB7A2">Tipografia · Type</div>
+<div style="font:700 68px/.9 'Fredoka',sans-serif;color:#F6C443">Aa</div>
+<div style="font:600 18px/1.2 'Fredoka',sans-serif">Fredoka — títulos e falas do bot</div>
+<div style="font:400 14px/1.4 'Figtree',sans-serif;color:#E6D6C4">Figtree — interface, listas e textos longos. 0123456789</div>
+</div>
+</div>
+<div style="padding:22px 20px 24px;display:flex;gap:20px;justify-content:center;align-items:flex-start">
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #2B1D16;border-radius:48px;background:#FBF4EA;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:700 14px/1 'Figtree',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:22px 20px 14px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:5px"><span style="font:500 14px/1 'Figtree',sans-serif;color:#7A6656">Bom dia, Ana</span><span style="font:700 34px/1 'Fredoka',sans-serif">Seus bots</span></div>
+<div style="display:flex;gap:8px;align-items:center">
+<div style="display:flex;background:#FFFFFF;border-radius:99px;padding:3px;font:700 11px/1 'Figtree',sans-serif"><span style="background:#2B1D16;color:#FBF4EA;border-radius:99px;padding:6px 8px">PT</span><span style="padding:6px 8px;color:#7A6656">EN</span></div>
+<div style="width:36px;height:36px;border-radius:50%;background:#3E64DE;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font:700 15px/1 'Fredoka',sans-serif">A</div>
+</div>
+</div>
+<div style="display:flex;gap:8px;padding:0 20px 14px">
+<span style="background:#FFFFFF;border-radius:99px;padding:8px 12px;font:600 12px/1 'Figtree',sans-serif">3 trabalhando</span>
+<span style="background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:8px 12px;font:700 12px/1 'Figtree',sans-serif">1 precisa de você</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;padding:0 14px">
+<div style="background:#FFFFFF;border-radius:24px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 2px #EF5B3B">
+<div style="display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ aLead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 18px/1 'Fredoka',sans-serif">Pingo</span><span style="font:600 11px/1 'Figtree',sans-serif;background:#FBF4EA;border:1px solid #EADBC8;border-radius:99px;padding:5px 8px;white-space:nowrap">Claude Opus</span></div>
+<span style="font:500 12px/1.2 'Figtree',sans-serif;color:#7A6656">Caixa de entrada · Inbox</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FDEBE5;border-radius:14px;padding:9px 9px 9px 12px">
+<span style="font:600 13px/1.25 'Figtree',sans-serif;color:#A8361E">Precisa de você · 3 e-mails</span>
+<span style="background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:8px 13px;font:700 12px/1 'Figtree',sans-serif;flex:none">Revisar</span>
+</div>
+</div>
+<sc-for list="{{ aBots }}" as="b" hint-placeholder-count="3">
+<div style="background:#FFFFFF;border-radius:24px;padding:12px 14px;display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ b.el }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 18px/1 'Fredoka',sans-serif">{{ b.name }}</span><span style="font:600 11px/1 'Figtree',sans-serif;background:#FBF4EA;border:1px solid #EADBC8;border-radius:99px;padding:5px 8px;white-space:nowrap">{{ b.brain }}</span></div>
+<span style="font:500 12px/1.2 'Figtree',sans-serif;color:#7A6656">{{ b.role }}</span>
+<span style="display:flex;align-items:center;gap:6px;font:600 12px/1.2 'Figtree',sans-serif"><span style="width:8px;height:8px;border-radius:50%;background:{{ b.dot }};flex:none"></span>{{ b.status }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:12px 14px 0;border:2px dashed #D9C6AE;border-radius:22px;padding:14px;text-align:center;font:600 16px/1 'Fredoka',sans-serif;color:#7A6656">+ Novo bot</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:76px;background:#FFFFFF;border-top:1px solid #EFE3D3;display:flex;justify-content:space-around;align-items:flex-start;padding-top:12px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:700 12px/1 'Figtree',sans-serif"><span style="width:18px;height:18px;border-radius:50% 0 50% 50%;transform:rotate(-45deg);background:#EF5B3B;margin-top:3px"></span>Bots</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:600 12px/1 'Figtree',sans-serif;color:#7A6656"><span style="width:20px;height:20px;border-radius:7px;border:2px solid #BFA894;box-sizing:border-box"></span>Tarefas</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:600 12px/1 'Figtree',sans-serif;color:#7A6656"><span style="width:20px;height:20px;border-radius:50%;border:2px solid #BFA894;box-sizing:border-box"></span>Apps</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:600 12px/1 'Figtree',sans-serif;color:#7A6656"><span style="width:20px;height:20px;border-radius:50%;background:#EADBC8"></span>Você</div>
+</div>
+</div>
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #120D0A;border-radius:48px;background:#1C1511;color:#FBEFE3;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:700 14px/1 'Figtree',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #33281F">
+<span style="font:500 28px/1 'Figtree',sans-serif;color:#CDB7A2">‹</span>
+<div style="width:44px;height:44px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ aHead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:600 18px/1 'Fredoka',sans-serif">Pingo</span><span style="font:500 12px/1.2 'Figtree',sans-serif;color:#CDB7A2">trabalhando no computador dele…</span></div>
+<span style="font:600 11px/1 'Figtree',sans-serif;background:#2A201A;border:1px solid #45362B;border-radius:99px;padding:7px 9px;white-space:nowrap">Claude Opus ▾</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;padding:14px 14px 0">
+<div style="align-self:center;font:500 11px/1.3 'Figtree',sans-serif;color:#CDB7A2;background:#2A201A;border-radius:99px;padding:6px 12px;text-align:center">Cérebro: GPT-6 Astra → Claude Opus · memória mantida</div>
+<div style="align-self:flex-end;max-width:80%;background:#EF5B3B;color:#2B1D16;border-radius:22px 22px 6px 22px;padding:11px 14px;font:600 15px/1.35 'Figtree',sans-serif">Responde os fornecedores e marca a reunião de quinta?</div>
+<div style="align-self:flex-start;max-width:84%;background:#2A201A;border-radius:22px 22px 22px 6px;padding:11px 14px;font:500 15px/1.35 'Figtree',sans-serif">Bora! Achei 3 fornecedores esperando. Já rascunhei tudo no seu tom.</div>
+<div style="background:#2A201A;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 16px/1 'Fredoka',sans-serif">Fornecedores + reunião</span><span style="font:600 12px/1 'Figtree',sans-serif;color:#CDB7A2">2 de 4</span></div>
+<div style="height:8px;border-radius:99px;background:#45362B;overflow:hidden"><div style="width:58%;height:100%;border-radius:99px;background:#F6C443"></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 13px/1.2 'Figtree',sans-serif">
+<div style="display:flex;gap:9px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:#3DBB8E;color:#1C1511;font:800 10px/16px 'Figtree',sans-serif;text-align:center;flex:none">✓</span>Li 3 e-mails de fornecedores</div>
+<div style="display:flex;gap:9px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:#3DBB8E;color:#1C1511;font:800 10px/16px 'Figtree',sans-serif;text-align:center;flex:none">✓</span>Rascunhei as respostas</div>
+<div style="display:flex;gap:9px;align-items:center;color:#F6C443"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #F6C443;box-sizing:border-box;flex:none"></span>Procurando horário na quinta…</div>
+<div style="display:flex;gap:9px;align-items:center;color:#CDB7A2"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #5A4636;box-sizing:border-box;flex:none"></span>Enviar convite</div>
+</div>
+</div>
+<div style="background:#F6C443;color:#2B1D16;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font:600 18px/1.1 'Fredoka',sans-serif">Posso enviar?</span><span style="font:500 13px/1.3 'Figtree',sans-serif">3 e-mails como ana@estudio.com · Ok to send?</span></div>
+<div style="display:flex;gap:8px"><span style="flex:1;text-align:center;border:2px solid #2B1D16;border-radius:99px;padding:10px;font:700 13px/1 'Figtree',sans-serif">Revisar</span><span style="flex:1.5;text-align:center;background:#2B1D16;color:#F6C443;border-radius:99px;padding:12px;font:700 13px/1 'Figtree',sans-serif">Aprovar e enviar</span></div>
+</div>
+</div>
+<div style="padding:10px 14px 20px;display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px/1 'Figtree',sans-serif;color:#CDB7A2;text-align:center">Hoje R$ 0,84 de R$ 20,00 · sua chave Anthropic</div>
+<div style="display:flex;gap:8px;align-items:center"><div style="flex:1;background:#2A201A;border-radius:99px;padding:15px 18px;font:500 15px/1 'Figtree',sans-serif;color:#CDB7A2">Fale com o Pingo…</div><div style="width:48px;height:48px;border-radius:50%;background:#EF5B3B;display:flex;align-items:center;justify-content:center;flex:none"><span style="width:10px;height:18px;border-radius:6px;background:#2B1D16"></span></div></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b" data-screen-label="1b Bibo">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Bibo · bichinho de matriz de pontos · quadro a quadro · pastéis + LED</div>
+<div class="dv-card" style="width:800px;background:#EEF0EB;border-radius:24px;color:#141714;font-family:'Geist',sans-serif">
+<div style="padding:36px 36px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4E5A4E">Direção B · Matriz de pontos</div>
+<div style="font:900 104px/.86 'Doto',monospace;letter-spacing:-.01em">Bibo</div>
+<div style="font:500 18px/1.4 'Geist',sans-serif;max-width:440px;text-wrap:pretty">Um bichinho eletrônico com rosto de LED. Cada expressão é desenhada ponto a ponto.</div>
+<div style="font:400 14px/1.35 'Geist',sans-serif;color:#5E655E">A pocket pet with an LED face, drawn dot by dot.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end;text-align:right;font:500 11px/1.3 'Geist Mono',monospace;color:#5E655E">
+<span>FORMA · TELA + ANTENA</span><span>MOVIMENTO · 8 FPS, PASSOS</span><span>TIPO · DOTO + GEIST</span>
+</div>
+</div>
+<div style="margin:0 20px;height:350px;border-radius:24px;background-color:#C9B8F2;background-image:radial-gradient(rgba(20,23,20,.16) 1.6px,transparent 1.9px);background-size:16px 16px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:40px">
+<div style="position:relative;display:flex">{{ bHero }}</div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px;max-width:260px;background:#151815;border-radius:18px 18px 18px 4px;padding:18px 20px;box-shadow:0 0 0 3px #141714">
+<div style="font:500 17px/1.35 'Geist Mono',monospace;color:#C9F45B">bip-bop! Bibo online. O que a gente resolve hoje?</div>
+<div style="font:400 13px/1.35 'Geist Mono',monospace;color:#9BA59B">beep-boop! What are we fixing today?</div>
+</div>
+<div style="position:absolute;left:24px;bottom:20px;font:600 11px/1 'Geist Mono',monospace;color:#2E2650;letter-spacing:.06em">MOUSE = ELE TE OLHA · CLIQUE = FESTA</div>
+</div>
+<div style="padding:30px 36px 6px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><span style="font:900 26px/1 'Doto',monospace">Estados <span style="font:500 13px/1 'Geist',sans-serif;color:#5E655E">· States</span></span><span style="font:500 12px/1.3 'Geist Mono',monospace;color:#5E655E">quadro a quadro · piscadas de 1 frame</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+<sc-for list="{{ bStates }}" as="s" hint-placeholder-count="6">
+<div style="background:#FFFFFF;border:1px solid #D9DDD6;border-radius:16px;padding:20px 6px 14px;display:flex;flex-direction:column;align-items:center;gap:5px">
+<div style="height:96px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px">{{ s.el }}</div>
+<div style="font:600 14px/1.15 'Geist',sans-serif;text-align:center">{{ s.pt }}</div>
+<div style="font:400 11px/1.2 'Geist Mono',monospace;color:#5E655E">{{ s.en }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="padding:24px 36px 8px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px">
+<div style="background:#FFFFFF;border:1px solid #D9DDD6;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#5E655E">CORES · COLORS</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:10px;background:#9FE3C5"></div><span style="font:600 12px/1 'Geist',sans-serif">Menta</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#9FE3C5</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:10px;background:#C9B8F2"></div><span style="font:600 12px/1 'Geist',sans-serif">Lilás</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#C9B8F2</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:10px;background:#F4E38E"></div><span style="font:600 12px/1 'Geist',sans-serif">Manteiga</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#F4E38E</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:10px;background:#F7B99A"></div><span style="font:600 12px/1 'Geist',sans-serif">Pêssego</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#F7B99A</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:10px;background:#151815;display:flex;align-items:center;justify-content:center"><span style="width:14px;height:14px;border-radius:50%;background:#C9F45B;box-shadow:0 0 10px #C9F45B"></span></div><span style="font:600 12px/1 'Geist',sans-serif">LED</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#C9F45B</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:8px;background:#EEF0EB;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Geist',sans-serif">Papel</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#EEF0EB</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Geist',sans-serif">Branco</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#FFFFFF</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:8px;background:#141714"></div><span style="font:600 12px/1 'Geist',sans-serif">Tinta</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#141714</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:8px;background:#0E100E"></div><span style="font:600 12px/1 'Geist',sans-serif">Noite</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#0E100E</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:8px;background:#181B18"></div><span style="font:600 12px/1 'Geist',sans-serif">Grafite</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5E655E">#181B18</span></div>
+</div>
+</div>
+<div style="background:#151815;color:#EEF2EC;border-radius:16px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+<div style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#9BA59B">TIPOGRAFIA · TYPE</div>
+<div style="font:900 72px/.9 'Doto',monospace;color:#C9F45B;text-shadow:0 0 14px rgba(201,244,91,.45)">Aa</div>
+<div style="font:600 16px/1.25 'Geist',sans-serif">Doto — títulos, números e o rosto do bot</div>
+<div style="font:400 13px/1.45 'Geist Mono',monospace;color:#B9C2B9">Geist + Geist Mono — interface e dados técnicos. 0123456789</div>
+</div>
+</div>
+<div style="padding:22px 20px 24px;display:flex;gap:20px;justify-content:center;align-items:flex-start">
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #141714;border-radius:46px;background:#EEF0EB;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:600 14px/1 'Geist',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:22px 20px 14px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:500 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#5E655E">BOM DIA, ANA</span><span style="font:900 36px/1 'Doto',monospace">Seus bots</span></div>
+<div style="display:flex;border:1px solid #D9DDD6;background:#FFFFFF;border-radius:10px;padding:3px;font:600 11px/1 'Geist Mono',monospace"><span style="background:#141714;color:#C9F45B;border-radius:7px;padding:6px 8px">PT</span><span style="padding:6px 8px;color:#5E655E">EN</span></div>
+</div>
+<div style="display:flex;gap:8px;padding:0 20px 14px">
+<span style="background:#FFFFFF;border:1px solid #D9DDD6;border-radius:8px;padding:7px 10px;font:600 11px/1 'Geist Mono',monospace">3 TRABALHANDO</span>
+<span style="background:#141714;color:#C9F45B;border-radius:8px;padding:8px 10px;font:600 11px/1 'Geist Mono',monospace">1 PRECISA DE VOCÊ</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;padding:0 14px">
+<div style="background:#151815;color:#EEF2EC;border-radius:20px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ bLead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 17px/1 'Geist',sans-serif">Bibo</span><span style="font:600 10px/1 'Geist Mono',monospace;background:#222622;color:#C9F45B;border-radius:6px;padding:5px 7px;white-space:nowrap">CLAUDE OPUS</span></div>
+<span style="font:500 12px/1.2 'Geist',sans-serif;color:#9BA59B">Caixa de entrada · Inbox</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#222622;border-radius:12px;padding:9px 9px 9px 12px">
+<span style="font:600 11px/1.25 'Geist Mono',monospace;color:#C9F45B">PRECISA DE VOCÊ · 3 E-MAILS</span>
+<span style="background:#C9F45B;color:#141714;border-radius:8px;padding:8px 12px;font:700 12px/1 'Geist',sans-serif;flex:none">Revisar</span>
+</div>
+</div>
+<sc-for list="{{ bBots }}" as="b" hint-placeholder-count="3">
+<div style="background:#FFFFFF;border:1px solid #D9DDD6;border-radius:20px;padding:12px 14px;display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ b.el }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 17px/1 'Geist',sans-serif">{{ b.name }}</span><span style="font:600 10px/1 'Geist Mono',monospace;background:#EEF0EB;border-radius:6px;padding:5px 7px;white-space:nowrap">{{ b.brain }}</span></div>
+<span style="font:500 12px/1.2 'Geist',sans-serif;color:#5E655E">{{ b.role }}</span>
+<span style="display:flex;align-items:center;gap:6px;font:500 11px/1.2 'Geist Mono',monospace"><span style="width:7px;height:7px;border-radius:2px;background:{{ b.dot }};flex:none"></span>{{ b.status }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:12px 14px 0;border:1.5px dashed #B3BBB0;border-radius:20px;padding:15px;text-align:center;font:600 12px/1 'Geist Mono',monospace;letter-spacing:.06em;color:#5E655E">+ NOVO BOT</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:76px;background:#FFFFFF;border-top:1px solid #D9DDD6;display:flex;justify-content:space-around;align-items:flex-start;padding-top:12px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:600 11px/1 'Geist Mono',monospace"><span style="width:26px;height:20px;border-radius:7px;background:#141714;display:flex;gap:5px;align-items:center;justify-content:center"><span style="width:4px;height:4px;border-radius:50%;background:#C9F45B"></span><span style="width:4px;height:4px;border-radius:50%;background:#C9F45B"></span></span>BOTS</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:500 11px/1 'Geist Mono',monospace;color:#5E655E"><span style="width:20px;height:20px;border-radius:6px;border:2px solid #A9B1A6;box-sizing:border-box"></span>TAREFAS</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:500 11px/1 'Geist Mono',monospace;color:#5E655E"><span style="width:20px;height:20px;border-radius:50%;border:2px solid #A9B1A6;box-sizing:border-box"></span>APPS</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font:500 11px/1 'Geist Mono',monospace;color:#5E655E"><span style="width:20px;height:20px;border-radius:50%;background:#D9DDD6"></span>VOCÊ</div>
+</div>
+</div>
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #050605;border-radius:46px;background:#0E100E;color:#EEF2EC;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:600 14px/1 'Geist',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #222622">
+<span style="font:400 28px/1 'Geist',sans-serif;color:#9BA59B">‹</span>
+<div style="width:44px;height:44px;display:flex;align-items:flex-end;justify-content:center;flex:none">{{ bHead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font:600 17px/1 'Geist',sans-serif">Bibo</span><span style="font:500 10px/1.2 'Geist Mono',monospace;color:#C9F45B;letter-spacing:.06em">TRABALHANDO…</span></div>
+<span style="font:600 10px/1 'Geist Mono',monospace;background:#181B18;border:1px solid #2A2F2A;border-radius:8px;padding:7px 8px;white-space:nowrap">CLAUDE OPUS ▾</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;padding:14px 14px 0">
+<div style="align-self:center;font:500 10px/1.3 'Geist Mono',monospace;color:#9BA59B;border:1px dashed #333933;border-radius:8px;padding:6px 10px;text-align:center">CÉREBRO: GPT-6 ASTRA → CLAUDE OPUS · MEMÓRIA MANTIDA</div>
+<div style="align-self:flex-end;max-width:80%;background:#C9F45B;color:#141714;border-radius:18px 18px 4px 18px;padding:11px 14px;font:500 15px/1.35 'Geist',sans-serif">Responde os fornecedores e marca a reunião de quinta?</div>
+<div style="align-self:flex-start;max-width:84%;background:#181B18;border:1px solid #2A2F2A;border-radius:18px 18px 18px 4px;padding:11px 14px;font:400 15px/1.35 'Geist',sans-serif">bip! Achei 3 fornecedores esperando. Já rascunhei tudo no seu tom.</div>
+<div style="background:#181B18;border:1px solid #2A2F2A;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/1 'Geist',sans-serif">Fornecedores + reunião</span><span style="font:500 11px/1 'Geist Mono',monospace;color:#9BA59B">2/4</span></div>
+<div style="position:relative;height:8px"><div style="position:absolute;inset:0;background-image:radial-gradient(circle,#2F352F 2.6px,transparent 3px);background-size:10px 8px"></div><div style="position:absolute;left:0;top:0;bottom:0;width:58%;background-image:radial-gradient(circle,#C9F45B 2.6px,transparent 3px);background-size:10px 8px;filter:drop-shadow(0 0 3px #C9F45B)"></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:400 13px/1.2 'Geist',sans-serif">
+<div style="display:flex;gap:9px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;background:#C9F45B;flex:none"></span>Li 3 e-mails de fornecedores</div>
+<div style="display:flex;gap:9px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;background:#C9F45B;flex:none"></span>Rascunhei as respostas</div>
+<div style="display:flex;gap:9px;align-items:center;color:#C9F45B"><span style="width:12px;height:12px;border-radius:3px;border:2px solid #C9F45B;box-sizing:border-box;flex:none"></span>Procurando horário na quinta…</div>
+<div style="display:flex;gap:9px;align-items:center;color:#9BA59B"><span style="width:12px;height:12px;border-radius:3px;border:2px solid #3A403A;box-sizing:border-box;flex:none"></span>Enviar convite</div>
+</div>
+</div>
+<div style="background:#C9B8F2;color:#141714;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font:600 17px/1.1 'Geist',sans-serif">Posso enviar?</span><span style="font:500 13px/1.3 'Geist',sans-serif">3 e-mails como ana@estudio.com · Ok to send?</span></div>
+<div style="display:flex;gap:8px"><span style="flex:1;text-align:center;border:1.5px solid #141714;border-radius:10px;padding:10px;font:600 13px/1 'Geist',sans-serif">Revisar</span><span style="flex:1.5;text-align:center;background:#141714;color:#C9F45B;border-radius:10px;padding:11.5px;font:600 13px/1 'Geist',sans-serif">Aprovar e enviar</span></div>
+</div>
+</div>
+<div style="padding:10px 14px 20px;display:flex;flex-direction:column;gap:8px">
+<div style="font:500 10px/1 'Geist Mono',monospace;color:#9BA59B;text-align:center;letter-spacing:.04em">HOJE R$ 0,84 / R$ 20,00 · SUA CHAVE ANTHROPIC</div>
+<div style="display:flex;gap:8px;align-items:center"><div style="flex:1;background:#181B18;border:1px solid #2A2F2A;border-radius:14px;padding:15px 16px;font:400 15px/1 'Geist',sans-serif;color:#9BA59B">Fale com o Bibo…</div><div style="width:48px;height:48px;border-radius:14px;background:#C9F45B;display:flex;align-items:center;justify-content:center;flex:none"><span style="width:10px;height:18px;border-radius:6px;background:#141714"></span></div></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c" data-screen-label="1c Oki">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Oki · constelação de bolinhas · elástico e orbital · cores elétricas</div>
+<div class="dv-card" style="width:800px;background:#F4F4F1;border-radius:28px;color:#10101A;font-family:'Onest',sans-serif">
+<div style="padding:36px 36px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:600 12px/1 'Onest',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#3A3AF4">Direção C · Constelação elétrica</div>
+<div style="font:800 96px/.9 'Unbounded',sans-serif;letter-spacing:-.04em">Oki</div>
+<div style="font:500 18px/1.4 'Onest',sans-serif;max-width:440px;text-wrap:pretty">Um bot feito de bolinhas que orbitam, se juntam e explodem de alegria quando a tarefa fica pronta.</div>
+<div style="font:400 14px/1.35 'Onest',sans-serif;color:#5D5D6E">A bot made of orbiting dots that gather — and burst — when the job is done.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end;text-align:right;font:500 12px/1.3 'Onest',sans-serif;color:#5D5D6E">
+<span>Forma · núcleo + satélites</span><span>Movimento · molas e órbitas</span><span>Tipo · Unbounded + Onest</span>
+</div>
+</div>
+<div style="margin:0 20px;height:350px;border-radius:32px;background:#C8F04B;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:40px">
+<div style="position:absolute;left:85px;top:25px;width:300px;height:300px;border-radius:50%;border:1.5px solid rgba(16,16,26,.18);box-sizing:border-box"></div>
+<div style="position:absolute;left:5px;top:-55px;width:460px;height:460px;border-radius:50%;border:1.5px solid rgba(16,16,26,.12);box-sizing:border-box"></div>
+<div style="position:absolute;left:-85px;top:-145px;width:640px;height:640px;border-radius:50%;border:1.5px solid rgba(16,16,26,.08);box-sizing:border-box"></div>
+<div style="position:relative;display:flex">{{ cHero }}</div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px;max-width:260px;background:#10101A;color:#FFFFFF;border-radius:26px 26px 26px 6px;padding:18px 20px">
+<div style="font:600 17px/1.35 'Unbounded',sans-serif">Oki-doki! Já juntei as peças. Quer ver?</div>
+<div style="font:400 14px/1.35 'Onest',sans-serif;color:#B4B4C6">Pieces gathered. Wanna see?</div>
+</div>
+<div style="position:absolute;left:26px;bottom:20px;font:600 12px/1 'Onest',sans-serif;color:#2E3A08">passe o mouse — ele te olha · clique — ele explode de alegria</div>
+</div>
+<div style="padding:30px 36px 6px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px"><span style="font:700 20px/1 'Unbounded',sans-serif">Estados <span style="font:500 14px/1 'Onest',sans-serif;color:#5D5D6E">· States</span></span><span style="font:500 13px/1.3 'Onest',sans-serif;color:#5D5D6E">os satélites contam o que ele está fazendo</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+<sc-for list="{{ cStates }}" as="s" hint-placeholder-count="6">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px 6px 14px;display:flex;flex-direction:column;align-items:center;gap:5px">
+<div style="height:100px;display:flex;align-items:center;justify-content:center;margin-bottom:6px">{{ s.el }}</div>
+<div style="font:600 13px/1.15 'Unbounded',sans-serif;text-align:center">{{ s.pt }}</div>
+<div style="font:400 12px/1.2 'Onest',sans-serif;color:#5D5D6E">{{ s.en }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="padding:24px 36px 8px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px">
+<div style="background:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="font:600 13px/1 'Onest',sans-serif;color:#5D5D6E">Cores · Colors</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:99px;background:#3A3AF4"></div><span style="font:600 12px/1 'Onest',sans-serif">Ultramar</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#3A3AF4</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:99px;background:#FF7A68"></div><span style="font:600 12px/1 'Onest',sans-serif">Coral</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#FF7A68</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:99px;background:#C8F04B"></div><span style="font:600 12px/1 'Onest',sans-serif">Lima</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#C8F04B</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:99px;background:#9CB7FF"></div><span style="font:600 12px/1 'Onest',sans-serif">Céu</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#9CB7FF</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:46px;border-radius:99px;background:#10101A"></div><span style="font:600 12px/1 'Onest',sans-serif">Tinta</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#10101A</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:99px;background:#F4F4F1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Onest',sans-serif">Névoa</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#F4F4F1</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:99px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)"></div><span style="font:600 12px/1 'Onest',sans-serif">Branco</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#FFFFFF</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:99px;background:#5D5D6E"></div><span style="font:600 12px/1 'Onest',sans-serif">Cinza</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#5D5D6E</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:99px;background:#0D0D14"></div><span style="font:600 12px/1 'Onest',sans-serif">Noite</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#0D0D14</span></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div style="height:30px;border-radius:99px;background:#17171F"></div><span style="font:600 12px/1 'Onest',sans-serif">Grafite</span><span style="font:400 11px/1 'Geist Mono',monospace;color:#5D5D6E">#17171F</span></div>
+</div>
+</div>
+<div style="background:#3A3AF4;color:#FFFFFF;border-radius:22px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+<div style="font:600 13px/1 'Onest',sans-serif;color:#D6D6FF">Tipografia · Type</div>
+<div style="font:800 64px/.9 'Unbounded',sans-serif;color:#C8F04B">Aa</div>
+<div style="font:600 15px/1.3 'Unbounded',sans-serif">Unbounded — títulos com presença</div>
+<div style="font:400 14px/1.4 'Onest',sans-serif;color:#E2E2FF">Onest — interface e leitura. 0123456789</div>
+</div>
+</div>
+<div style="padding:22px 20px 24px;display:flex;gap:20px;justify-content:center;align-items:flex-start">
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #10101A;border-radius:50px;background:#F4F4F1;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:600 14px/1 'Onest',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:22px 20px 14px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:500 14px/1 'Onest',sans-serif;color:#5D5D6E">Bom dia, Ana</span><span style="font:700 28px/1 'Unbounded',sans-serif;letter-spacing:-.02em">Seus bots</span></div>
+<div style="display:flex;background:#10101A;border-radius:99px;padding:3px;font:700 11px/1 'Onest',sans-serif"><span style="background:#C8F04B;color:#10101A;border-radius:99px;padding:6px 9px">PT</span><span style="padding:6px 9px;color:#B4B4C6">EN</span></div>
+</div>
+<div style="display:flex;gap:8px;padding:0 20px 14px">
+<span style="background:#FFFFFF;border-radius:99px;padding:8px 12px;font:600 12px/1 'Onest',sans-serif">3 trabalhando</span>
+<span style="background:#FF7A68;color:#10101A;border-radius:99px;padding:8px 12px;font:700 12px/1 'Onest',sans-serif">1 precisa de você</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;padding:0 14px">
+<div style="background:#FFFFFF;border-radius:26px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 2px #3A3AF4">
+<div style="display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:none">{{ cLead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 15px/1 'Unbounded',sans-serif">Oki</span><span style="font:600 11px/1 'Onest',sans-serif;background:#E8E8FF;color:#2B2BC9;border-radius:99px;padding:5px 9px;white-space:nowrap">Claude Opus</span></div>
+<span style="font:500 12px/1.2 'Onest',sans-serif;color:#5D5D6E">Caixa de entrada · Inbox</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#3A3AF4;border-radius:18px;padding:9px 9px 9px 14px">
+<span style="font:600 13px/1.25 'Onest',sans-serif;color:#FFFFFF">Precisa de você · 3 e-mails</span>
+<span style="background:#C8F04B;color:#10101A;border-radius:99px;padding:8px 13px;font:700 12px/1 'Onest',sans-serif;flex:none">Revisar</span>
+</div>
+</div>
+<sc-for list="{{ cBots }}" as="b" hint-placeholder-count="3">
+<div style="background:#FFFFFF;border-radius:26px;padding:12px 14px;display:flex;gap:12px;align-items:center">
+<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:none">{{ b.el }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 15px/1 'Unbounded',sans-serif">{{ b.name }}</span><span style="font:600 11px/1 'Onest',sans-serif;background:#E8E8FF;color:#2B2BC9;border-radius:99px;padding:5px 9px;white-space:nowrap">{{ b.brain }}</span></div>
+<span style="font:500 12px/1.2 'Onest',sans-serif;color:#5D5D6E">{{ b.role }}</span>
+<span style="display:flex;align-items:center;gap:6px;font:600 12px/1.2 'Onest',sans-serif"><span style="width:8px;height:8px;border-radius:50%;background:{{ b.dot }};flex:none"></span>{{ b.status }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:12px 14px 0;border:2px dashed #C9C9D6;border-radius:26px;padding:15px;text-align:center;font:600 13px/1 'Unbounded',sans-serif;color:#5D5D6E">+ Novo bot</div>
+<div style="position:absolute;left:16px;right:16px;bottom:16px;height:60px;background:#10101A;border-radius:99px;display:flex;justify-content:space-between;align-items:center;padding:0 8px;font:600 12px/1 'Onest',sans-serif;color:#B4B4C6">
+<span style="background:#C8F04B;color:#10101A;border-radius:99px;padding:13px 18px;font-weight:700">Bots</span><span style="padding:13px 10px">Tarefas</span><span style="padding:13px 10px">Apps</span><span style="padding:13px 14px 13px 10px">Você</span>
+</div>
+</div>
+
+<div style="width:358px;height:760px;box-sizing:border-box;border:8px solid #050508;border-radius:50px;background:#0D0D14;color:#F1F1F6;overflow:hidden;position:relative;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;padding:14px 26px 0;font:600 14px/1 'Onest',sans-serif"><span>9:41</span><span>5G · 82%</span></div>
+<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #22222C">
+<span style="font:400 28px/1 'Onest',sans-serif;color:#A0A0B4">‹</span>
+<div style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex:none">{{ cHead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font:600 15px/1 'Unbounded',sans-serif">Oki</span><span style="font:500 12px/1.2 'Onest',sans-serif;color:#A0A0B4">trabalhando no computador dele…</span></div>
+<span style="font:600 11px/1 'Onest',sans-serif;background:#17171F;border:1px solid #2A2A36;border-radius:99px;padding:7px 9px;white-space:nowrap">Claude Opus ▾</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;padding:14px 14px 0">
+<div style="align-self:center;font:500 11px/1.3 'Onest',sans-serif;color:#A0A0B4;background:#17171F;border-radius:99px;padding:6px 12px;text-align:center">Cérebro: GPT-6 Astra → Claude Opus · memória mantida</div>
+<div style="align-self:flex-end;max-width:80%;background:#3A3AF4;color:#FFFFFF;border-radius:24px 24px 6px 24px;padding:11px 15px;font:500 15px/1.35 'Onest',sans-serif">Responde os fornecedores e marca a reunião de quinta?</div>
+<div style="align-self:flex-start;max-width:84%;background:#17171F;border-radius:24px 24px 24px 6px;padding:11px 15px;font:400 15px/1.35 'Onest',sans-serif">Oki-doki! Achei 3 fornecedores esperando. Já rascunhei tudo no seu tom.</div>
+<div style="background:#17171F;border-radius:24px;padding:15px;display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13px/1 'Unbounded',sans-serif">Fornecedores + reunião</span><span style="font:600 12px/1 'Onest',sans-serif;color:#A0A0B4">2 de 4</span></div>
+<div style="height:8px;border-radius:99px;background:#2A2A36;overflow:hidden"><div style="width:58%;height:100%;border-radius:99px;background:#FF7A68"></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 13px/1.2 'Onest',sans-serif">
+<div style="display:flex;gap:9px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:#C8F04B;color:#10101A;font:800 10px/16px 'Onest',sans-serif;text-align:center;flex:none">✓</span>Li 3 e-mails de fornecedores</div>
+<div style="display:flex;gap:9px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:#C8F04B;color:#10101A;font:800 10px/16px 'Onest',sans-serif;text-align:center;flex:none">✓</span>Rascunhei as respostas</div>
+<div style="display:flex;gap:9px;align-items:center;color:#FF7A68"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #FF7A68;box-sizing:border-box;flex:none"></span>Procurando horário na quinta…</div>
+<div style="display:flex;gap:9px;align-items:center;color:#A0A0B4"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #3A3A48;box-sizing:border-box;flex:none"></span>Enviar convite</div>
+</div>
+</div>
+<div style="background:#FF7A68;color:#10101A;border-radius:24px;padding:15px;display:flex;flex-direction:column;gap:11px">
+<div style="display:flex;flex-direction:column;gap:5px"><span style="font:600 15px/1.1 'Unbounded',sans-serif">Posso enviar?</span><span style="font:500 13px/1.3 'Onest',sans-serif">3 e-mails como ana@estudio.com · Ok to send?</span></div>
+<div style="display:flex;gap:8px"><span style="flex:1;text-align:center;border:2px solid #10101A;border-radius:99px;padding:10px;font:700 13px/1 'Onest',sans-serif">Revisar</span><span style="flex:1.5;text-align:center;background:#10101A;color:#FFFFFF;border-radius:99px;padding:12px;font:700 13px/1 'Onest',sans-serif">Aprovar e enviar</span></div>
+</div>
+</div>
+<div style="padding:10px 14px 20px;display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px/1 'Onest',sans-serif;color:#A0A0B4;text-align:center">Hoje R$ 0,84 de R$ 20,00 · sua chave Anthropic</div>
+<div style="display:flex;gap:8px;align-items:center"><div style="flex:1;background:#17171F;border-radius:99px;padding:15px 18px;font:400 15px/1 'Onest',sans-serif;color:#A0A0B4">Fale com o Oki…</div><div style="width:48px;height:48px;border-radius:50%;background:#C8F04B;display:flex;align-items:center;justify-content:center;flex:none"><span style="width:10px;height:18px;border-radius:6px;background:#10101A"></span></div></div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Próximo: "seguir com <a class="dv-oid" href="#1b">1b</a>" · "forma da <a class="dv-oid" href="#1a">1a</a> com o movimento da <a class="dv-oid" href="#1c">1c</a>" · "paleta da <a class="dv-oid" href="#1c">1c</a> no <a class="dv-oid" href="#1b">1b</a>". Depois da escolha eu monto o pacote completo: tokens claro/escuro, componentes, protótipo navegável mobile + web (criar bot, escolher cérebro e chave de API, aprovar tarefas, equipe de bots) e guia de voz bilíngue.</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagens&quot;},&quot;follow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagens&quot;},&quot;heroState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;idle&quot;,&quot;options&quot;:[&quot;idle&quot;,&quot;listening&quot;,&quot;thinking&quot;,&quot;working&quot;,&quot;needsYou&quot;,&quot;done&quot;],&quot;tsType&quot;:&quot;'idle'|'listening'|'thinking'|'working'|'needsYou'|'done'&quot;,&quot;section&quot;:&quot;Personagens&quot;}}">
+const _h = React.createElement;
+const _ab = { position: 'absolute' };
+const BOT_STATES = [
+  { k: 'idle', pt: 'À toa', en: 'Idle' },
+  { k: 'listening', pt: 'Ouvindo', en: 'Listening' },
+  { k: 'thinking', pt: 'Pensando', en: 'Thinking' },
+  { k: 'working', pt: 'Trabalhando', en: 'Working' },
+  { k: 'needsYou', pt: 'Precisa de você', en: 'Needs you' },
+  { k: 'done', pt: 'Feito!', en: 'Done!' },
+];
+
+const BOT_MOUSE = window.__botMouse || (window.__botMouse = (() => {
+  const m = { x: null, y: null, subs: new Set(), raf: 0 };
+  window.addEventListener('pointermove', e => {
+    m.x = e.clientX; m.y = e.clientY;
+    if (!m.raf) m.raf = requestAnimationFrame(() => { m.raf = 0; m.subs.forEach(f => f()); });
+  }, { passive: true });
+  return m;
+})());
+
+function botGaze(el) {
+  if (!el || BOT_MOUSE.x == null) return [0, 0];
+  const r = el.getBoundingClientRect();
+  const dx = BOT_MOUSE.x - (r.left + r.width / 2), dy = BOT_MOUSE.y - (r.top + r.height / 2);
+  const d = Math.hypot(dx, dy) || 1, k = Math.min(d / 240, 1);
+  return [dx / d * k, dy / d * k];
+}
+
+function useBotGaze(ref, on, cb) {
+  const cbRef = React.useRef(cb); cbRef.current = cb;
+  React.useEffect(() => {
+    if (!on) { cbRef.current(0, 0); return; }
+    const f = () => { const g = botGaze(ref.current); cbRef.current(g[0], g[1]); };
+    BOT_MOUSE.subs.add(f); f();
+    return () => { BOT_MOUSE.subs.delete(f); };
+  }, [on]);
+}
+
+function useBotReaction(interactive) {
+  const [on, setOn] = React.useState(false);
+  const t = React.useRef(0);
+  React.useEffect(() => () => clearTimeout(t.current), []);
+  const fire = interactive ? () => { setOn(true); clearTimeout(t.current); t.current = setTimeout(() => setOn(false), 1800); } : undefined;
+  return [on, fire];
+}
+
+/* ---------- A · Pingo (gota, squash & stretch) ---------- */
+function PingoBot(p) {
+  const s = p.size || 120, color = p.color || '#EF5B3B', eye = p.eye || '#2B1D16', cheek = p.cheek || '#FF9DA6', ink = p.ink || '#2B1D16';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const spark = p.spark || ['#3E64DE', '#3DBB8E', '#FF9DA6', '#EF5B3B', '#F6C443', '#3E64DE'];
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), gz = React.useRef(null);
+  useBotGaze(root, follow && st !== 'thinking', (x, y) => { if (gz.current) gz.current.style.transform = 'translate(' + (x * s * 0.07).toFixed(2) + 'px,' + (y * s * 0.05).toFixed(2) + 'px)'; });
+  const A = v => motion ? v : 'none';
+  const H = s * 1.04, b = s * 0.8, cy = H - b / 2;
+  const bodyAnim = { idle: 'pg-breathe 2.6s ease-in-out infinite', listening: 'pg-tilt 1.6s ease-in-out infinite', thinking: 'pg-breathe 3.6s ease-in-out infinite', working: 'pg-hop .8s cubic-bezier(.3,.7,.4,1) infinite', needsYou: 'pg-hop .55s ease-in-out infinite', done: 'pg-jump 1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const eyeT = { idle: 'dot', listening: 'wide', thinking: 'dot', working: 'focus', needsYou: 'wide', done: 'happy' }[st];
+  const mouthT = { idle: 'smile', listening: 'o', thinking: 'flat', working: 'flat', needsYou: 'o', done: 'grin' }[st];
+  const look = st === 'thinking' ? 'translate(' + s * 0.06 + 'px,' + (-s * 0.06) + 'px)' : 'none';
+  const eyeEl = (dx, key) => {
+    const base = { ..._ab, left: s / 2 + dx, top: cy - s * 0.04, transform: 'translate(-50%,-50%)' };
+    if (eyeT === 'happy') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.075, border: (s * 0.034) + 'px solid ' + eye, borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } });
+    if (eyeT === 'focus') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.036, borderRadius: s, background: eye } });
+    const w = eyeT === 'wide' ? 0.12 : 0.1, hh = eyeT === 'wide' ? 0.155 : 0.13;
+    return _h('div', { key, style: { ...base, width: s * w, height: s * hh } },
+      _h('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: eye, position: 'relative', animation: A('bot-blink 3.6s infinite') } },
+        _h('div', { style: { ..._ab, width: '34%', height: '27%', borderRadius: '50%', background: '#FFFFFF', top: '16%', right: '14%', opacity: 0.9 } })));
+  };
+  const my = cy + s * 0.1, mb = { ..._ab, left: s / 2, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    smile: _h('div', { key: 'm', style: { ...mb, width: s * 0.13, height: s * 0.065, border: (s * 0.03) + 'px solid ' + eye, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    grin: _h('div', { key: 'm', style: { ...mb, width: s * 0.17, height: s * 0.085, background: eye, borderRadius: '0 0 ' + s + 'px ' + s + 'px', overflow: 'hidden' } },
+      _h('div', { style: { ..._ab, left: '50%', bottom: -s * 0.02, width: s * 0.085, height: s * 0.06, marginLeft: -s * 0.0425, borderRadius: '50%', background: cheek } })),
+    o: _h('div', { key: 'm', style: { ...mb, width: s * 0.065, height: s * 0.075, borderRadius: '50%', background: eye } }),
+    flat: _h('div', { key: 'm', style: { ...mb, width: s * 0.075, height: s * 0.03, borderRadius: s, background: eye } }),
+  }[mouthT];
+  const cheeks = [-1, 1].map(side => _h('div', { key: 'c' + side, style: { ..._ab, left: s / 2 + side * s * 0.26 - s * 0.04, top: cy + s * 0.05 - s * 0.03, width: s * 0.08, height: s * 0.06, borderRadius: '50%', background: cheek, opacity: 0.85 } }));
+  const ex = [];
+  if (st === 'listening') [0, 1].forEach(i => [-1, 1].forEach(side => ex.push(_h('div', { key: 'r' + i + side, style: { ..._ab, width: s * 0.34, height: s * 0.34, left: s / 2 + side * s * 0.54 - s * 0.17, top: cy - s * 0.17, borderRadius: '50%', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', opacity: motion ? 0 : 0.35, animation: A('bot-ripple 1.6s ease-out ' + (i * 0.8) + 's infinite') } }))));
+  if (st === 'thinking') [0, 1, 2].forEach(i => { const d = s * (0.05 + i * 0.022); ex.push(_h('div', { key: 't' + i, style: { ..._ab, width: d, height: d, left: s * (0.72 + i * 0.1), top: s * (0.16 - i * 0.08) - d / 2, borderRadius: '50%', background: ink, animation: A('bot-bob 1.2s ease-in-out ' + (i * 0.18) + 's infinite') } })); });
+  if (st === 'working') ex.push(_h('div', { key: 'w', style: { ..._ab, width: s * 0.2, height: s * 0.2, left: s * 0.8, top: s * 0.06, borderRadius: '50%', border: (s * 0.035) + 'px solid ' + ink, borderTopColor: 'transparent', boxSizing: 'border-box', animation: A('bot-spin .9s linear infinite') } }));
+  if (st === 'needsYou') ex.push(_h('div', { key: 'n', style: { ..._ab, width: s * 0.3, height: s * 0.3, left: s * 0.76, top: -s * 0.04, borderRadius: '50%', background: '#FFFFFF', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 ' + (s * 0.2) + "px/1 'Fredoka', sans-serif", color: '#2B1D16', animation: A('bot-bubble 1s ease-in-out infinite') } }, '!'));
+  if (st === 'done') [[-0.42, -0.18], [0.44, -0.22], [-0.3, -0.42], [0.28, -0.48], [0, -0.56], [0.52, 0.08]].forEach((v, i) => { const d = s * (i % 2 ? 0.05 : 0.07); ex.push(_h('div', { key: 'd' + i, style: { ..._ab, width: d, height: d, left: s / 2 - d / 2, top: s * 0.3 - d / 2, borderRadius: '50%', background: spark[i % spark.length], '--dx': v[0] * s + 'px', '--dy': v[1] * s + 'px', transform: motion ? undefined : 'translate(' + v[0] * s * 0.7 + 'px,' + v[1] * s * 0.7 + 'px)', animation: A('pg-pop 1s ease-out ' + (i * 0.1) + 's infinite') } })); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: H, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: (s - b) / 2, top: H - b, width: b, height: b, background: color, borderRadius: '50% 0 50% 50%', transform: 'rotate(-45deg)', boxShadow: 'inset ' + (b * 0.07) + 'px ' + (-b * 0.07) + 'px 0 rgba(0,0,0,.09)' } }),
+      _h('div', { style: { ..._ab, left: s / 2 - b * 0.3, top: cy - b * 0.34, width: b * 0.16, height: b * 0.1, borderRadius: '50%', background: '#FFFFFF', opacity: 0.45, transform: 'rotate(-35deg)' } }),
+      _h('div', { style: { ..._ab, inset: 0, transform: look, transition: 'transform .4s cubic-bezier(.3,1.4,.5,1)' } },
+        _h('div', { ref: gz, style: { ..._ab, inset: 0, transition: 'transform .18s ease-out' } }, eyeEl(-s * 0.15, 'l'), eyeEl(s * 0.15, 'r'), cheeks, mouth))),
+    ex);
+}
+
+/* ---------- B · Bibo (matriz de pontos, quadro a quadro) ---------- */
+const BB_EYE = { dot: ['##', '##'], wide: ['##', '##', '##'], blink: ['##'], focus: ['###'], happy: ['.#.', '#.#'] };
+const BB_MOUTH = { smile: ['#....#', '.####.'], grin: ['#......#', '.######.', '..####..'], o: ['.##.', '#..#', '.##.'], small: ['##', '##'], flat: ['####'], none: [] };
+function bbFace(eyeT, mouthT, dx, dy, extra) {
+  const C = 12, R = 9, on = new Set();
+  const put = (pat, c0, r0) => pat.forEach((row, r) => { for (let c = 0; c < row.length; c++) { const cc = c0 + c, rr = r0 + r; if (row[c] === '#' && cc >= 0 && cc < C && rr >= 0 && rr < R) on.add(rr * C + cc); } });
+  const e = BB_EYE[eyeT], w = e[0].length, er = 3 - Math.ceil((e.length - 1) / 2) + dy;
+  put(e, Math.ceil(2.5 - (w - 1) / 2) + dx, er);
+  put(e, Math.floor(8.5 - (w - 1) / 2) + dx, er);
+  const m = BB_MOUTH[mouthT];
+  if (m.length) put(m, Math.round(5.5 - (m[0].length - 1) / 2) + dx, m.length > 2 ? (mouthT === 'grin' ? 5 : 6) : 6);
+  extra.forEach(i => on.add(i));
+  return on;
+}
+function BiboBot(p) {
+  const s = p.size || 120, body = p.body || '#9FE3C5', led = p.led || '#C9F45B', scr = p.screen || '#151815', ink = p.ink || '#141714';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const [f, setF] = React.useState(0);
+  const [g, setG] = React.useState([0, 0]);
+  const root = React.useRef(null);
+  React.useEffect(() => { if (!motion) { setF(0); return; } const id = setInterval(() => setF(x => x + 1), 120); return () => clearInterval(id); }, [motion]);
+  useBotGaze(root, follow, (x, y) => { const nx = Math.max(-1, Math.min(1, Math.round(x * 1.5))), ny = Math.max(-1, Math.min(1, Math.round(y * 1.3))); setG(q => (q[0] === nx && q[1] === ny) ? q : [nx, ny]); });
+  const fr = motion ? f : 13, A = v => motion ? v : 'none';
+  let eyeT = 'dot', mouthT = 'smile', extra = [], dx = g[0], dy = g[1];
+  if (st === 'idle') { if (fr % 28 === 27) eyeT = 'blink'; }
+  else if (st === 'listening') { eyeT = 'wide'; mouthT = (fr >> 2) % 2 ? 'o' : 'small'; }
+  else if (st === 'thinking') { dx = 1; dy = -1; mouthT = 'none'; const k = (fr >> 2) % 4; [[2, 3], [5, 6], [8, 9]].slice(0, k).forEach(c => extra.push(72 + c[0], 72 + c[1])); }
+  else if (st === 'working') { eyeT = 'focus'; mouthT = 'none'; const q = fr % 15 - 3; for (let i = 0; i < 3; i++) if (q + i >= 0 && q + i < 12) extra.push(84 + q + i); }
+  else if (st === 'needsYou') { eyeT = (fr >> 2) % 2 ? 'wide' : 'dot'; mouthT = 'o'; }
+  else if (st === 'done') { eyeT = 'happy'; mouthT = 'grin'; dx = 0; dy = 0; extra = (fr >> 1) % 2 ? [0, 11, 96, 107] : [13, 22, 85, 94]; }
+  const on = bbFace(eyeT, mouthT, dx, dy, extra);
+  const cell = s * 0.051, dot = cell * 0.74, glow = (cell * 0.9).toFixed(1);
+  const cells = [];
+  for (let i = 0; i < 108; i++) { const lit = on.has(i); cells.push(_h('div', { key: i, style: { width: dot, height: dot, borderRadius: '50%', background: lit ? led : 'rgba(255,255,255,.07)', boxShadow: lit ? '0 0 ' + glow + 'px ' + led : 'none' } })); }
+  const bodyAnim = { idle: 'bb-bob 1.8s steps(1) infinite', listening: 'bb-tilt 1.2s steps(1) infinite', thinking: 'bb-bob 2.6s steps(1) infinite', working: 'bb-bob .48s steps(1) infinite', needsYou: 'bb-hop .9s steps(1) infinite', done: 'bb-jump .9s steps(1) infinite' }[st];
+  const bulbOn = st === 'listening' || st === 'needsYou' || st === 'working' || st === 'done';
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s * 1.06, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.018, top: s * 0.06, width: s * 0.036, height: s * 0.11, background: ink, borderRadius: s * 0.02 } }),
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.06, top: 0, width: s * 0.12, height: s * 0.12, borderRadius: '50%', background: bulbOn ? led : body, border: (s * 0.022) + 'px solid ' + ink, boxSizing: 'border-box', boxShadow: bulbOn ? '0 0 ' + (s * 0.08) + 'px ' + led : 'none', animation: A(st === 'needsYou' || st === 'listening' ? 'bb-blink .5s steps(1) infinite' : 'none') } }),
+      _h('div', { style: { ..._ab, left: 0, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.91, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.05, top: s * 0.15, width: s * 0.9, height: s * 0.86, borderRadius: s * 0.26, background: body, boxShadow: 'inset 0 ' + (-s * 0.05) + 'px 0 rgba(0,0,0,.1), inset 0 ' + (s * 0.03) + 'px 0 rgba(255,255,255,.4)' } }),
+      _h('div', { style: { ..._ab, left: s * 0.13, top: s * 0.27, width: s * 0.74, height: s * 0.56, borderRadius: s * 0.13, background: scr, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 ' + (s * 0.015) + 'px rgba(0,0,0,.35)' } },
+        _h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(12,' + cell + 'px)', gridAutoRows: cell + 'px', placeItems: 'center' } }, cells))));
+}
+
+/* ---------- C · Oki (núcleo + satélites, molas) ---------- */
+const OKI_SZ = [0.17, 0.13, 0.11, 0.09, 0.07];
+function okiTarget(k, i, n, t, s, sz) {
+  const R = v => v * s;
+  if (k === 'listening') { const side = i % 2 ? 1 : -1, j = i >> 1, pulse = Math.sin(t * 6 - j * 1.3) * 0.035; return { x: side * R(0.38 + j * 0.09 + pulse), y: R(-0.04 + j * 0.02), c: (0.11 - j * 0.025) / sz, z: 1 }; }
+  if (k === 'thinking') { const a = t * 2.4 + i * (Math.PI * 2 / n); return { x: R(0.26) * Math.cos(a), y: R(-0.4) + R(0.07) * Math.sin(a), c: (0.075 / sz) * (0.85 + 0.25 * Math.sin(a)), z: Math.sin(a) }; }
+  if (k === 'working') return { x: R((i - (n - 1) / 2) * 0.14), y: R(0.4) - R(0.08) * Math.abs(Math.sin(t * 5 - i * 0.7)), c: 0.08 / sz, z: 1 };
+  if (k === 'needsYou') { const hop = Math.abs(Math.sin(t * 6)) * R(0.05); const yy = i < n - 1 ? -0.46 + i * 0.075 : -0.46 + (n - 1) * 0.075 + 0.06; return { x: R(0.42), y: R(yy) - hop, c: 0.065 / sz, z: 1 }; }
+  if (k === 'done') { const a = i * (Math.PI * 2 / n) + t * 0.9 - Math.PI / 2, r = R(0.36 + 0.12 * Math.pow(Math.abs(Math.sin(t * 3.4)), 0.7)); return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.9, c: 1, z: 1 }; }
+  const a = i * 2.4 + t * (0.45 + i * 0.08) * (i % 2 ? 1 : -1), r = R(0.37 + 0.03 * Math.sin(t * 1.3 + i));
+  return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.4 + R(0.04), c: 0.85 + 0.2 * Math.sin(a), z: Math.sin(a) };
+}
+function OkiBot(p) {
+  const s = p.size || 120, body = p.body || '#3A3AF4', ink = p.ink || '#10101A', mouthC = p.mouth || '#FFFFFF';
+  const sats = p.sats || ['#FF7A68', '#C8F04B', '#9CB7FF', '#10101A', '#FF7A68'];
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), satEls = React.useRef([]), pupils = React.useRef([]);
+  const stRef = React.useRef(st); stRef.current = st;
+  const gzT = React.useRef([0, 0]);
+  useBotGaze(root, follow, (x, y) => { gzT.current = [x, y]; });
+  React.useEffect(() => {
+    const P = OKI_SZ.map(() => ({ x: 0, y: 0, c: 1, vx: 0, vy: 0, vc: 0 })), G = { x: 0, y: 0 };
+    let raf = 0, first = true; const t0 = performance.now();
+    const tick = now => {
+      const t = motion ? (now - t0) / 1000 : 0.6, k = stRef.current;
+      OKI_SZ.forEach((sz, i) => {
+        const T = okiTarget(k, i, OKI_SZ.length, t, s, sz), q = P[i];
+        if (first || !motion) { q.x = T.x; q.y = T.y; q.c = T.c; }
+        else { q.vx = (q.vx + (T.x - q.x) * 0.09) * 0.8; q.vy = (q.vy + (T.y - q.y) * 0.09) * 0.8; q.vc = (q.vc + (T.c - q.c) * 0.09) * 0.8; q.x += q.vx; q.y += q.vy; q.c += q.vc; }
+        const el = satEls.current[i];
+        if (el) { el.style.transform = 'translate(' + q.x.toFixed(2) + 'px,' + q.y.toFixed(2) + 'px) scale(' + Math.max(0, q.c).toFixed(3) + ')'; el.style.zIndex = T.z > 0 ? 3 : 1; }
+      });
+      const tg = k === 'thinking' ? [0.6, -0.8] : gzT.current;
+      if (first || !motion) { G.x = tg[0]; G.y = tg[1]; } else { G.x += (tg[0] - G.x) * 0.14; G.y += (tg[1] - G.y) * 0.14; }
+      pupils.current.forEach(el => { if (el) el.style.transform = 'translate(' + (G.x * s * 0.035).toFixed(2) + 'px,' + (G.y * s * 0.035).toFixed(2) + 'px)'; });
+      first = false;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [motion, s]);
+  const A = v => motion ? v : 'none';
+  const cx = s / 2, cy = s * 0.56, d = s * 0.56;
+  const bodyAnim = { idle: 'ok-float 3s ease-in-out infinite', listening: 'ok-pulse .9s ease-in-out infinite', thinking: 'ok-float 2.2s ease-in-out infinite', working: 'ok-float .9s ease-in-out infinite', needsYou: 'ok-hop .7s ease-in-out infinite', done: 'pg-jump 1.1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const happy = st === 'done', ew = (st === 'listening' || st === 'needsYou') ? 0.17 : 0.15, eh = st === 'working' ? 0.09 : ew;
+  const eyeEl = (side, idx) => happy
+    ? _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * 0.065, top: cy - s * 0.09, width: s * 0.13, height: s * 0.07, border: (s * 0.032) + 'px solid #FFFFFF', borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } })
+    : _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * ew / 2, top: cy - s * 0.04 - s * eh / 2, width: s * ew, height: s * eh, borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', animation: A('bot-blink 4.2s infinite') } },
+        _h('div', { ref: el => { pupils.current[idx] = el; }, style: { width: s * 0.075, height: s * 0.075, borderRadius: '50%', background: ink, flex: 'none' } }));
+  const my = cy + s * 0.12, mb = { ..._ab, left: cx, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    idle: _h('div', { style: { ...mb, width: s * 0.1, height: s * 0.05, border: (s * 0.025) + 'px solid ' + mouthC, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    listening: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.06, borderRadius: '50%', background: mouthC } }),
+    thinking: _h('div', { style: { ...mb, left: cx + s * 0.03, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    working: _h('div', { style: { ...mb, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    needsYou: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.07, borderRadius: '50%', background: mouthC } }),
+    done: _h('div', { style: { ...mb, width: s * 0.14, height: s * 0.07, borderRadius: '0 0 ' + s + 'px ' + s + 'px', background: mouthC } }),
+  }[st];
+  const satNodes = OKI_SZ.map((sz, i) => { const T0 = okiTarget(st, i, OKI_SZ.length, 0.6, s, sz); return _h('div', { key: 's' + i, ref: el => { satEls.current[i] = el; }, style: { ..._ab, left: cx - sz * s / 2, top: cy - sz * s / 2, width: sz * s, height: sz * s, borderRadius: '50%', background: sats[i % sats.length], willChange: 'transform', transform: 'translate(' + T0.x.toFixed(2) + 'px,' + T0.y.toFixed(2) + 'px) scale(' + Math.max(0, T0.c).toFixed(3) + ')', zIndex: T0.z > 0 ? 3 : 1 } }); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s, flex: 'none', isolation: 'isolate', cursor: fire ? 'pointer' : 'default' } },
+    satNodes,
+    _h('div', { style: { ..._ab, inset: 0, zIndex: 2, transformOrigin: '50% 80%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: cx - d / 2, top: cy - d / 2, width: d, height: d, borderRadius: '50%', background: body, boxShadow: 'inset ' + (-s * 0.03) + 'px ' + (-s * 0.04) + 'px 0 rgba(0,0,0,.14)' } }),
+      _h('div', { style: { ..._ab, left: cx - d * 0.32, top: cy - d * 0.38, width: d * 0.2, height: d * 0.12, borderRadius: '50%', background: '#FFFFFF', opacity: 0.3, transform: 'rotate(-30deg)' } }),
+      eyeEl(-1, 0), eyeEl(1, 1), mouth));
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    const motion = this.props.motion ?? true, follow = this.props.follow ?? true, hero = this.props.heroState ?? 'idle';
+    const P = o => _h(PingoBot, { motion, follow, ...o });
+    const B = o => _h(BiboBot, { motion, follow, ...o });
+    const O = o => _h(OkiBot, { motion, follow, ...o });
+    const states = mk => BOT_STATES.map(x => ({ pt: x.pt, en: x.en, el: mk(x.k) }));
+    return {
+      aHero: P({ size: 220, state: hero, interactive: true }),
+      aStates: states(k => P({ size: 70, state: k })),
+      aLead: P({ size: 50, state: 'needsYou' }),
+      aHead: P({ size: 40, state: 'working', ink: '#FBEFE3' }),
+      aBots: [
+        { name: 'Faísca', role: 'Pesquisa · Research', brain: 'GPT-6 Astra', status: 'Trabalhando · lendo 14 fontes', dot: '#3E64DE', el: P({ size: 50, color: '#3E64DE', eye: '#FFF4E8', state: 'working' }) },
+        { name: 'Bolota', role: 'Finanças · Finance', brain: 'Grok 4.6', status: 'Feito · 32 recibos conciliados', dot: '#3DBB8E', el: P({ size: 50, color: '#3DBB8E', state: 'done' }) },
+        { name: 'Mel', role: 'Código · Code', brain: 'Llama · local', status: 'Dormindo até as 8h', dot: '#BFA894', el: P({ size: 50, color: '#F6C443', state: 'idle' }) },
+      ],
+      bHero: B({ size: 210, state: hero, interactive: true }),
+      bStates: states(k => B({ size: 72, state: k })),
+      bLead: B({ size: 50, state: 'needsYou' }),
+      bHead: B({ size: 40, state: 'working' }),
+      bBots: [
+        { name: 'Zuca', role: 'Pesquisa · Research', brain: 'GPT-6 ASTRA', status: 'TRABALHANDO · 14 FONTES', dot: '#6E4FD8', el: B({ size: 50, body: '#C9B8F2', state: 'working' }) },
+        { name: 'Tico', role: 'Finanças · Finance', brain: 'GROK 4.6', status: 'FEITO · 32 RECIBOS', dot: '#2F9E6E', el: B({ size: 50, body: '#F4E38E', state: 'done' }) },
+        { name: 'Lulu', role: 'Código · Code', brain: 'LLAMA · LOCAL', status: 'DORMINDO ATÉ 8H', dot: '#A9B1A6', el: B({ size: 50, body: '#F7B99A', state: 'idle' }) },
+      ],
+      cHero: O({ size: 240, state: hero, interactive: true, sats: ['#FF7A68', '#FFFFFF', '#9CB7FF', '#10101A', '#FF7A68'] }),
+      cStates: states(k => O({ size: 76, state: k })),
+      cLead: O({ size: 50, state: 'needsYou' }),
+      cHead: O({ size: 44, state: 'working', sats: ['#FF7A68', '#C8F04B', '#9CB7FF', '#FFFFFF', '#C8F04B'] }),
+      cBots: [
+        { name: 'Nina', role: 'Pesquisa · Research', brain: 'GPT-6 Astra', status: 'Trabalhando · lendo 14 fontes', dot: '#FF7A68', el: O({ size: 50, body: '#FF7A68', sats: ['#3A3AF4', '#C8F04B', '#10101A', '#3A3AF4', '#C8F04B'], state: 'working' }) },
+        { name: 'Juju', role: 'Finanças · Finance', brain: 'Grok 4.6', status: 'Feito · 32 recibos conciliados', dot: '#7FA81A', el: O({ size: 50, body: '#C8F04B', mouth: '#10101A', sats: ['#3A3AF4', '#FF7A68', '#10101A', '#FF7A68', '#3A3AF4'], state: 'done' }) },
+        { name: 'Bento', role: 'Código · Code', brain: 'Llama · local', status: 'Dormindo até as 8h', dot: '#A0A0B4', el: O({ size: 50, body: '#10101A', sats: ['#C8F04B', '#FF7A68', '#9CB7FF', '#C8F04B', '#FF7A68'], state: 'idle' }) },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

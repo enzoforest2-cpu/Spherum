@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xodó</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&family=Geist:wght@500;600&display=swap">
+<style>
+html,body{margin:0;height:100%;background:#F3F1EC;color:#161514;font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#B8401F}a:hover{color:#7A2812}
+#app{height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:18px;padding:10px 18px;border-bottom:1.5px solid #161514;flex-shrink:0;overflow-x:auto}
+.logo{font:700 26px/1 'Fredoka',sans-serif;letter-spacing:-.02em;flex-shrink:0}
+nav{display:flex;gap:4px;background:#E9E5DE;border-radius:99px;padding:4px;flex-shrink:0}
+nav button{border:none;background:transparent;color:#161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;cursor:pointer;white-space:nowrap}
+nav button:hover{background:rgba(22,21,20,.06)}
+nav button[aria-selected="true"]{background:#161514;color:#FFFFFF}
+main{flex:1;min-height:0;position:relative}
+main iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#F3F1EC}
+main iframe.on{display:block}
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#EF5B3B"/><text x="200" y="232" text-anchor="middle" font-family="Fredoka, Arial Rounded MT Bold, sans-serif" font-weight="700" font-size="110" fill="#2B1D16">xodó</text></svg></template>
+<div id="app">
+<header>
+<span class="logo">xodó</span>
+<nav role="tablist" id="tabs">
+<button role="tab" data-t="marca">Marca</button>
+<button role="tab" data-t="criar">Criar</button>
+<button role="tab" data-t="chat">Chat</button>
+<button role="tab" data-t="video">Vídeo</button>
+<button role="tab" data-t="pesquisa">Pesquisa</button>
+<button role="tab" data-t="sistema">Personagens</button>
+</nav>
+</header>
+<main>
+<iframe data-t="marca" title="Marca" src="Xodo - Marca.dc.html"></iframe>
+<iframe data-t="criar" title="Criar" src="Xodo - Criar.dc.html"></iframe>
+<iframe data-t="chat" title="Chat" src="Xodo - Chat.dc.html"></iframe>
+<iframe data-t="video" title="Vídeo" src="Xodo - Video.dc.html"></iframe>
+<iframe data-t="pesquisa" title="Pesquisa" src="Xodo - Pesquisa.dc.html"></iframe>
+<iframe data-t="sistema" title="Personagens" src="Sistema de Bots.dc.html"></iframe>
+</main>
+</div>
+<script>
+(function () {
+  var KEY = 'xodo.completo.tab';
+  var FILES = { 'Xodo - Marca': 'marca', 'Xodo - Criar': 'criar', 'Xodo - Chat': 'chat', 'Xodo - Pesquisa': 'pesquisa', 'Xodo - Video': 'video', 'Sistema de Bots': 'sistema', 'Bots - Direções': 'sistema', 'Bots - Direcoes': 'sistema' };
+  var frames = Array.prototype.slice.call(document.querySelectorAll('main iframe'));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('#tabs button'));
+  function frame(t) { return frames.filter(function (f) { return f.dataset.t === t; })[0]; }
+  function go(t, reload) {
+    if (!frame(t)) return;
+    tabs.forEach(function (b) { b.setAttribute('aria-selected', b.dataset.t === t ? 'true' : 'false'); });
+    frames.forEach(function (f) { f.classList.toggle('on', f.dataset.t === t); });
+    try { localStorage.setItem(KEY, t); } catch (e) {}
+    if (reload) { try { frame(t).contentWindow.location.reload(); } catch (e) { frame(t).src = frame(t).src; } }
+  }
+  window.__xodoGo = go;
+  function wire(f) {
+    try {
+      var w = f.contentWindow, d = f.contentDocument;
+      w.__xodoGo = go;
+      d.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        var href = decodeURIComponent(a.getAttribute('href') || '');
+        for (var k in FILES) { if (href.indexOf(k) !== -1) { e.preventDefault(); go(FILES[k]); return; } }
+      }, true);
+    } catch (e) {}
+  }
+  frames.forEach(function (f) { f.addEventListener('load', function () { wire(f); }); wire(f); });
+  tabs.forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.t); }); });
+  var start = 'marca'; try { start = localStorage.getItem(KEY) || 'marca'; } catch (e) {}
+  go(frame(start) ? start : 'marca');
+})();
+</script>
+</body>
+</html>

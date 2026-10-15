@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@500;700;900&family=Figtree:wght@400;500;600;700&family=Fredoka:wght@500;600;700&family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&family=Onest:wght@400;500;600&family=Unbounded:wght@500;600;700;800&display=swap">
+<style>
+body{margin:0;background:#F3F1EC;-webkit-font-smoothing:antialiased}
+a{color:#B8401F;text-decoration:none}a:hover{color:#7A2812}
+@keyframes pg-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.045,.95)}}
+@keyframes pg-tilt{0%,100%{transform:rotate(-7deg) scale(1.02,.98)}50%{transform:rotate(5deg) scale(.99,1.01)}}
+@keyframes pg-hop{0%,100%{transform:translateY(0) scale(1.06,.94)}35%{transform:translateY(-9%) scale(.95,1.06)}60%{transform:translateY(-11%) scale(1,1)}85%{transform:translateY(0) scale(1.08,.92)}}
+@keyframes pg-jump{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:translateY(0) scale(1.14,.86)}45%{transform:translateY(-22%) scale(.9,1.12)}70%{transform:translateY(0) scale(1.1,.9)}85%{transform:translateY(0) scale(.98,1.02)}}
+@keyframes pg-pop{0%{transform:translate(0,0) scale(0);opacity:1}30%{transform:translate(calc(var(--dx)*.45),calc(var(--dy)*.45)) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.4);opacity:0}}
+@keyframes bot-blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes bot-ripple{0%{transform:scale(.5);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+@keyframes bot-bob{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-45%);opacity:1}}
+@keyframes bot-spin{to{transform:rotate(360deg)}}
+@keyframes bot-bubble{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14%) rotate(6deg)}}
+@keyframes bb-bob{0%{transform:translateY(0)}50%{transform:translateY(-3%)}}
+@keyframes bb-tilt{0%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes bb-hop{0%{transform:translateY(0)}25%{transform:translateY(-8%)}50%{transform:translateY(0)}75%{transform:translateY(-4%)}}
+@keyframes bb-jump{0%{transform:translateY(0)}20%{transform:translateY(-6%)}40%{transform:translateY(-12%)}60%{transform:translateY(-6%)}80%{transform:translateY(0)}}
+@keyframes bb-blink{0%{opacity:1}50%{opacity:.25}}
+@keyframes ok-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+@keyframes ok-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes ok-hop{0%,100%{transform:translateY(0) rotate(0)}40%{transform:translateY(-8%) rotate(-6deg)}70%{transform:translateY(0) rotate(3deg)}}
+</style>
+</helmet>
+<div style="background:#F3F1EC;color:#161514;font-family:'Geist',sans-serif;min-height:100vh">
+<div style="max-width:1240px;margin:0 auto;padding:32px 28px 80px;display:flex;flex-direction:column;gap:72px">
+
+<header style="display:flex;flex-wrap:wrap;gap:24px 40px;align-items:flex-end;justify-content:space-between;padding-bottom:36px;border-bottom:3px solid #161514">
+<div style="display:flex;flex-direction:column;gap:20px;min-width:0;flex:1 1 520px">
+<span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Identidade visual · v1 · outubro 2026</span>
+<span style="font:700 clamp(110px,19vw,250px)/.78 'Fredoka',sans-serif;letter-spacing:-.045em">xodó</span>
+<p style="margin:0;font:400 20px/1.5 'Geist',sans-serif;color:#3D3A36;max-width:620px;text-wrap:pretty">Colegas de IA com computador próprio, memória e jeito. Este guia reúne o que faz o xodó ser o xodó: logo, cores, letras, personagens e voz.</p>
+<nav style="display:flex;flex-wrap:wrap;gap:8px">
+<a href="#logo" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Logo</a>
+<a href="#cores" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Cores</a>
+<a href="#tipografia" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Tipografia</a>
+<a href="#personagens" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Personagens</a>
+<a href="#voz" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Voz</a>
+<a href="#interface" style="border:1.5px solid #161514;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;color:#161514">Interface</a>
+</nav>
+</div>
+<div style="display:flex;gap:6px;align-items:flex-end;flex:none">{{ heroA }}{{ heroB }}{{ heroC }}</div>
+</header>
+
+<section id="logo" style="display:flex;flex-direction:column;gap:26px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">01</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Logo</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">O logo é a própria palavra, em Fredoka 700. Uma palavra carinhosa do português e uma letra redonda, que parece de brinquedo.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:24px;height:230px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;box-sizing:border-box"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Sobre papel</span><span style="font:700 104px/.8 'Fredoka',sans-serif;letter-spacing:-.04em;align-self:center;margin-bottom:34px">xodó</span></div>
+<div style="background:#161514;border-radius:24px;height:230px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;box-sizing:border-box"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#A8A29A">Sobre tinta</span><span style="font:700 104px/.8 'Fredoka',sans-serif;letter-spacing:-.04em;align-self:center;margin-bottom:34px;color:#F3F1EC">xodó</span></div>
+<div style="background:#EF5B3B;border-radius:24px;height:230px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;box-sizing:border-box"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#2B1D16">Sobre tomate</span><span style="font:700 104px/.8 'Fredoka',sans-serif;letter-spacing:-.04em;align-self:center;margin-bottom:34px;color:#2B1D16">xodó</span></div>
+<div style="background:#F6C443;border-radius:24px;height:230px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;box-sizing:border-box"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5A4318">Com personagem</span><span style="display:flex;align-items:flex-end;gap:10px;align-self:center;margin-bottom:24px">{{ lockChar }}<span style="font:700 76px/.8 'Fredoka',sans-serif;letter-spacing:-.04em;color:#2B1D16">xodó</span></span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:2px;background:#161514;border:2px solid #161514">
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:8px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Escrita</span><span style="font:500 15px/1.45 'Geist',sans-serif">Sempre em minúsculas e sempre com acento no ó. No texto corrido, também: “seu xodó”.</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:8px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Respiro</span><span style="font:500 15px/1.45 'Geist',sans-serif">Deixe em volta do logo, no mínimo, um espaço da altura do “x”.</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:8px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Tamanho mínimo</span><span style="font:500 15px/1.45 'Geist',sans-serif">20 px na tela. Abaixo disso, use só o personagem.</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:8px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Nunca</span><span style="font:500 15px/1.45 'Geist',sans-serif">Contorno, sombra, degradê, letra esticada ou outra fonte.</span></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;max-width:860px"><span style="font:700 34px/1 'Fredoka',sans-serif">xo·dó</span><span style="font:500 13px/1 'Geist Mono',monospace;color:#635E57">substantivo masculino</span><span style="font:400 17px/1.5 'Geist',sans-serif;color:#3D3A36;flex:1 1 360px;text-wrap:pretty">Pessoa, bicho ou coisa de estimação, de quem a gente gosta muito. É assim que queremos que as pessoas vejam o colega de IA delas.</span></div>
+</section>
+
+<section id="cores" style="display:flex;flex-direction:column;gap:26px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">02</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Cores</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">Uma base neutra, quente como papel, e muita cor nos personagens. A cor do corpo de cada xodó vira a cor de destaque da interface dele. Clique numa cor para copiar o código.</p></div>
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Base clara</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+<sc-for list="{{ baseLight }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;border:1px solid #E2DED6;background:#FFFFFF">
+<div style="height:96px;background:{{ c.hex }};position:relative;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ c.fg }}">{{ c.copy }}</span><span style="display:{{ c.dotVis }};position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;background:{{ c.stage }};box-shadow:0 0 0 2px {{ c.fg }}"></span></div>
+<div style="padding:12px;display:flex;flex-direction:column;gap:5px"><span style="font:600 14px/1.2 'Geist',sans-serif">{{ c.name }}</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">{{ c.hex }}</span><span style="font:400 12px/1.35 'Geist',sans-serif;color:#635E57">{{ c.role }}</span></div>
+</div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Base escura</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+<sc-for list="{{ baseDark }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;border:1px solid #E2DED6;background:#FFFFFF">
+<div style="height:96px;background:{{ c.hex }};position:relative;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ c.fg }}">{{ c.copy }}</span><span style="display:{{ c.dotVis }};position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;background:{{ c.stage }};box-shadow:0 0 0 2px {{ c.fg }}"></span></div>
+<div style="padding:12px;display:flex;flex-direction:column;gap:5px"><span style="font:600 14px/1.2 'Geist',sans-serif">{{ c.name }}</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">{{ c.hex }}</span><span style="font:400 12px/1.35 'Geist',sans-serif;color:#635E57">{{ c.role }}</span></div>
+</div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Status</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+<sc-for list="{{ statusCols }}" as="c" hint-placeholder-count="6"><div onClick="{{ c.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;border:1px solid #E2DED6;background:#FFFFFF">
+<div style="height:96px;background:{{ c.hex }};position:relative;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ c.fg }}">{{ c.copy }}</span><span style="display:{{ c.dotVis }};position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;background:{{ c.stage }};box-shadow:0 0 0 2px {{ c.fg }}"></span></div>
+<div style="padding:12px;display:flex;flex-direction:column;gap:5px"><span style="font:600 14px/1.2 'Geist',sans-serif">{{ c.name }}</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">{{ c.hex }}</span><span style="font:400 12px/1.35 'Geist',sans-serif;color:#635E57">{{ c.role }}</span></div>
+</div></sc-for></div></div>
+<sc-for list="{{ speciesPal }}" as="s" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font:{{ s.font }}">{{ s.label }}</span><span style="font:500 12px/1.3 'Geist Mono',monospace;color:#635E57">{{ s.note }}</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+<sc-for list="{{ s.colors }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;border:1px solid #E2DED6;background:#FFFFFF">
+<div style="height:96px;background:{{ c.hex }};position:relative;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ c.fg }}">{{ c.copy }}</span><span style="position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;background:{{ c.stage }};box-shadow:0 0 0 2px {{ c.fg }}"></span></div>
+<div style="padding:12px;display:flex;flex-direction:column;gap:5px"><span style="font:600 14px/1.2 'Geist',sans-serif">{{ c.name }}</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">{{ c.hex }}</span><span style="font:400 12px/1.35 'Geist',sans-serif;color:#635E57">{{ c.role }}</span></div>
+</div></sc-for>
+</div></div>
+</sc-for>
+</section>
+
+<section id="tipografia" style="display:flex;flex-direction:column;gap:6px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">03</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Tipografia</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">A Geist cuida da interface. Cada espécie tem uma fonte própria para o nome, que acompanha o jeito dela de se mexer.</p></div>
+<div style="height:14px"></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Fredoka</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Logo, títulos da marca, nome e balões do Pingo</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">500 · 600 · 700</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:700 clamp(40px,6vw,72px)/1 'Fredoka',sans-serif;letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere">Oi! Eu sou Faísca.</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Geist</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Toda a interface: botões, cartões, textos</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">400 · 500 · 600 · 700</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:600 clamp(28px,4vw,44px)/1.1 'Geist',sans-serif;letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere">Posso enviar as 3 respostas?</span><span style="font:400 16px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:560px">5 e-mails importantes, 31 newsletters arquivadas e 3 respostas rascunhadas no seu tom.</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Geist Mono</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Rótulos, status, valores e dados técnicos</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">400 · 500 · 600</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:600 clamp(18px,2.4vw,26px)/1.2 'Geist Mono',monospace;letter-spacing:.06em;text-wrap:balance;overflow-wrap:anywhere">AO VIVO · R$ 4,10 DE R$ 20,00</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Doto</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Nome do Bibo: uma fonte de pontos, como o rosto de LED dele</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">500 · 700 · 900</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:900 clamp(40px,6vw,68px)/1 'Doto',monospace;text-wrap:balance;overflow-wrap:anywhere">Zuca online</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Unbounded</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Nome do Oki e títulos editoriais</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">500 – 800</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:700 clamp(34px,5vw,58px)/1 'Unbounded',sans-serif;letter-spacing:-.03em;text-wrap:balance;overflow-wrap:anywhere">Nina pensa.</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Figtree</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Conversa com o Pingo</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">400 – 700</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:500 clamp(22px,3vw,30px)/1.3 'Figtree',sans-serif;text-wrap:balance;overflow-wrap:anywhere">Feito! Mais rápido que passar um café.</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 32px;padding:26px 0;border-top:1px solid #D9D4CB;align-items:center">
+<div style="display:flex;flex-direction:column;gap:7px"><span style="font:600 20px/1.1 'Geist',sans-serif">Onest</span><span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Conversa com o Oki</span><span style="font:500 12px/1 'Geist Mono',monospace;color:#635E57">400 – 600</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span style="font:400 clamp(22px,3vw,30px)/1.3 'Onest',sans-serif;text-wrap:balance;overflow-wrap:anywhere">Ok. Qual é a prioridade?</span></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:2px;background:#161514;border:2px solid #161514;margin-top:18px">
+<div style="background:#F3F1EC;padding:16px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Display · 64+</span><span style="font:700 40px/1 'Fredoka',sans-serif">Aa</span></div>
+<div style="background:#F3F1EC;padding:16px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Título · 34</span><span style="font:600 34px/1 'Geist',sans-serif">Aa</span></div>
+<div style="background:#F3F1EC;padding:16px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Subtítulo · 20</span><span style="font:600 20px/1.2 'Geist',sans-serif">Aa</span></div>
+<div style="background:#F3F1EC;padding:16px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Corpo · 15</span><span style="font:400 15px/1.45 'Geist',sans-serif">Aa</span></div>
+<div style="background:#F3F1EC;padding:16px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Rótulo · 11</span><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em">AA</span></div>
+</div>
+</section>
+
+<section id="personagens" style="display:flex;flex-direction:column;gap:22px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">04</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Personagens</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">Três espécies, cada uma com quatro cores e os mesmos seis estados. Os olhos seguem o cursor. Clique num personagem para ele comemorar.</p></div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Estado</span><div style="display:flex;flex-wrap:wrap;gap:4px;background:#E9E5DE;border-radius:99px;padding:4px">
+<sc-for list="{{ stateOpts }}" as="o" hint-placeholder-count="6"><span onClick="{{ o.onClick }}" style="cursor:pointer;background:{{ o.bg }};color:{{ o.fg }};border-radius:99px;padding:9px 13px;font:600 13px/1 'Geist',sans-serif">{{ o.label }}</span></sc-for>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+<sc-for list="{{ species }}" as="s" hint-placeholder-count="3">
+<div style="background:#FFFFFF;border-radius:28px;overflow:hidden;border:1px solid #E2DED6;display:flex;flex-direction:column">
+<div style="height:300px;background-color:{{ s.stage }};background-image:{{ s.img }};background-size:12px 12px;display:flex;align-items:center;justify-content:center;position:relative;transition:background-color .3s"><span style="position:absolute;left:16px;top:16px;font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:{{ s.stageInk }}">{{ s.stateLabel }}</span>{{ s.big }}</div>
+<div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font:{{ s.font }}">{{ s.label }}</span><span style="font:500 11px/1.3 'Geist Mono',monospace;color:#635E57">{{ s.motion }}</span></div>
+<span style="font:400 15px/1.45 'Geist',sans-serif;color:#3D3A36">{{ s.desc }}</span>
+<div style="display:flex;gap:10px;align-items:center"><sc-for list="{{ s.colors }}" as="c" hint-placeholder-count="4"><span onClick="{{ c.onClick }}" title="{{ c.name }}" style="cursor:pointer;width:30px;height:30px;border-radius:50%;background:{{ c.body }};box-shadow:{{ c.ring }}"></span></sc-for><span style="font:500 13px/1 'Geist',sans-serif;color:#635E57;margin-left:4px">{{ s.colorName }}</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;border-top:1px solid #E2DED6;padding-top:14px">
+<sc-for list="{{ s.states }}" as="x" hint-placeholder-count="6"><div onClick="{{ x.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;border-radius:12px;padding:6px 0;background:{{ x.bg }}"><div style="height:56px;display:flex;align-items:center;justify-content:center">{{ x.el }}</div><span style="font:500 10px/1.2 'Geist Mono',monospace;color:{{ x.color }};text-align:center">{{ x.label }}</span></div></sc-for>
+</div>
+<span style="font:400 13px/1.4 'Geist',sans-serif;color:#635E57">Nomes sugeridos: {{ s.names }}</span>
+</div></div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px">
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Rosto</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Sempre dois olhos e uma boca</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">Simples o bastante para ser lido com 24 px, no ícone ou na barra lateral.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Estados</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Seis, iguais para todos</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">À toa, ouvindo, pensando, trabalhando, precisa de você e feito. Cada espécie mostra esses estados do seu jeito.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Cor</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">O corpo pinta a interface</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">O balão de quem fala, as barras de progresso e o destaque vêm da cor do corpo do xodó.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Movimento</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Cada um se mexe de um jeito</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">O Pingo é mola, o Bibo é quadro a quadro e o Oki é física. Com movimento reduzido, todos ficam parados.</span></div>
+</div>
+</section>
+
+<section id="voz" style="display:flex;flex-direction:column;gap:22px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">05</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Voz</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">O jeito de falar mora na ficha do xodó, não no modelo. Por isso ele continua igual quando troca de cérebro.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px">
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">01</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Fala curto</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">De 1 a 3 frases. Primeiro o resultado, depois o detalhe.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">02</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Pergunta antes de agir</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">Antes de enviar, pagar ou apagar, sempre um pedido de aprovação claro.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">03</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Sem emoji, sem markdown</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">O personagem já faz a expressão. O texto fica limpo.</span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">04</span><span style="font:600 20px/1.2 'Fredoka',sans-serif">Mesmo jeito, qualquer cérebro</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">A personalidade vai na ficha. O modelo só lê a ficha e responde.</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:12px">
+<div style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border-radius:22px;padding:18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font:600 20px/1 'Fredoka',sans-serif">Curioso</span><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Pingo</span></div>
+<span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Faz perguntas e sugere ideias.</span>
+<div style="align-self:flex-start;border-radius:22px 22px 22px 6px;padding:14px 16px;background:#F3F1EC;color:#2B1D16;font:600 19px/1.3 'Fredoka',sans-serif;text-wrap:pretty">Oi! Eu sou Faísca. O que a gente descobre hoje?</div></div>
+<div style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border-radius:22px;padding:18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font:600 20px/1 'Fredoka',sans-serif">Brincalhão</span><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Bibo</span></div>
+<span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Leve, com piada na hora certa.</span>
+<div style="align-self:flex-start;border-radius:22px 22px 22px 6px;padding:14px 16px;background:#151815;color:#C9F45B;font:500 15px/1.45 'Geist Mono',monospace;text-wrap:pretty">E aí! Zuca na área. Manda a primeira tarefa?</div></div>
+<div style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border-radius:22px;padding:18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font:600 20px/1 'Fredoka',sans-serif">Direto</span><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Oki</span></div>
+<span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Curto, objetivo, sem rodeio.</span>
+<div style="align-self:flex-start;border-radius:22px 22px 22px 6px;padding:14px 16px;background:#10101A;color:#FFFFFF;font:600 15px/1.4 'Unbounded',sans-serif;text-wrap:pretty">Bento pronto. Qual é a prioridade?</div></div>
+<div style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border-radius:22px;padding:18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font:600 20px/1 'Fredoka',sans-serif">Zen</span><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Pingo</span></div>
+<span style="font:400 14px/1.4 'Geist',sans-serif;color:#3D3A36">Calmo, organiza o caos.</span>
+<div style="align-self:flex-start;border-radius:22px 22px 22px 6px;padding:14px 16px;background:#F3F1EC;color:#2B1D16;font:600 19px/1.3 'Fredoka',sans-serif;text-wrap:pretty">Olá, sou Mel. Sem pressa. Por onde começamos?</div></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px">
+<div style="border:2px solid #161514;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#2F7A43">Assim</span><span style="font:500 16px/1.5 'Geist',sans-serif">Posso enviar as 3 respostas? Saem como ana@estudio.com.</span><span style="font:500 16px/1.5 'Geist',sans-serif">Feito. Uma coisa a menos na sua cabeça.</span></div>
+<div style="border:2px dashed #B8401F;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#B8401F">Assim não</span><span style="font:500 16px/1.5 'Geist',sans-serif;color:#3D3A36">Prontinho!!! Já mandei tudo pra todo mundo, pode ficar tranquila!!</span><span style="font:500 16px/1.5 'Geist',sans-serif;color:#3D3A36">Como um modelo de linguagem, não posso garantir que…</span></div>
+</div>
+</section>
+
+<section id="interface" style="display:flex;flex-direction:column;gap:22px;scroll-margin-top:20px">
+<div style="display:flex;flex-direction:column;gap:12px;border-top:3px solid #161514;padding-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">06</span><h2 style="margin:0;font:700 clamp(36px,5vw,56px)/1 'Fredoka',sans-serif;letter-spacing:-.02em">Interface</h2></div>
+<p style="margin:0;font:400 17px/1.55 'Geist',sans-serif;color:#3D3A36;max-width:720px;text-wrap:pretty">Formas redondas, botões em pílula e muito espaço em volta. A tinta é a cor das ações principais, e a cor do xodó é a cor de quem fala.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:16px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Botões</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span style="background:#161514;color:#FFFFFF;border-radius:99px;padding:13px 18px;font:600 14px/1 'Geist',sans-serif">Permitir uma vez</span><span style="border:1.5px solid #161514;border-radius:99px;padding:11.5px 16px;font:600 14px/1 'Geist',sans-serif">Sempre permitir</span><span style="font:600 14px/1 'Geist',sans-serif;color:#635E57;padding:0 6px">Negar</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><span style="border:1.5px dashed #635E57;border-radius:18px;padding:13px 16px;font:600 14px/1 'Geist',sans-serif;color:#635E57">+ Novo xodó</span><span style="display:flex;align-items:center;gap:8px;border:1.5px solid #E2DED6;border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif"><span style="font:600 10px/1 'Geist Mono',monospace;color:#635E57;letter-spacing:.06em">CÉREBRO</span>Claude Opus ▾</span></div>
+</div>
+<div style="background:#FFFFFF;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Conversa</span>
+<div style="align-self:flex-end;max-width:80%;background:#EF5B3B;color:#161514;border-radius:22px 22px 6px 22px;padding:12px 16px;font:500 15px/1.45 'Geist',sans-serif">Organizar minha caixa de entrada</div>
+<div style="align-self:flex-start;max-width:84%;background:#FFFFFF;border:1px solid #E2DED6;border-radius:22px 22px 22px 6px;padding:12px 16px;font:500 15px/1.45 'Figtree',sans-serif">Bora! Vou abrir seu Gmail no meu computador e dar uma olhada.</div>
+<div style="align-self:flex-start;display:flex;gap:10px;align-items:center;border:1.5px dashed #EF5B3B;border-radius:14px;padding:10px 14px;font:500 13px/1.3 'Geist',sans-serif"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:#635E57">MEMÓRIA</span>Prefere blocos de foco pela manhã</div>
+</div>
+<div style="background:#FFFFFF;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:14px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Status e regras</span>
+<span style="display:flex;align-items:center;gap:8px;font:500 14px/1 'Geist',sans-serif;color:#635E57"><span style="width:9px;height:9px;border-radius:50%;background:#6DBB7B"></span>online · pronto</span>
+<span style="display:flex;align-items:center;gap:8px;font:500 14px/1 'Geist',sans-serif;color:#635E57"><span style="width:9px;height:9px;border-radius:50%;background:#E0705A"></span>precisa de você</span>
+<span style="display:flex;align-items:center;gap:8px;font:600 11px/1 'Geist Mono',monospace;color:#635E57"><span style="width:8px;height:8px;border-radius:50%;background:#E0705A;animation:xo-live 1.2s ease-in-out infinite"></span>AO VIVO</span>
+<div style="display:flex;flex-wrap:wrap;gap:6px"><span style="background:#EF5B3B;color:#161514;border-radius:99px;padding:6px 9px;font:600 10px/1 'Geist Mono',monospace;letter-spacing:.04em">SEMPRE</span><span style="background:#E9E5DE;border-radius:99px;padding:6px 9px;font:600 10px/1 'Geist Mono',monospace;letter-spacing:.04em">APROVAÇÃO</span><span style="background:#161514;color:#FFFFFF;border-radius:99px;padding:6px 9px;font:600 10px/1 'Geist Mono',monospace;letter-spacing:.04em">SÓ VOCÊ</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#635E57">Cantos</span>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px">
+<div style="display:flex;flex-direction:column;gap:10px"><div style="height:64px;background:#161514;border-radius:99px"></div><span style="font:500 13px/1.3 'Geist',sans-serif"><strong>Pílula · 99</strong> botões, chips, status</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="height:64px;background:#EF5B3B;border-radius:22px 22px 6px 22px"></div><span style="font:500 13px/1.3 'Geist',sans-serif"><strong>Balão · 22</strong> com o canto de quem fala</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="height:64px;background:#FFFFFF;border:1px solid #E2DED6;border-radius:20px"></div><span style="font:500 13px/1.3 'Geist',sans-serif"><strong>Cartão · 18–24</strong> tarefas, sugestões</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><div style="height:64px;background:#E9E5DE;border-radius:12px"></div><span style="font:500 13px/1.3 'Geist',sans-serif"><strong>Linha · 12</strong> memória, detalhes</span></div>
+</div></div>
+</section>
+
+<footer style="border-top:3px solid #161514;padding-top:20px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:baseline">
+<span style="font:700 28px/1 'Fredoka',sans-serif">xodó</span>
+<div style="display:flex;flex-wrap:wrap;gap:16px;font:600 14px/1 'Geist',sans-serif"><a href="Xodo - Criar.dc.html">Criar um xodó</a><a href="Xodo - Chat.dc.html">Chat</a><a href="Xodo - Pesquisa.dc.html">Pesquisa</a></div>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagem&quot;},&quot;follow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagem&quot;}}">
+const _h = React.createElement;
+const _ab = { position: 'absolute' };
+const BOT_STATES = [
+  { k: 'idle', pt: 'À toa', en: 'Idle' },
+  { k: 'listening', pt: 'Ouvindo', en: 'Listening' },
+  { k: 'thinking', pt: 'Pensando', en: 'Thinking' },
+  { k: 'working', pt: 'Trabalhando', en: 'Working' },
+  { k: 'needsYou', pt: 'Precisa de você', en: 'Needs you' },
+  { k: 'done', pt: 'Feito!', en: 'Done!' },
+];
+
+const BOT_MOUSE = window.__botMouse || (window.__botMouse = (() => {
+  const m = { x: null, y: null, subs: new Set(), raf: 0 };
+  window.addEventListener('pointermove', e => {
+    m.x = e.clientX; m.y = e.clientY;
+    if (!m.raf) m.raf = requestAnimationFrame(() => { m.raf = 0; m.subs.forEach(f => f()); });
+  }, { passive: true });
+  return m;
+})());
+
+function botGaze(el) {
+  if (!el || BOT_MOUSE.x == null) return [0, 0];
+  const r = el.getBoundingClientRect();
+  const dx = BOT_MOUSE.x - (r.left + r.width / 2), dy = BOT_MOUSE.y - (r.top + r.height / 2);
+  const d = Math.hypot(dx, dy) || 1, k = Math.min(d / 240, 1);
+  return [dx / d * k, dy / d * k];
+}
+
+function useBotGaze(ref, on, cb) {
+  const cbRef = React.useRef(cb); cbRef.current = cb;
+  React.useEffect(() => {
+    if (!on) { cbRef.current(0, 0); return; }
+    const f = () => { const g = botGaze(ref.current); cbRef.current(g[0], g[1]); };
+    BOT_MOUSE.subs.add(f); f();
+    return () => { BOT_MOUSE.subs.delete(f); };
+  }, [on]);
+}
+
+function useBotReaction(interactive) {
+  const [on, setOn] = React.useState(false);
+  const t = React.useRef(0);
+  React.useEffect(() => () => clearTimeout(t.current), []);
+  const fire = interactive ? () => { setOn(true); clearTimeout(t.current); t.current = setTimeout(() => setOn(false), 1800); } : undefined;
+  return [on, fire];
+}
+
+/* ---------- A · Pingo (gota, squash & stretch) ---------- */
+function PingoBot(p) {
+  const s = p.size || 120, color = p.color || '#EF5B3B', eye = p.eye || '#2B1D16', cheek = p.cheek || '#FF9DA6', ink = p.ink || '#2B1D16';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const spark = p.spark || ['#3E64DE', '#3DBB8E', '#FF9DA6', '#EF5B3B', '#F6C443', '#3E64DE'];
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), gz = React.useRef(null);
+  useBotGaze(root, follow && st !== 'thinking', (x, y) => { if (gz.current) gz.current.style.transform = 'translate(' + (x * s * 0.07).toFixed(2) + 'px,' + (y * s * 0.05).toFixed(2) + 'px)'; });
+  const A = v => motion ? v : 'none';
+  const H = s * 1.04, b = s * 0.8, cy = H - b / 2;
+  const bodyAnim = { idle: 'pg-breathe 2.6s ease-in-out infinite', listening: 'pg-tilt 1.6s ease-in-out infinite', thinking: 'pg-breathe 3.6s ease-in-out infinite', working: 'pg-hop .8s cubic-bezier(.3,.7,.4,1) infinite', needsYou: 'pg-hop .55s ease-in-out infinite', done: 'pg-jump 1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const eyeT = { idle: 'dot', listening: 'wide', thinking: 'dot', working: 'focus', needsYou: 'wide', done: 'happy' }[st];
+  const mouthT = { idle: 'smile', listening: 'o', thinking: 'flat', working: 'flat', needsYou: 'o', done: 'grin' }[st];
+  const look = st === 'thinking' ? 'translate(' + s * 0.06 + 'px,' + (-s * 0.06) + 'px)' : 'none';
+  const eyeEl = (dx, key) => {
+    const base = { ..._ab, left: s / 2 + dx, top: cy - s * 0.04, transform: 'translate(-50%,-50%)' };
+    if (eyeT === 'happy') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.075, border: (s * 0.034) + 'px solid ' + eye, borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } });
+    if (eyeT === 'focus') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.036, borderRadius: s, background: eye } });
+    const w = eyeT === 'wide' ? 0.12 : 0.1, hh = eyeT === 'wide' ? 0.155 : 0.13;
+    return _h('div', { key, style: { ...base, width: s * w, height: s * hh } },
+      _h('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: eye, position: 'relative', animation: A('bot-blink 3.6s infinite') } },
+        _h('div', { style: { ..._ab, width: '34%', height: '27%', borderRadius: '50%', background: '#FFFFFF', top: '16%', right: '14%', opacity: 0.9 } })));
+  };
+  const my = cy + s * 0.1, mb = { ..._ab, left: s / 2, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    smile: _h('div', { key: 'm', style: { ...mb, width: s * 0.13, height: s * 0.065, border: (s * 0.03) + 'px solid ' + eye, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    grin: _h('div', { key: 'm', style: { ...mb, width: s * 0.17, height: s * 0.085, background: eye, borderRadius: '0 0 ' + s + 'px ' + s + 'px', overflow: 'hidden' } },
+      _h('div', { style: { ..._ab, left: '50%', bottom: -s * 0.02, width: s * 0.085, height: s * 0.06, marginLeft: -s * 0.0425, borderRadius: '50%', background: cheek } })),
+    o: _h('div', { key: 'm', style: { ...mb, width: s * 0.065, height: s * 0.075, borderRadius: '50%', background: eye } }),
+    flat: _h('div', { key: 'm', style: { ...mb, width: s * 0.075, height: s * 0.03, borderRadius: s, background: eye } }),
+  }[mouthT];
+  const cheeks = [-1, 1].map(side => _h('div', { key: 'c' + side, style: { ..._ab, left: s / 2 + side * s * 0.26 - s * 0.04, top: cy + s * 0.05 - s * 0.03, width: s * 0.08, height: s * 0.06, borderRadius: '50%', background: cheek, opacity: 0.85 } }));
+  const ex = [];
+  if (st === 'listening') [0, 1].forEach(i => [-1, 1].forEach(side => ex.push(_h('div', { key: 'r' + i + side, style: { ..._ab, width: s * 0.34, height: s * 0.34, left: s / 2 + side * s * 0.54 - s * 0.17, top: cy - s * 0.17, borderRadius: '50%', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', opacity: motion ? 0 : 0.35, animation: A('bot-ripple 1.6s ease-out ' + (i * 0.8) + 's infinite') } }))));
+  if (st === 'thinking') [0, 1, 2].forEach(i => { const d = s * (0.05 + i * 0.022); ex.push(_h('div', { key: 't' + i, style: { ..._ab, width: d, height: d, left: s * (0.72 + i * 0.1), top: s * (0.16 - i * 0.08) - d / 2, borderRadius: '50%', background: ink, animation: A('bot-bob 1.2s ease-in-out ' + (i * 0.18) + 's infinite') } })); });
+  if (st === 'working') ex.push(_h('div', { key: 'w', style: { ..._ab, width: s * 0.2, height: s * 0.2, left: s * 0.8, top: s * 0.06, borderRadius: '50%', border: (s * 0.035) + 'px solid ' + ink, borderTopColor: 'transparent', boxSizing: 'border-box', animation: A('bot-spin .9s linear infinite') } }));
+  if (st === 'needsYou') ex.push(_h('div', { key: 'n', style: { ..._ab, width: s * 0.3, height: s * 0.3, left: s * 0.76, top: -s * 0.04, borderRadius: '50%', background: '#FFFFFF', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 ' + (s * 0.2) + "px/1 'Fredoka', sans-serif", color: '#2B1D16', animation: A('bot-bubble 1s ease-in-out infinite') } }, '!'));
+  if (st === 'done') [[-0.42, -0.18], [0.44, -0.22], [-0.3, -0.42], [0.28, -0.48], [0, -0.56], [0.52, 0.08]].forEach((v, i) => { const d = s * (i % 2 ? 0.05 : 0.07); ex.push(_h('div', { key: 'd' + i, style: { ..._ab, width: d, height: d, left: s / 2 - d / 2, top: s * 0.3 - d / 2, borderRadius: '50%', background: spark[i % spark.length], '--dx': v[0] * s + 'px', '--dy': v[1] * s + 'px', transform: motion ? undefined : 'translate(' + v[0] * s * 0.7 + 'px,' + v[1] * s * 0.7 + 'px)', animation: A('pg-pop 1s ease-out ' + (i * 0.1) + 's infinite') } })); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: H, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: (s - b) / 2, top: H - b, width: b, height: b, background: color, borderRadius: '50% 0 50% 50%', transform: 'rotate(-45deg)', boxShadow: 'inset ' + (b * 0.07) + 'px ' + (-b * 0.07) + 'px 0 rgba(0,0,0,.09)' } }),
+      _h('div', { style: { ..._ab, left: s / 2 - b * 0.3, top: cy - b * 0.34, width: b * 0.16, height: b * 0.1, borderRadius: '50%', background: '#FFFFFF', opacity: 0.45, transform: 'rotate(-35deg)' } }),
+      _h('div', { style: { ..._ab, inset: 0, transform: look, transition: 'transform .4s cubic-bezier(.3,1.4,.5,1)' } },
+        _h('div', { ref: gz, style: { ..._ab, inset: 0, transition: 'transform .18s ease-out' } }, eyeEl(-s * 0.15, 'l'), eyeEl(s * 0.15, 'r'), cheeks, mouth))),
+    ex);
+}
+
+/* ---------- B · Bibo (matriz de pontos, quadro a quadro) ---------- */
+const BB_EYE = { dot: ['##', '##'], wide: ['##', '##', '##'], blink: ['##'], focus: ['###'], happy: ['.#.', '#.#'] };
+const BB_MOUTH = { smile: ['#....#', '.####.'], grin: ['#......#', '.######.', '..####..'], o: ['.##.', '#..#', '.##.'], small: ['##', '##'], flat: ['####'], none: [] };
+function bbFace(eyeT, mouthT, dx, dy, extra) {
+  const C = 12, R = 9, on = new Set();
+  const put = (pat, c0, r0) => pat.forEach((row, r) => { for (let c = 0; c < row.length; c++) { const cc = c0 + c, rr = r0 + r; if (row[c] === '#' && cc >= 0 && cc < C && rr >= 0 && rr < R) on.add(rr * C + cc); } });
+  const e = BB_EYE[eyeT], w = e[0].length, er = 3 - Math.ceil((e.length - 1) / 2) + dy;
+  put(e, Math.ceil(2.5 - (w - 1) / 2) + dx, er);
+  put(e, Math.floor(8.5 - (w - 1) / 2) + dx, er);
+  const m = BB_MOUTH[mouthT];
+  if (m.length) put(m, Math.round(5.5 - (m[0].length - 1) / 2) + dx, m.length > 2 ? (mouthT === 'grin' ? 5 : 6) : 6);
+  extra.forEach(i => on.add(i));
+  return on;
+}
+function BiboBot(p) {
+  const s = p.size || 120, body = p.body || '#9FE3C5', led = p.led || '#C9F45B', scr = p.screen || '#151815', ink = p.ink || '#141714';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const [f, setF] = React.useState(0);
+  const [g, setG] = React.useState([0, 0]);
+  const root = React.useRef(null);
+  React.useEffect(() => { if (!motion) { setF(0); return; } const id = setInterval(() => setF(x => x + 1), 120); return () => clearInterval(id); }, [motion]);
+  useBotGaze(root, follow, (x, y) => { const nx = Math.max(-1, Math.min(1, Math.round(x * 1.5))), ny = Math.max(-1, Math.min(1, Math.round(y * 1.3))); setG(q => (q[0] === nx && q[1] === ny) ? q : [nx, ny]); });
+  const fr = motion ? f : 13, A = v => motion ? v : 'none';
+  let eyeT = 'dot', mouthT = 'smile', extra = [], dx = g[0], dy = g[1];
+  if (st === 'idle') { if (fr % 28 === 27) eyeT = 'blink'; }
+  else if (st === 'listening') { eyeT = 'wide'; mouthT = (fr >> 2) % 2 ? 'o' : 'small'; }
+  else if (st === 'thinking') { dx = 1; dy = -1; mouthT = 'none'; const k = (fr >> 2) % 4; [[2, 3], [5, 6], [8, 9]].slice(0, k).forEach(c => extra.push(72 + c[0], 72 + c[1])); }
+  else if (st === 'working') { eyeT = 'focus'; mouthT = 'none'; const q = fr % 15 - 3; for (let i = 0; i < 3; i++) if (q + i >= 0 && q + i < 12) extra.push(84 + q + i); }
+  else if (st === 'needsYou') { eyeT = (fr >> 2) % 2 ? 'wide' : 'dot'; mouthT = 'o'; }
+  else if (st === 'done') { eyeT = 'happy'; mouthT = 'grin'; dx = 0; dy = 0; extra = (fr >> 1) % 2 ? [0, 11, 96, 107] : [13, 22, 85, 94]; }
+  const on = bbFace(eyeT, mouthT, dx, dy, extra);
+  const cell = s * 0.051, dot = cell * 0.74, glow = (cell * 0.9).toFixed(1);
+  const cells = [];
+  for (let i = 0; i < 108; i++) { const lit = on.has(i); cells.push(_h('div', { key: i, style: { width: dot, height: dot, borderRadius: '50%', background: lit ? led : 'rgba(255,255,255,.07)', boxShadow: lit ? '0 0 ' + glow + 'px ' + led : 'none' } })); }
+  const bodyAnim = { idle: 'bb-bob 1.8s steps(1) infinite', listening: 'bb-tilt 1.2s steps(1) infinite', thinking: 'bb-bob 2.6s steps(1) infinite', working: 'bb-bob .48s steps(1) infinite', needsYou: 'bb-hop .9s steps(1) infinite', done: 'bb-jump .9s steps(1) infinite' }[st];
+  const bulbOn = st === 'listening' || st === 'needsYou' || st === 'working' || st === 'done';
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s * 1.06, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.018, top: s * 0.06, width: s * 0.036, height: s * 0.11, background: ink, borderRadius: s * 0.02 } }),
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.06, top: 0, width: s * 0.12, height: s * 0.12, borderRadius: '50%', background: bulbOn ? led : body, border: (s * 0.022) + 'px solid ' + ink, boxSizing: 'border-box', boxShadow: bulbOn ? '0 0 ' + (s * 0.08) + 'px ' + led : 'none', animation: A(st === 'needsYou' || st === 'listening' ? 'bb-blink .5s steps(1) infinite' : 'none') } }),
+      _h('div', { style: { ..._ab, left: 0, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.91, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.05, top: s * 0.15, width: s * 0.9, height: s * 0.86, borderRadius: s * 0.26, background: body, boxShadow: 'inset 0 ' + (-s * 0.05) + 'px 0 rgba(0,0,0,.1), inset 0 ' + (s * 0.03) + 'px 0 rgba(255,255,255,.4)' } }),
+      _h('div', { style: { ..._ab, left: s * 0.13, top: s * 0.27, width: s * 0.74, height: s * 0.56, borderRadius: s * 0.13, background: scr, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 ' + (s * 0.015) + 'px rgba(0,0,0,.35)' } },
+        _h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(12,' + cell + 'px)', gridAutoRows: cell + 'px', placeItems: 'center' } }, cells))));
+}
+
+/* ---------- C · Oki (núcleo + satélites, molas) ---------- */
+const OKI_SZ = [0.17, 0.13, 0.11, 0.09, 0.07];
+function okiTarget(k, i, n, t, s, sz) {
+  const R = v => v * s;
+  if (k === 'listening') { const side = i % 2 ? 1 : -1, j = i >> 1, pulse = Math.sin(t * 6 - j * 1.3) * 0.035; return { x: side * R(0.38 + j * 0.09 + pulse), y: R(-0.04 + j * 0.02), c: (0.11 - j * 0.025) / sz, z: 1 }; }
+  if (k === 'thinking') { const a = t * 2.4 + i * (Math.PI * 2 / n); return { x: R(0.26) * Math.cos(a), y: R(-0.4) + R(0.07) * Math.sin(a), c: (0.075 / sz) * (0.85 + 0.25 * Math.sin(a)), z: Math.sin(a) }; }
+  if (k === 'working') return { x: R((i - (n - 1) / 2) * 0.14), y: R(0.4) - R(0.08) * Math.abs(Math.sin(t * 5 - i * 0.7)), c: 0.08 / sz, z: 1 };
+  if (k === 'needsYou') { const hop = Math.abs(Math.sin(t * 6)) * R(0.05); const yy = i < n - 1 ? -0.46 + i * 0.075 : -0.46 + (n - 1) * 0.075 + 0.06; return { x: R(0.42), y: R(yy) - hop, c: 0.065 / sz, z: 1 }; }
+  if (k === 'done') { const a = i * (Math.PI * 2 / n) + t * 0.9 - Math.PI / 2, r = R(0.36 + 0.12 * Math.pow(Math.abs(Math.sin(t * 3.4)), 0.7)); return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.9, c: 1, z: 1 }; }
+  const a = i * 2.4 + t * (0.45 + i * 0.08) * (i % 2 ? 1 : -1), r = R(0.37 + 0.03 * Math.sin(t * 1.3 + i));
+  return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.4 + R(0.04), c: 0.85 + 0.2 * Math.sin(a), z: Math.sin(a) };
+}
+function OkiBot(p) {
+  const s = p.size || 120, body = p.body || '#3A3AF4', ink = p.ink || '#10101A', mouthC = p.mouth || '#FFFFFF';
+  const sats = p.sats || ['#FF7A68', '#C8F04B', '#9CB7FF', '#10101A', '#FF7A68'];
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), satEls = React.useRef([]), pupils = React.useRef([]);
+  const stRef = React.useRef(st); stRef.current = st;
+  const gzT = React.useRef([0, 0]);
+  useBotGaze(root, follow, (x, y) => { gzT.current = [x, y]; });
+  React.useEffect(() => {
+    const P = OKI_SZ.map(() => ({ x: 0, y: 0, c: 1, vx: 0, vy: 0, vc: 0 })), G = { x: 0, y: 0 };
+    let raf = 0, first = true; const t0 = performance.now();
+    const tick = now => {
+      const t = motion ? (now - t0) / 1000 : 0.6, k = stRef.current;
+      OKI_SZ.forEach((sz, i) => {
+        const T = okiTarget(k, i, OKI_SZ.length, t, s, sz), q = P[i];
+        if (first || !motion) { q.x = T.x; q.y = T.y; q.c = T.c; }
+        else { q.vx = (q.vx + (T.x - q.x) * 0.09) * 0.8; q.vy = (q.vy + (T.y - q.y) * 0.09) * 0.8; q.vc = (q.vc + (T.c - q.c) * 0.09) * 0.8; q.x += q.vx; q.y += q.vy; q.c += q.vc; }
+        const el = satEls.current[i];
+        if (el) { el.style.transform = 'translate(' + q.x.toFixed(2) + 'px,' + q.y.toFixed(2) + 'px) scale(' + Math.max(0, q.c).toFixed(3) + ')'; el.style.zIndex = T.z > 0 ? 3 : 1; }
+      });
+      const tg = k === 'thinking' ? [0.6, -0.8] : gzT.current;
+      if (first || !motion) { G.x = tg[0]; G.y = tg[1]; } else { G.x += (tg[0] - G.x) * 0.14; G.y += (tg[1] - G.y) * 0.14; }
+      pupils.current.forEach(el => { if (el) el.style.transform = 'translate(' + (G.x * s * 0.035).toFixed(2) + 'px,' + (G.y * s * 0.035).toFixed(2) + 'px)'; });
+      first = false;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [motion, s]);
+  const A = v => motion ? v : 'none';
+  const cx = s / 2, cy = s * 0.56, d = s * 0.56;
+  const bodyAnim = { idle: 'ok-float 3s ease-in-out infinite', listening: 'ok-pulse .9s ease-in-out infinite', thinking: 'ok-float 2.2s ease-in-out infinite', working: 'ok-float .9s ease-in-out infinite', needsYou: 'ok-hop .7s ease-in-out infinite', done: 'pg-jump 1.1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const happy = st === 'done', ew = (st === 'listening' || st === 'needsYou') ? 0.17 : 0.15, eh = st === 'working' ? 0.09 : ew;
+  const eyeEl = (side, idx) => happy
+    ? _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * 0.065, top: cy - s * 0.09, width: s * 0.13, height: s * 0.07, border: (s * 0.032) + 'px solid #FFFFFF', borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } })
+    : _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * ew / 2, top: cy - s * 0.04 - s * eh / 2, width: s * ew, height: s * eh, borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', animation: A('bot-blink 4.2s infinite') } },
+        _h('div', { ref: el => { pupils.current[idx] = el; }, style: { width: s * 0.075, height: s * 0.075, borderRadius: '50%', background: ink, flex: 'none' } }));
+  const my = cy + s * 0.12, mb = { ..._ab, left: cx, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    idle: _h('div', { style: { ...mb, width: s * 0.1, height: s * 0.05, border: (s * 0.025) + 'px solid ' + mouthC, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    listening: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.06, borderRadius: '50%', background: mouthC } }),
+    thinking: _h('div', { style: { ...mb, left: cx + s * 0.03, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    working: _h('div', { style: { ...mb, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    needsYou: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.07, borderRadius: '50%', background: mouthC } }),
+    done: _h('div', { style: { ...mb, width: s * 0.14, height: s * 0.07, borderRadius: '0 0 ' + s + 'px ' + s + 'px', background: mouthC } }),
+  }[st];
+  const satNodes = OKI_SZ.map((sz, i) => { const T0 = okiTarget(st, i, OKI_SZ.length, 0.6, s, sz); return _h('div', { key: 's' + i, ref: el => { satEls.current[i] = el; }, style: { ..._ab, left: cx - sz * s / 2, top: cy - sz * s / 2, width: sz * s, height: sz * s, borderRadius: '50%', background: sats[i % sats.length], willChange: 'transform', transform: 'translate(' + T0.x.toFixed(2) + 'px,' + T0.y.toFixed(2) + 'px) scale(' + Math.max(0, T0.c).toFixed(3) + ')', zIndex: T0.z > 0 ? 3 : 1 } }); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s, flex: 'none', isolation: 'isolate', cursor: fire ? 'pointer' : 'default' } },
+    satNodes,
+    _h('div', { style: { ..._ab, inset: 0, zIndex: 2, transformOrigin: '50% 80%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: cx - d / 2, top: cy - d / 2, width: d, height: d, borderRadius: '50%', background: body, boxShadow: 'inset ' + (-s * 0.03) + 'px ' + (-s * 0.04) + 'px 0 rgba(0,0,0,.14)' } }),
+      _h('div', { style: { ..._ab, left: cx - d * 0.32, top: cy - d * 0.38, width: d * 0.2, height: d * 0.12, borderRadius: '50%', background: '#FFFFFF', opacity: 0.3, transform: 'rotate(-30deg)' } }),
+      eyeEl(-1, 0), eyeEl(1, 1), mouth));
+}
+const SPECIES = {
+  pingo: { label: 'Pingo', font: "700 22px/1 'Fredoka',sans-serif", nameFont: "600 20px/1 'Fredoka',sans-serif", inputFont: "600 30px/1 'Fredoka',sans-serif", size: 230,
+    desc: { pt: 'Gota de brinquedo. Amassa, estica e quica.', en: 'A toy drop. Squashes, stretches, bounces.' },
+    bubble: { bg: '#FFFFFF', fg: '#2B1D16', font: "600 21px/1.25 'Fredoka',sans-serif" },
+    names: ['Faísca', 'Mel', 'Bolota', 'Pipoca', 'Caju', 'Nhoque', 'Gota'],
+    colors: [
+      { n: { pt: 'Tomate', en: 'Tomato' }, body: '#EF5B3B', eye: '#2B1D16', stage: '#F6C443', stageInk: '#5A4318' },
+      { n: { pt: 'Cobalto', en: 'Cobalt' }, body: '#3E64DE', eye: '#FFF4E8', stage: '#FFB8A6', stageInk: '#6B2416' },
+      { n: { pt: 'Menta', en: 'Mint' }, body: '#3DBB8E', eye: '#2B1D16', stage: '#FBE3A0', stageInk: '#5A4318' },
+      { n: { pt: 'Girassol', en: 'Sunflower' }, body: '#F6C443', eye: '#2B1D16', stage: '#3E64DE', stageInk: '#FFFFFF', ink: '#FBF4EA' },
+    ] },
+  bibo: { label: 'Bibo', font: "900 26px/1 'Doto',monospace", nameFont: "700 21px/1 'Doto',monospace", inputFont: "900 32px/1 'Doto',monospace", size: 220, dotted: true,
+    desc: { pt: 'Bichinho com rosto de LED, ponto a ponto.', en: 'A pocket pet with an LED face, dot by dot.' },
+    bubble: { bg: '#151815', fg: '#C9F45B', font: "500 17px/1.4 'Geist Mono',monospace" },
+    names: ['Zuca', 'Tico', 'Lulu', 'Bip', 'Pixel', 'Neno', 'Biju'],
+    colors: [
+      { n: { pt: 'Menta', en: 'Mint' }, body: '#9FE3C5', stage: '#C9B8F2', stageInk: '#2E2650' },
+      { n: { pt: 'Lilás', en: 'Lilac' }, body: '#C9B8F2', stage: '#9FE3C5', stageInk: '#173D2D' },
+      { n: { pt: 'Manteiga', en: 'Butter' }, body: '#F4E38E', stage: '#F7B99A', stageInk: '#5A2A14' },
+      { n: { pt: 'Pêssego', en: 'Peach' }, body: '#F7B99A', stage: '#F4E38E', stageInk: '#4D4310' },
+    ] },
+  oki: { label: 'Oki', font: "700 21px/1 'Unbounded',sans-serif", nameFont: "600 16px/1 'Unbounded',sans-serif", inputFont: "700 26px/1 'Unbounded',sans-serif", size: 260,
+    desc: { pt: 'Núcleo com satélites que orbitam e explodem de alegria.', en: 'A core with orbiting dots that burst with joy.' },
+    bubble: { bg: '#10101A', fg: '#FFFFFF', font: "600 17px/1.35 'Unbounded',sans-serif" },
+    names: ['Nina', 'Juju', 'Bento', 'Kiki', 'Lua', 'Tuca', 'Zazá'],
+    colors: [
+      { n: { pt: 'Ultramar', en: 'Ultramarine' }, body: '#3A3AF4', stage: '#C8F04B', stageInk: '#2E3A08', sats: ['#FF7A68', '#FFFFFF', '#9CB7FF', '#10101A', '#FF7A68'] },
+      { n: { pt: 'Coral', en: 'Coral' }, body: '#FF7A68', stage: '#9CB7FF', stageInk: '#14204A', sats: ['#3A3AF4', '#C8F04B', '#FFFFFF', '#10101A', '#3A3AF4'] },
+      { n: { pt: 'Lima', en: 'Lime' }, body: '#C8F04B', mouth: '#10101A', stage: '#3A3AF4', stageInk: '#FFFFFF', sats: ['#FF7A68', '#FFFFFF', '#9CB7FF', '#10101A', '#FF7A68'] },
+      { n: { pt: 'Noite', en: 'Night' }, body: '#10101A', stage: '#FF7A68', stageInk: '#3D0F08', sats: ['#C8F04B', '#3A3AF4', '#FFFFFF', '#C8F04B', '#3A3AF4'] },
+    ] },
+};
+const SP_KEYS = ['pingo', 'bibo', 'oki'];
+const DOT_IMG = 'radial-gradient(rgba(20,23,20,.16) 1.6px,transparent 1.9px)';
+const PERSONAS = [
+  { l: { pt: 'Curioso', en: 'Curious' }, d: { pt: 'Faz perguntas e sugere ideias.', en: 'Asks questions, suggests ideas.' }, g: { pt: 'Oi! Eu sou {n}. O que a gente descobre hoje?', en: "Hi! I'm {n}. What do we figure out today?" } },
+  { l: { pt: 'Brincalhão', en: 'Playful' }, d: { pt: 'Leve, com piada na hora certa.', en: 'Light, jokes at the right time.' }, g: { pt: 'E aí! {n} na área. Manda a primeira tarefa?', en: 'Hey! {n} here. Toss me a first task?' } },
+  { l: { pt: 'Direto', en: 'Straight' }, d: { pt: 'Curto, objetivo, sem rodeio.', en: 'Short and focused, no fluff.' }, g: { pt: '{n} pronto. Qual é a prioridade?', en: "{n} ready. What's the priority?" } },
+  { l: { pt: 'Zen', en: 'Zen' }, d: { pt: 'Calmo, organiza o caos.', en: 'Calm, tames the chaos.' }, g: { pt: 'Olá, sou {n}. Sem pressa — por onde começamos?', en: "Hello, I'm {n}. No rush — where do we start?" } },
+];
+
+function lumaFg(hex) { const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#161514' : '#FFFFFF'; }
+const BASE_L = [['Papel', '#F3F1EC', 'Fundo de tudo'], ['Tinta', '#161514', 'Texto e ações principais'], ['Painel', '#FFFFFF', 'Cartões e balões'], ['Chip', '#E9E5DE', 'Fundos suaves, seletores'], ['Linha', '#E2DED6', 'Bordas e divisórias'], ['Mudo', '#635E57', 'Texto secundário']];
+const BASE_D = [['Noite', '#121110', 'Fundo no modo escuro'], ['Painel escuro', '#1C1A18', 'Cartões e balões'], ['Chip escuro', '#2A2724', 'Fundos suaves'], ['Linha escura', '#34302B', 'Bordas'], ['Mudo escuro', '#A8A29A', 'Texto secundário'], ['Papel', '#F3F1EC', 'Texto no escuro']];
+const STATUS_C = [['Online', '#6DBB7B', 'Pronto, à toa'], ['Precisa de você', '#E0705A', 'Aprovação, ao vivo'], ['Tomate texto', '#B8401F', 'Links e rótulos de destaque']];
+const SP_META = {
+  pingo: { motion: 'MOLA · AMASSA E ESTICA', note: 'Bochecha #FF9DA6 · olho #2B1D16' },
+  bibo: { motion: 'QUADRO A QUADRO · 8 FPS', note: 'LED #C9F45B · tela #151815' },
+  oki: { motion: 'FÍSICA DE MOLAS', note: 'Satélites #9CB7FF · #C8F04B · #FF7A68' },
+};
+class Component extends DCLogic {
+  state = { st: 'idle', ci: { pingo: 0, bibo: 0, oki: 0 }, copied: null };
+  componentWillUnmount() { clearTimeout(this._ct); }
+  copy(hex) {
+    try { navigator.clipboard && navigator.clipboard.writeText(hex); } catch (e) {}
+    this.setState({ copied: hex }); clearTimeout(this._ct); this._ct = setTimeout(() => this.setState({ copied: null }), 1200);
+  }
+  char(k, ci, size, state, interactive) {
+    const sp = SPECIES[k], c = sp.colors[ci] || sp.colors[0];
+    const base = { size, state, interactive, motion: this.props.motion ?? true, follow: this.props.follow ?? true };
+    if (k === 'pingo') return _h(PingoBot, { ...base, color: c.body, eye: c.eye, ink: c.ink && size > 100 ? c.ink : '#2B1D16' });
+    if (k === 'bibo') return _h(BiboBot, { ...base, body: c.body });
+    return _h(OkiBot, { ...base, body: c.body, mouth: c.mouth, sats: c.sats });
+  }
+  sw(name, hex, role) { const S = this.state; return { name, hex, role, fg: lumaFg(hex), copy: S.copied === hex ? 'COPIADO' : '', dotVis: 'none', stage: hex, onClick: () => this.copy(hex) }; }
+  renderVals() {
+    const S = this.state;
+    return {
+      heroA: this.char('pingo', 0, 120, 'idle', true), heroB: this.char('bibo', 0, 100, 'idle', true), heroC: this.char('oki', 0, 110, 'idle', true),
+      lockChar: this.char('pingo', 0, 70, 'idle', false),
+      baseLight: BASE_L.map(x => this.sw(...x)), baseDark: BASE_D.map(x => this.sw(...x)), statusCols: STATUS_C.map(x => this.sw(...x)),
+      speciesPal: SP_KEYS.map(k => { const sp = SPECIES[k]; return { label: sp.label, font: sp.font, note: SP_META[k].note,
+        colors: sp.colors.map(c => ({ ...this.sw(c.n.pt, c.body, 'Palco ' + c.stage), stage: c.stage })) }; }),
+      stateOpts: BOT_STATES.map(s => ({ label: s.pt, bg: S.st === s.k ? '#161514' : 'transparent', fg: S.st === s.k ? '#FFFFFF' : '#161514', onClick: () => this.setState({ st: s.k }) })),
+      species: SP_KEYS.map(k => {
+        const sp = SPECIES[k], ci = S.ci[k], c = sp.colors[ci];
+        return {
+          label: sp.label, font: sp.font.replace(/(\d+)px/, (a, n) => Math.round(n * 1.5) + 'px'), desc: sp.desc.pt, motion: SP_META[k].motion, names: sp.names.join(', '),
+          stage: c.stage, stageInk: c.stageInk, img: sp.dotted ? DOT_IMG : 'none', colorName: c.n.pt,
+          stateLabel: BOT_STATES.find(s => s.k === S.st).pt.toUpperCase(),
+          big: this.char(k, ci, k === 'oki' ? 190 : 170, S.st, true),
+          colors: sp.colors.map((cc, i) => ({ name: cc.n.pt, body: cc.body, ring: i === ci ? '0 0 0 3px #FFFFFF, 0 0 0 5px #161514' : 'inset 0 0 0 1px rgba(0,0,0,.12)', onClick: () => this.setState(s => ({ ci: { ...s.ci, [k]: i } })) })),
+          states: BOT_STATES.map(s => ({ label: s.pt, el: this.char(k, ci, 44, s.k, false), bg: S.st === s.k ? '#F3F1EC' : 'transparent', color: S.st === s.k ? '#161514' : '#635E57', onClick: () => this.setState({ st: s.k }) })),
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

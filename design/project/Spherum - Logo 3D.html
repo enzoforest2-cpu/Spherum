@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spherum · símbolo 3D</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
+    "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js",
+    "three/addons/exporters/OBJExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js",
+    "three/addons/exporters/GLTFExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js"
+  },
+  "integrity": {
+    "https://unpkg.com/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J",
+    "https://unpkg.com/three@0.184.0/build/three.core.js": "sha384-dw2ooPewaEIrAgl6oFDBmmBWCE9oW9LxRGcfwZ0hLvEprzo202wXl7vCYHRlSnOT",
+    "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js": "sha384-4rziNxOBZKQ69i+w+f89KJ55TCYquwchVbByQwmaOeIOXdOU2PLDn3kOfXHwIJC9",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js": "sha384-nbwtoZENJD3Vq+ACK0CuGQdPMuDWHkamC2KJD70EV5nfg6jQjfppKOea07YJN+N3",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js": "sha384-VofkvpG6HERhFCYbsUOHeNXBCqID2nfqkQqnVzE1jc/oPcz+qJ13ADdXH08hE+cQ"
+  }
+}
+</script>
+<style>html,body{margin:0;height:100%;background:#F7F8FA}three-d-stage:not(:defined){visibility:hidden}three-d-stage{display:block;width:100vw;height:100vh}</style>
+</head>
+<body>
+<three-d-stage name="spherum-observador" background="#F7F8FA" autorotate></three-d-stage>
+<script src="three-d-stage.js"></script>
+<script type="module">
+const stage = document.querySelector('three-d-stage');
+const { THREE } = await stage.ready;
+const ink = new THREE.MeshStandardMaterial({ name: 'tinta', color: 0x101828, roughness: 0.38, metalness: 0.05 });
+const orbit = new THREE.MeshStandardMaterial({ name: 'orbita', color: 0x465FFF, roughness: 0.3, metalness: 0.1 });
+const white = new THREE.MeshStandardMaterial({ name: 'olhos', color: 0xFFFFFF, roughness: 0.25, metalness: 0 });
+const g = new THREE.Group(); g.name = 'spherum_observador';
+const R = 0.165;
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 64, 48), ink); sphere.name = 'esfera'; g.add(sphere);
+const eyeGeo = new THREE.CapsuleGeometry(0.016, 0.034, 8, 24);
+[[0.025, 0.045], [0.095, 0.028]].forEach(([x, y], i) => {
+  const eye = new THREE.Mesh(eyeGeo, white); eye.name = 'olho_' + (i + 1);
+  const z = Math.sqrt(Math.max(0, R * R - x * x - y * y)) - 0.004;
+  eye.position.set(x, y, z); eye.rotation.z = -18 * Math.PI / 180;
+  eye.lookAt(x * 3, y * 3, z * 3); eye.rotateX(Math.PI / 2); eye.rotateZ(-0.3);
+  g.add(eye);
+});
+const ringGroup = new THREE.Group(); ringGroup.name = 'orbita';
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.0075, 24, 200), orbit); ring.name = 'anel_orbita';
+ring.scale.set(1, 1, 1); ringGroup.add(ring);
+const dot = new THREE.Mesh(new THREE.SphereGeometry(0.036, 48, 32), orbit); dot.name = 'ponto';
+const a = 20 * Math.PI / 180; dot.position.set(0.225 * Math.cos(a), 0.225 * Math.sin(a), 0); ringGroup.add(dot);
+ringGroup.rotation.set(Math.PI / 2 - 0.32, 0, 20 * Math.PI / 180);
+g.add(ringGroup);
+const box = new THREE.Box3().setFromObject(g); g.position.y -= box.min.y;
+stage.setObject(g);
+</script>
+</body>
+</html>

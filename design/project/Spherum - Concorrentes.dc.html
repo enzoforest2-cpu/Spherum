@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>body{margin:0;background:#F7F8FA;-webkit-font-smoothing:antialiased}a{color:#3538CD;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}a:hover{color:#1F2399}</style>
+</helmet>
+<div style="background:#F7F8FA;color:#101828;font-family:'Geist',sans-serif;min-height:100vh">
+<div style="max-width:1120px;margin:0 auto;padding:40px 28px 80px;display:flex;flex-direction:column;gap:48px">
+
+<header style="display:flex;flex-direction:column;gap:18px;border-bottom:2px solid #101828;padding-bottom:26px">
+<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:600 12px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#475467"><span>Spherum · concorrentes</span><span>Fontes consultadas em 14 out 2026</span></div>
+<h1 style="margin:0;font:italic 400 clamp(44px,6vw,76px)/.98 'Instrument Serif',serif;letter-spacing:-0.01em;text-wrap:balance;max-width:980px">Pautta organiza a produção. Chronos automatiza o comercial. O Spherum prova resultado.</h1>
+<p style="margin:0;font:400 18px/1.55 'Geist',sans-serif;color:#344054;max-width:780px;text-wrap:pretty">O que cada um tem que o Spherum ainda não tem, onde eles estão melhores e o que vale construir primeiro.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px">
+<div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1px rgba(16,24,40,.05),0 12px 28px -18px rgba(16,24,40,.2)">
+<span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#7A5AF8">PAUTTA</span>
+<span style="font-size:20px;font-weight:600;letter-spacing:-0.02em">Para agências de conteúdo</span>
+<p style="margin:0;font-size:14.5px;line-height:1.6;color:#344054;text-wrap:pretty">Reúne criação de conteúdo, tarefas, dashboards, chat de equipe, documentos, aprovação pelo cliente e agendamento de posts. Tudo em white label, e o app de celular com a marca da agência vem de bônus. <a href="https://pautta.app/">pautta.app</a></p>
+<p style="margin:0;font-size:14.5px;line-height:1.6;color:#344054;text-wrap:pretty">É da Don Digital e vendido junto com o curso Agência Organizada, com 60 dias grátis e depois a partir de R$ 197 por mês. O próprio FAQ diz que serve para agências de tráfego só se elas também fizerem a parte criativa. <a href="https://pautta.dondigital.com.br/">Pautta / Don</a></p>
+</div>
+<div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1px rgba(16,24,40,.05),0 12px 28px -18px rgba(16,24,40,.2)">
+<span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#0E9384">CHRONOS DOCK</span>
+<span style="font-size:20px;font-weight:600;letter-spacing:-0.02em">Para agências de tráfego</span>
+<p style="margin:0;font-size:14.5px;line-height:1.6;color:#344054;text-wrap:pretty">Tem financeiro com DRE e margens, clientes com alerta de churn e pausas, CRM com pontuação de leads, formulários, agendamentos, automações via WhatsApp, chamados com prazo de atendimento (SLA) e tarefas por área. <a href="https://apps.apple.com/br/app/chronos-dock/id6767615109?l=en-GB">App Store</a></p>
+<p style="margin:0;font-size:14.5px;line-height:1.6;color:#344054;text-wrap:pretty">É novo: versão 1.0 em maio de 2026, 1.3 em agosto, com 7 avaliações. Tem app para iPhone e iPad. O site é todo montado em JavaScript, e não encontrei os preços publicados.</p>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font:italic 400 40px/1 'Instrument Serif',serif">O que eles têm e nós não</h2>
+<div style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px rgba(16,24,40,.05),0 12px 28px -18px rgba(16,24,40,.2)"><div style="overflow-x:auto"><div style="min-width:820px">
+<div style="display:grid;grid-template-columns:minmax(0,1.6fr) 110px 110px minmax(0,1.6fr) 90px;gap:12px;padding:12px 18px;font:600 11px/1 'Geist Mono',monospace;letter-spacing:.06em;color:#667085;text-transform:uppercase;background:#F9FAFB"><span>Recurso</span><span>Pautta</span><span>Chronos</span><span>No Spherum hoje</span><span>Peso</span></div>
+<sc-for list="{{ rows }}" as="r"><div style="display:grid;grid-template-columns:minmax(0,1.6fr) 110px 110px minmax(0,1.6fr) 90px;gap:12px;padding:12px 18px;border-top:1px solid #F2F4F7;font-size:13.5px;align-items:center"><span style="font-weight:600">{{ r.f }}</span><span style="color:{{ r.pc }};font-weight:600">{{ r.p }}</span><span style="color:{{ r.cc }};font-weight:600">{{ r.c }}</span><span style="color:#475467">{{ r.s }}</span><span style="font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:99px;background:{{ r.wb }};color:{{ r.wc }};justify-self:start">{{ r.w }}</span></div></sc-for>
+</div></div></div>
+<span style="font-size:12.5px;color:#667085">✓ = tem · em breve = anunciado · — = não aparece no material público. Montei a tabela só com o que está escrito nas páginas e na App Store, sem testar os produtos.</span>
+</section>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px">
+<div style="background:#101828;color:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#9AA8FF">ONDE ELES ESTÃO MELHORES</span>
+<sc-for list="{{ better }}" as="b"><div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:600">{{ b.t }}</span><span style="font-size:13.5px;line-height:1.5;color:#C9CED8">{{ b.d }}</span></div></sc-for>
+</div>
+<div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 1px rgba(16,24,40,.05),0 12px 28px -18px rgba(16,24,40,.2)">
+<span style="font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;color:#067647">ONDE O SPHERUM ESTÁ NA FRENTE</span>
+<sc-for list="{{ ahead }}" as="b"><div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:600">{{ b.t }}</span><span style="font-size:13.5px;line-height:1.5;color:#475467">{{ b.d }}</span></div></sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<h2 style="margin:0;font:italic 400 40px/1 'Instrument Serif',serif">O que eu construiria, em ordem</h2>
+<div style="display:flex;flex-direction:column;border-top:2px solid #101828">
+<sc-for list="{{ plan }}" as="p"><div style="display:grid;grid-template-columns:48px minmax(0,1fr) 160px;gap:16px;padding:16px 0;border-bottom:1px solid #D0D5DD;align-items:baseline"><span style="font:italic 400 38px/1 'Instrument Serif',serif;color:#465FFF">{{ p.n }}</span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:16px;font-weight:600">{{ p.t }}</span><span style="font-size:14px;line-height:1.55;color:#475467;text-wrap:pretty">{{ p.d }}</span></div><span style="font:500 12px/1.4 'Geist Mono',monospace;color:#667085">{{ p.why }}</span></div></sc-for>
+</div>
+<span style="font-size:12.5px;color:#667085">A ordem é sugestão minha, pelo impacto contra os dois concorrentes. Não vem das fontes.</span>
+</section>
+
+<footer style="border-top:2px solid #101828;padding-top:18px;display:flex;flex-direction:column;gap:8px;font-size:13px">
+<span style="font:600 12px/1 'Geist Mono',monospace;letter-spacing:.08em">FONTES</span>
+<a href="https://pautta.app/">Pautta: site oficial</a>
+<a href="https://pautta.dondigital.com.br/">Pautta: página da Don Digital (planos e recursos)</a>
+<a href="https://apps.apple.com/br/app/chronos-dock/id6767615109?l=en-GB">Chronos Dock: App Store (descrição e histórico de versões)</a>
+<a href="https://chronosdock.com/">Chronos Dock: site oficial</a>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const Y = '✓', N = '—', S = 'em breve';
+    const col = v => v === Y ? '#067647' : v === S ? '#B54708' : '#98A2B3';
+    const W = { Alto: ['rgba(240,68,56,.1)', '#B42318'], 'Médio': ['rgba(247,144,9,.14)', '#B54708'], Baixo: ['#F2F4F7', '#475467'] };
+    const rows = [
+      ['Agendar e publicar posts no Instagram e Facebook', Y, N, 'Calendário e aprovação, mas não publica', 'Alto'],
+      ['Prévia do feed do Instagram enquanto produz', Y, N, 'Não tem', 'Médio'],
+      ['Agendamento de reuniões ligado ao Google Agenda', S, Y, 'Convite de reunião sem sincronizar agenda', 'Alto'],
+      ['Formulários com editor visual e lógica condicional', N, Y, 'Não tem', 'Alto'],
+      ['Automações visuais (gatilho, condição, espera, WhatsApp)', N, Y, 'Playbooks e régua de cobrança fixos', 'Alto'],
+      ['Chamados com SLA e desempenho por atendente', N, Y, 'Mensagens com clientes, sem SLA', 'Médio'],
+      ['Chat interno da equipe', Y, N, 'Só conversas com clientes', 'Médio'],
+      ['Central de processos e cursos (Academy)', Y, N, 'Não tem', 'Médio'],
+      ['Onboarding de novos colaboradores', Y, N, 'Só onboarding de clientes', 'Baixo'],
+      ['Emblemas e bônus por produtividade', Y, N, 'Carga de trabalho, sem gamificação', 'Baixo'],
+      ['Pontuação automática de leads', N, Y, 'CRM sem pontuação', 'Médio'],
+      ['Pausar contrato e avisar cancelamento', N, Y, 'Radar de risco, sem pausa formal', 'Baixo'],
+      ['DRE com despesas e investimentos', N, Y, 'Financeiro e rentabilidade por cliente', 'Médio'],
+      ['Ficha do cliente com atas de reunião', Y, N, 'Ficha sem atas', 'Baixo'],
+      ['App nativo para celular', 'white label', 'iOS', 'Aprovação pelo celular no navegador', 'Alto'],
+    ].map(r => ({ f: r[0], p: r[1], c: r[2], s: r[3], w: r[4], pc: col(r[1] === 'white label' ? Y : r[1]), cc: col(r[2] === 'iOS' ? Y : r[2]), wb: W[r[4]][0], wc: W[r[4]][1] }));
+    const better = [
+      ['O ciclo do conteúdo fecha', 'No Pautta a peça é criada, aprovada e publicada sem sair do sistema. No Spherum ela para na aprovação.'],
+      ['Automação que o cliente monta', 'O Chronos tem um construtor visual de fluxos. Nossos fluxos são fixos ou dependem dos xodós.'],
+      ['Captação própria', 'Formulários e agenda pública de reuniões levam o lead direto para o CRM do Chronos.'],
+      ['Distribuição', 'O Pautta já nasce com a base de alunos do curso Agência Organizada e dá 60 dias grátis.'],
+    ].map(b => ({ t: b[0], d: b[1] }));
+    const ahead = [
+      ['Xodós e Estúdio com IA', 'Nenhum dos dois tem colegas de IA nem geração de criativos com a marca do cliente.'],
+      ['Mídia paga de verdade', 'Integração com Meta e Google Ads, otimização de campanha e prova de retorno para o cliente.'],
+      ['Prospecção e disparos', 'Captação em grupos de WhatsApp e no Instagram, com variação de mensagem.'],
+      ['Propostas e contratos', 'Aditivos com valores, logo da agência e assinatura digital.'],
+      ['Fiscal e Busca por IA', 'Nota fiscal automática quando o Pix cai e presença da marca no ChatGPT.'],
+    ].map(b => ({ t: b[0], d: b[1] }));
+    const plan = [
+      ['1', 'Publicar direto no Meta, com prévia do feed', 'A peça aprovada no Estúdio ou em Conteúdo vai para a fila de publicação e aparece numa grade igual à do Instagram.', 'Fecha a vantagem do Pautta'],
+      ['2', 'Formulários e agenda de reuniões', 'Formulário com lógica que cai no CRM e página de agendamento ligada ao Google Agenda.', 'Iguala o Chronos'],
+      ['3', 'Construtor de automações', 'Gatilho, condição, espera e ação (WhatsApp, tarefa, e-mail), com um xodó como executor.', 'Supera os dois'],
+      ['4', 'Chamados com SLA no portal do cliente', 'O cliente abre um pedido, a agência vê o prazo e o desempenho por pessoa.', 'Iguala o Chronos'],
+      ['5', 'Chat da equipe e central de processos', 'Canal interno por cliente e uma área de processos padrão e treinamentos da agência.', 'Iguala o Pautta'],
+      ['6', 'App de celular com a marca da agência', 'Aplicativo instalável no celular com aprovações, mensagens e relatórios.', 'Os dois têm app'],
+    ].map(p => ({ n: p[0], t: p[1], d: p[2], why: p[3] }));
+    return { rows, better, ahead, plan };
+  }
+}
+</script>
+</body>
+</html>

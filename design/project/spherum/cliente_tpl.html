@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="95c4cf7d-8bf1-49af-858b-d380d15f687e"></script>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c36723f9-1eaf-4469-b6ee-1f9b9ee020e1") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("3a08d3d0-2ba8-4b21-953c-fe645dfeaa8c") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("91310702-d953-48db-b855-16f739862f06") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("5dc53552-55f8-4102-9250-091abf7f3340") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ff22647e-5f33-4f48-956e-dd4cc2b80524") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("0a17d973-8044-4898-a5b0-7930f6276286") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("3807e6d7-f867-4289-81e5-f3ea36c234f4") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("c0b395f7-e10b-4ed3-acce-2ba0c5768f8e") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("60121ab7-9aed-4e45-98c5-bcbb98e17262") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("876b42d2-eed2-426f-be3f-3c47ca59de3e") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("7b91d781-d035-4487-bd90-3809163545e3") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("8ce23e4d-2aa0-4776-bd30-fac53bf4d607") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("0cd5f9de-db5f-4f9b-9f88-aecb22d77084") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("4bd50dde-a4a4-4fbf-84cd-a0214bff5032") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("9e33ee2a-86da-47e3-bf4c-765135934b3b") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("60de66c0-825d-4760-8f14-632ae9aa9593") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("878c378b-a25e-4f5f-aa03-9a92c071f543") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("b3cb7650-44cc-488e-82d7-7b8502a4b404") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("ad1d8b38-9a06-4f2d-becf-89ea3a105625") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("12ea2612-5d28-4b8e-a39a-4182ce353abe") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("385f90fd-cd1d-41bc-9b9c-0be58a851ff4") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("13b98831-ad3a-4b21-84f5-fafefa44d65a") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* symbols2 */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("d59fe00d-1003-4bea-b630-884fab3bff4b") format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("f88bba94-7654-4c10-889a-d8ef35691074") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("277ad080-95ae-4f3d-b7ef-94f40cd6aa91") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("b71eab53-ad90-4bf2-90b0-a93588248941") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("2fccf595-1076-4c87-87bf-af54be3637c9") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("314f1a5a-c0e6-45c3-a223-45ba355f8545") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* symbols2 */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("30df50c7-e168-4bba-a842-b6d8714a4209") format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("d699bab4-5074-48fc-a386-4932e4b9f38e") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("2969c067-c4fd-43b8-84b9-7014950bdb0b") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("1b70a8ab-2334-4cad-867b-e76e2bd2ea8e") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>/* fallback */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 300;
+  font-display: block;
+  src: url("53b05730-b029-44f3-9856-c4bf25faa542") format('woff2');
+}
+/* fallback */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("c866fc4c-a547-4968-831b-248eb75d01cd") format('woff2');
+}
+/* fallback */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url("b55256b4-d7fa-475b-b211-18a173133bbf") format('woff2');
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+</style>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#F7F8FA}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:{{ br.acc }};text-decoration:none}
+a:hover{color:#3346D3;text-decoration:underline}
+:focus-visible{outline:2px solid {{ br.acc }};outline-offset:2px}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;background:#F7F8FA;color:#101828;font-family:'Geist',system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden">
+  <aside aria-label="Navegação" style="width:{{ sbW }};flex-shrink:0;background:#FFFFFF;border-right:1px solid #E4E7EC;display:flex;flex-direction:column">
+    <div style="height:60px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #F2F4F7">
+      <div style="width:30px;height:30px;border-radius:8px;background-color:{{ br.lgBg }};background-image:{{ br.lgImg }};background-size:contain;background-position:center;background-repeat:no-repeat;color:{{ br.lgFg }};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">{{ br.lgIni }}</div>
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ br.name }}</div><div style="font-size:11.5px;color:#667085">Portal do cliente</div></div></sc-if>
+    </div>
+    <nav style="flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto">
+      <sc-for list="{{ nav }}" as="it" hint-placeholder-count="8">
+        <button sc-camel-on-click="{{ it.go }}" aria-current="{{ it.cur }}" title="{{ it.l }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ it.bg }};color:{{ it.c }};font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:#F2F4F7">
+          <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">{{ it.icon }}</span>
+          <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span style="flex:1">{{ it.l }}</span></sc-if>
+          <sc-if value="{{ it.hasBadge }}"><span style="min-width:18px;height:18px;border-radius:9px;background:{{ br.acc }};color:#fff;font-size:11px;display:grid;place-items:center">{{ it.badge }}</span></sc-if>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="padding:12px 14px;border-top:1px solid #F2F4F7;display:flex;align-items:center;gap:10px">
+      <div style="width:30px;height:30px;border-radius:50%;background:#F2F4F7;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">MP</div>
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Marcelo Pilar</div><div style="font-size:11.5px;color:#667085">Construtora Pilar</div></div>
+        <button type="button" sc-camel-on-click="{{ logout }}" aria-label="Sair" title="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#667085;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
+      </sc-if>
+    </div>
+    <sc-if value="{{ br.powOpen }}" hint-placeholder-val="{{ true }}"><div style="padding:0 18px 12px;font-size:10.5px;color:#98A2B3;display:flex;align-items:center;gap:6px">Desenvolvido com {{ liveLogo }}<span style="font:italic 400 14px/1 'Instrument Serif',serif;color:#475467">Spherum</span></div></sc-if>
+  </aside>
+
+  <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto;min-width:0">
+    <div style="max-width:1120px;margin:0 auto;padding:32px 32px 72px;display:flex;flex-direction:column;gap:20px">
+
+      <sc-if value="{{ is.home }}" hint-placeholder-val="{{ true }}">
+        <section data-screen-label="Cliente · Visão geral" style="display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:12.5px;color:#667085;margin-bottom:6px">Olá, Marcelo · atualizado hoje às 07:00</div>
+              <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Como estão seus resultados</h1>
+              <p style="margin:6px 0 0;color:#667085;font-size:15px">Sua conta nos {{ periodLabel }}, comparada ao período anterior</p>
+            </div>
+            <div style="display:inline-flex;padding:3px;background:#F2F4F7;border-radius:8px;gap:2px"><sc-for list="{{ periods }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.sel }}" style="height:30px;padding:0 12px;border:1px solid {{ s.bd }};border-radius:6px;background:{{ s.bg }};color:{{ s.c }};box-shadow:{{ s.sh }};font-size:13px;font-weight:500">{{ s.l }}</button></sc-for></div>
+          </div>
+
+          <sc-if value="{{ cw.showNps }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+  <sc-if value="{{ cw.npsAsk }}"><span style="font-size:15px;font-weight:600">De 0 a 10, quanto você recomendaria a Marketing Pro para um amigo?</span><div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px"><sc-for list="{{ cw.npsOpts }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:38px;border:1px solid {{ o.bd }};border-radius:8px;background:{{ o.bg }};color:{{ o.c }};font-size:14px;font-weight:600;padding:0">{{ o.l }}</button></sc-for></div><div style="display:flex;justify-content:space-between;font-size:12px;color:#667085"><span>Nada provável</span><span>Muito provável</span></div></sc-if>
+  <sc-if value="{{ cw.npsWhy }}"><span style="font-size:15px;font-weight:600">{{ cw.npsQ }}</span><textarea value="{{ cw.npsTxt }}" sc-camel-on-change="{{ cw.onNps }}" rows="3" aria-label="Comentário" style="border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;font:400 14px/1.5 inherit;resize:vertical;outline:none"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button sc-camel-on-click="{{ cw.npsSkip }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">Pular</button><button sc-camel-on-click="{{ cw.npsSend }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">Enviar</button></div></sc-if>
+  <sc-if value="{{ cw.npsDone }}"><div style="display:flex;gap:10px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#EF5B3B">favorite</span><span style="font-size:14px">Obrigado, Marcelo. O Rafael vai ler sua resposta hoje.</span></div></sc-if>
+</div></sc-if>
+<button sc-camel-on-click="{{ cw.goWork }}" style="text-align:left;background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;color:#101828;font:inherit;width:100%" style-hover="border-color:{{ br.acc }}"><span style="width:40px;height:40px;border-radius:10px;background:#FFF3EE;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1;color:#D9472A">auto_awesome</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">Esta semana a Marketing Pro fez {{ cw.weekN }} ajustes na sua conta</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ cw.best }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#98A2B3">chevron_right</span></button>
+<sc-if value="{{ cw.hasPend }}"><button sc-camel-on-click="{{ cw.goStart }}" style="text-align:left;border:1px solid #FEDF89;background:#FFFAEB;border-radius:12px;padding:12px 18px;display:flex;gap:12px;align-items:center;color:#7A2E0E;font:inherit;width:100%"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#B54708">assignment_late</span><span style="flex:1;font-size:13.5px"><b>{{ cw.pendL }}</b> para começarmos a fase 2 do Vista Parque</span><span style="font-size:13px;font-weight:600">Resolver →</span></button></sc-if>
+<div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <div style="display:flex;flex-wrap:wrap;margin-right:-1px;margin-bottom:-1px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div style="flex:1 1 200px;padding:18px 20px;border-right:1px solid #E4E7EC;border-bottom:1px solid #E4E7EC">
+                  <div style="font-size:13px;color:#667085">{{ k.l }}</div>
+                  <div style="font-size:28px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;margin-top:4px;white-space:nowrap">{{ k.v }}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:5px;background:{{ k.bg }};color:{{ k.c }};font-weight:600"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:14px">{{ k.icon }}</span>{{ k.state }}</span><span style="color:#667085">{{ k.d }} · antes {{ k.prev }}</span></div>
+                  <sc-if value="{{ k.hasGoal }}"><div style="margin-top:10px;padding-top:10px;border-top:1px solid #F2F4F7;font-size:12.5px;color:#475467">Meta {{ k.goal }} · <b style="color:#079455;font-weight:600">{{ k.goalSt }}</b></div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+            <sc-for list="{{ transparency }}" as="t" hint-placeholder-count="3">
+              <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:18px 20px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:{{ br.acc }}">{{ t.icon }}</span><h2 style="margin:0;font-size:14px;font-weight:600">{{ t.h }}</h2></div>
+                <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:#344054"><sc-for list="{{ t.items }}" as="i"><li>{{ i }}</li></sc-for></ul>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+            <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+              <div style="padding:14px 20px;border-bottom:1px solid #E4E7EC"><h2 style="margin:0;font-size:14px;font-weight:600">Principais insights</h2></div>
+              <sc-for list="{{ insights }}" as="i"><div style="display:flex;gap:12px;padding:12px 20px;border-bottom:1px solid #F2F4F7"><div style="width:28px;height:28px;border-radius:7px;background:{{ i.bg }};color:{{ i.c }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:16px">{{ i.icon }}</span></div><div><div style="font-weight:500">{{ i.t }}</div><div style="font-size:12.5px;color:#667085">{{ i.ev }}</div></div></div></sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+                <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid #E4E7EC"><h2 style="margin:0;font-size:14px;font-weight:600;flex:1">Aguardando sua aprovação</h2><span style="font-size:12px;color:#667085">{{ pendingN }} pendentes</span></div>
+                <sc-for list="{{ approvals }}" as="a"><div style="padding:12px 20px;border-bottom:1px solid #F2F4F7;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:10px"><div><div style="font-weight:500">{{ a.t }}</div><div style="font-size:12.5px;color:#667085">{{ a.d }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ a.bg }};color:{{ a.c }};font-weight:500;height:fit-content;white-space:nowrap">{{ a.st }}</span></div><sc-if value="{{ a.pending }}"><div style="display:flex;gap:8px"><button sc-camel-on-click="{{ a.approve }}" style="height:30px;padding:0 12px;border:none;border-radius:7px;background:{{ br.acc }};color:#fff;font-size:12.5px;font-weight:500">Aprovar</button><button sc-camel-on-click="{{ a.change }}" style="height:30px;padding:0 12px;border:1px solid #E4E7EC;border-radius:7px;background:#fff;font-size:12.5px;font-weight:500">Solicitar alterações</button></div></sc-if></div></sc-for>
+              </div>
+              <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+                <sc-for list="{{ summary }}" as="s"><button sc-camel-on-click="{{ s.go }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;border:none;border-bottom:1px solid #F2F4F7;background:transparent;text-align:left" style-hover="background:#F9FAFB"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#667085">{{ s.icon }}</span><div style="flex:1"><div style="font-size:12.5px;color:#667085">{{ s.l }}</div><div style="font-weight:500">{{ s.v }}</div></div><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:#98A2B3">chevron_right</span></button></sc-for>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.perf }}">
+        <section data-screen-label="Cliente · Performance" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Performance</h1><p style="margin:4px 0 0;color:#667085">Últimos 30 dias comparados aos 30 dias anteriores</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <div style="display:flex;gap:10px;padding:12px 18px;border-bottom:1px solid #E4E7EC;flex-wrap:wrap;align-items:center">
+              <div style="display:inline-flex;padding:3px;background:#F2F4F7;border-radius:8px;gap:2px"><sc-for list="{{ metrics }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.sel }}" style="height:28px;padding:0 12px;border:1px solid {{ s.bd }};border-radius:6px;background:{{ s.bg }};color:{{ s.c }};box-shadow:{{ s.sh }};font-size:13px;font-weight:500">{{ s.l }}</button></sc-for></div>
+              <div style="flex:1"></div>
+              <span style="font-size:13px;color:#667085">{{ ch.label }} <b style="color:#101828;font-size:16px;font-variant-numeric:tabular-nums">{{ ch.total }}</b> <span style="color:{{ ch.dc }};font-weight:600">{{ ch.d }}</span></span>
+            </div>
+            <div style="padding:18px">
+              <svg sc-camel-view-box="0 0 800 220" sc-camel-preserve-aspect-ratio="none" style="width:100%;height:240px;display:block" aria-label="Gráfico de {{ ch.label }}">
+                <path d="{{ ch.prev }}" style="fill:none;stroke:#98A2B3;stroke-width:1.25;stroke-dasharray:4 4;vector-effect:non-scaling-stroke"></path>
+                <path d="{{ ch.area }}" style="fill:color-mix(in srgb, {{ br.acc }} 8%, transparent);stroke:none"></path>
+                <path d="{{ ch.line }}" style="fill:none;stroke:{{ br.acc }};stroke-width:2;vector-effect:non-scaling-stroke"></path>
+              </svg>
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#667085;padding-top:8px;font-family:'Geist Mono',monospace"><span>30 ago</span><span>06 set</span><span>13 set</span><span>20 set</span><span>28 set</span></div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow-x:auto">
+            <div style="padding:14px 18px;border-bottom:1px solid #E4E7EC"><h2 style="margin:0;font-size:14px;font-weight:600">Performance por canal</h2></div>
+            <div style="min-width:560px"><sc-for list="{{ channels }}" as="c"><div style="display:grid;grid-template-columns:110px 1fr 110px 90px 110px;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid #F2F4F7;font-variant-numeric:tabular-nums;font-size:13.5px"><span style="font-weight:600">{{ c.p }}</span><div style="height:8px;border-radius:4px;background:#F2F4F7;overflow:hidden"><div style="height:100%;width:{{ c.w }};background:{{ br.acc }};border-radius:4px"></div></div><span style="text-align:right">{{ c.s }}</span><span style="text-align:right">{{ c.l }} leads</span><span style="text-align:right;color:#667085">CPL {{ c.cpl }}</span></div></sc-for></div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.camps }}">
+        <section data-screen-label="Cliente · Campanhas" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Campanhas</h1><p style="margin:4px 0 0;color:#667085">O que está no ar e o que cada campanha está entregando</p></div>
+          <sc-for list="{{ camps }}" as="k"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><div style="font-weight:600;font-size:15px">{{ k.name }}</div><div style="font-size:12.5px;color:#667085">{{ k.plat }} · {{ k.obj }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:rgba(23,178,106,0.12);color:#079455;font-weight:500;height:fit-content">Ativa</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px"><sc-for list="{{ k.m }}" as="m"><div><div style="font-size:12px;color:#667085">{{ m.l }}</div><div style="font-weight:600;font-size:16px;font-variant-numeric:tabular-nums">{{ m.v }}</div></div></sc-for></div>
+            <div style="font-size:13px;color:#344054;padding-top:10px;border-top:1px solid #F2F4F7">{{ k.note }}</div>
+          </div></sc-for>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.reports }}">
+        <section data-screen-label="Cliente · Relatórios" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Relatórios</h1><p style="margin:4px 0 0;color:#667085">Relatório mensal enviado todo dia 1º pela sua agência</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <sc-for list="{{ reports }}" as="r"><div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #F2F4F7;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;color:{{ br.acc }}">lab_profile</span><div style="flex:1;min-width:180px"><div style="font-weight:500">{{ r.t }}</div><div style="font-size:12.5px;color:#667085">{{ r.d }}</div></div><sc-if value="{{ r.isNew }}"><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:color-mix(in srgb, {{ br.acc }} 10%, transparent);color:{{ br.acc }};font-weight:500">Novo</span></sc-if><button sc-camel-on-click="{{ r.open }}" style="height:30px;padding:0 12px;border:1px solid #E4E7EC;border-radius:7px;background:#fff;font-size:12.5px;font-weight:500">Abrir</button><button sc-camel-on-click="{{ r.pdf }}" aria-label="Baixar PDF" style="width:30px;height:30px;border:1px solid #E4E7EC;border-radius:7px;background:#fff;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px">download</span></button></div></sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.fin }}">
+        <section data-screen-label="Cliente · Financeiro" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Financeiro</h1><p style="margin:4px 0 0;color:#667085">Suas faturas com a Marketing Pro</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px"><div style="font-size:13px;color:#667085">Próxima fatura</div><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">R$ 7.200</div><div style="font-size:13px;color:#667085">Mensalidade out/26 · vence 05 out · boleto</div></div>
+            <button sc-camel-on-click="{{ copyCode }}" style="height:36px;padding:0 14px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;font-weight:500">Copiar linha digitável</button>
+            <button sc-camel-on-click="{{ copyCode }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">Ver boleto</button>
+          </div>
+          <sc-if value="{{ cw.pixOff }}"><div style="border:1px solid #ABEFC6;background:#ECFDF3;border-radius:12px;padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1;color:#079455">bolt</span><div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600;color:#054F31">Pague sem boleto com o Pix Automático</span><span style="font-size:13px;color:#085D3A;text-wrap:pretty">Você autoriza uma vez no app do seu banco e a mensalidade é paga sozinha todo dia 5. Dá para cancelar quando quiser, pelo próprio banco.</span></div><button sc-camel-on-click="{{ cw.pixStart }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;background:#079455">{{ cw.pixL }}</button></div></sc-if>
+<sc-if value="{{ cw.pixOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;line-height:1;color:#079455">check_circle</span><span style="flex:1;font-size:14px"><b>Pix Automático ativo.</b> A mensalidade de R$ 7.200 é paga sozinha todo dia 5, e a nota fiscal chega no seu e-mail logo depois.</span></div></sc-if>
+<div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <sc-for list="{{ invoices }}" as="i"><div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 20px;border-bottom:1px solid #F2F4F7;font-size:13.5px"><div><div style="font-weight:500">{{ i.d }}</div><div style="font-size:12.5px;color:#667085">Vencimento {{ i.due }} · {{ i.nf }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ i.bg }};color:{{ i.c }};font-weight:500">{{ i.st }}</span><span style="font-variant-numeric:tabular-nums;font-weight:600;min-width:80px;text-align:right">{{ i.v }}</span></div></sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.docs }}">
+        <section data-screen-label="Cliente · Documentos" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Documentos</h1><p style="margin:4px 0 0;color:#667085">Contratos, relatórios e materiais compartilhados com você</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <sc-for list="{{ docs }}" as="d"><div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #F2F4F7;font-size:13.5px"><span style="font-family:'Geist Mono',monospace;font-size:10px;padding:2px 5px;border-radius:4px;background:#F2F4F7;color:#667085">{{ d.type }}</span><div style="flex:1"><div style="font-weight:500">{{ d.name }}</div><div style="font-size:12.5px;color:#667085">{{ d.cat }} · {{ d.date }}</div></div><button sc-camel-on-click="{{ d.dl }}" aria-label="Baixar" style="width:30px;height:30px;border:1px solid #E4E7EC;border-radius:7px;background:#fff;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px">download</span></button></div></sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.msgs }}">
+        <section data-screen-label="Cliente · Mensagens" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Mensagens</h1><p style="margin:4px 0 0;color:#667085">Fale com seu time na Marketing Pro · Rafael Lima costuma responder em 1 h</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;display:flex;flex-direction:column;height:min(560px,calc(100vh - 220px));min-height:400px;overflow:hidden">
+            <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:#F9FAFB">
+              <sc-for list="{{ chat }}" as="m">
+                <sc-if value="{{ m.them }}"><div style="max-width:72%;align-self:flex-start"><div style="font-size:11.5px;color:#667085;margin-bottom:3px">{{ m.who }} · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 10px 3px;background:#fff;border:1px solid #E4E7EC;font-size:13.5px">{{ m.text }}</div></div></sc-if>
+                <sc-if value="{{ m.me }}"><div style="max-width:72%;align-self:flex-end"><div style="font-size:11.5px;color:#667085;margin-bottom:3px;text-align:right">Você · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 3px 10px;background:{{ br.acc }};color:#fff;font-size:13.5px">{{ m.text }}</div></div></sc-if>
+              </sc-for>
+            </div>
+            <div style="padding:12px 14px;border-top:1px solid #E4E7EC;display:flex;gap:8px">
+              <input value="{{ draft }}" sc-camel-on-change="{{ onDraft }}" sc-camel-on-key-down="{{ onKey }}" placeholder="Escreva uma mensagem…" aria-label="Mensagem" style="flex:1;height:40px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;outline:none" style-focus="border-color:{{ br.acc }}">
+              <button sc-camel-on-click="{{ send }}" style="height:40px;padding:0 16px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">Enviar</button>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.work }}">
+<section data-screen-label="Cliente · Feito pela agência" style="display:flex;flex-direction:column;gap:16px">
+  <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Feito pela agência</h1><p style="margin:4px 0 0;color:#667085">O que a Marketing Pro e os xodós dela fizeram na sua conta, em português claro.</p></div>
+  <div style="background:#111318;color:#fff;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:#A4ABB8;font-weight:500;letter-spacing:.04em">RESUMO DA SEMANA · 28 SET A 4 OUT</span><span style="font-size:12px;color:#A4ABB8">também enviado no seu WhatsApp</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px"><sc-for list="{{ cw.week }}" as="k"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#A4ABB8">{{ k.l }}</span><span style="font-size:26px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ k.v }}</span><span style="font-size:12px;color:{{ k.c }}">{{ k.s }}</span></div></sc-for></div>
+    <div style="border-top:1px solid #2F3440;padding-top:12px;display:flex;gap:10px;align-items:flex-start"><span style="font:700 12px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 8px;flex-shrink:0">melhor ação</span><span style="font-size:14px;color:#E4E7EC;text-wrap:pretty">{{ cw.best }}</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px;align-items:start">
+    <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-size:14px;font-weight:600">Linha do tempo</span><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ cw.filt }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:28px;padding:0 10px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12.5px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
+      <sc-for list="{{ cw.feed }}" as="f"><div style="display:grid;grid-template-columns:38px 1fr;gap:12px;padding:12px 18px;border-top:1px solid #F2F4F7"><span style="width:34px;height:34px;border-radius:9px;background:{{ f.bg }};display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:{{ f.c }}">{{ f.i }}</span></span><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:14px;font-weight:500;text-wrap:pretty">{{ f.t }}</span><span style="font-size:13px;color:#475467;text-wrap:pretty">{{ f.why }}</span><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:#667085"><span>{{ f.when }}</span><span>·</span><span>{{ f.who }}</span><sc-if value="{{ f.hasImp }}"><span style="padding:1px 7px;border-radius:5px;background:rgba(23,178,106,0.12);color:#067647;font-weight:500">{{ f.imp }}</span></sc-if></div></div></div></sc-for>
+    </div>
+    <sc-if value="{{ cw.askOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;display:flex;flex-direction:column;min-height:440px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #F2F4F7;display:flex;gap:10px;align-items:center"><span style="font:700 13px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 9px">xodó</span><span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:600">Pergunte sobre seus resultados</span><span style="font-size:12px;color:#667085">Vê só os dados da Construtora Pilar. Assuntos de contrato vão para o Rafael.</span></span></div>
+      <div style="flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:420px"><sc-for list="{{ cw.chat }}" as="m"><sc-if value="{{ m.bot }}"><div style="align-self:flex-start;max-width:88%;background:#F2F4F7;border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:13.5px;line-height:1.45;text-wrap:pretty">{{ m.t }}</div></sc-if><sc-if value="{{ m.me }}"><div style="align-self:flex-end;max-width:80%;background:{{ br.acc }};color:#fff;border-radius:14px 14px 4px 14px;padding:9px 12px;font-size:13.5px;line-height:1.45">{{ m.t }}</div></sc-if><sc-if value="{{ m.hand }}"><div style="align-self:stretch;border:1px dashed #D0D5DD;border-radius:10px;padding:8px 12px;font-size:12.5px;color:#475467;display:flex;gap:8px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1;color:{{ br.acc }}">support_agent</span><span>{{ m.t }}</span></div></sc-if></sc-for></div>
+      <div style="padding:10px 18px 0;display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ cw.sugg }}" as="s"><button sc-camel-on-click="{{ s.pick }}" style="height:28px;padding:0 10px;border:1px solid #E4E7EC;border-radius:99px;background:#fff;color:#344054;font-size:12.5px">{{ s.l }}</button></sc-for></div>
+      <div style="padding:12px 18px;display:flex;gap:8px"><input value="{{ cw.q }}" sc-camel-on-change="{{ cw.onQ }}" sc-camel-on-key-down="{{ cw.onKey }}" placeholder="Por que o custo por lead subiu?" aria-label="Pergunta" style="flex:1;min-width:0;height:38px;border:1px solid #D0D5DD;border-radius:8px;padding:0 12px;font-size:14px;outline:none"><button sc-camel-on-click="{{ cw.ask }}" aria-label="Enviar" style="width:38px;height:38px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:inherit">arrow_upward</span></button></div>
+    </div></sc-if>
+  </div>
+</section>
+</sc-if>
+<sc-if value="{{ is.start }}">
+<section data-screen-label="Cliente · Pendências" style="display:flex;flex-direction:column;gap:16px">
+  <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">O que precisamos de você</h1><p style="margin:4px 0 0;color:#667085">Para começar a fase 2 do Vista Parque. Leva uns 10 minutos.</p></div>
+  <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span style="font-size:14px;font-weight:600">{{ cw.progL }}</span><div style="flex:1;min-width:160px;height:8px;border-radius:4px;background:#F2F4F7;overflow:hidden"><div style="height:100%;width:{{ cw.progW }};background:#12B76A;transition:width .4s"></div></div></div>
+  <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ cw.items }}" as="it"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:10px;opacity:{{ it.op }}">
+    <div style="display:flex;gap:12px;align-items:flex-start"><span style="width:24px;height:24px;border-radius:50%;border:2px solid {{ it.ring }};background:{{ it.fill }};color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0;box-sizing:border-box">{{ it.mark }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">{{ it.t }}</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ it.d }}</span></div><sc-if value="{{ it.todo }}"><button sc-camel-on-click="{{ it.open }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">{{ it.openL }}</button></sc-if></div>
+    <sc-if value="{{ it.isOpen }}"><div style="margin-left:36px;display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ it.steps }}" as="s"><div style="display:flex;gap:8px;font-size:13px;color:#344054"><span style="font-weight:600;color:{{ br.acc }}">{{ s.k }}</span><span style="text-wrap:pretty">{{ s.t }}</span></div></sc-for>
+      <sc-if value="{{ it.isText }}"><textarea value="{{ it.val }}" sc-camel-on-change="{{ it.onVal }}" rows="4" placeholder="{{ it.ph }}" aria-label="{{ it.t }}" style="border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;font:400 14px/1.5 inherit;resize:vertical;outline:none"></textarea></sc-if>
+      <sc-if value="{{ it.isFile }}"><button sc-camel-on-click="{{ it.done }}" style="border:1.5px dashed #D0D5DD;border-radius:10px;background:#FAFAFB;padding:18px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#667085;font:inherit"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1;color:inherit">upload_file</span><span style="font-size:13.5px;font-weight:500;color:#101828">Arraste os arquivos ou clique para escolher</span><span style="font-size:12px">PNG, SVG, PDF ou ZIP</span></button></sc-if>
+      <div style="display:flex;gap:8px"><button sc-camel-on-click="{{ it.done }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">{{ it.doneL }}</button><button sc-camel-on-click="{{ it.close }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">Depois</button></div>
+    </div></sc-if>
+  </div></sc-for></div>
+  <span style="font-size:12.5px;color:#667085">Os acessos são dados pela própria plataforma (Meta, Google). A Marketing Pro nunca pede sua senha.</span>
+</section>
+</sc-if>
+<sc-if value="{{ is.help }}">
+        <section data-screen-label="Cliente · Ajuda" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Ajuda</h1><p style="margin:4px 0 0;color:#667085">Dúvidas frequentes sobre o portal</p></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <sc-for list="{{ faq }}" as="f"><div style="border-bottom:1px solid #F2F4F7"><button sc-camel-on-click="{{ f.toggle }}" aria-expanded="{{ f.open }}" style="display:flex;width:100%;padding:14px 20px;border:none;background:transparent;text-align:left;font-weight:500"><span style="flex:1">{{ f.q }}</span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:#667085">{{ f.icon }}</span></button><sc-if value="{{ f.open }}"><div style="padding:0 20px 14px;color:#475467">{{ f.a }}</div></sc-if></div></sc-for>
+          </div>
+        </section>
+      </sc-if>
+    </div>
+  </main>
+
+  <sc-if value="{{ toast.show }}">
+    <div role="status" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#111318;color:#fff;font-size:13.5px;box-shadow:0 12px 24px rgba(16,24,40,0.24)"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:#6CE9A6">check_circle</span>{{ toast.msg }}</div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ out.has }}"><div role="dialog" aria-modal="true" aria-label="Sessão encerrada" style="position:fixed;inset:0;z-index:2000;background:radial-gradient(60% 50% at 50% 42%,#FFFFFF 0%,#F2F4F7 75%);display:grid;place-items:center;padding:24px;font-family:'Geist',system-ui,sans-serif;color:#101828"><div style="width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center"><span style="width:56px;height:56px;border-radius:16px;background:#EEF1FF;color:#465FFF;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:28px;line-height:1">logout</span></span><span style="font-size:22px;font-weight:600;letter-spacing:-0.02em">Você saiu {{ out.where }}</span><span style="font-size:14.5px;color:#667085;text-wrap:pretty">Sua sessão foi encerrada neste navegador.</span><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px"><button sc-camel-on-click="{{ out.home }}" style="height:42px;padding:0 18px;border:none;border-radius:11px;background:#465FFF;color:#fff;font-size:14px;font-weight:600">Voltar para o site</button><button sc-camel-on-click="{{ out.back }}" style="height:42px;padding:0 18px;border:1px solid #D0D5DD;border-radius:11px;background:#fff;color:#101828;font-size:14px;font-weight:600">Entrar de novo</button></div></div></div></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+
+const CW_FEED = [
+  ['opt', 'auto_awesome', 'Pausamos um anúncio que estava caro e passamos a verba para o que traz mais contatos', 'O anúncio “Vista Parque · Carrossel” trazia cada contato a R$ 148. Os R$ 210 por dia foram para o “Vista Parque · Vídeo”, que traz a R$ 81.', 'hoje, 09:12', 'Nina, xodó da Marketing Pro', '−R$ 67 por contato'],
+  ['alert', 'notifications', 'Avisamos que a verba do mês estava acabando cedo', 'No ritmo atual, a verba de outubro acabaria no dia 24. O Rafael ajustou o ritmo para durar até o fim do mês.', 'ontem', 'Zuca, xodó · revisado por Rafael Lima', ''],
+  ['rep', 'lab_profile', 'Publicamos o relatório de setembro', '131 contatos no lançamento Vista Parque, 18% a mais que agosto. Está em Relatórios.', '01 out', 'Faísca, xodó · revisado por Rafael Lima', '+18% contatos'],
+  ['opt', 'auto_awesome', 'Aumentamos o lance nas buscas por “apartamento 3 quartos Ecoville”', 'Vocês apareciam em só 41% das buscas. Agora aparecem em 68%.', '30 set', 'Nina, xodó da Marketing Pro', '+27 pontos de presença'],
+  ['team', 'groups', 'Criamos 4 novos criativos para a fase 2', 'Esperando sua aprovação em Relatórios → Criativos.', '29 set', 'Bia Nunes, designer', ''],
+  ['opt', 'auto_awesome', 'Tiramos da campanha quem já é cliente', 'A lista de compradores de 2025 parou de ver anúncios de lançamento. Menos verba desperdiçada.', '28 set', 'Nina, xodó da Marketing Pro', '−R$ 340 no mês'],
+];
+const CW_TONE = { opt: ['#FFF3EE', '#D9472A'], alert: ['#FFFAEB', '#B54708'], rep: [`color-mix(in srgb, ${ACC()} 8%, transparent)`, ACC()], team: ['#F2F4F7', '#475467'] };
+const CW_ITEMS = [
+  ['meta', 'Acesso ao Meta Business', 'Para criarmos a campanha da fase 2 na sua conta de anúncios.', 'steps', ['Abra business.facebook.com', 'Configurações → Parceiros → Adicionar', 'Cole o código 4821 0937 da Marketing Pro']],
+  ['gads', 'Acesso ao Google Ads', 'Para a campanha de pesquisa do Vista Parque.', 'steps', ['Abra ads.google.com', 'Ferramentas → Acesso e segurança → Gerentes', 'Aceite o convite da Marketing Pro (ID 482-119-3307)']],
+  ['brand', 'Materiais do empreendimento', 'Logo da fase 2, fotos decoradas e tabela de unidades.', 'file', []],
+  ['brief', 'Briefing da fase 2', 'Público, diferenciais e o que não pode ser dito nos anúncios.', 'text', [], 'Ex.: casais de 30 a 45 anos, 3 quartos, lazer completo. Não citar valor de entrada.'],
+  ['appr', 'Quem aprova os criativos', 'Se não for você, diga quem. Essa pessoa recebe os criativos no WhatsApp.', 'text', [], 'Nome e WhatsApp'],
+  ['site', 'Acesso ao site', 'Para instalar o pixel e medir as vendas que vêm dos anúncios.', 'steps', ['Envie o acesso de administrador para ti@marketingpro.com.br', 'Ou peça para quem cuida do site falar com o Rafael']],
+];
+
+function mountSpherumLogo(host, o) {
+  const NS = 'http://www.w3.org/2000/svg', CX = 23, CY = 27, RX = 22.5, RY = 7.2, T = -20 * Math.PI / 180;
+  const mk = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const svg = mk('svg', { viewBox: '0 0 48 48', 'aria-hidden': 'true' }); svg.style.cssText = 'display:block;overflow:visible';
+  const gB = mk('g', { transform: 'rotate(-20 23 27)' }), gF = mk('g', { transform: 'rotate(-20 23 27)' });
+  const oB = mk('path', { d: 'M0.5 27 A22.5 7.2 0 0 1 45.5 27', fill: 'none', 'stroke-width': 1.8 });
+  const oF = mk('path', { d: 'M0.5 27 A22.5 7.2 0 0 0 45.5 27', fill: 'none', 'stroke-width': 1.8 });
+  const dB = mk('circle', { r: 3.8, 'stroke-width': 1.6 }), dF = mk('circle', { r: 3.8, 'stroke-width': 1.6 });
+  const sph = mk('circle', { cx: CX, cy: CY, r: 16.5 });
+  const eyes = [0, 1].map(() => ({ r: mk('rect', { width: 3.6, rx: 1.8 }), a: mk('path', { fill: 'none', 'stroke-width': 1.9, 'stroke-linecap': 'round' }) }));
+  gB.append(oB, dB); gF.append(oF, dF);
+  svg.append(gB, sph); eyes.forEach(e => svg.append(e.r, e.a)); svg.append(gF);
+  host.appendChild(svg);
+  let opt = Object.assign({}, o), lapAt = null, blinkAt = null, raf = 0, bt = 0, iv = 0, lastLap = o.lapKey;
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const hours = () => { if (opt.time != null && opt.time !== '') return ((+opt.time % 24) + 24) % 24; const d = new Date(); return d.getHours() + d.getMinutes() / 60; };
+  const phase = h => (h >= 22 || h < 6) ? 'sleep' : h >= 18 ? 'evening' : 'day';
+  const paint = () => {
+    const now = performance.now(), s = opt.size || 32, ink = opt.ink || '#101828', bg = opt.bg || '#FFFFFF', dot = opt.dot || ACC();
+    svg.setAttribute('width', s); svg.setAttribute('height', s);
+    const h = hours(), ph = phase(h); let th = (90 + (h - 12) * 15) * Math.PI / 180, more = false;
+    if (lapAt != null) { const p = Math.min(1, (now - lapAt) / 1500), e = 1 - Math.pow(1 - p, 3); th -= (1 - e) * Math.PI * 2; if (p < 1) more = true; else lapAt = null; }
+    const x = CX + RX * Math.cos(th), y = CY + RY * Math.sin(th), front = Math.sin(th) > 0;
+    oB.setAttribute('stroke', dot); oF.setAttribute('stroke', dot); sph.setAttribute('fill', ink);
+    [[dB, !front], [dF, front]].forEach(([c, on]) => { c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('fill', dot); c.setAttribute('stroke', bg); c.style.display = on ? '' : 'none'; });
+    const wx = (x - CX) * Math.cos(T) - (y - CY) * Math.sin(T), wy = (x - CX) * Math.sin(T) + (y - CY) * Math.cos(T), L = Math.hypot(wx, wy) || 1;
+    const ox = wx / L * 3.4, oy = wy / L * 2.6;
+    let bl = 1; if (blinkAt != null) { const q = (now - blinkAt) / 200; if (q < 1) { bl = Math.max(0.12, Math.abs(1 - 2 * q)); more = true; } else blinkAt = null; }
+    const ec = /^#fff(fff)?$/i.test(ink) ? bg : '#FFFFFF';
+    [[21.2, 25.6], [28.4, 27.4]].forEach((b, i) => { const cx = b[0] + ox, cy = b[1] + oy, e = eyes[i];
+      if (ph === 'sleep' && lapAt == null) { e.r.style.display = 'none'; e.a.style.display = ''; e.a.setAttribute('d', 'M' + (cx - 2.1) + ' ' + cy + ' q2.1 2.4 4.2 0'); e.a.setAttribute('stroke', ec); }
+      else { const hh = (ph === 'evening' ? 5.2 : 7) * bl; e.a.style.display = 'none'; e.r.style.display = ''; e.r.setAttribute('x', cx - 1.8); e.r.setAttribute('y', cy - hh / 2); e.r.setAttribute('height', hh); e.r.setAttribute('ry', Math.min(1.8, hh / 2)); e.r.setAttribute('fill', ec); e.r.setAttribute('transform', 'rotate(18 ' + cx + ' ' + cy + ')'); } });
+    return more;
+  };
+  const loop = () => { cancelAnimationFrame(raf); const st = () => { if (paint()) raf = requestAnimationFrame(st); }; raf = requestAnimationFrame(st); };
+  const lap = () => { if (reduce) return; lapAt = performance.now(); loop(); };
+  const sched = () => { clearTimeout(bt); bt = setTimeout(() => { if (!reduce && phase(hours()) !== 'sleep') { blinkAt = performance.now(); loop(); } sched(); }, 2600 + Math.random() * 4000); };
+  paint(); if (!opt.still) { if (opt.intro !== false) lap(); sched(); iv = setInterval(paint, 30000); }
+  return { lap, update(n) { opt = Object.assign({}, n); if (n.lapKey !== lastLap) { lastLap = n.lapKey; lap(); } else paint(); }, destroy() { cancelAnimationFrame(raf); clearTimeout(bt); clearInterval(iv); svg.remove(); } };
+}
+function spPhaseLabel(h) { return (h >= 22 || h < 6) ? 'madrugada' : h >= 18 ? 'noite' : h >= 12 ? 'tarde' : 'manhã'; }
+function LiveLogo(p) {
+  const ref = React.useRef(null), ctl = React.useRef(null);
+  React.useEffect(() => { ctl.current = mountSpherumLogo(ref.current, p); return () => { if (ctl.current) ctl.current.destroy(); }; }, []);
+  React.useEffect(() => { if (ctl.current) ctl.current.update(p); });
+  const d = new Date(), h = (p.time != null && p.time !== '') ? +p.time : d.getHours() + d.getMinutes() / 60;
+  return React.createElement('span', { ref, title: p.still ? undefined : 'Spherum · ' + spPhaseLabel(h) + '. O ponto azul acompanha o horário.', onMouseEnter: () => { if (ctl.current && !p.still) ctl.current.lap(); }, onClick: p.onClick, style: { display: 'inline-block', lineHeight: 0, flexShrink: 0, width: p.size, height: p.size, cursor: p.onClick ? 'pointer' : 'default' } });
+}
+function ACC() { return (window.__spBrand && window.__spBrand.c) || '#465FFF'; }
+function spDl(name, content, type) { const url = URL.createObjectURL(new Blob([content], { type })); const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }
+function spDoc(t, sub) { return '<!doctype html><meta charset="utf-8"><title>' + t + '</title><body style="font-family:sans-serif;padding:40px;max-width:680px;color:#101828"><h2>' + t + '</h2><p>' + (sub || '') + '</p><p style="color:#667085;margin-top:32px">Documento de demonstração.</p></body>'; }
+class Component extends DCLogic {
+  state = { view: 'home', workSeen: false, cwF: 'all', cwChat: null, cwQ: '', npsV: null, npsTxt: '', npsDone: false, pix: 'off', cwDone: { meta: true, gads: true }, cwOpen: null, cwVals: {}, period: '30D', metric: 'leads', appr: {}, draft: '', sent: [], faq: -1, toast: null, narrow: false };
+  mainRef = React.createRef();
+  componentDidMount() { this.rs = () => { const n = window.innerWidth < 900; if (n !== this.state.narrow) this.setState({ narrow: n }); }; this.rs(); window.addEventListener('resize', this.rs); }
+  componentWillUnmount() { window.removeEventListener('resize', this.rs); clearTimeout(this.tt); }
+  toastMsg(m) { clearTimeout(this.tt); this.setState({ toast: m }); this.tt = setTimeout(() => this.setState({ toast: null }), 2400); }
+  cwPendN() { return CW_ITEMS.filter(i => !(this.state.cwDone || {})[i[0]]).length || 0; }
+  go(v) { this.setState(v === 'work' ? { view: v, workSeen: true } : { view: v }); if (this.mainRef.current) this.mainRef.current.scrollTop = 0; }
+  seg(list, cur, set) { return list.map(([id, l]) => { const a = cur === id; return { l, pick: () => set(id), sel: a ? 'true' : 'false', bg: a ? '#fff' : 'transparent', c: a ? '#101828' : '#667085', bd: a ? '#E4E7EC' : 'transparent', sh: a ? '0 1px 2px rgba(16,24,40,0.08)' : 'none' }; }); }
+  path(a, b, w, h) { const all = a.concat(b); let mn = Math.min(...all), mx = Math.max(...all); const p = (mx - mn) * 0.2 || 1; mn -= p; mx += p;
+    const d = arr => arr.map((v, i) => (i ? 'L' : 'M') + (i * w / (arr.length - 1)).toFixed(1) + ' ' + (h - (v - mn) / (mx - mn) * h).toFixed(1)).join(' ');
+    const line = d(a); return { line, area: line + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z', prev: d(b) }; }
+  ser(seed, n, base, vol, tr) { let s = seed * 7919 % 233280; const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; const a = []; for (let i = 0; i < n; i++) a.push(base * (1 + tr * (i / (n - 1) - 0.5)) * (1 + (r() - 0.5) * vol)); return a; }
+  renderVals() {
+    if (this._br === undefined) { try { this._br = JSON.parse(localStorage.getItem('spherum.brand') || 'null'); } catch (e) { this._br = null; } window.__spBrand = this._br && this._br.onClient && /^#[0-9a-f]{6}$/i.test(this._br.brand) ? { c: this._br.brand } : null; }
+    const brS = (this._br && this._br.onClient) ? this._br : null, brC = ACC(), brLogo = brS && brS.logo ? brS.logo : '', brName = brS && brS.name ? brS.name : 'Marketing Pro';
+    const brFg = (() => { const n = parseInt(brC.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
+    const br = { acc: brC, name: brName, lgBg: brLogo ? '#FFFFFF' : brC, lgImg: brLogo ? 'url("' + brLogo + '")' : 'none', lgFg: brFg, lgIni: brLogo ? '' : (brName.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'MP').toUpperCase(), powOpen: this.state.sbOpen !== false && !(brS && brS.powered === false) };
+    const S = this.state; const open = !S.narrow;
+    const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', 1], ['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', S.sent.length ? 0 : 1], ['help', 'Ajuda', 'help']];
+    const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
+    const is = {}; navDef.forEach(n => is[n[0]] = S.view === n[0]);
+    const m90 = S.period === '90D' ? 2.9 : 1;
+    const st = (d, dir) => { if (dir === 0 || Math.abs(d) < 3) return { state: dir === 0 ? 'Conforme o planejado' : 'Estável', icon: 'trending_flat', c: '#475467', bg: '#F2F4F7' }; const good = dir > 0 ? d > 0 : d < 0;
+      return good ? { state: 'Melhorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#079455', bg: 'rgba(23,178,106,0.12)' } : { state: 'Piorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#D92D20', bg: 'rgba(240,68,56,0.10)' }; };
+    const K = [['Investimento', 18700 * m90, 17608 * m90, brl, 0], ['Leads', 189 * m90, 155 * m90, v => f(Math.round(v)), 1], ['Custo por lead', 98.94, 113.6, brl2, -1, 'R$ 120,00', '17,5% melhor que a meta'], ['Visitas agendadas', 42 * m90, 41 * m90, v => f(Math.round(v)), 1]];
+    const kpis = K.map(k => { const d = (k[1] - k[2]) / k[2] * 100; return Object.assign({ l: k[0], v: k[3](k[1]), prev: k[3](k[2]), d: (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', hasGoal: !!k[5], goal: k[5] || '', goalSt: k[6] || '' }, st(d, k[4])); });
+    const mets = { leads: ['Leads', 6.3, '189', '+21,9%', '#079455'], cpl: ['Custo por lead', 98.9, 'R$ 98,94', '−12,9%', '#079455'], invest: ['Investimento', 623, 'R$ 18.700', '+6,2%', '#475467'] };
+    const mm = mets[S.metric]; const cur = this.ser(S.metric.length + 3, 30, mm[1], 0.35, S.metric === 'cpl' ? -0.15 : 0.18), prev = this.ser(S.metric.length + 40, 30, mm[1] * (S.metric === 'cpl' ? 1.14 : 0.85), 0.35, 0);
+    const ch = Object.assign({ label: mm[0], total: mm[2], d: mm[3], dc: mm[4] }, this.path(cur, prev, 800, 220));
+    const apprDef = [['Criativos fase 2 · Vista Parque', '6 peças · enviadas por Lucas Prado há 1 dia'], ['Landing page · Decorado virtual', 'Nova seção de plantas · enviada hoje']];
+    const approvals = apprDef.map((a, i) => { const s = S.appr[i]; return { t: a[0], d: a[1], pending: !s, st: s === 'ok' ? 'Aprovado' : s === 'chg' ? 'Alterações solicitadas' : 'Aguardando aprovação', c: s === 'ok' ? '#079455' : s === 'chg' ? '#B54708' : ACC(), bg: s === 'ok' ? 'rgba(23,178,106,0.12)' : s === 'chg' ? 'rgba(247,144,9,0.13)' : `color-mix(in srgb, ${ACC()} 10%, transparent)`,
+      approve: () => { this.setState(x => ({ appr: Object.assign({}, x.appr, { [i]: 'ok' }) })); this.toastMsg('Aprovado · a agência foi avisada'); }, change: () => { this.setState(x => ({ appr: Object.assign({}, x.appr, { [i]: 'chg' }) })); this.go('msgs'); } }; });
+    const chatBase = [['them', 'Rafael Lima', 'ontem', 'Marcelo, o relatório de agosto já está no portal. Destaque para o lançamento Vista Parque: 131 leads a R$ 94,66.'], ['me', '', 'ontem', 'Excelente resultado no lançamento. O time comercial está animado com a qualidade dos leads.'], ['them', 'Rafael Lima', 'ontem', 'Que bom! Na reunião de hoje às 09:30 trago a proposta para a fase 2.']];
+    const chat = chatBase.map(c => ({ them: c[0] === 'them', me: c[0] === 'me', who: c[1], when: c[2], text: c[3] })).concat(S.sent.map(t => ({ them: false, me: true, who: '', when: 'agora', text: t })));
+    const send = () => { const d = S.draft.trim(); if (!d) return; this.setState(x => ({ draft: '', sent: x.sent.concat([d]) })); };
+    const faq = [['O que significa “Melhorou”, “Piorou” e “Estável”?', 'Comparamos cada métrica com o mesmo número de dias imediatamente anterior. Para custos (como custo por lead), cair é melhorar. Variações abaixo de 3% aparecem como estáveis.'],
+      ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.']]
+      .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
+    return {
+      logout: () => { this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, back: () => this.setState({ __out: false }) }, br: Object.assign(br, { powOpen: br.powOpen && open }),
+      liveLogo: React.createElement(LiveLogo, { size: 15, ink: '#475467', bg: '#FFFFFF', intro: false }),
+      mainRef: this.mainRef, open, sbW: open ? '240px' : '64px', nav, is,
+      periods: this.seg([['30D', '30 dias'], ['90D', '90 dias']], S.period, v => this.setState({ period: v })), periodLabel: S.period === '30D' ? 'últimos 30 dias' : 'últimos 90 dias', kpis,
+      transparency: [
+        { icon: 'task_alt', h: 'O que fizemos', items: ['Lançamos a campanha Vista Parque com 3 públicos e 8 criativos', 'Ativamos a pesquisa “apartamento alto padrão” no Google', 'Ajustamos o formulário para qualificar renda'] },
+        { icon: 'insights', h: 'O que aconteceu', items: ['189 leads no mês, 22% a mais que agosto', 'Custo por lead abaixo da meta pelo 3º mês seguido', '42 visitas agendadas pelo seu time comercial'] },
+        { icon: 'flag', h: 'O que vem a seguir', items: ['Fase 2 do lançamento com vídeo do decorado', 'Teste de campanha de remarketing para visitantes do stand', 'Reunião de resultados hoje, 09:30'] }],
+      insights: [['green', 'trending_down', 'Seu custo por lead caiu 13%', 'R$ 98,94 agora vs R$ 113,60 no período anterior'], ['green', 'trending_up', 'Google Ads cresceu 21% em leads', '58 leads vs 48 · pesquisa por “alto padrão”'], ['blue', 'pie_chart', 'A campanha Vista Parque gerou 69% dos leads', '131 de 189 leads no período']]
+        .map(i => ({ t: i[2], ev: i[3], icon: i[1], c: i[0] === 'green' ? '#079455' : '#1570EF', bg: i[0] === 'green' ? 'rgba(23,178,106,0.12)' : 'rgba(46,144,250,0.12)' })),
+      approvals, pendingN: approvals.filter(a => a.pending).length,
+      summary: [['event', 'Próxima reunião', 'Hoje, 09:30 · Google Meet', 'msgs'], ['lab_profile', 'Relatório mais recente', 'Agosto 2026 · enviado 01 set', 'reports'], ['receipt_long', 'Próxima fatura', 'R$ 7.200 · vence 05 out', 'fin']].map(s => ({ icon: s[0], l: s[1], v: s[2], go: () => this.go(s[3]) })),
+      metrics: this.seg([['leads', 'Leads'], ['cpl', 'Custo por lead'], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v })), ch,
+      channels: [['Meta Ads', 12400, 131], ['Google Ads', 6300, 58]].map(c => ({ p: c[0], s: brl(c[1]), l: f(c[2]), cpl: brl2(c[1] / c[2]), w: c[1] / 18700 * 100 + '%' })),
+      camps: [{ name: 'Lançamento Vista Parque', plat: 'Meta Ads', obj: 'Captação de leads', m: [['Investimento', 'R$ 12.400'], ['Leads', '131'], ['Custo por lead', 'R$ 94,66'], ['Visitas', '29']], note: 'Melhor público: interesse em imóveis de alto padrão, 35–54 anos, raio de 15 km.' },
+        { name: 'Search Alto Padrão', plat: 'Google Ads', obj: 'Captação de leads', m: [['Investimento', 'R$ 6.300'], ['Leads', '58'], ['Custo por lead', 'R$ 108,62'], ['Visitas', '13']], note: 'Termos com “apartamento 4 quartos” convertem 1,8× mais que termos genéricos.' }]
+        .map(k => Object.assign({}, k, { m: k.m.map(x => ({ l: x[0], v: x[1] })) })),
+      reports: [['Relatório mensal · Setembro 2026', 'Chega em 01 out', false], ['Relatório mensal · Agosto 2026', 'Enviado 01 set · 4 páginas', true], ['Relatório mensal · Julho 2026', 'Enviado 01 ago', false], ['Relatório trimestral · Q2 2026', 'Enviado 03 jul', false]]
+        .map(r => ({ t: r[0], d: r[1], isNew: r[2], open: () => { const w = window.open(URL.createObjectURL(new Blob([spDoc(r[0], 'Relatório enviado em ' + r[1])], { type: 'text/html' })), '_blank'); if (!w) this.toastMsg('Permita pop-ups para abrir o relatório'); }, pdf: () => { spDl(r[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(r[0], 'Relatório enviado em ' + r[1]), 'text/html'); this.toastMsg('Relatório baixado'); } })),
+      invoices: [['Mensalidade out/26', '05 out', 'Pendente', 'R$ 7.200', ACC(), `color-mix(in srgb, ${ACC()} 10%, transparent)`, 'NF após pagamento'], ['Mensalidade set/26', '05 set', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0482'], ['Mensalidade ago/26', '05 ago', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0451'], ['Mensalidade jul/26', '05 jul', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0420']]
+        .map(i => ({ d: i[0], due: i[1], st: i[2], v: i[3], c: i[4], bg: i[5], nf: i[6] })),
+      copyCode: () => { try { navigator.clipboard.writeText('23793.38128 60082.153600 47000.063300 1 99870000720000'); } catch (e) {} this.toastMsg('Linha digitável copiada'); },
+      docs: [['Aditivo contratual 2026', 'Contrato', '02 jan 2026', 'PDF'], ['Relatório mensal — agosto', 'Relatório', '01 set 2026', 'PDF'], ['Contrato de prestação de serviços', 'Contrato', '14 jul 2023', 'PDF'], ['Guia de marca Construtora Pilar', 'Outros', '20 jul 2023', 'PDF']].map(d => ({ name: d[0], cat: d[1], date: d[2], type: d[3], dl: () => { spDl(d[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(d[0], d[1] + ' · ' + d[2]), 'text/html'); this.toastMsg(d[0] + ' baixado'); } })),
+      chat, draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }), send, onKey: e => { if (e.key === 'Enter') send(); }, faq,
+      cw: (() => {
+        const filt = [['all', 'Tudo'], ['opt', 'Otimizações'], ['rep', 'Relatórios'], ['alert', 'Alertas']];
+        const chat0 = [['bot', 'Oi, Marcelo! Posso explicar qualquer número da sua conta. Por exemplo: por que o custo por contato mudou, ou como está o Vista Parque.']];
+        const chat = (S.cwChat || chat0).map(m => ({ bot: m[0] === 'bot', me: m[0] === 'me', hand: m[0] === 'hand', t: m[1] }));
+        const reply = q => { const s = q.toLowerCase(); if (/pre[çc]o|desconto|contrato|valor da mensalidade|cancel|reajuste/.test(s)) return [['bot', 'Essa é uma conversa para o Rafael, que cuida da sua conta.'], ['hand', 'Passei sua pergunta para o Rafael Lima. Ele responde em Mensagens até amanhã.']];
+          if (/cpl|custo|caro|subiu/.test(s)) return [['bot', 'O custo por contato subiu de R$ 88 para R$ 94 em setembro porque o carrossel do Vista Parque ficou caro. Hoje cedo ele foi pausado e a verba foi para o vídeo, que traz contatos a R$ 81.']];
+          if (/vista|lan[çc]amento|fase/.test(s)) return [['bot', 'O Vista Parque teve 131 contatos em setembro, 18% a mais que agosto. Para a fase 2 ainda faltam os materiais e o briefing, que estão em Pendências.']];
+          if (/venda|retorno|vale a pena/.test(s)) return [['bot', 'Em setembro, 2 unidades vendidas vieram de contatos dos anúncios. Isso deu R$ 38 mil em vendas para cada R$ 5,4 mil investidos. O detalhe está no relatório.']];
+          return [['bot', 'Boa pergunta. Pelos dados da sua conta, os contatos estão estáveis e o investimento está dentro do previsto. Se quiser, pergunte sobre custo, o Vista Parque ou vendas.']]; };
+        const ask = q0 => { const q = (q0 || S.cwQ || '').trim(); if (!q) return; const base = (S.cwChat || chat0).concat([['me', q]]); this.setState({ cwChat: base, cwQ: '' }); setTimeout(() => this.setState(s => ({ cwChat: (s.cwChat || base).concat(reply(q)) })), 700); };
+        const done = Object.assign({}, S.cwDone), left = CW_ITEMS.filter(i => !done[i[0]]).length;
+        const items = CW_ITEMS.map(i => { const ok = !!done[i[0]], open = S.cwOpen === i[0];
+          return { t: i[1], d: ok ? 'Recebido. Obrigado!' : i[2], todo: !ok && !open, isOpen: open, op: ok ? 0.7 : 1, mark: ok ? '✓' : '', ring: ok ? '#12B76A' : '#D0D5DD', fill: ok ? '#12B76A' : 'transparent', openL: i[3] === 'steps' ? 'Ver como fazer' : i[3] === 'file' ? 'Enviar arquivos' : 'Responder',
+            steps: (i[4] || []).map((x, k) => ({ k: String(k + 1), t: x })), isText: i[3] === 'text', isFile: i[3] === 'file', ph: i[5] || '', val: (S.cwVals || {})[i[0]] || '', onVal: e => this.setState(s => ({ cwVals: Object.assign({}, s.cwVals, { [i[0]]: e.target.value }) })),
+            doneL: i[3] === 'steps' ? 'Já fiz' : i[3] === 'file' ? 'Enviar' : 'Salvar', open: () => this.setState({ cwOpen: i[0] }), close: () => this.setState({ cwOpen: null }),
+            done: () => { this.setState(s => ({ cwDone: Object.assign({}, s.cwDone, { [i[0]]: true }), cwOpen: null })); this.toastMsg(i[3] === 'steps' ? 'Vamos confirmar o acesso e te avisamos' : 'Recebido! O Rafael foi avisado.'); } }; });
+        const npsV = S.npsV;
+        return { weekN: '6', best: 'Pausamos um anúncio caro e passamos a verba para o vídeo do Vista Parque: cada contato ficou R$ 67 mais barato.',
+          week: [['Contatos', '38', '+12% na semana', '#75E0A7'], ['Custo por contato', 'R$ 92', '−4% na semana', '#75E0A7'], ['Investido', 'R$ 3.500', 'dentro do previsto', '#A4ABB8']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
+          filt: filt.map(f => { const on = S.cwF === f[0]; return { l: f[1], pick: () => this.setState({ cwF: f[0] }), bd: on ? ACC() : '#E4E7EC', bg: on ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : '#fff', c: on ? '#3538CD' : '#344054' }; }),
+          feed: CW_FEED.filter(f => S.cwF === 'all' || f[0] === S.cwF).map(f => ({ i: f[1], t: f[2], why: f[3], when: f[4], who: f[5], imp: f[6], hasImp: !!f[6], bg: CW_TONE[f[0]][0], c: CW_TONE[f[0]][1] })),
+          askOn: true, chat, q: S.cwQ, onQ: e => this.setState({ cwQ: e.target.value }), onKey: e => { if (e.key === 'Enter') ask(); }, ask: () => ask(),
+          sugg: ['Por que o custo subiu?', 'Como está o Vista Parque?', 'Os anúncios viraram vendas?'].map(l => ({ l, pick: () => ask(l) })),
+          goWork: () => this.go('work'), goStart: () => this.go('start'), hasPend: left > 0, pendL: left + (left === 1 ? ' item pendente' : ' itens pendentes'),
+          progL: (CW_ITEMS.length - left) + ' de ' + CW_ITEMS.length + ' prontos', progW: (CW_ITEMS.length - left) / CW_ITEMS.length * 100 + '%', items,
+          showNps: true, npsAsk: npsV == null && !S.npsDone, npsWhy: npsV != null && !S.npsDone, npsDone: S.npsDone, npsQ: npsV >= 9 ? 'Que bom! O que você mais gosta no nosso trabalho?' : 'Obrigado. O que faria essa nota subir?',
+          npsOpts: Array.from({ length: 11 }, (_, n) => ({ l: String(n), pick: () => this.setState({ npsV: n }), bd: npsV === n ? ACC() : '#E4E7EC', bg: npsV === n ? ACC() : '#fff', c: npsV === n ? '#fff' : '#344054' })),
+          npsTxt: S.npsTxt, onNps: e => this.setState({ npsTxt: e.target.value }), npsSend: () => this.setState({ npsDone: true }), npsSkip: () => this.setState({ npsDone: true }),
+          pixOff: S.pix !== 'on', pixOn: S.pix === 'on', pixL: S.pix === 'wait' ? 'Abrindo o app do banco…' : 'Ativar Pix Automático',
+          pixStart: () => { if (S.pix === 'wait') return; this.setState({ pix: 'wait' }); setTimeout(() => { this.setState({ pix: 'on' }); this.toastMsg('Pix Automático autorizado no seu banco'); }, 1800); } };
+      })(),
+      toast: { show: !!S.toast, msg: S.toast || '' }
+    };
+  }
+}
+</script>
+
+
+</body></html>

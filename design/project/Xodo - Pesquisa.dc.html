@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap">
+<style>
+body{margin:0;background:#F3F1EC;-webkit-font-smoothing:antialiased}
+a{color:#B8401F;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}a:hover{color:#7A2812}
+</style>
+</helmet>
+<div style="background:#F3F1EC;color:#161514;font-family:'Geist',sans-serif;min-height:100vh">
+<div style="max-width:1180px;margin:0 auto;padding:40px 28px 80px;display:flex;flex-direction:column;gap:56px">
+
+<header style="display:flex;flex-direction:column;gap:22px;border-bottom:3px solid #161514;padding-bottom:30px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;font:600 12px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase">
+<span><span style="font:700 22px/1 'Fredoka',sans-serif;letter-spacing:-.01em;text-transform:none">xodó</span> · Pesquisa de mercado</span>
+<span style="color:#635E57">Fontes até 30 set 2026</span>
+</div>
+<h1 style="margin:0;font:800 clamp(38px,6vw,76px)/.98 'Unbounded',sans-serif;letter-spacing:-.035em;text-wrap:balance;max-width:1000px">O que os dots e o Grok Bot fazem, e o que o xodó faz diferente</h1>
+<p style="margin:0;font:400 20px/1.5 'Geist',sans-serif;color:#3D3A36;max-width:760px;text-wrap:pretty">Como esses agentes se conectam a e-mail, agenda, navegador e dispositivos. Como um modelo acessado por API sabe qual personalidade seguir. E como funciona, na prática, um limite de gasto diário em tokens.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:2px;background:#161514;border:2px solid #161514">
+<div style="background:#F3F1EC;padding:22px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">01 · CONEXÕES</span><span style="font:600 19px/1.3 'Geist',sans-serif;text-wrap:pretty">Os dois se conectam por quatro canais diferentes: plugins, navegador na nuvem, o seu computador e canais de mensagem.</span></div>
+<div style="background:#F3F1EC;padding:22px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">02 · PERSONALIDADE</span><span style="font:600 19px/1.3 'Geist',sans-serif;text-wrap:pretty">O modelo não "é" o personagem. Ele recebe uma ficha a cada chamada: regras, trabalho, memória e voz.</span></div>
+<div style="background:#F3F1EC;padding:22px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">03 · GASTO</span><span style="font:600 19px/1.3 'Geist',sans-serif;text-wrap:pretty">Sim, cada passo consome tokens da API. O Grok Bot não tem teto de gasto por Bot, e isso é uma brecha que o xodó pode ocupar.</span></div>
+<div style="background:#EF5B3B;padding:22px;display:flex;flex-direction:column;gap:10px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#2B1D16">04 · OPORTUNIDADE</span><span style="font:600 19px/1.3 'Geist',sans-serif;color:#2B1D16;text-wrap:pretty">Nenhum dos dois deixa escolher o modelo, nem ver e editar a memória com liberdade. O xodó pode oferecer as duas coisas.</span></div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">PARTE 1</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">Quem são</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:28px">
+<article style="display:flex;flex-direction:column;gap:12px">
+<span style="font:700 26px/1 'Fredoka',sans-serif">OpenAI dots</span>
+<p style="margin:0;font:400 16px/1.6 'Geist',sans-serif;text-wrap:pretty">Lançados no DevDay de 29 de setembro de 2026, rodam no GPT-6 Astra e estão chegando ao ChatGPT Pro, Business Premium e Enterprise (em beta). Cada dot tem um computador e um navegador próprios na nuvem, que continuam funcionando com o laptop desligado. Você conversa com ele pelo ChatGPT, Slack, Teams ou por ligação de voz. O dot funciona mais como coordenador: delega o trabalho pesado ao ChatGPT Work ou ao Codex. <a href="https://flaviocopes.com/openai-dots/">Copes</a>, <a href="https://9to5google.com/2026/09/29/openai-dots-agent/">9to5Google</a></p>
+<p style="margin:0;font:400 16px/1.6 'Geist',sans-serif;text-wrap:pretty">A aparência é customizável: nome, forma, cor, olhos, óculos e acessórios. A <a href="https://gizmodo.com/with-dots-openai-wants-you-to-stop-being-afraid-of-its-ai-agents-2000819082">Gizmodo</a> leu os avatares fofos como uma tentativa de suavizar a imagem dos agentes da OpenAI depois do incidente com a Hugging Face.</p>
+</article>
+<article style="display:flex;flex-direction:column;gap:12px">
+<span style="font:700 26px/1 'Fredoka',sans-serif">xAI Grok Bot</span>
+<p style="margin:0;font:400 16px/1.6 'Geist',sans-serif;text-wrap:pretty">Em beta desde 11 de agosto de 2026. Você cria Bots com nome, cada um com um trabalho principal e uma nota sobre como deve trabalhar, e conversa com eles como colegas. A xAI recomenda Bots focados em vez de um "faz-tudo", porque um Bot com escopo estreito acumula contexto mais útil. <a href="https://www.helio.im/blog/what-is-grok-bot/">Helio</a></p>
+<p style="margin:0;font:400 16px/1.6 'Geist',sans-serif;text-wrap:pretty">Ponto importante de arquitetura: <strong>todos os Bots de um usuário dividem um único computador na nuvem</strong>, com os mesmos arquivos, cookies e logins. Ou seja, criar um segundo Bot não isola nada. <a href="https://flaviocopes.com/grok-bot/">Copes</a>, <a href="https://www.ayautomate.com/blog/grok-bot-xai-ai-agents-explained">AY Automate</a></p>
+</article>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">PARTE 2</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">A que eles se conectam</h2></div>
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;max-width:780px;text-wrap:pretty">São quatro tipos de conexão, cada um com sua própria permissão. Conectar um não libera os outros: falar com o dot pelo Slack não dá a ele acesso à sua caixa de entrada, e conectar o Gmail não dá acesso ao seu laptop. <a href="https://flaviocopes.com/openai-dots/">Copes</a></p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,265px),1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">A · PLUGINS / CONECTORES</span>
+<span style="font:600 20px/1.2 'Geist',sans-serif">E-mail, agenda, arquivos, trabalho</span>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Dots:</strong> usam os mesmos plugins do ChatGPT, com permissão definida por ação. Dá, por exemplo, para deixar ler e-mail sem poder enviar. A OpenAI fala em mais de 4.000 apps, incluindo Asana, Box, Dropbox, Figma, Notion, Shopify, Slack, Stripe e Zoom. <a href="https://shattered.io/openai-dots-4000-apps-skip-uk-eu-2026/">Shattered</a></p>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Grok Bot:</strong> já vem com conectores para Gmail, Google Agenda, Drive, OneDrive, Outlook, Teams, SharePoint e Salesforce, além de MCP. <a href="https://www.vellum.ai/blog/official-grok-bot-breakdown">Vellum</a></p>
+</div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">B · NAVEGADOR NA NUVEM</span>
+<span style="font:600 20px/1.2 'Geist',sans-serif">Sites sem API</span>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">Os dois mantêm a sessão de login entre uma tarefa e outra. No dot, a senha é digitada num formulário privado que vai direto para o navegador remoto, e o modelo nunca a vê. Você também pode assumir o controle para fazer um passo à mão.</p>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty">Alguns sites bloqueiam navegadores de data center. Por ser mais frágil, o guia do Grok Bot recomenda esta ordem: plugin → API/CLI → navegador → computador local.</p>
+</div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">C · SEU COMPUTADOR</span>
+<span style="font:600 20px/1.2 'Geist',sans-serif">Arquivos e apps locais</span>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Dots:</strong> um computador pessoal por vez, que precisa estar online com o app do ChatGPT aberto. Câmera, microfone e tela exigem também permissão do sistema operacional.</p>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Grok Bot:</strong> o acesso local vem configurado para pedir permissão toda vez. Há apps para macOS, Windows, Linux, iPhone (iOS 18+) e Android 9+. <a href="https://flaviocopes.com/grok-bot/">Copes</a></p>
+</div>
+<div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">D · CANAIS E DINHEIRO</span>
+<span style="font:600 20px/1.2 'Geist',sans-serif">Onde ele fala com você e paga coisas</span>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Dots:</strong> ChatGPT, voz, Slack e Teams. SMS vem em breve. Compras feitas com cartão salvo exigem aprovação específica para aquela compra.</p>
+<p style="margin:0;font:400 14px/1.55 'Geist',sans-serif;color:#3D3A36;text-wrap:pretty"><strong>Grok Bot:</strong> compra pelo Stripe Link. Cada pagamento gera um pedido de gasto e, depois que você aprova, um cartão de uso único (por enquanto só nos EUA).</p>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">COMPARATIVO</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">Lado a lado</h2></div>
+<div style="overflow-x:auto;border:2px solid #161514;border-radius:4px">
+<div style="min-width:860px;display:grid;grid-template-columns:170px repeat(3,minmax(0,1fr));font:400 14px/1.5 'Geist',sans-serif">
+<div style="padding:14px;background:#161514;color:#F3F1EC;font:600 12px/1.2 'Geist Mono',monospace">ASPECTO</div><div style="padding:14px;background:#161514;color:#F3F1EC;font:600 14px/1.2 'Geist',sans-serif">OpenAI dots</div><div style="padding:14px;background:#161514;color:#F3F1EC;font:600 14px/1.2 'Geist',sans-serif">xAI Grok Bot</div><div style="padding:14px;background:#EF5B3B;color:#2B1D16;font:700 14px/1.2 'Geist',sans-serif">xodó (proposta)</div>
+<div style="padding:14px;border-top:1px solid #D9D4CB;font-weight:600">Modelo</div><div style="padding:14px;border-top:1px solid #D9D4CB">GPT-6 Astra, fixo</div><div style="padding:14px;border-top:1px solid #D9D4CB">Sem seletor de modelo; troca automática em caso de falha</div><div style="padding:14px;border-top:1px solid #D9D4CB;background:#FFFFFF">Qualquer API ou modelo local; troca sem perder memória</div>
+<div style="padding:14px;border-top:1px solid #D9D4CB;font-weight:600">Computador</div><div style="padding:14px;border-top:1px solid #D9D4CB">Um por dot, na nuvem, mais o seu se você conectar</div><div style="padding:14px;border-top:1px solid #D9D4CB">Um por usuário, dividido por todos os Bots</div><div style="padding:14px;border-top:1px solid #D9D4CB;background:#FFFFFF">Um por usuário, dividido por todos os xodós</div>
+<div style="padding:14px;border-top:1px solid #D9D4CB;font-weight:600">Memória</div><div style="padding:14px;border-top:1px solid #D9D4CB">Notas próprias; não dá para ver nem apagar uma nota específica</div><div style="padding:14px;border-top:1px solid #D9D4CB">Memória por Bot; o guia recomenda guardar o que importa em sistemas externos</div><div style="padding:14px;border-top:1px solid #D9D4CB;background:#FFFFFF">Memória por xodó; o que importa vai para sistemas externos</div>
+<div style="padding:14px;border-top:1px solid #D9D4CB;font-weight:600">Aprovações</div><div style="padding:14px;border-top:1px solid #D9D4CB">4 níveis de regra por ação, mais revisão automática</div><div style="padding:14px;border-top:1px solid #D9D4CB">Permitir uma vez, negar ou sempre permitir; "exigir aprovação" prevalece</div><div style="padding:14px;border-top:1px solid #D9D4CB;background:#FFFFFF">Permitir uma vez, negar ou sempre permitir; "exigir aprovação" prevalece</div>
+<div style="padding:14px;border-top:1px solid #D9D4CB;font-weight:600">Gasto</div><div style="padding:14px;border-top:1px solid #D9D4CB">Primeiro dot incluso no plano; franquia depois do 1º mês não divulgada</div><div style="padding:14px;border-top:1px solid #D9D4CB">Franquia semanal mais uso sob demanda; sem teto por Bot</div><div style="padding:14px;border-top:1px solid #D9D4CB;background:#FFFFFF">Teto diário por xodó, com estimativa antes de cada tarefa</div>
+</div>
+</div>
+<span style="font:400 12px/1.5 'Geist Mono',monospace;color:#635E57">Fontes: <a href="https://flaviocopes.com/openai-dots/">Copes/dots</a> · <a href="https://flaviocopes.com/grok-bot/">Copes/Grok Bot</a> · <a href="https://www.aibuilderclub.com/blog/grok-bot-pricing">AI Builder Club</a> · <a href="https://www.dragapp.com/blog/openai-dots/">Drag</a></span>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">PARTE 3</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">Como a IA da API sabe quem ela é</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:28px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:14px">
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;text-wrap:pretty">Um modelo acessado por API não guarda nada entre uma chamada e outra. O jeito, o humor e as regras do xodó vivem no <strong>nosso banco de dados</strong>, numa ficha. Antes de cada chamada, o xodó monta essa ficha e envia como instrução de sistema, junto com a memória relevante e a lista de ferramentas disponíveis.</p>
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;text-wrap:pretty">É por isso que dá para trocar de cérebro sem perder a personalidade: o personagem é a ficha, não o modelo.</p>
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;text-wrap:pretty">O guia do Grok Bot recomenda dividir as instruções em três camadas: regras inegociáveis, trabalho recorrente e tarefa atual. E alerta que palavras como "brilhante" ou "proativo" não definem trabalho. Por isso a ficha do xodó separa <strong>voz</strong> (como ele fala) de <strong>trabalho</strong> (o que ele faz e onde para). <a href="https://flaviocopes.com/grok-bot/">Copes</a></p>
+<div style="border-left:4px solid #EF5B3B;padding:4px 0 4px 18px;font:600 15px/1.5 'Geist',sans-serif;text-wrap:pretty">Na prática: cada modelo interpreta a mesma ficha de um jeito um pouco diferente. Sugiro uma etapa de calibração por modelo, com exemplos curtos do tom certo e um teste automático que confere se o xodó continua "sendo ele" depois da troca.</div>
+</div>
+<div style="background:#161514;color:#E9E5DE;border-radius:20px;padding:22px;font:400 13px/1.65 'Geist Mono',monospace;white-space:pre-wrap;overflow:auto">
+<span style="color:#F6C443"># FICHA · enviada a cada chamada</span>
+
+<span style="color:#9FE3C5">## 1. Identidade</span>
+Você é Faísca, um xodó (espécie Pingo).
+Trabalha para Ana, ana@estudio.com.
+
+<span style="color:#9FE3C5">## 2. Voz</span>
+Jeito: curioso. Humor: 6/10.
+Frases curtas. Sem emoji. pt-BR.
+Exemplos de tom → [3 falas calibradas]
+
+<span style="color:#9FE3C5">## 3. Regras inegociáveis</span>
+Pergunte antes de enviar, pagar, apagar.
+Senhas: sempre pelo formulário seguro.
+Orçamento hoje: R$ 20 · usado R$ 4,10.
+
+<span style="color:#9FE3C5">## 4. Trabalho recorrente</span>
+Caixa de entrada todo dia às 8h.
+
+<span style="color:#9FE3C5">## 5. Memória relevante</span>
+<span style="color:#A8A29A">(as 5 notas mais próximas do pedido)</span>
+· Prefere foco pela manhã
+· Marina é fornecedora — tom formal
+
+<span style="color:#9FE3C5">## 6. Ferramentas</span>
+gmail.read · gmail.draft · calendar.read
+browser · files · <span style="color:#A8A29A">(gmail.send → pedir)</span>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">PARTE 4</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">Tokens e o limite de gasto diário</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px">
+<div style="background:#FFFFFF;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:8px"><span style="font:800 40px/1 'Unbounded',sans-serif;letter-spacing:-.03em">US$ 10 / 50</span><span style="font:500 14px/1.45 'Geist',sans-serif;color:#3D3A36">por milhão de tokens de entrada / saída no GPT-6 Astra. A entrada em cache sai por US$ 1. <a href="https://www.eesel.ai/blog/gpt-6-astra-pricing">eesel</a></span></div>
+<div style="background:#FFFFFF;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:8px"><span style="font:800 40px/1 'Unbounded',sans-serif;letter-spacing:-.03em">96×</span><span style="font:500 14px/1.45 'Geist',sans-serif;color:#3D3A36">por dia é quantas vezes roda uma rotina de 15 em 15 minutos. Cada execução gasta tokens, mesmo quando não encontra nada. <a href="https://flaviocopes.com/grok-bot/">Copes</a></span></div>
+<div style="background:#EF5B3B;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:8px"><span style="font:800 40px/1 'Unbounded',sans-serif;letter-spacing:-.03em;color:#2B1D16">0</span><span style="font:500 14px/1.45 'Geist',sans-serif;color:#2B1D16">tetos de gasto por Bot no Grok Bot. Só existe o limite geral da conta, e uma tarefa em andamento pode passar dele. <a href="https://www.aibuilderclub.com/blog/grok-bot-pricing" style="color:#2B1D16">AI Builder Club</a></span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:28px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:14px">
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;text-wrap:pretty"><strong>Sim, o xodó gasta tokens da IA escolhida.</strong> Cada passo de uma tarefa é uma chamada de API: a ficha, a memória e o que ele está vendo entram como tokens de entrada; o que ele responde ou decide sai como tokens de saída. O próprio Grok Bot cobra o uso extra com base no custo do modelo e dos tokens. <a href="https://www.aibuilderclub.com/blog/grok-bot-pricing">AI Builder Club</a></p>
+<p style="margin:0;font:400 17px/1.6 'Geist',sans-serif;text-wrap:pretty">O limite diário do xodó é um <strong>medidor nosso</strong> que fica entre o xodó e a API. Ele soma, chamada por chamada, os tokens usados × o preço do modelo e para quando chega no teto. Isso vale nos dois modos de pagamento:</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font:600 16px/1.2 'Geist',sans-serif">Com a chave da pessoa</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36">Quem cobra é o provedor (OpenAI, Anthropic, xAI…), direto no cartão da pessoa. O xodó só mede e freia. A cobrança da máquina na nuvem fica à parte.</span></div>
+<div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font:600 16px/1.2 'Geist',sans-serif">Com créditos xodó</span><span style="font:400 14px/1.5 'Geist',sans-serif;color:#3D3A36">O xodó compra tokens no atacado e revende com margem. A pessoa vê o gasto em reais, e o teto é o mesmo.</span></div>
+</div>
+</div>
+<div style="background:#FFFFFF;border:2px solid #161514;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<span style="font:600 11px/1 'Geist Mono',monospace;color:#635E57">ESTIMATIVA · minha conta, não é dado publicado</span>
+<span style="font:600 20px/1.25 'Geist',sans-serif">Quanto custa um passo de tarefa no GPT-6 Astra</span>
+<div style="display:grid;grid-template-columns:1fr auto;gap:8px 16px;font:400 14px/1.4 'Geist Mono',monospace">
+<span>Ficha em cache · 6 mil tokens</span><span style="text-align:right">US$ 0,006</span>
+<span>Contexto do passo · 14 mil tokens</span><span style="text-align:right">US$ 0,14</span>
+<span>Resposta · 800 tokens</span><span style="text-align:right">US$ 0,04</span>
+<span style="border-top:1px solid #161514;padding-top:8px;font-weight:600">Por passo</span><span style="border-top:1px solid #161514;padding-top:8px;text-align:right;font-weight:600">≈ US$ 0,19</span>
+<span style="font-weight:600">Tarefa de 12 passos</span><span style="text-align:right;font-weight:600">≈ US$ 2,30</span>
+</div>
+<span style="font:400 13px/1.5 'Geist',sans-serif;color:#635E57">O custo real varia muito com o nível de raciocínio e o tamanho do contexto; o cache reduz a entrada repetida. Um modelo menor ou local reduz o custo em uma ou duas ordens de grandeza.</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:2px;background:#161514;border:2px solid #161514">
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#B8401F">ANTES</span><span style="font:500 14px/1.45 'Geist',sans-serif">Estima o custo de tarefas grandes e mostra antes de começar: "isso deve custar ~R$ 12".</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#B8401F">80%</span><span style="font:500 14px/1.45 'Geist',sans-serif">Avisa no chat, com a cara de "precisa de você".</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#B8401F">100%</span><span style="font:500 14px/1.45 'Geist',sans-serif">Termina o passo atual, salva tudo e pausa. Não estoura o teto como o Grok Bot.</span></div>
+<div style="background:#F3F1EC;padding:18px;display:flex;flex-direction:column;gap:6px"><span style="font:600 11px/1 'Geist Mono',monospace;color:#B8401F">ECONOMIA</span><span style="font:500 14px/1.45 'Geist',sans-serif">Cérebro rápido e barato para rotinas, cérebro forte para pensar fundo, e gatilhos por evento em vez de checagem por tempo.</span></div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 13px/1 'Geist Mono',monospace;color:#B8401F">PARTE 5</span><h2 style="margin:0;font:700 34px/1.1 'Unbounded',sans-serif;letter-spacing:-.02em">O que levar para o design do xodó</h2></div>
+<ol style="margin:0;padding:0 0 0 22px;display:flex;flex-direction:column;gap:12px;font:400 16px/1.55 'Geist',sans-serif;max-width:860px">
+<li style="text-wrap:pretty"><strong>Pedido de aprovação com 3 saídas:</strong> Negar · Permitir uma vez · Sempre permitir. "Sempre permitir" cria uma regra limitada ao que foi pedido (quem, o quê, onde), e o cartão mostra esse limite antes do clique.</li>
+<li style="text-wrap:pretty"><strong>Painel de regras:</strong> regras "sempre" criadas por você, regras fixas de "exigir aprovação" (pagar, apagar para sempre, mudar permissões) e coisas que só você faz (senhas, transferências). Se duas regras baterem, "exigir aprovação" vence.</li>
+<li style="text-wrap:pretty"><strong>Um computador na nuvem por usuário,</strong> dividido por todos os xodós. O painel avisa que logins e arquivos são compartilhados e mostra quem está usando a máquina agora.</li>
+<li style="text-wrap:pretty"><strong>Memória por xodó:</strong> o que importa vai para os apps da pessoa (rascunhos no Gmail, plano na Agenda, pesquisa no Drive), listado em "Guardado nos seus apps".</li>
+<li style="text-wrap:pretty"><strong>Três níveis para ver o computador:</strong> indicador ao vivo no botão Computador, prévia ao lado do chat e "Assumir controle", que pausa o xodó até a pessoa devolver o controle.</li>
+<li style="text-wrap:pretty"><strong>Conexões por tipo:</strong> app, navegador, computador e canal, cada uma com sua permissão (por exemplo, Gmail com "ler · rascunhar").</li>
+</ol>
+<span style="font:500 14px/1.5 'Geist',sans-serif;color:#3D3A36">Aplicado em <a href="Xodo - Chat.dc.html">Xodo - Chat</a>.</span>
+</section>
+
+<footer style="border-top:3px solid #161514;padding-top:22px;display:flex;flex-direction:column;gap:12px">
+<span style="font:600 12px/1 'Geist Mono',monospace;letter-spacing:.08em">FONTES</span>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:6px 28px;font:400 13px/1.5 'Geist',sans-serif">
+<a href="https://www.cnbc.com/2026/09/29/openai-devday-2026-live-updates.html">CNBC — cobertura do DevDay 2026 (29 set)</a>
+<a href="https://flaviocopes.com/openai-dots/">Flavio Copes — A deep dive into OpenAI dots (30 set)</a>
+<a href="https://9to5google.com/2026/09/29/openai-dots-agent/">9to5Google — OpenAI launches Dots (29 set)</a>
+<a href="https://www.dragapp.com/blog/openai-dots/">Drag — OpenAI Dots and Email (set)</a>
+<a href="https://shattered.io/openai-dots-4000-apps-skip-uk-eu-2026/">Shattered — dots: 4,000+ apps (set)</a>
+<a href="https://gizmodo.com/with-dots-openai-wants-you-to-stop-being-afraid-of-its-ai-agents-2000819082">Gizmodo — With Dots, OpenAI wants you to stop being afraid (set)</a>
+<a href="https://flaviocopes.com/grok-bot/">Flavio Copes — A deep dive into Grok Bot (atualizado 30 ago)</a>
+<a href="https://www.helio.im/blog/what-is-grok-bot/">Helio — What is Grok Bot? (ago)</a>
+<a href="https://www.vellum.ai/blog/official-grok-bot-breakdown">Vellum — Grok Bot breakdown (ago)</a>
+<a href="https://www.ayautomate.com/blog/grok-bot-xai-ai-agents-explained">AY Automate — Grok Bot explained (set)</a>
+<a href="https://www.aibuilderclub.com/blog/grok-bot-pricing">AI Builder Club — Grok Bot pricing (ago)</a>
+<a href="https://agentlocker.ai/news/xai-introduces-new-grok-bot-design-for-persistent-ai-agents">AgentLocker — Grok Bot design (set)</a>
+<a href="https://www.eesel.ai/blog/gpt-6-astra-pricing">eesel — GPT-6 Astra pricing (set)</a>
+</div>
+<span style="font:400 12px/1.5 'Geist',sans-serif;color:#635E57;max-width:820px">Os dois produtos estão em beta e mudam toda semana. Parte das fontes é análise de terceiros sobre a documentação oficial. A estimativa de custo e as recomendações são minhas.</span>
+</footer>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

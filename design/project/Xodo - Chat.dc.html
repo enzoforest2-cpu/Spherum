@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@500;700;900&family=Figtree:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap">
+<style>
+body{margin:0;-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}a:hover{opacity:.8}
+input{outline:none}
+input::placeholder{color:#9A948C}
+@keyframes xo-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes xo-live{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pg-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.045,.95)}}
+@keyframes pg-tilt{0%,100%{transform:rotate(-7deg) scale(1.02,.98)}50%{transform:rotate(5deg) scale(.99,1.01)}}
+@keyframes pg-hop{0%,100%{transform:translateY(0) scale(1.06,.94)}35%{transform:translateY(-9%) scale(.95,1.06)}60%{transform:translateY(-11%) scale(1,1)}85%{transform:translateY(0) scale(1.08,.92)}}
+@keyframes pg-jump{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:translateY(0) scale(1.14,.86)}45%{transform:translateY(-22%) scale(.9,1.12)}70%{transform:translateY(0) scale(1.1,.9)}85%{transform:translateY(0) scale(.98,1.02)}}
+@keyframes pg-pop{0%{transform:translate(0,0) scale(0);opacity:1}30%{transform:translate(calc(var(--dx)*.45),calc(var(--dy)*.45)) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.4);opacity:0}}
+@keyframes bot-blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes bot-ripple{0%{transform:scale(.5);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+@keyframes bot-bob{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-45%);opacity:1}}
+@keyframes bot-spin{to{transform:rotate(360deg)}}
+@keyframes bot-bubble{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14%) rotate(6deg)}}
+@keyframes bb-bob{0%{transform:translateY(0)}50%{transform:translateY(-3%)}}
+@keyframes bb-tilt{0%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes bb-hop{0%{transform:translateY(0)}25%{transform:translateY(-8%)}50%{transform:translateY(0)}75%{transform:translateY(-4%)}}
+@keyframes bb-jump{0%{transform:translateY(0)}20%{transform:translateY(-6%)}40%{transform:translateY(-12%)}60%{transform:translateY(-6%)}80%{transform:translateY(0)}}
+@keyframes bb-blink{0%{opacity:1}50%{opacity:.25}}
+@keyframes ok-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+@keyframes ok-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes ok-hop{0%,100%{transform:translateY(0) rotate(0)}40%{transform:translateY(-8%) rotate(-6deg)}70%{transform:translateY(0) rotate(3deg)}}
+</style>
+</helmet>
+<div style="height:100vh;display:grid;grid-template-columns:{{ cols }};background:{{ t.bg }};color:{{ t.ink }};font-family:'Geist',sans-serif;transition:background .3s,color .3s;position:relative">
+
+<sc-if value="{{ showSide }}" hint-placeholder-val="{{ true }}">
+<aside style="border-right:1px solid {{ t.line }};display:flex;flex-direction:column;min-height:0;padding:20px 14px 16px;gap:22px">
+<div style="display:flex;align-items:baseline;gap:8px;padding:0 8px"><span style="font:700 30px/1 'Fredoka',sans-serif;letter-spacing:-.02em">xodó</span></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="padding:0 8px;font:600 11px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ tx.yours }}</span>
+<div style="display:flex;gap:12px;align-items:center;background:{{ t.panel }};border-radius:18px;padding:10px 12px;box-shadow:0 0 0 1.5px {{ t.ink }}">
+<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none">{{ sideChar }}</div>
+<div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font:{{ nameFont }}">{{ name }}</span><span style="font:500 12px/1.2 'Geist',sans-serif;color:{{ t.mute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ statusText }}</span></div>
+</div>
+<a href="Xodo - Criar.dc.html" style="display:block;border:1.5px dashed {{ t.mute }};border-radius:18px;padding:14px;text-align:center;font:600 14px/1 'Geist',sans-serif;color:{{ t.mute }}">{{ tx.newXodo }}</a>
+</div>
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:12px;padding:0 4px">
+<div style="display:flex;gap:6px">
+<div style="display:flex;background:{{ t.chip }};border-radius:99px;padding:3px">
+<sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.onClick }}" style="cursor:pointer;background:{{ o.bg }};color:{{ o.fg }};border-radius:99px;padding:7px 10px;font:600 11px/1 'Geist Mono',monospace">{{ o.label }}</span></sc-for>
+</div>
+<div style="display:flex;background:{{ t.chip }};border-radius:99px;padding:3px">
+<sc-for list="{{ themeOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.onClick }}" style="cursor:pointer;background:{{ o.bg }};color:{{ o.fg }};border-radius:99px;padding:7px 10px;font:600 11px/1 'Geist',sans-serif">{{ o.label }}</span></sc-for>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:{{ t.ink }};color:{{ t.inv }};display:flex;align-items:center;justify-content:center;font:600 14px/1 'Geist',sans-serif">A</span><div style="display:flex;flex-direction:column;gap:3px"><span style="font:600 14px/1 'Geist',sans-serif">Ana</span><span style="font:400 12px/1 'Geist',sans-serif;color:{{ t.mute }}">ana@estudio.com</span></div></div>
+</div>
+</aside>
+</sc-if>
+
+<section style="display:flex;flex-direction:column;min-height:0;min-width:0">
+<header style="display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid {{ t.line }};position:relative;z-index:5">
+<div style="width:58px;height:58px;display:flex;align-items:center;justify-content:center;flex:none">{{ headChar }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+<span style="font:{{ nameFontLg }}">{{ name }}</span>
+<span style="display:flex;align-items:center;gap:7px;font:500 13px/1.2 'Geist',sans-serif;color:{{ t.mute }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ statusDot }};flex:none"></span>{{ statusText }}</span>
+</div>
+<div style="position:relative">
+<span onClick="{{ toggleBrain }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:{{ t.panel }};border:1.5px solid {{ t.line }};border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;white-space:nowrap"><span style="font:600 10px/1 'Geist Mono',monospace;color:{{ t.mute }};letter-spacing:.06em">{{ tx.brain }}</span>{{ brainLabel }} ▾</span>
+<sc-if value="{{ brainOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:0;top:calc(100% + 8px);width:min(400px,88vw);background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.18);display:grid;grid-template-columns:58px minmax(0,1fr);overflow:hidden;z-index:30">
+<div style="background:{{ t.bg }};border-right:1px solid {{ t.line }};padding:8px;display:flex;flex-direction:column;gap:4px">
+<sc-for list="{{ rail }}" as="r" hint-placeholder-count="8"><span onClick="{{ r.onClick }}" title="{{ r.name }}" style="cursor:pointer;width:42px;height:42px;border-radius:12px;background:{{ r.bg }};color:{{ r.fg }};opacity:{{ r.op }};display:flex;align-items:center;justify-content:center;font:700 12px/1 'Geist Mono',monospace;position:relative;transition:background .15s">{{ r.mono }}<span style="position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%;background:{{ r.dot }}"></span></span></sc-for>
+</div>
+<div style="padding:14px 10px 8px;display:flex;flex-direction:column;gap:2px;max-height:440px;overflow:auto">
+<div style="padding:0 8px 10px;display:flex;flex-direction:column;gap:6px"><span style="font:600 16px/1 'Geist',sans-serif">{{ pick.name }}</span><span style="display:flex;align-items:center;gap:6px;font:500 12px/1.35 'Geist',sans-serif;color:{{ t.mute }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ pick.dot }};flex:none"></span>{{ pick.status }}</span></div>
+<sc-for list="{{ pick.models }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.onClick }}" style="cursor:{{ o.cursor }};opacity:{{ o.op }};display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;background:{{ o.bg }}"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="display:flex;align-items:center;gap:7px;font:600 14px/1 'Geist',sans-serif">{{ o.model }}<sc-if value="{{ o.isDef }}" hint-placeholder-val="{{ false }}"><span style="background:{{ t.chip }};color:{{ t.mute }};border-radius:6px;padding:3px 6px;font:600 10px/1 'Geist Mono',monospace">{{ px.def }}</span></sc-if></span><span style="font:500 11.5px/1 'Geist',sans-serif;color:{{ t.mute }}">{{ o.tag }}</span></span><span style="font:800 14px/1 'Geist',sans-serif;color:{{ t.ink }}">{{ o.mark }}</span></div></sc-for>
+<sc-if value="{{ pick.needConn }}" hint-placeholder-val="{{ false }}"><div onClick="{{ pick.connect }}" style="cursor:pointer;margin:8px 6px 2px;text-align:center;background:{{ t.ink }};color:{{ t.inv }};border-radius:99px;padding:11px;font:600 13px/1 'Geist',sans-serif">{{ pick.connectL }}</div></sc-if>
+<div onClick="{{ manageBrains }}" style="cursor:pointer;margin-top:6px;border-top:1px solid {{ t.line }};padding:12px 8px 4px;font:600 13px/1 'Geist',sans-serif">{{ px.manage }} →</div>
+</div>
+</div>
+</sc-if>
+</div>
+<span onClick="{{ togglePanel }}" style="cursor:pointer;display:flex;align-items:center;gap:7px;background:{{ panelBtnBg }};color:{{ panelBtnFg }};border:1.5px solid {{ t.ink }};border-radius:99px;padding:9px 14px;font:600 13px/1 'Geist',sans-serif;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ btnDot }};animation:{{ liveAnim }}"></span>{{ tx.computerBtn }}</span>
+</header>
+
+<div ref="{{ scrollRef }}" style="flex:1;overflow:auto;min-height:0">
+<div style="max-width:760px;margin:0 auto;padding:26px 22px 20px;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ msgs }}" as="m" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;animation:xo-in .35s ease-out both">
+
+<sc-if value="{{ m.isSys }}" hint-placeholder-val="{{ false }}"><div style="align-self:center;background:{{ t.chip }};color:{{ t.mute }};border-radius:99px;padding:7px 14px;font:500 12px/1.3 'Geist Mono',monospace;text-align:center;margin:6px 0">{{ m.text }}</div></sc-if>
+
+<sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end;max-width:78%;background:{{ accent }};color:{{ accentFg }};border-radius:22px 22px 6px 22px;padding:12px 16px;font:500 15px/1.45 'Geist',sans-serif;text-wrap:pretty">{{ m.text }}</div></sc-if>
+
+<sc-if value="{{ m.isBot }}" hint-placeholder-val="{{ true }}"><div style="align-self:flex-start;max-width:82%;background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:22px 22px 22px 6px;padding:12px 16px;font:{{ chatFont }};text-wrap:pretty">{{ m.text }}</div></sc-if>
+
+<sc-if value="{{ m.isTyping }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;display:flex;gap:5px;background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:22px 22px 22px 6px;padding:16px 18px"><span style="width:7px;height:7px;border-radius:50%;background:{{ t.mute }};animation:bot-bob 1s ease-in-out infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:{{ t.mute }};animation:bot-bob 1s ease-in-out .15s infinite"></span><span style="width:7px;height:7px;border-radius:50%;background:{{ t.mute }};animation:bot-bob 1s ease-in-out .3s infinite"></span></div></sc-if>
+
+<sc-if value="{{ m.isSugs }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:2px">
+<sc-for list="{{ m.cards }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.onClick }}" style="cursor:{{ c.cursor }};opacity:{{ c.opacity }};background:{{ t.panel }};border:1.5px solid {{ c.border }};border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:border-color .2s">
+<span style="align-self:flex-start;background:{{ t.chip }};border-radius:99px;padding:5px 9px;font:600 11px/1 'Geist Mono',monospace">{{ c.app }}</span>
+<span style="font:600 16px/1.25 'Geist',sans-serif;text-wrap:pretty">{{ c.title }}</span>
+<span style="font:400 13px/1.4 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ c.desc }}</span>
+<span style="margin-top:auto;font:600 13px/1 'Geist',sans-serif;color:{{ c.ctaColor }}">{{ c.cta }}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isTask }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;width:min(100%,440px);box-sizing:border-box;background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font:600 15px/1.2 'Geist',sans-serif">{{ m.title }}</span><span style="font:600 12px/1 'Geist Mono',monospace;color:{{ t.mute }};white-space:nowrap">{{ m.count }}</span></div>
+<div style="height:8px;border-radius:99px;background:{{ t.chip }};overflow:hidden"><div style="width:{{ m.pct }};height:100%;border-radius:99px;background:{{ accent }};transition:width .6s cubic-bezier(.3,.7,.4,1)"></div></div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ m.steps }}" as="s" hint-placeholder-count="4">
+<div style="display:flex;gap:10px;align-items:center;font:500 14px/1.2 'Geist',sans-serif;color:{{ s.color }}"><span style="width:18px;height:18px;border-radius:50%;box-sizing:border-box;border:2px solid {{ s.ring }};background:{{ s.fill }};color:{{ accentFg }};display:flex;align-items:center;justify-content:center;font:800 10px/1 'Geist',sans-serif;flex:none">{{ s.mark }}</span>{{ s.label }}</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isAsk }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;width:min(100%,440px);box-sizing:border-box;background:{{ t.panel }};border:2px solid {{ m.border }};border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-direction:column;gap:5px"><span style="font:600 18px/1.2 'Fredoka',sans-serif">{{ m.title }}</span><span style="font:500 13px/1.3 'Geist',sans-serif;color:{{ t.mute }}">{{ m.sub }}</span></div>
+<sc-if value="{{ m.open }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ m.details }}" as="d" hint-placeholder-count="3"><div style="background:{{ t.chip }};border-radius:12px;padding:10px 12px;font:500 13px/1.35 'Geist',sans-serif">{{ d }}</div></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ m.pending }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:8px"><span onClick="{{ m.onAlways }}" style="cursor:pointer;flex:1;text-align:center;border:1.5px solid {{ t.ink }};border-radius:99px;padding:11px 8px;font:600 14px/1 'Geist',sans-serif;white-space:nowrap">{{ tx.always }}</span><span onClick="{{ m.onOnce }}" style="cursor:pointer;flex:1.2;text-align:center;background:{{ t.ink }};color:{{ t.inv }};border-radius:99px;padding:12.5px 8px;font:600 14px/1 'Geist',sans-serif;white-space:nowrap">{{ tx.once }}</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:2px 4px 0"><span onClick="{{ m.onReview }}" style="cursor:pointer;font:600 13px/1 'Geist',sans-serif;text-decoration:underline;text-underline-offset:3px">{{ m.reviewLabel }}</span><span onClick="{{ m.onDeny }}" style="cursor:pointer;font:600 13px/1 'Geist',sans-serif;color:{{ t.mute }}">{{ tx.deny }}</span></div>
+<span style="font:400 12px/1.4 'Geist Mono',monospace;color:{{ t.mute }};text-wrap:pretty">{{ m.scope }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ m.resolved }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;background:{{ m.resBg }};color:{{ m.resFg }};border-radius:99px;padding:7px 12px;font:600 12px/1 'Geist',sans-serif">{{ m.resLabel }}</span></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isChips }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<sc-for list="{{ m.chips }}" as="c" hint-placeholder-count="2"><span onClick="{{ c.onClick }}" style="cursor:pointer;background:{{ c.bg }};color:{{ c.fg }};border:1.5px solid {{ t.ink }};border-radius:99px;padding:10px 16px;font:600 14px/1 'Geist',sans-serif">{{ c.label }}</span></sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isMemo }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;display:flex;gap:10px;align-items:center;border:1.5px dashed {{ accent }};border-radius:14px;padding:10px 14px;font:500 13px/1.3 'Geist',sans-serif"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ t.mute }}">{{ tx.memoSaved }}</span>{{ m.text }}</div></sc-if>
+
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="padding:12px 22px 20px">
+<div style="max-width:760px;margin:0 auto;display:flex;gap:10px;align-items:center;background:{{ t.panel }};border:1.5px solid {{ composerBorder }};border-radius:24px;padding:6px 6px 6px 18px;transition:border-color .2s">
+<input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="{{ composerPh }}" style="flex:1;min-width:0;background:transparent;border:none;color:{{ t.ink }};font:500 15px/1 'Geist',sans-serif;padding:12px 0">
+<span onClick="{{ onSend }}" style="cursor:pointer;width:46px;height:46px;border-radius:18px;background:{{ sendBg }};color:{{ sendFg }};display:flex;align-items:center;justify-content:center;font:700 18px/1 'Geist',sans-serif;flex:none;transition:background .2s">↑</span>
+</div>
+<div style="max-width:760px;margin:8px auto 0;text-align:center;font:400 11px/1.4 'Geist Mono',monospace;color:{{ t.mute }}">{{ footNote }}</div>
+</div>
+</section>
+
+<sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+<aside style="position:{{ pp.position }};right:0;top:{{ pp.top }};bottom:0;width:{{ pp.width }};z-index:20;box-shadow:{{ pp.shadow }};background:{{ t.bg }};border-left:1px solid {{ t.line }};display:flex;flex-direction:column;min-height:0;box-sizing:border-box">
+<div style="padding:14px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid {{ t.line }}">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:none">{{ panelChar }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font:600 15px/1 'Geist',sans-serif">{{ px.panelTitle }}</span><span style="display:flex;align-items:center;gap:6px;font:500 12px/1.2 'Geist',sans-serif;color:{{ t.mute }};min-width:0"><span style="width:7px;height:7px;border-radius:50%;background:{{ liveDot }};animation:{{ liveAnim }};flex:none"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ panelSub }}</span></span></div>
+<span onClick="{{ closePanel }}" style="cursor:pointer;display:{{ closeVis }};width:30px;height:30px;border-radius:50%;background:{{ t.chip }};align-items:center;justify-content:center;font:500 16px/1 'Geist',sans-serif;flex:none">×</span>
+</div>
+<div role="tablist" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;background:{{ t.chip }};border-radius:12px;padding:3px">
+<sc-for list="{{ ptabs }}" as="o" hint-placeholder-count="4"><span role="tab" onClick="{{ o.onClick }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};border-radius:9px;padding:9px 4px;font:600 12.5px/1 'Geist',sans-serif;white-space:nowrap;transition:background .15s">{{ o.label }}<sc-if value="{{ o.hasN }}" hint-placeholder-val="{{ false }}"><span style="width:7px;height:7px;border-radius:50%;background:#E0705A"></span></sc-if></span></sc-for>
+</div>
+</div>
+<div style="flex:1;overflow:auto;min-height:0;padding:16px;display:flex;flex-direction:column;gap:18px">
+
+<sc-if value="{{ isNow }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ computerTitle }}</span><span style="display:flex;align-items:center;gap:6px;font:600 10.5px/1 'Geist Mono',monospace;color:{{ t.mute }};white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ liveDot }};animation:{{ liveAnim }}"></span>{{ liveLabel }}</span></div>
+<div style="border-radius:16px;overflow:hidden;border:1.5px solid {{ t.ink }};background:#FFFFFF;color:#161514">
+<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#EDEAE4;border-bottom:1px solid #DDD8CF"><span style="width:8px;height:8px;border-radius:50%;background:#E0705A"></span><span style="width:8px;height:8px;border-radius:50%;background:#E8B74A"></span><span style="width:8px;height:8px;border-radius:50%;background:#6DBB7B"></span><span style="flex:1;margin-left:6px;background:#FFFFFF;border-radius:6px;padding:5px 8px;font:500 11px/1 'Geist Mono',monospace;color:#5D5850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ screenUrl }}</span></div>
+<sc-if value="{{ screenIdle }}" hint-placeholder-val="{{ true }}"><div style="height:180px;background-color:{{ stageBg }};background-image:{{ stageImg }};background-size:12px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">{{ screenChar }}<span style="font:600 11px/1 'Geist Mono',monospace;color:{{ stageInk }}">{{ tx.restingNote }}</span></div></sc-if>
+<sc-if value="{{ screenBusy }}" hint-placeholder-val="{{ false }}"><div style="height:180px;position:relative;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+<div style="position:absolute;left:6px;right:6px;height:26px;top:{{ hlTop }};border-radius:8px;background:{{ accent }};opacity:.28;transition:top .5s cubic-bezier(.3,.7,.4,1)"></div>
+<sc-for list="{{ screenRows }}" as="r" hint-placeholder-count="6"><div style="position:relative;height:20px;display:flex;align-items:center;gap:8px"><span style="width:{{ r.a }};height:7px;border-radius:4px;background:#2B2824;flex:none"></span><span style="width:{{ r.b }};height:7px;border-radius:4px;background:#CFC9BF"></span></div></sc-for>
+<sc-if value="{{ takeover }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:rgba(22,21,20,.62);display:flex;align-items:center;justify-content:center;color:#FFFFFF;font:600 12px/1 'Geist Mono',monospace;letter-spacing:.04em">{{ tx.youControl }}</div></sc-if>
+</div></sc-if>
+</div>
+<span style="font:500 13px/1.4 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ screenCaption }}</span>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span style="font:500 12px/1.3 'Geist',sans-serif;color:{{ t.mute }}">{{ sharedBy }}</span><sc-if value="{{ canTakeover }}" hint-placeholder-val="{{ false }}"><span onClick="{{ toggleTakeover }}" style="cursor:pointer;background:{{ takeBg }};color:{{ takeFg }};border:1.5px solid {{ t.ink }};border-radius:99px;padding:8px 13px;font:600 12.5px/1 'Geist',sans-serif">{{ takeoverLabel }}</span></sc-if></div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+<span style="font:600 13px/1 'Geist',sans-serif">{{ px.runsOn }}</span>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;background:{{ t.chip }};border-radius:12px;padding:3px"><sc-for list="{{ runOpts }}" as="o" hint-placeholder-count="3"><span onClick="{{ o.onClick }}" style="cursor:pointer;text-align:center;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};border-radius:9px;padding:9px 4px;font:600 12px/1 'Geist',sans-serif;white-space:nowrap">{{ o.label }}</span></sc-for></div>
+<span style="font:500 12px/1.4 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ runNote }}</span>
+</div>
+</div>
+<div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font:600 14px/1 'Geist',sans-serif">{{ tx.today }}</span><span style="font:600 13px/1 'Geist Mono',monospace">{{ spendText }}</span></div>
+<div style="height:6px;border-radius:99px;background:{{ t.chip }};overflow:hidden"><div style="width:{{ spendPct }};height:100%;background:{{ t.ink }};border-radius:99px;transition:width .6s"></div></div>
+<sc-for list="{{ byProv }}" as="b" hint-placeholder-count="1"><div style="display:flex;justify-content:space-between;gap:8px;font:500 12px/1.3 'Geist',sans-serif;color:{{ t.mute }}"><span>{{ b.n }}</span><span style="font-family:'Geist Mono',monospace">{{ b.v }}</span></div></sc-for>
+<span style="font:500 12px/1.3 'Geist',sans-serif;color:{{ t.mute }}">{{ accessLabel }}</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ px.activity }}</span>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ activity }}" as="a" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:40px 10px minmax(0,1fr);gap:8px;align-items:start;padding:6px 0;border-bottom:1px dashed {{ t.line }}"><span style="font:500 11px/1.5 'Geist Mono',monospace;color:{{ t.mute }}">{{ a.t }}</span><span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:5px"></span><span style="font:500 13px/1.45 'Geist',sans-serif;text-wrap:pretty">{{ a.text }}</span></div></sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBrain }}" hint-placeholder-val="{{ false }}">
+<div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ px.payTitle }}</span>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;background:{{ t.chip }};border-radius:12px;padding:3px"><sc-for list="{{ payOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.onClick }}" style="cursor:pointer;text-align:center;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};border-radius:9px;padding:9px 6px;font:600 12.5px/1 'Geist',sans-serif">{{ o.label }}</span></sc-for></div>
+<span style="font:500 12.5px/1.45 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ payNote }}</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ px.routing }}</span>
+<div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;overflow:hidden">
+<sc-for list="{{ routes }}" as="r" hint-placeholder-count="3"><div style="padding:12px 14px;border-top:1px solid {{ r.line }};display:flex;flex-direction:column;gap:7px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 13.5px/1 'Geist',sans-serif">{{ r.label }}</span><sc-if value="{{ r.hasToggle }}" hint-placeholder-val="{{ false }}"><span onClick="{{ r.toggle }}" role="switch" style="cursor:pointer;width:34px;height:20px;border-radius:99px;background:{{ r.swBg }};position:relative;flex:none;transition:background .15s"><span style="position:absolute;top:2px;left:{{ r.swX }};width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s"></span></span></sc-if></div>
+<span style="font:500 12px/1.4 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ r.desc }}</span>
+<sc-if value="{{ r.on }}" hint-placeholder-val="{{ true }}"><select key="{{ r.key }}" defaultValue="{{ r.value }}" onChange="{{ r.onChange }}" style="width:100%;background:{{ t.bg }};color:{{ t.ink }};border:1px solid {{ t.line }};border-radius:10px;padding:9px 10px;font:600 13px/1.2 'Geist',sans-serif"><sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}" disabled="{{ o.dis }}" selected="{{ o.sel }}">{{ o.l }}</option></sc-for></select></sc-if>
+</div></sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ px.providers }}</span><span style="font:500 12px/1 'Geist',sans-serif;color:{{ t.mute }}">{{ provCount }}</span></div>
+<div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;overflow:hidden">
+<sc-for list="{{ provs }}" as="p" hint-placeholder-count="8">
+<div style="border-top:1px solid {{ p.line }};background:{{ p.rowBg }}">
+<div onClick="{{ p.toggle }}" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 14px">
+<span style="width:30px;height:30px;border-radius:9px;background:{{ p.monoBg }};color:{{ p.monoFg }};display:flex;align-items:center;justify-content:center;font:700 13px/1 'Geist',sans-serif;flex:none">{{ p.mono }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:600 13.5px/1.1 'Geist',sans-serif">{{ p.name }}</span><span style="font:500 11.5px/1.2 'Geist',sans-serif;color:{{ t.mute }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.line2 }}</span></span>
+<span style="flex:none;background:{{ p.pillBg }};color:{{ p.pillFg }};border-radius:99px;padding:6px 10px;font:600 11.5px/1 'Geist',sans-serif">{{ p.pill }}</span>
+</div>
+<sc-if value="{{ p.showForm }}" hint-placeholder-val="{{ false }}">
+<div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
+<sc-if value="{{ p.needsUrl }}" hint-placeholder-val="{{ false }}"><label style="display:flex;flex-direction:column;gap:6px"><span style="font:600 12px/1 'Geist',sans-serif">{{ px.baseUrl }}</span><input value="{{ p.url }}" onChange="{{ p.onUrl }}" onKeyDown="{{ p.onKeyDown }}" placeholder="{{ p.urlPh }}" spellcheck="false" style="width:100%;box-sizing:border-box;background:{{ t.bg }};color:{{ t.ink }};border-radius:12px;padding:11px 12px;font:500 13px/1 'Geist Mono',monospace;border:1.5px solid {{ p.inputBd }}"></label></sc-if>
+<sc-if value="{{ p.needsKey }}" hint-placeholder-val="{{ true }}"><label style="display:flex;flex-direction:column;gap:6px"><span style="font:600 12px/1 'Geist',sans-serif">{{ p.keyLabel }}</span><input type="password" value="{{ p.key }}" onChange="{{ p.onKey }}" onKeyDown="{{ p.onKeyDown }}" placeholder="{{ p.keyPh }}" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:{{ t.bg }};color:{{ t.ink }};border-radius:12px;padding:11px 12px;font:500 13px/1 'Geist Mono',monospace;border:1.5px solid {{ p.inputBd }}"></label></sc-if>
+<sc-if value="{{ p.hasErr }}" hint-placeholder-val="{{ false }}"><span style="font:500 12.5px/1.4 'Geist',sans-serif;color:#C4402A;text-wrap:pretty">{{ p.err }}</span></sc-if>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span onClick="{{ p.test }}" style="cursor:pointer;background:{{ t.ink }};color:{{ t.inv }};border-radius:99px;padding:10px 14px;font:600 13px/1 'Geist',sans-serif;white-space:nowrap;opacity:{{ p.testOp }}">{{ p.testLabel }}</span><span onClick="{{ p.cancel }}" style="cursor:pointer;border:1.5px solid {{ t.ink }};border-radius:99px;padding:8.5px 13px;font:600 13px/1 'Geist',sans-serif;white-space:nowrap">{{ px.cancel }}</span><sc-if value="{{ p.canClear }}" hint-placeholder-val="{{ false }}"><span onClick="{{ p.disconnect }}" style="cursor:pointer;margin-left:auto;font:600 13px/1 'Geist',sans-serif;color:#C4402A;padding:6px 4px">{{ px.clear }}</span></sc-if></div>
+<span style="font:500 11.5px/1.45 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ px.vault }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ p.showInfo }}" hint-placeholder-val="{{ false }}">
+<div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ p.models }}" as="m" hint-placeholder-count="2"><span onClick="{{ m.onClick }}" style="cursor:pointer;display:flex;gap:6px;align-items:baseline;background:{{ m.bg }};color:{{ m.fg }};border-radius:99px;padding:7px 10px;font:500 12px/1 'Geist',sans-serif"><span style="font-weight:600">{{ m.n }}</span><span style="opacity:.7">{{ m.tag }}</span></span></sc-for></div>
+<span style="font:500 11.5px/1.4 'Geist',sans-serif;color:{{ t.mute }}">{{ px.tagNote }}</span>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><sc-if value="{{ p.canChange }}" hint-placeholder-val="{{ false }}"><span onClick="{{ p.change }}" style="cursor:pointer;border:1.5px solid {{ t.ink }};border-radius:99px;padding:8.5px 13px;font:600 13px/1 'Geist',sans-serif;white-space:nowrap">{{ p.changeLabel }}</span></sc-if><sc-if value="{{ p.canDisc }}" hint-placeholder-val="{{ false }}"><span onClick="{{ p.disconnect }}" style="cursor:pointer;font:600 12.5px/1 'Geist',sans-serif;color:{{ t.mute }};padding:6px 4px">{{ px.disconnect }}</span></sc-if></div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMem }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ tx.memory }}</span>
+<sc-for list="{{ memory }}" as="r" hint-placeholder-count="4"><div style="background:{{ r.bg }};border:1px solid {{ t.line }};border-radius:12px;padding:10px 12px;font:500 13px/1.35 'Geist',sans-serif;transition:background 1s">{{ r.text }}</div></sc-for>
+<span style="font:400 12px/1.4 'Geist',sans-serif;color:{{ t.mute }}">{{ tx.memoryNote }}</span>
+</div>
+<sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ tx.savedTitle }}</span>
+<sc-for list="{{ saved }}" as="r" hint-placeholder-count="1"><div style="display:flex;justify-content:space-between;gap:10px;border:1.5px dashed {{ t.line }};border-radius:12px;padding:9px 12px;font:500 13px/1.3 'Geist',sans-serif"><span>{{ r.what }}</span><span style="font:600 11px/1.3 'Geist Mono',monospace;color:{{ t.mute }};white-space:nowrap">{{ r.where }}</span></div></sc-for>
+</div></sc-if>
+</sc-if>
+
+<sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ tx.rules }}</span>
+<sc-for list="{{ rules }}" as="r" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px;background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:12px;padding:9px 12px"><span style="flex:none;background:{{ r.bg }};color:{{ r.fg }};border-radius:99px;padding:5px 8px;font:600 10px/1 'Geist Mono',monospace;letter-spacing:.04em">{{ r.tag }}</span><span style="font:500 13px/1.3 'Geist',sans-serif;text-wrap:pretty">{{ r.text }}</span></div></sc-for>
+<span style="font:400 12px/1.4 'Geist',sans-serif;color:{{ t.mute }}">{{ tx.rulesNote }}</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ tx.conns }}</span>
+<div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;overflow:hidden">
+<sc-for list="{{ conns }}" as="r" hint-placeholder-count="5"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 12px;border-top:1px solid {{ r.line }}"><span style="display:flex;flex-direction:column;gap:4px"><span style="font:600 10px/1 'Geist Mono',monospace;letter-spacing:.06em;color:{{ t.mute }}">{{ r.kind }}</span><span style="font:600 13px/1.2 'Geist',sans-serif">{{ r.name }}</span></span><span style="font:500 12px/1.3 'Geist',sans-serif;color:{{ r.vc }};text-align:right">{{ r.value }}</span></div></sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagem&quot;},&quot;follow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Personagem&quot;}}">
+const _h = React.createElement;
+const _ab = { position: 'absolute' };
+const BOT_STATES = [
+  { k: 'idle', pt: 'À toa', en: 'Idle' },
+  { k: 'listening', pt: 'Ouvindo', en: 'Listening' },
+  { k: 'thinking', pt: 'Pensando', en: 'Thinking' },
+  { k: 'working', pt: 'Trabalhando', en: 'Working' },
+  { k: 'needsYou', pt: 'Precisa de você', en: 'Needs you' },
+  { k: 'done', pt: 'Feito!', en: 'Done!' },
+];
+
+const BOT_MOUSE = window.__botMouse || (window.__botMouse = (() => {
+  const m = { x: null, y: null, subs: new Set(), raf: 0 };
+  window.addEventListener('pointermove', e => {
+    m.x = e.clientX; m.y = e.clientY;
+    if (!m.raf) m.raf = requestAnimationFrame(() => { m.raf = 0; m.subs.forEach(f => f()); });
+  }, { passive: true });
+  return m;
+})());
+
+function botGaze(el) {
+  if (!el || BOT_MOUSE.x == null) return [0, 0];
+  const r = el.getBoundingClientRect();
+  const dx = BOT_MOUSE.x - (r.left + r.width / 2), dy = BOT_MOUSE.y - (r.top + r.height / 2);
+  const d = Math.hypot(dx, dy) || 1, k = Math.min(d / 240, 1);
+  return [dx / d * k, dy / d * k];
+}
+
+function useBotGaze(ref, on, cb) {
+  const cbRef = React.useRef(cb); cbRef.current = cb;
+  React.useEffect(() => {
+    if (!on) { cbRef.current(0, 0); return; }
+    const f = () => { const g = botGaze(ref.current); cbRef.current(g[0], g[1]); };
+    BOT_MOUSE.subs.add(f); f();
+    return () => { BOT_MOUSE.subs.delete(f); };
+  }, [on]);
+}
+
+function useBotReaction(interactive) {
+  const [on, setOn] = React.useState(false);
+  const t = React.useRef(0);
+  React.useEffect(() => () => clearTimeout(t.current), []);
+  const fire = interactive ? () => { setOn(true); clearTimeout(t.current); t.current = setTimeout(() => setOn(false), 1800); } : undefined;
+  return [on, fire];
+}
+
+/* ---------- A · Pingo (gota, squash & stretch) ---------- */
+function PingoBot(p) {
+  const s = p.size || 120, color = p.color || '#EF5B3B', eye = p.eye || '#2B1D16', cheek = p.cheek || '#FF9DA6', ink = p.ink || '#2B1D16';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const spark = p.spark || ['#3E64DE', '#3DBB8E', '#FF9DA6', '#EF5B3B', '#F6C443', '#3E64DE'];
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), gz = React.useRef(null);
+  useBotGaze(root, follow && st !== 'thinking', (x, y) => { if (gz.current) gz.current.style.transform = 'translate(' + (x * s * 0.07).toFixed(2) + 'px,' + (y * s * 0.05).toFixed(2) + 'px)'; });
+  const A = v => motion ? v : 'none';
+  const H = s * 1.04, b = s * 0.8, cy = H - b / 2;
+  const bodyAnim = { idle: 'pg-breathe 2.6s ease-in-out infinite', listening: 'pg-tilt 1.6s ease-in-out infinite', thinking: 'pg-breathe 3.6s ease-in-out infinite', working: 'pg-hop .8s cubic-bezier(.3,.7,.4,1) infinite', needsYou: 'pg-hop .55s ease-in-out infinite', done: 'pg-jump 1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const eyeT = { idle: 'dot', listening: 'wide', thinking: 'dot', working: 'focus', needsYou: 'wide', done: 'happy' }[st];
+  const mouthT = { idle: 'smile', listening: 'o', thinking: 'flat', working: 'flat', needsYou: 'o', done: 'grin' }[st];
+  const look = st === 'thinking' ? 'translate(' + s * 0.06 + 'px,' + (-s * 0.06) + 'px)' : 'none';
+  const eyeEl = (dx, key) => {
+    const base = { ..._ab, left: s / 2 + dx, top: cy - s * 0.04, transform: 'translate(-50%,-50%)' };
+    if (eyeT === 'happy') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.075, border: (s * 0.034) + 'px solid ' + eye, borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } });
+    if (eyeT === 'focus') return _h('div', { key, style: { ...base, width: s * 0.13, height: s * 0.036, borderRadius: s, background: eye } });
+    const w = eyeT === 'wide' ? 0.12 : 0.1, hh = eyeT === 'wide' ? 0.155 : 0.13;
+    return _h('div', { key, style: { ...base, width: s * w, height: s * hh } },
+      _h('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: eye, position: 'relative', animation: A('bot-blink 3.6s infinite') } },
+        _h('div', { style: { ..._ab, width: '34%', height: '27%', borderRadius: '50%', background: '#FFFFFF', top: '16%', right: '14%', opacity: 0.9 } })));
+  };
+  const my = cy + s * 0.1, mb = { ..._ab, left: s / 2, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    smile: _h('div', { key: 'm', style: { ...mb, width: s * 0.13, height: s * 0.065, border: (s * 0.03) + 'px solid ' + eye, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    grin: _h('div', { key: 'm', style: { ...mb, width: s * 0.17, height: s * 0.085, background: eye, borderRadius: '0 0 ' + s + 'px ' + s + 'px', overflow: 'hidden' } },
+      _h('div', { style: { ..._ab, left: '50%', bottom: -s * 0.02, width: s * 0.085, height: s * 0.06, marginLeft: -s * 0.0425, borderRadius: '50%', background: cheek } })),
+    o: _h('div', { key: 'm', style: { ...mb, width: s * 0.065, height: s * 0.075, borderRadius: '50%', background: eye } }),
+    flat: _h('div', { key: 'm', style: { ...mb, width: s * 0.075, height: s * 0.03, borderRadius: s, background: eye } }),
+  }[mouthT];
+  const cheeks = [-1, 1].map(side => _h('div', { key: 'c' + side, style: { ..._ab, left: s / 2 + side * s * 0.26 - s * 0.04, top: cy + s * 0.05 - s * 0.03, width: s * 0.08, height: s * 0.06, borderRadius: '50%', background: cheek, opacity: 0.85 } }));
+  const ex = [];
+  if (st === 'listening') [0, 1].forEach(i => [-1, 1].forEach(side => ex.push(_h('div', { key: 'r' + i + side, style: { ..._ab, width: s * 0.34, height: s * 0.34, left: s / 2 + side * s * 0.54 - s * 0.17, top: cy - s * 0.17, borderRadius: '50%', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', opacity: motion ? 0 : 0.35, animation: A('bot-ripple 1.6s ease-out ' + (i * 0.8) + 's infinite') } }))));
+  if (st === 'thinking') [0, 1, 2].forEach(i => { const d = s * (0.05 + i * 0.022); ex.push(_h('div', { key: 't' + i, style: { ..._ab, width: d, height: d, left: s * (0.72 + i * 0.1), top: s * (0.16 - i * 0.08) - d / 2, borderRadius: '50%', background: ink, animation: A('bot-bob 1.2s ease-in-out ' + (i * 0.18) + 's infinite') } })); });
+  if (st === 'working') ex.push(_h('div', { key: 'w', style: { ..._ab, width: s * 0.2, height: s * 0.2, left: s * 0.8, top: s * 0.06, borderRadius: '50%', border: (s * 0.035) + 'px solid ' + ink, borderTopColor: 'transparent', boxSizing: 'border-box', animation: A('bot-spin .9s linear infinite') } }));
+  if (st === 'needsYou') ex.push(_h('div', { key: 'n', style: { ..._ab, width: s * 0.3, height: s * 0.3, left: s * 0.76, top: -s * 0.04, borderRadius: '50%', background: '#FFFFFF', border: (s * 0.025) + 'px solid ' + ink, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 ' + (s * 0.2) + "px/1 'Fredoka', sans-serif", color: '#2B1D16', animation: A('bot-bubble 1s ease-in-out infinite') } }, '!'));
+  if (st === 'done') [[-0.42, -0.18], [0.44, -0.22], [-0.3, -0.42], [0.28, -0.48], [0, -0.56], [0.52, 0.08]].forEach((v, i) => { const d = s * (i % 2 ? 0.05 : 0.07); ex.push(_h('div', { key: 'd' + i, style: { ..._ab, width: d, height: d, left: s / 2 - d / 2, top: s * 0.3 - d / 2, borderRadius: '50%', background: spark[i % spark.length], '--dx': v[0] * s + 'px', '--dy': v[1] * s + 'px', transform: motion ? undefined : 'translate(' + v[0] * s * 0.7 + 'px,' + v[1] * s * 0.7 + 'px)', animation: A('pg-pop 1s ease-out ' + (i * 0.1) + 's infinite') } })); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: H, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: (s - b) / 2, top: H - b, width: b, height: b, background: color, borderRadius: '50% 0 50% 50%', transform: 'rotate(-45deg)', boxShadow: 'inset ' + (b * 0.07) + 'px ' + (-b * 0.07) + 'px 0 rgba(0,0,0,.09)' } }),
+      _h('div', { style: { ..._ab, left: s / 2 - b * 0.3, top: cy - b * 0.34, width: b * 0.16, height: b * 0.1, borderRadius: '50%', background: '#FFFFFF', opacity: 0.45, transform: 'rotate(-35deg)' } }),
+      _h('div', { style: { ..._ab, inset: 0, transform: look, transition: 'transform .4s cubic-bezier(.3,1.4,.5,1)' } },
+        _h('div', { ref: gz, style: { ..._ab, inset: 0, transition: 'transform .18s ease-out' } }, eyeEl(-s * 0.15, 'l'), eyeEl(s * 0.15, 'r'), cheeks, mouth))),
+    ex);
+}
+
+/* ---------- B · Bibo (matriz de pontos, quadro a quadro) ---------- */
+const BB_EYE = { dot: ['##', '##'], wide: ['##', '##', '##'], blink: ['##'], focus: ['###'], happy: ['.#.', '#.#'] };
+const BB_MOUTH = { smile: ['#....#', '.####.'], grin: ['#......#', '.######.', '..####..'], o: ['.##.', '#..#', '.##.'], small: ['##', '##'], flat: ['####'], none: [] };
+function bbFace(eyeT, mouthT, dx, dy, extra) {
+  const C = 12, R = 9, on = new Set();
+  const put = (pat, c0, r0) => pat.forEach((row, r) => { for (let c = 0; c < row.length; c++) { const cc = c0 + c, rr = r0 + r; if (row[c] === '#' && cc >= 0 && cc < C && rr >= 0 && rr < R) on.add(rr * C + cc); } });
+  const e = BB_EYE[eyeT], w = e[0].length, er = 3 - Math.ceil((e.length - 1) / 2) + dy;
+  put(e, Math.ceil(2.5 - (w - 1) / 2) + dx, er);
+  put(e, Math.floor(8.5 - (w - 1) / 2) + dx, er);
+  const m = BB_MOUTH[mouthT];
+  if (m.length) put(m, Math.round(5.5 - (m[0].length - 1) / 2) + dx, m.length > 2 ? (mouthT === 'grin' ? 5 : 6) : 6);
+  extra.forEach(i => on.add(i));
+  return on;
+}
+function BiboBot(p) {
+  const s = p.size || 120, body = p.body || '#9FE3C5', led = p.led || '#C9F45B', scr = p.screen || '#151815', ink = p.ink || '#141714';
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const [f, setF] = React.useState(0);
+  const [g, setG] = React.useState([0, 0]);
+  const root = React.useRef(null);
+  React.useEffect(() => { if (!motion) { setF(0); return; } const id = setInterval(() => setF(x => x + 1), 120); return () => clearInterval(id); }, [motion]);
+  useBotGaze(root, follow, (x, y) => { const nx = Math.max(-1, Math.min(1, Math.round(x * 1.5))), ny = Math.max(-1, Math.min(1, Math.round(y * 1.3))); setG(q => (q[0] === nx && q[1] === ny) ? q : [nx, ny]); });
+  const fr = motion ? f : 13, A = v => motion ? v : 'none';
+  let eyeT = 'dot', mouthT = 'smile', extra = [], dx = g[0], dy = g[1];
+  if (st === 'idle') { if (fr % 28 === 27) eyeT = 'blink'; }
+  else if (st === 'listening') { eyeT = 'wide'; mouthT = (fr >> 2) % 2 ? 'o' : 'small'; }
+  else if (st === 'thinking') { dx = 1; dy = -1; mouthT = 'none'; const k = (fr >> 2) % 4; [[2, 3], [5, 6], [8, 9]].slice(0, k).forEach(c => extra.push(72 + c[0], 72 + c[1])); }
+  else if (st === 'working') { eyeT = 'focus'; mouthT = 'none'; const q = fr % 15 - 3; for (let i = 0; i < 3; i++) if (q + i >= 0 && q + i < 12) extra.push(84 + q + i); }
+  else if (st === 'needsYou') { eyeT = (fr >> 2) % 2 ? 'wide' : 'dot'; mouthT = 'o'; }
+  else if (st === 'done') { eyeT = 'happy'; mouthT = 'grin'; dx = 0; dy = 0; extra = (fr >> 1) % 2 ? [0, 11, 96, 107] : [13, 22, 85, 94]; }
+  const on = bbFace(eyeT, mouthT, dx, dy, extra);
+  const cell = s * 0.051, dot = cell * 0.74, glow = (cell * 0.9).toFixed(1);
+  const cells = [];
+  for (let i = 0; i < 108; i++) { const lit = on.has(i); cells.push(_h('div', { key: i, style: { width: dot, height: dot, borderRadius: '50%', background: lit ? led : 'rgba(255,255,255,.07)', boxShadow: lit ? '0 0 ' + glow + 'px ' + led : 'none' } })); }
+  const bodyAnim = { idle: 'bb-bob 1.8s steps(1) infinite', listening: 'bb-tilt 1.2s steps(1) infinite', thinking: 'bb-bob 2.6s steps(1) infinite', working: 'bb-bob .48s steps(1) infinite', needsYou: 'bb-hop .9s steps(1) infinite', done: 'bb-jump .9s steps(1) infinite' }[st];
+  const bulbOn = st === 'listening' || st === 'needsYou' || st === 'working' || st === 'done';
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s * 1.06, flex: 'none', cursor: fire ? 'pointer' : 'default' } },
+    _h('div', { style: { ..._ab, inset: 0, transformOrigin: '50% 100%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.018, top: s * 0.06, width: s * 0.036, height: s * 0.11, background: ink, borderRadius: s * 0.02 } }),
+      _h('div', { style: { ..._ab, left: s / 2 - s * 0.06, top: 0, width: s * 0.12, height: s * 0.12, borderRadius: '50%', background: bulbOn ? led : body, border: (s * 0.022) + 'px solid ' + ink, boxSizing: 'border-box', boxShadow: bulbOn ? '0 0 ' + (s * 0.08) + 'px ' + led : 'none', animation: A(st === 'needsYou' || st === 'listening' ? 'bb-blink .5s steps(1) infinite' : 'none') } }),
+      _h('div', { style: { ..._ab, left: 0, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.91, top: s * 0.45, width: s * 0.09, height: s * 0.26, borderRadius: s * 0.045, background: ink } }),
+      _h('div', { style: { ..._ab, left: s * 0.05, top: s * 0.15, width: s * 0.9, height: s * 0.86, borderRadius: s * 0.26, background: body, boxShadow: 'inset 0 ' + (-s * 0.05) + 'px 0 rgba(0,0,0,.1), inset 0 ' + (s * 0.03) + 'px 0 rgba(255,255,255,.4)' } }),
+      _h('div', { style: { ..._ab, left: s * 0.13, top: s * 0.27, width: s * 0.74, height: s * 0.56, borderRadius: s * 0.13, background: scr, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 ' + (s * 0.015) + 'px rgba(0,0,0,.35)' } },
+        _h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(12,' + cell + 'px)', gridAutoRows: cell + 'px', placeItems: 'center' } }, cells))));
+}
+
+/* ---------- C · Oki (núcleo + satélites, molas) ---------- */
+const OKI_SZ = [0.17, 0.13, 0.11, 0.09, 0.07];
+function okiTarget(k, i, n, t, s, sz) {
+  const R = v => v * s;
+  if (k === 'listening') { const side = i % 2 ? 1 : -1, j = i >> 1, pulse = Math.sin(t * 6 - j * 1.3) * 0.035; return { x: side * R(0.38 + j * 0.09 + pulse), y: R(-0.04 + j * 0.02), c: (0.11 - j * 0.025) / sz, z: 1 }; }
+  if (k === 'thinking') { const a = t * 2.4 + i * (Math.PI * 2 / n); return { x: R(0.26) * Math.cos(a), y: R(-0.4) + R(0.07) * Math.sin(a), c: (0.075 / sz) * (0.85 + 0.25 * Math.sin(a)), z: Math.sin(a) }; }
+  if (k === 'working') return { x: R((i - (n - 1) / 2) * 0.14), y: R(0.4) - R(0.08) * Math.abs(Math.sin(t * 5 - i * 0.7)), c: 0.08 / sz, z: 1 };
+  if (k === 'needsYou') { const hop = Math.abs(Math.sin(t * 6)) * R(0.05); const yy = i < n - 1 ? -0.46 + i * 0.075 : -0.46 + (n - 1) * 0.075 + 0.06; return { x: R(0.42), y: R(yy) - hop, c: 0.065 / sz, z: 1 }; }
+  if (k === 'done') { const a = i * (Math.PI * 2 / n) + t * 0.9 - Math.PI / 2, r = R(0.36 + 0.12 * Math.pow(Math.abs(Math.sin(t * 3.4)), 0.7)); return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.9, c: 1, z: 1 }; }
+  const a = i * 2.4 + t * (0.45 + i * 0.08) * (i % 2 ? 1 : -1), r = R(0.37 + 0.03 * Math.sin(t * 1.3 + i));
+  return { x: r * Math.cos(a), y: r * Math.sin(a) * 0.4 + R(0.04), c: 0.85 + 0.2 * Math.sin(a), z: Math.sin(a) };
+}
+function OkiBot(p) {
+  const s = p.size || 120, body = p.body || '#3A3AF4', ink = p.ink || '#10101A', mouthC = p.mouth || '#FFFFFF';
+  const sats = p.sats || ['#FF7A68', '#C8F04B', '#9CB7FF', '#10101A', '#FF7A68'];
+  const motion = p.motion !== false, follow = p.follow !== false;
+  const [reacting, fire] = useBotReaction(p.interactive);
+  const st = reacting ? 'done' : (p.state || 'idle');
+  const root = React.useRef(null), satEls = React.useRef([]), pupils = React.useRef([]);
+  const stRef = React.useRef(st); stRef.current = st;
+  const gzT = React.useRef([0, 0]);
+  useBotGaze(root, follow, (x, y) => { gzT.current = [x, y]; });
+  React.useEffect(() => {
+    const P = OKI_SZ.map(() => ({ x: 0, y: 0, c: 1, vx: 0, vy: 0, vc: 0 })), G = { x: 0, y: 0 };
+    let raf = 0, first = true; const t0 = performance.now();
+    const tick = now => {
+      const t = motion ? (now - t0) / 1000 : 0.6, k = stRef.current;
+      OKI_SZ.forEach((sz, i) => {
+        const T = okiTarget(k, i, OKI_SZ.length, t, s, sz), q = P[i];
+        if (first || !motion) { q.x = T.x; q.y = T.y; q.c = T.c; }
+        else { q.vx = (q.vx + (T.x - q.x) * 0.09) * 0.8; q.vy = (q.vy + (T.y - q.y) * 0.09) * 0.8; q.vc = (q.vc + (T.c - q.c) * 0.09) * 0.8; q.x += q.vx; q.y += q.vy; q.c += q.vc; }
+        const el = satEls.current[i];
+        if (el) { el.style.transform = 'translate(' + q.x.toFixed(2) + 'px,' + q.y.toFixed(2) + 'px) scale(' + Math.max(0, q.c).toFixed(3) + ')'; el.style.zIndex = T.z > 0 ? 3 : 1; }
+      });
+      const tg = k === 'thinking' ? [0.6, -0.8] : gzT.current;
+      if (first || !motion) { G.x = tg[0]; G.y = tg[1]; } else { G.x += (tg[0] - G.x) * 0.14; G.y += (tg[1] - G.y) * 0.14; }
+      pupils.current.forEach(el => { if (el) el.style.transform = 'translate(' + (G.x * s * 0.035).toFixed(2) + 'px,' + (G.y * s * 0.035).toFixed(2) + 'px)'; });
+      first = false;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [motion, s]);
+  const A = v => motion ? v : 'none';
+  const cx = s / 2, cy = s * 0.56, d = s * 0.56;
+  const bodyAnim = { idle: 'ok-float 3s ease-in-out infinite', listening: 'ok-pulse .9s ease-in-out infinite', thinking: 'ok-float 2.2s ease-in-out infinite', working: 'ok-float .9s ease-in-out infinite', needsYou: 'ok-hop .7s ease-in-out infinite', done: 'pg-jump 1.1s cubic-bezier(.3,.7,.4,1) infinite' }[st];
+  const happy = st === 'done', ew = (st === 'listening' || st === 'needsYou') ? 0.17 : 0.15, eh = st === 'working' ? 0.09 : ew;
+  const eyeEl = (side, idx) => happy
+    ? _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * 0.065, top: cy - s * 0.09, width: s * 0.13, height: s * 0.07, border: (s * 0.032) + 'px solid #FFFFFF', borderBottom: 'none', borderRadius: s + 'px ' + s + 'px 0 0', boxSizing: 'border-box' } })
+    : _h('div', { key: 'e' + idx, style: { ..._ab, left: cx + side * s * 0.1 - s * ew / 2, top: cy - s * 0.04 - s * eh / 2, width: s * ew, height: s * eh, borderRadius: '50%', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', animation: A('bot-blink 4.2s infinite') } },
+        _h('div', { ref: el => { pupils.current[idx] = el; }, style: { width: s * 0.075, height: s * 0.075, borderRadius: '50%', background: ink, flex: 'none' } }));
+  const my = cy + s * 0.12, mb = { ..._ab, left: cx, top: my, transform: 'translate(-50%,-50%)' };
+  const mouth = {
+    idle: _h('div', { style: { ...mb, width: s * 0.1, height: s * 0.05, border: (s * 0.025) + 'px solid ' + mouthC, borderTop: 'none', borderRadius: '0 0 ' + s + 'px ' + s + 'px', boxSizing: 'border-box' } }),
+    listening: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.06, borderRadius: '50%', background: mouthC } }),
+    thinking: _h('div', { style: { ...mb, left: cx + s * 0.03, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    working: _h('div', { style: { ...mb, width: s * 0.07, height: s * 0.025, borderRadius: s, background: mouthC } }),
+    needsYou: _h('div', { style: { ...mb, width: s * 0.06, height: s * 0.07, borderRadius: '50%', background: mouthC } }),
+    done: _h('div', { style: { ...mb, width: s * 0.14, height: s * 0.07, borderRadius: '0 0 ' + s + 'px ' + s + 'px', background: mouthC } }),
+  }[st];
+  const satNodes = OKI_SZ.map((sz, i) => { const T0 = okiTarget(st, i, OKI_SZ.length, 0.6, s, sz); return _h('div', { key: 's' + i, ref: el => { satEls.current[i] = el; }, style: { ..._ab, left: cx - sz * s / 2, top: cy - sz * s / 2, width: sz * s, height: sz * s, borderRadius: '50%', background: sats[i % sats.length], willChange: 'transform', transform: 'translate(' + T0.x.toFixed(2) + 'px,' + T0.y.toFixed(2) + 'px) scale(' + Math.max(0, T0.c).toFixed(3) + ')', zIndex: T0.z > 0 ? 3 : 1 } }); });
+  return _h('div', { ref: root, onClick: fire, style: { position: 'relative', width: s, height: s, flex: 'none', isolation: 'isolate', cursor: fire ? 'pointer' : 'default' } },
+    satNodes,
+    _h('div', { style: { ..._ab, inset: 0, zIndex: 2, transformOrigin: '50% 80%', animation: A(bodyAnim) } },
+      _h('div', { style: { ..._ab, left: cx - d / 2, top: cy - d / 2, width: d, height: d, borderRadius: '50%', background: body, boxShadow: 'inset ' + (-s * 0.03) + 'px ' + (-s * 0.04) + 'px 0 rgba(0,0,0,.14)' } }),
+      _h('div', { style: { ..._ab, left: cx - d * 0.32, top: cy - d * 0.38, width: d * 0.2, height: d * 0.12, borderRadius: '50%', background: '#FFFFFF', opacity: 0.3, transform: 'rotate(-30deg)' } }),
+      eyeEl(-1, 0), eyeEl(1, 1), mouth));
+}
+const SPECIES = {
+  pingo: { label: 'Pingo', font: "700 22px/1 'Fredoka',sans-serif", nameFont: "600 20px/1 'Fredoka',sans-serif", inputFont: "600 30px/1 'Fredoka',sans-serif", size: 230,
+    desc: { pt: 'Gota de brinquedo. Amassa, estica e quica.', en: 'A toy drop. Squashes, stretches, bounces.' },
+    bubble: { bg: '#FFFFFF', fg: '#2B1D16', font: "600 21px/1.25 'Fredoka',sans-serif" },
+    names: ['Faísca', 'Mel', 'Bolota', 'Pipoca', 'Caju', 'Nhoque', 'Gota'],
+    colors: [
+      { n: { pt: 'Tomate', en: 'Tomato' }, body: '#EF5B3B', eye: '#2B1D16', stage: '#F6C443', stageInk: '#5A4318' },
+      { n: { pt: 'Cobalto', en: 'Cobalt' }, body: '#3E64DE', eye: '#FFF4E8', stage: '#FFB8A6', stageInk: '#6B2416' },
+      { n: { pt: 'Menta', en: 'Mint' }, body: '#3DBB8E', eye: '#2B1D16', stage: '#FBE3A0', stageInk: '#5A4318' },
+      { n: { pt: 'Girassol', en: 'Sunflower' }, body: '#F6C443', eye: '#2B1D16', stage: '#3E64DE', stageInk: '#FFFFFF', ink: '#FBF4EA' },
+    ] },
+  bibo: { label: 'Bibo', font: "900 26px/1 'Doto',monospace", nameFont: "700 21px/1 'Doto',monospace", inputFont: "900 32px/1 'Doto',monospace", size: 220, dotted: true,
+    desc: { pt: 'Bichinho com rosto de LED, ponto a ponto.', en: 'A pocket pet with an LED face, dot by dot.' },
+    bubble: { bg: '#151815', fg: '#C9F45B', font: "500 17px/1.4 'Geist Mono',monospace" },
+    names: ['Zuca', 'Tico', 'Lulu', 'Bip', 'Pixel', 'Neno', 'Biju'],
+    colors: [
+      { n: { pt: 'Menta', en: 'Mint' }, body: '#9FE3C5', stage: '#C9B8F2', stageInk: '#2E2650' },
+      { n: { pt: 'Lilás', en: 'Lilac' }, body: '#C9B8F2', stage: '#9FE3C5', stageInk: '#173D2D' },
+      { n: { pt: 'Manteiga', en: 'Butter' }, body: '#F4E38E', stage: '#F7B99A', stageInk: '#5A2A14' },
+      { n: { pt: 'Pêssego', en: 'Peach' }, body: '#F7B99A', stage: '#F4E38E', stageInk: '#4D4310' },
+    ] },
+  oki: { label: 'Oki', font: "700 21px/1 'Unbounded',sans-serif", nameFont: "600 16px/1 'Unbounded',sans-serif", inputFont: "700 26px/1 'Unbounded',sans-serif", size: 260,
+    desc: { pt: 'Núcleo com satélites que orbitam e explodem de alegria.', en: 'A core with orbiting dots that burst with joy.' },
+    bubble: { bg: '#10101A', fg: '#FFFFFF', font: "600 17px/1.35 'Unbounded',sans-serif" },
+    names: ['Nina', 'Juju', 'Bento', 'Kiki', 'Lua', 'Tuca', 'Zazá'],
+    colors: [
+      { n: { pt: 'Ultramar', en: 'Ultramarine' }, body: '#3A3AF4', stage: '#C8F04B', stageInk: '#2E3A08', sats: ['#FF7A68', '#FFFFFF', '#9CB7FF', '#10101A', '#FF7A68'] },
+      { n: { pt: 'Coral', en: 'Coral' }, body: '#FF7A68', stage: '#9CB7FF', stageInk: '#14204A', sats: ['#3A3AF4', '#C8F04B', '#FFFFFF', '#10101A', '#3A3AF4'] },
+      { n: { pt: 'Lima', en: 'Lime' }, body: '#C8F04B', mouth: '#10101A', stage: '#3A3AF4', stageInk: '#FFFFFF', sats: ['#FF7A68', '#FFFFFF', '#9CB7FF', '#10101A', '#FF7A68'] },
+      { n: { pt: 'Noite', en: 'Night' }, body: '#10101A', stage: '#FF7A68', stageInk: '#3D0F08', sats: ['#C8F04B', '#3A3AF4', '#FFFFFF', '#C8F04B', '#3A3AF4'] },
+    ] },
+};
+const SP_KEYS = ['pingo', 'bibo', 'oki'];
+const DOT_IMG = 'radial-gradient(rgba(20,23,20,.16) 1.6px,transparent 1.9px)';
+const PERSONAS = [
+  { l: { pt: 'Curioso', en: 'Curious' }, d: { pt: 'Faz perguntas e sugere ideias.', en: 'Asks questions, suggests ideas.' }, g: { pt: 'Oi! Eu sou {n}. O que a gente descobre hoje?', en: "Hi! I'm {n}. What do we figure out today?" } },
+  { l: { pt: 'Brincalhão', en: 'Playful' }, d: { pt: 'Leve, com piada na hora certa.', en: 'Light, jokes at the right time.' }, g: { pt: 'E aí! {n} na área. Manda a primeira tarefa?', en: 'Hey! {n} here. Toss me a first task?' } },
+  { l: { pt: 'Direto', en: 'Straight' }, d: { pt: 'Curto, objetivo, sem rodeio.', en: 'Short and focused, no fluff.' }, g: { pt: '{n} pronto. Qual é a prioridade?', en: "{n} ready. What's the priority?" } },
+  { l: { pt: 'Zen', en: 'Zen' }, d: { pt: 'Calmo, organiza o caos.', en: 'Calm, tames the chaos.' }, g: { pt: 'Olá, sou {n}. Sem pressa — por onde começamos?', en: "Hello, I'm {n}. No rush — where do we start?" } },
+];
+const PROVIDERS = [
+  { n: 'OpenAI', sub: 'GPT', models: ['GPT-6 Astra', 'GPT-6 mini'] },
+  { n: 'Anthropic', sub: 'Claude', models: ['Claude Opus', 'Claude Sonnet', 'Claude Haiku'] },
+  { n: 'xAI', sub: 'Grok', models: ['Grok 4.6', 'Grok 4.6 Fast'] },
+  { n: 'Google', sub: 'Gemini', models: ['Gemini Ultra', 'Gemini Flash'] },
+  { n: 'Mistral', sub: 'Large · Codestral', models: ['Mistral Large', 'Codestral'] },
+  { n: 'DeepSeek', sub: 'R2 · V4', models: ['DeepSeek R2', 'DeepSeek V4'] },
+  { n: 'Local', sub: 'Ollama · LM Studio', models: ['Llama', 'Qwen', 'Gemma'], local: true },
+  { n: { pt: 'Outra API', en: 'Other API' }, sub: { pt: 'compatível OpenAI', en: 'OpenAI-compatible' }, models: [{ pt: 'Modelo próprio', en: 'Custom model' }], custom: true },
+];
+const AUTO = [
+  { l: { pt: 'Sempre pergunta', en: 'Always asks' }, d: { pt: 'Aprovação para tudo', en: 'Approval for everything' }, b: { pt: 'te pergunto antes de qualquer coisa', en: "I'll ask before anything" } },
+  { l: { pt: 'Pergunta no que importa', en: 'Asks when it matters' }, d: { pt: 'Enviar, pagar, apagar', en: 'Send, pay, delete' }, b: { pt: 'pergunto antes de enviar, pagar ou apagar', en: 'I ask before sending, paying or deleting' } },
+  { l: { pt: 'Age sozinho', en: 'Acts on its own' }, d: { pt: 'Faz e te conta depois', en: 'Does it, tells you after' }, b: { pt: 'faço sozinho e te conto depois', en: 'I do it and tell you after' } },
+];
+const APPS = [['gmail', 'Gmail', 'Gmail'], ['cal', 'Agenda', 'Calendar'], ['slack', 'Slack', 'Slack'], ['wa', 'WhatsApp', 'WhatsApp'], ['notion', 'Notion', 'Notion'], ['github', 'GitHub', 'GitHub'], ['drive', 'Drive', 'Drive']];
+const CHAT_FONT = { pingo: "500 15px/1.45 'Figtree',sans-serif", bibo: "400 15px/1.45 'Geist',sans-serif", oki: "400 15px/1.45 'Onest',sans-serif" };
+const PREFIX = [{ pt: 'Hmm, boa!', en: 'Ooh, nice!' }, { pt: 'Bora!', en: "Let's go!" }, { pt: 'Ok.', en: 'Ok.' }, { pt: 'Tranquilo.', en: 'Sure thing.' }];
+const DONE = [{ pt: 'Feito! Fiquei curioso pra ver o que vão responder.', en: "Done! I'm curious to see what comes back." }, { pt: 'Feito! Mais rápido que passar um café.', en: 'Done! Faster than brewing coffee.' }, { pt: 'Feito.', en: 'Done.' }, { pt: 'Feito. Uma coisa a menos na sua cabeça.', en: 'Done. One less thing on your mind.' }];
+const TASKS = [
+  { id: 'inbox', app: { pt: 'Gmail', en: 'Gmail' }, url: 'mail.google.com/inbox', title: { pt: 'Organizar minha caixa de entrada', en: 'Tidy up my inbox' }, desc: { pt: 'Separo o que importa e rascunho respostas.', en: 'I sort what matters and draft replies.' },
+    intro: { pt: 'Vou abrir seu Gmail no meu computador e dar uma olhada.', en: "I'll open your Gmail on my computer and take a look." },
+    steps: { pt: ['Abrir o Gmail', 'Ler 48 e-mails não lidos', 'Separar o que importa', 'Rascunhar 3 respostas'], en: ['Open Gmail', 'Read 48 unread emails', 'Sort what matters', 'Draft 3 replies'] },
+    result: { pt: '5 e-mails importantes, 31 newsletters arquivadas e 3 respostas rascunhadas no seu tom.', en: '5 important emails, 31 newsletters archived and 3 replies drafted in your voice.' },
+    ask: { pt: 'Posso enviar as 3 respostas?', en: 'Ok to send the 3 replies?' }, askSub: { pt: 'Como ana@estudio.com', en: 'As ana@estudio.com' },
+    details: { pt: ['Marina (fornecedora) — confirmo o pedido de quinta', 'Lucas — envio o contrato revisado amanhã', 'Banco — agendei a ligação para 15h'], en: ['Marina (supplier) — confirming Thursday’s order', 'Lucas — sending the revised contract tomorrow', 'Bank — call booked for 3pm'] },
+    rule: { pt: 'enviar respostas que eu rascunhei, como ana@estudio.com', en: 'send replies I drafted, as ana@estudio.com' }, saved: { pt: ['3 rascunhos', 'Gmail'], en: ['3 drafts', 'Gmail'] },
+    offer: { pt: 'Quer que eu faça isso todo dia às 8h?', en: 'Want me to do this every day at 8am?' }, memo: { pt: 'Organiza a caixa de entrada todo dia às 8h', en: 'Tidies the inbox every day at 8am' } },
+  { id: 'week', app: { pt: 'Agenda', en: 'Calendar' }, url: 'calendar.google.com/week', title: { pt: 'Planejar minha semana', en: 'Plan my week' }, desc: { pt: 'Olho sua agenda e protejo tempo de foco.', en: 'I check your calendar and protect focus time.' },
+    intro: { pt: 'Vou abrir sua agenda e ver como está a semana.', en: "I'll open your calendar and see how the week looks." },
+    steps: { pt: ['Abrir sua agenda', 'Ver 12 compromissos', 'Achar 3 blocos livres', 'Montar o plano'], en: ['Open your calendar', 'Review 12 events', 'Find 3 free blocks', 'Build the plan'] },
+    result: { pt: 'Sua semana tem 12 compromissos. Separei 3 blocos de foco: terça, quarta e sexta de manhã.', en: 'Your week has 12 events. I found 3 focus blocks: Tuesday, Wednesday and Friday mornings.' },
+    ask: { pt: 'Posso bloquear esses horários?', en: 'Ok to block these times?' }, askSub: { pt: 'Na agenda de ana@estudio.com', en: 'On ana@estudio.com’s calendar' },
+    details: { pt: ['Ter 9h–11h · Foco: proposta', 'Qua 9h–10h30 · Foco: e-mails', 'Sex 8h30–11h · Foco: planejamento'], en: ['Tue 9–11am · Focus: proposal', 'Wed 9–10:30am · Focus: email', 'Fri 8:30–11am · Focus: planning'] },
+    rule: { pt: 'criar blocos de foco na agenda de ana@estudio.com', en: 'create focus blocks on ana@estudio.com’s calendar' }, saved: { pt: ['Plano da semana', 'Agenda'], en: ['Week plan', 'Calendar'] },
+    offer: { pt: 'Quer um plano assim toda segunda de manhã?', en: 'Want a plan like this every Monday morning?' }, memo: { pt: 'Prefere blocos de foco pela manhã', en: 'Prefers focus blocks in the morning' } },
+  { id: 'research', app: { pt: 'Navegador', en: 'Browser' }, url: 'busca · 14 abas abertas', title: { pt: 'Pesquisar meus concorrentes', en: 'Research my competitors' }, desc: { pt: 'Leio, comparo e entrego um resumo.', en: 'I read, compare and hand you a summary.' },
+    intro: { pt: 'Vou abrir o navegador do meu computador e começar a ler.', en: "I'll open my computer's browser and start reading." },
+    steps: { pt: ['Abrir o navegador', 'Ler 14 fontes', 'Comparar preços e recursos', 'Escrever o resumo'], en: ['Open the browser', 'Read 14 sources', 'Compare pricing and features', 'Write the summary'] },
+    result: { pt: 'Comparei 5 concorrentes. O resumo está no Drive, em Pesquisa · Concorrentes.', en: 'I compared 5 competitors. The summary is in Drive, under Research · Competitors.' },
+    ask: { pt: 'Posso compartilhar o resumo com o time?', en: 'Ok to share the summary with the team?' }, askSub: { pt: '3 pessoas · time@estudio.com', en: '3 people · team@estudio.com' },
+    details: { pt: ['Preço: você está 12% abaixo da média', 'Falta: integração com WhatsApp', 'Ponto forte: atendimento elogiado em 9 de 14 fontes'], en: ['Pricing: 12% below average', 'Missing: WhatsApp integration', 'Strength: support praised in 9 of 14 sources'] },
+    rule: { pt: 'compartilhar resumos com time@estudio.com', en: 'share summaries with team@estudio.com' }, saved: { pt: ['Pesquisa · Concorrentes', 'Drive'], en: ['Research · Competitors', 'Drive'] },
+    offer: { pt: 'Quer que eu acompanhe isso toda sexta?', en: 'Want me to track this every Friday?' }, memo: { pt: 'Acompanha concorrentes toda sexta', en: 'Tracks competitors every Friday' } },
+];
+const CX = {
+  pt: { yours: 'Seus xodós', newXodo: '+ Novo xodó', brain: 'CÉREBRO', brainHint: 'Troque quando quiser. Memória e personalidade continuam.', computerBtn: 'Painel',
+    born: '{n} nasceu hoje · 9:41', firstIntro: 'Pra começar, posso fazer uma destas agora mesmo:', cta: 'Fazer agora →', doneCta: '✓ Feito', busyCta: 'Em andamento…',
+    status: { idle: 'online · pronto', listening: 'ouvindo…', thinking: 'pensando…', working: 'trabalhando no computador dele…', needsYou: 'precisa de você', done: 'feito!' },
+    ph: 'Fale com {n}…', busyPh: '{n} está trabalhando…', once: 'Permitir uma vez', always: 'Sempre permitir', deny: 'Negar', review: 'Revisar detalhes', hide: 'Esconder', resOnce: '✓ Permitido uma vez', resAlways: '✓ Sempre permitido · regra criada', resDeny: 'Negado', scope: 'Sempre permitir vale só para: {r}', ruleMade: 'Nova regra · sempre permitir: {r}', denyReply: 'Ok, não fiz. Ficou tudo como rascunho, é só pedir quando quiser.',
+    sharedBy: 'Dividido por seus xodós · usando agora: {n}', takeover: 'Assumir controle', giveBack: 'Devolver controle', youControl: 'VOCÊ ESTÁ NO CONTROLE', youCaption: '{n} pausou e espera você devolver o controle.',
+    savedTitle: 'GUARDADO NOS SEUS APPS', rules: 'Regras', rulesNote: 'Se duas regras baterem, “exigir aprovação” vence. Sem regra, o xodó pergunta.', rAlways: 'SEMPRE', rAsk: 'APROVAÇÃO', rYou: 'SÓ VOCÊ',
+    fixedAsk: ['Pagar ou comprar', 'Apagar para sempre', 'Mudar permissões'], fixedYou: ['Trocar senhas', 'Transferir dinheiro'],
+    conns: 'Conexões', kApp: 'APP', kBrowser: 'NAVEGADOR', kPc: 'COMPUTADOR', kCh: 'CANAL', connBrowser: 'Navegador na nuvem', connSessions: '{k} sessão salva', connSessions0: 'nenhuma sessão', connPc: 'Seu computador', connOff: 'não conectado', connCh: 'Conversa', connChV: 'app xodó', permGmail: 'ler · rascunhar', permCal: 'ler · criar eventos', permOther: 'ler',
+    yes: 'Sim, pode', no: 'Agora não', yesReply: 'Combinado. Anotei na minha memória.', noReply: 'Tranquilo, é só pedir quando quiser.', memoSaved: 'MEMÓRIA',
+    swap: 'Cérebro: {a} → {b} · memória mantida', swapReply: 'Cérebro novo, mesmo eu. Lembro de tudo.', computer: 'Computador na nuvem', live: 'AO VIVO', resting: 'EM REPOUSO', restingNote: 'esperando uma tarefa',
+    caption: '{s}', idleCaption: 'Navegador, arquivos e terminal na nuvem. Seus xodós dividem esta máquina, inclusive logins e arquivos.', memory: 'Memória', memoryNote: 'Só deste xodó, não do modelo. O que importa fica salvo nos seus apps.', today: 'Hoje', of: 'de',
+    yourKey: 'sua chave', credits: 'créditos xodó', localRun: 'roda local', fallback: 'Anotei! Ainda estou aprendendo isso. Quer começar por uma das sugestões?',
+    foot: '{b} · {k} · pede aprovação antes de ações sensíveis', light: 'Claro', dark: 'Escuro', memName: 'Você se chama Ana', memUses: 'Pode usar: {a}', memVibe: 'Jeito: {p}', you: 'Você' },
+  en: { yours: 'Your xodós', newXodo: '+ New xodó', brain: 'BRAIN', brainHint: 'Swap anytime. Memory and personality stay.', computerBtn: 'Panel',
+    born: '{n} was born today · 9:41', firstIntro: 'To start, I can do one of these right now:', cta: 'Do it now →', doneCta: '✓ Done', busyCta: 'In progress…',
+    status: { idle: 'online · ready', listening: 'listening…', thinking: 'thinking…', working: 'working on its computer…', needsYou: 'needs you', done: 'done!' },
+    ph: 'Talk to {n}…', busyPh: '{n} is working…', once: 'Allow once', always: 'Always allow', deny: 'Deny', review: 'Review details', hide: 'Hide', resOnce: '✓ Allowed once', resAlways: '✓ Always allowed · rule created', resDeny: 'Denied', scope: 'Always allow only covers: {r}', ruleMade: 'New rule · always allow: {r}', denyReply: "Ok, I didn't. Everything stays as a draft, just ask when you're ready.",
+    sharedBy: 'Shared by your xodós · in use: {n}', takeover: 'Take over', giveBack: 'Give control back', youControl: "YOU'RE IN CONTROL", youCaption: '{n} paused and is waiting for you to hand back control.',
+    savedTitle: 'SAVED IN YOUR APPS', rules: 'Rules', rulesNote: 'If two rules match, “require approval” wins. With no rule, your xodó asks.', rAlways: 'ALWAYS', rAsk: 'APPROVAL', rYou: 'YOU ONLY',
+    fixedAsk: ['Pay or buy', 'Delete permanently', 'Change permissions'], fixedYou: ['Change passwords', 'Transfer money'],
+    conns: 'Connections', kApp: 'APP', kBrowser: 'BROWSER', kPc: 'COMPUTER', kCh: 'CHANNEL', connBrowser: 'Cloud browser', connSessions: '{k} saved session', connSessions0: 'no sessions', connPc: 'Your computer', connOff: 'not connected', connCh: 'Chat', connChV: 'xodó app', permGmail: 'read · draft', permCal: 'read · create events', permOther: 'read',
+    yes: 'Yes, please', no: 'Not now', yesReply: 'Deal. Saved to my memory.', noReply: 'No worries, just ask whenever.', memoSaved: 'MEMORY',
+    swap: 'Brain: {a} → {b} · memory kept', swapReply: 'New brain, same me. I remember everything.', computer: 'Cloud computer', live: 'LIVE', resting: 'RESTING', restingNote: 'waiting for a task',
+    caption: '{s}', idleCaption: 'Browser, files and terminal in the cloud. Your xodós share this machine, including logins and files.', memory: 'Memory', memoryNote: 'Only this xodó’s, not the model’s. What matters is saved in your apps.', today: 'Today', of: 'of',
+    yourKey: 'your key', credits: 'xodó credits', localRun: 'runs locally', fallback: "Got it! I'm still learning that one. Want to start with a suggestion?",
+    foot: '{b} · {k} · asks before sensitive actions', light: 'Light', dark: 'Dark', memName: 'Your name is Ana', memUses: 'Can use: {a}', memVibe: 'Vibe: {p}', you: 'You' },
+};
+
+const PX = {
+  pt: { panelTitle: 'Painel', tNow: 'Agora', tBrain: 'Cérebro', tMem: 'Memória', tRules: 'Regras', activity: 'Atividade', payTitle: 'Quem paga os tokens', payOwn: 'Suas chaves', payCredits: 'Créditos xodó',
+    payOwnNote: 'Cada provedor cobra direto na sua conta. O xodó só mede o uso e aplica o limite diário.', payCreditsNote: 'O xodó usa as chaves dele e você paga em reais, com o mesmo limite diário. Modelos locais e APIs próprias continuam com a sua conexão.',
+    routing: 'Roteamento', rMain: 'Principal', rMainD: 'Usado na conversa e nas tarefas.', rRoutine: 'Rotinas', rRoutineD: 'Tarefas agendadas. Um modelo rápido e barato costuma bastar.', rFb: 'Reserva', rFbD: 'Se o principal falhar ou ficar fora do ar, o xodó continua com este, sem perder memória.',
+    providers: 'Provedores', baseUrl: 'Endereço da API', apiKey: 'Chave de API', apiKeyOpt: 'Chave de API (se houver)', test: 'Testar e salvar', testing: 'Testando…', cancel: 'Cancelar',
+    vault: 'A chave vai para o cofre do xodó, criptografada. O modelo nunca vê a chave e ela não aparece na conversa.', change: 'Trocar chave', changeUrl: 'Trocar endereço', disconnect: 'Desconectar',
+    connected: 'Conectado', running: 'Rodando', viaCredits: 'Créditos', connect: 'Conectar', models: '{k} modelos', needConn: 'conectar', manage: 'Gerenciar cérebros e chaves', provCount: '{k} de {n} prontos', main: 'principal',
+    tagNote: 'Toque num modelo para torná-lo o principal. Força e custo são comparações, não preços.',
+    errPrefix: 'Essa chave não parece da {p}. As chaves da {p} começam com {x}.', errShort: 'Chave curta demais. Confira se copiou inteira.', errUrl: 'Não encontrei a API nesse endereço. O Ollama costuma rodar em http://localhost:11434.', errHttps: 'Use um endereço que comece com https://',
+    logBorn: 'Nasceu com {b}', logConn: '{p} conectado · {ms} ms', logDisc: '{p} desconectado', logBrain: 'Cérebro principal: {b}', logRoutine: 'Rotinas agora usam {b}', logFallback: 'Reserva agora é {b}', logFbOff: 'Reserva desligada', logFbOn: 'Reserva ligada',
+    logStep: '{s}', logAsk: 'Pediu aprovação: {s}', logOk: 'Aprovado uma vez: {s}', logRule: 'Regra nova: sempre {s}', logDeny: 'Negado: {s}', logPay: 'Tokens agora: {s}', mainLost: 'O principal ficou sem conexão. Troquei para a reserva.',
+    def: 'padrão', pickOk: 'Conectado · {ms} ms', pickCredits: 'Via créditos xodó', pickNo: 'Sem chave. Conecte para usar estes modelos.', connectP: 'Conectar {p}', keyMasked: '•••••••• (cole para trocar)', clear: 'Limpar',
+    runsOn: 'Roda em', runCloud: 'Nuvem', runHere: 'Este computador', runOff: 'Desligado', runCloudN: 'Computador próprio na nuvem. Continua trabalhando com o seu desligado.', runHereN: 'Usa o seu computador. Pede permissão a cada ação e para quando ele desliga.', runOffN: 'Sem computador. O xodó só conversa e usa os apps conectados.', logRun: 'Agora roda em: {s}' },
+  en: { panelTitle: 'Panel', tNow: 'Now', tBrain: 'Brain', tMem: 'Memory', tRules: 'Rules', activity: 'Activity', payTitle: 'Who pays for tokens', payOwn: 'Your keys', payCredits: 'xodó credits',
+    payOwnNote: 'Each provider bills your account directly. Your xodó only meters usage and enforces the daily cap.', payCreditsNote: 'Your xodó uses its own keys and you pay in one bill, with the same daily cap. Local models and custom APIs keep your connection.',
+    routing: 'Routing', rMain: 'Main', rMainD: 'Used for chat and tasks.', rRoutine: 'Routines', rRoutineD: 'Scheduled jobs. A fast, cheap model is usually enough.', rFb: 'Fallback', rFbD: 'If the main one fails or goes down, your xodó keeps going on this one, memory intact.',
+    providers: 'Providers', baseUrl: 'API address', apiKey: 'API key', apiKeyOpt: 'API key (if any)', test: 'Test and save', testing: 'Testing…', cancel: 'Cancel',
+    vault: 'The key goes into your xodó’s vault, encrypted. The model never sees it and it never shows up in chat.', change: 'Replace key', changeUrl: 'Change address', disconnect: 'Disconnect',
+    connected: 'Connected', running: 'Running', viaCredits: 'Credits', connect: 'Connect', models: '{k} models', needConn: 'connect', manage: 'Manage brains and keys', provCount: '{k} of {n} ready', main: 'main',
+    tagNote: 'Tap a model to make it the main one. Strength and cost are comparisons, not prices.',
+    errPrefix: "That doesn't look like a {p} key. {p} keys start with {x}.", errShort: 'Key too short. Make sure you copied all of it.', errUrl: "Couldn't find an API there. Ollama usually runs at http://localhost:11434.", errHttps: 'Use an address starting with https://',
+    logBorn: 'Born with {b}', logConn: '{p} connected · {ms} ms', logDisc: '{p} disconnected', logBrain: 'Main brain: {b}', logRoutine: 'Routines now use {b}', logFallback: 'Fallback is now {b}', logFbOff: 'Fallback off', logFbOn: 'Fallback on',
+    logStep: '{s}', logAsk: 'Asked approval: {s}', logOk: 'Allowed once: {s}', logRule: 'New rule: always {s}', logDeny: 'Denied: {s}', logPay: 'Tokens now: {s}', mainLost: 'Main brain lost its connection. Switched to fallback.',
+    def: 'default', pickOk: 'Connected · {ms} ms', pickCredits: 'Via xodó credits', pickNo: 'No key. Connect to use these models.', connectP: 'Connect {p}', keyMasked: '•••••••• (paste to replace)', clear: 'Clear',
+    runsOn: 'Runs on', runCloud: 'Cloud', runHere: 'This computer', runOff: 'Off', runCloudN: 'Its own cloud computer. Keeps working with yours off.', runHereN: 'Uses your computer. Asks before every action and stops when it sleeps.', runOffN: 'No computer. Your xodó only chats and uses connected apps.', logRun: 'Now runs on: {s}' },
+};
+const KEY_PREFIX = { OpenAI: 'sk-', Anthropic: 'sk-ant-', xAI: 'xai-', Google: 'AIza', DeepSeek: 'sk-' };
+const MODEL_TAG = { 'GPT-6 Astra': ['forte · $$$', 'strong · $$$'], 'GPT-6 mini': ['rápido · $', 'fast · $'], 'Claude Opus': ['forte · $$$', 'strong · $$$'], 'Claude Sonnet': ['equilibrado · $$', 'balanced · $$'], 'Claude Haiku': ['rápido · $', 'fast · $'],
+  'Grok 4.6': ['forte · $$', 'strong · $$'], 'Grok 4.6 Fast': ['rápido · $', 'fast · $'], 'Gemini Ultra': ['forte · $$$', 'strong · $$$'], 'Gemini Flash': ['rápido · $', 'fast · $'], 'Mistral Large': ['equilibrado · $$', 'balanced · $$'], 'Codestral': ['código · $', 'code · $'],
+  'DeepSeek R2': ['raciocínio · $', 'reasoning · $'], 'DeepSeek V4': ['equilibrado · $', 'balanced · $'], 'Llama': ['local · grátis', 'local · free'], 'Qwen': ['local · grátis', 'local · free'], 'Gemma': ['local · grátis', 'local · free'] };
+function provName(p) { return typeof p.n === 'string' ? p.n : p.n.pt; }
+function initPanel(cfg) {
+  const P0 = PROVIDERS[cfg.prov] || PROVIDERS[0], conns = {};
+  conns[cfg.prov] = P0.local ? { status: 'ok', url: 'http://localhost:11434', ms: 38 } : { status: 'ok', mask: (KEY_PREFIX[provName(P0)] || 'sk-') + '…7Q2c', ms: 384 };
+  if (cfg.prov !== 0) conns[0] = { status: 'ok', mask: 'sk-…a91F', ms: 412 };
+  return { payMode: cfg.keyMode === 'credits' ? 'credits' : 'own', conns, ptab: 'now', provOpen: null, editing: null, draftKey: '', draftUrl: '', provErr: '', testing: false, fbOn: true,
+    route: { routine: [cfg.prov, P0.models.length - 1], fb: cfg.prov !== 0 ? [0, 0] : [0, 1] }, spendBy: {}, log: [{ t: '9:41', k: 'Born', v: { b: (typeof P0.models[cfg.model] === 'string' ? P0.models[cfg.model] : (P0.models[cfg.model] || P0.models[0])) } }] };
+}
+const DEF_CFG = { sp: 'pingo', ci: 0, name: 'Faísca', persona: 0, prov: 1, model: 0, keyMode: 'own', auto: 1, budget: 20, apps: ['gmail', 'cal'], lang: 'pt', dark: false };
+function lumaFg(hex) { const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#161514' : '#FFFFFF'; }
+let _id = 0; const nid = () => ++_id;
+
+function loadCfg() {
+  let cfg = DEF_CFG;
+  try { const s = JSON.parse(localStorage.getItem('xodo.first.v1') || 'null'); if (s && SPECIES[s.sp]) cfg = { ...DEF_CFG, ...s }; } catch (e) {}
+  return cfg;
+}
+function initState(cfg) {
+    const L = cfg.lang;
+    const P = PERSONAS[cfg.persona] || PERSONAS[0];
+    return {
+      lang: L, dark: cfg.dark, prov: cfg.prov, model: cfg.model, bot: 'idle', draft: '', brainOpen: false, panelOpen: true, vw: 1400,
+      used: [], busyTask: null, spend: 0, freshMem: null, rules: [], saved: [], takeover: false, ...initPanel(cfg),
+      msgs: [
+        { id: nid(), kind: 'sys', key: 'born' },
+        { id: nid(), kind: 'bot', text: { pt: P.g.pt.replace('{n}', cfg.name), en: P.g.en.replace('{n}', cfg.name) } },
+        { id: nid(), kind: 'bot', text: { pt: CX.pt.firstIntro, en: CX.en.firstIntro } },
+        { id: nid(), kind: 'sugs' },
+      ],
+      mem: [{ k: 'name' }, { k: 'vibe' }, { k: 'auto' }, { k: 'uses' }],
+    };
+}
+class Component extends DCLogic {
+  cfg = loadCfg();
+  timers = [];
+  scrollRef = React.createRef();
+  state = initState(this.cfg);
+  componentDidMount() { this._rs = () => this.setState({ vw: window.innerWidth }); this._rs(); this.setState({ panelOpen: window.innerWidth >= 1180 }); window.addEventListener('resize', this._rs); }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); this.timers.forEach(clearTimeout); }
+  componentDidUpdate() { if (this._lastMsgs !== this.state.msgs && this.scrollRef.current) { this._lastMsgs = this.state.msgs; const el = this.scrollRef.current; requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; }); } }
+  later(ms, fn) { const t = setTimeout(fn, ms); this.timers.push(t); }
+  push(...m) { this.setState(s => ({ msgs: [...s.msgs, ...m.map(x => ({ id: nid(), ...x }))] })); }
+  patch(id, o) { this.setState(s => ({ msgs: s.msgs.map(m => (m.id === id ? { ...m, ...o } : m)) })); }
+  dropTyping() { this.setState(s => ({ msgs: s.msgs.filter(m => m.kind !== 'typing') })); }
+  bi(pt, en) { return { pt, en }; }
+  runTask(tk) {
+    if (this.state.busyTask) return;
+    const per = this.cfg.persona;
+    this.setState(s => ({ busyTask: tk.id, bot: 'thinking', used: [...s.used, tk.id] }));
+    this.push({ kind: 'user', text: tk.title }, { kind: 'typing' });
+    this.later(1100, () => {
+      this.dropTyping();
+      const taskId = nid();
+      this.setState(s => ({ bot: 'working', msgs: [...s.msgs, { id: nid(), kind: 'bot', text: { pt: PREFIX[per].pt + ' ' + tk.intro.pt, en: PREFIX[per].en + ' ' + tk.intro.en } }, { id: taskId, kind: 'task', task: tk.id, step: 0 }] }));
+      let step = 0;
+      const tick = () => {
+        if (this.state.takeover) { this.later(400, tick); return; }
+        step++;
+        this.patch(taskId, { step });
+        this.setState(s => ({ spend: s.spend + 0.09, spendBy: { ...s.spendBy, [s.prov]: (s.spendBy[s.prov] || 0) + 0.09 } })); this.addLog('Step', { s: { pt: tk.steps.pt[step - 1], en: tk.steps.en[step - 1] } });
+        if (step < 4) { this.later(1500, tick); return; }
+        this.later(600, () => {
+          const askId = nid(); this.addLog('Ask', { s: tk.ask });
+          this.setState(s => ({ bot: 'needsYou', takeover: false, saved: s.saved.includes(tk.id) ? s.saved : [tk.id, ...s.saved], msgs: [...s.msgs, { id: nid(), kind: 'bot', text: tk.result }, { id: askId, kind: 'ask', task: tk.id, open: false, done: false }] }));
+        });
+      };
+      this.later(1300, tick);
+    });
+  }
+  approve(m, mode) {
+    const tk = TASKS.find(x => x.id === m.task), per = this.cfg.persona;
+    this.patch(m.id, { done: true, open: false, res: mode });
+    this.setState(s => ({ bot: 'done', rules: mode === 'always' && !s.rules.includes(tk.id) ? [...s.rules, tk.id] : s.rules }));
+    if (mode === 'always') this.push({ kind: 'sys', key: 'rule', task: tk.id });
+    this.addLog(mode === 'always' ? 'Rule' : 'Ok', { s: mode === 'always' ? tk.rule : tk.ask });
+    this.push({ kind: 'bot', text: DONE[per] });
+    this.later(1900, () => {
+      this.setState({ bot: 'idle', busyTask: null });
+      this.push({ kind: 'bot', text: tk.offer }, { kind: 'chips', task: tk.id, used: false });
+    });
+  }
+  deny(m) {
+    this.patch(m.id, { done: true, open: false, res: 'deny' }); this.addLog('Deny', { s: TASKS.find(x => x.id === m.task).ask });
+    this.setState({ bot: 'idle', busyTask: null });
+    this.later(500, () => this.push({ kind: 'bot', text: this.bi(CX.pt.denyReply, CX.en.denyReply) }));
+  }
+  answerOffer(m, yes) {
+    const tk = TASKS.find(x => x.id === m.task), T = CX[this.state.lang];
+    this.patch(m.id, { used: true, pick: yes ? 'yes' : 'no' });
+    this.push({ kind: 'user', text: this.bi(CX.pt[yes ? 'yes' : 'no'], CX.en[yes ? 'yes' : 'no']) });
+    this.later(700, () => {
+      if (yes) {
+        this.setState(s => ({ mem: [{ k: 'task', task: tk.id }, ...s.mem], freshMem: tk.id, bot: 'done' }));
+        this.push({ kind: 'bot', text: this.bi(CX.pt.yesReply, CX.en.yesReply) }, { kind: 'memo', text: tk.memo });
+        this.later(1600, () => this.setState({ bot: 'idle', freshMem: null }));
+      } else this.push({ kind: 'bot', text: this.bi(CX.pt.noReply, CX.en.noReply) });
+    });
+  }
+  swapBrain(pi, mi) {
+    const S = this.state, lang = S.lang, tr = v => (typeof v === 'string' ? v : v[lang]);
+    this.setState({ brainOpen: false });
+    if (pi === S.prov && mi === S.model) return;
+    if (!this.avail(pi)) { this.openConnect(pi); return; }
+    const lab = (p, m) => tr(PROVIDERS[p].models[m] || PROVIDERS[p].models[0]);
+    const a = lab(S.prov, S.model), b = lab(pi, mi);
+    this.setState({ prov: pi, model: mi, bot: S.busyTask ? S.bot : 'thinking' });
+    this.push({ kind: 'sys', key: 'swap', a, b }); this.addLog('Brain', { b });
+    if (!S.busyTask) this.later(1200, () => { this.setState({ bot: 'idle' }); this.push({ kind: 'bot', text: this.bi(CX.pt.swapReply, CX.en.swapReply) }); });
+  }
+  async send() {
+    const S = this.state, text = S.draft.trim();
+    if (!text || S.busyTask) return;
+    const lang = S.lang, cfg = this.cfg, T = CX[lang];
+    this.setState({ draft: '', bot: 'thinking', busyTask: 'chat' });
+    this.push({ kind: 'user', text: { pt: text, en: text } }, { kind: 'typing' });
+    const persona = PERSONAS[cfg.persona].l[lang], apps = APPS.filter(a => cfg.apps.includes(a[0])).map(a => (lang === 'pt' ? a[1] : a[2])).join(', ');
+    const hist = this.state.msgs.filter(m => (m.kind === 'user' || m.kind === 'bot') && m.text).slice(-10).map(m => ({ role: m.kind === 'user' ? 'user' : 'assistant', content: m.text[lang] || m.text.pt }));
+    hist.push({ role: 'user', content: text });
+    while (hist.length && hist[0].role !== 'user') hist.shift();
+    let reply = T.fallback;
+    try {
+      const r = await window.claude.complete({
+        system: (lang === 'pt' ? 'Responda em português do Brasil. ' : 'Reply in English. ') + 'You are ' + cfg.name + ', a "xodó": a persistent AI teammate with its own cloud computer (browser, files, terminal), its own memory, and these connected apps: ' + (apps || 'none') + '. Your personality: ' + persona + '. The user is Ana. Keep replies to 1–3 short sentences, warm and with personality, no emoji, no markdown. If Ana asks for a task, say concretely what you would do on your computer and that you will ask approval before sending, paying or deleting anything.',
+        messages: hist, max_tokens: 220,
+      });
+      if (r && r.trim()) reply = r.trim();
+    } catch (e) {}
+    this.dropTyping();
+    this.setState(s => ({ bot: 'idle', busyTask: null, spend: s.spend + 0.02, spendBy: { ...s.spendBy, [s.prov]: (s.spendBy[s.prov] || 0) + 0.02 } }));
+    this.push({ kind: 'bot', text: { pt: reply, en: reply } });
+  }
+  char(size, state, interactive) {
+    const sp = SPECIES[this.cfg.sp], c = sp.colors[this.cfg.ci] || sp.colors[0], k = this.cfg.sp;
+    const base = { key: k, size, state, interactive, motion: this.props.motion ?? true, follow: this.props.follow ?? true };
+    if (k === 'pingo') return _h(PingoBot, { ...base, color: c.body, eye: c.eye, ink: this.state.dark ? '#F3F1EC' : (c.ink && size > 100 ? c.ink : '#2B1D16') });
+    if (k === 'bibo') return _h(BiboBot, { ...base, body: c.body });
+    return _h(OkiBot, { ...base, body: c.body, mouth: c.mouth, sats: c.sats });
+  }
+
+  clk = 9 * 60 + 41;
+  avail(pi, S) { S = S || this.state; const p = PROVIDERS[pi], c = S.conns[pi]; if (p.local || p.custom) return !!(c && c.status === 'ok'); return S.payMode === 'credits' || !!(c && c.status === 'ok'); }
+  addLog(k, v) { this.clk += 1 + Math.floor(Math.random() * 3); const t = Math.floor(this.clk / 60) + ':' + String(this.clk % 60).padStart(2, '0'); this.setState(s => ({ log: [{ t, k, v: v || {} }, ...s.log].slice(0, 40) })); }
+  mlabel(pi, mi) { const m = PROVIDERS[pi].models[mi] || PROVIDERS[pi].models[0]; return typeof m === 'string' ? m : m; }
+  setRoute(k, val) { const [a, b] = val.split(':').map(Number); this.setState(s => ({ route: { ...s.route, [k]: [a, b] } })); this.addLog(k === 'fb' ? 'Fallback' : 'Routine', { b: this.mlabel(a, b) }); }
+  openConnect(pi) { const p = PROVIDERS[pi], c = this.state.conns[pi] || {}; this.setState({ panelOpen: true, ptab: 'brain', provOpen: pi, editing: pi, draftKey: '', draftUrl: c.url || (p.local ? 'http://localhost:11434' : ''), provErr: '', brainOpen: false }); }
+  testConn(pi) {
+    const S = this.state; if (S.testing) return;
+    const p = PROVIDERS[pi], X = PX[S.lang], pn = provName(p), key = S.draftKey.trim(), url = S.draftUrl.trim();
+    let err = '';
+    if (p.local) { if (!/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.)/.test(url)) err = X.errUrl; }
+    else if (p.custom) { if (!/^https:\/\//.test(url)) err = X.errHttps; else if (key && key.length < 12) err = X.errShort; }
+    else if (key.length < 20) err = X.errShort;
+    else if (KEY_PREFIX[pn] && !key.startsWith(KEY_PREFIX[pn])) err = X.errPrefix.replace(/\{p\}/g, pn).replace('{x}', KEY_PREFIX[pn]);
+    this.setState({ testing: true, provErr: '' });
+    this.later(1100, () => {
+      if (err) { this.setState({ testing: false, provErr: err }); return; }
+      const ms = p.local ? 20 + Math.round(Math.random() * 40) : 180 + Math.round(Math.random() * 420);
+      const mask = key ? (KEY_PREFIX[pn] || key.slice(0, 3)) + '…' + key.slice(-4) : '';
+      this.setState(s => ({ testing: false, editing: null, draftKey: '', conns: { ...s.conns, [pi]: { status: 'ok', mask, url, ms } } }));
+      this.addLog('Conn', { p: p.n, ms: String(ms) });
+    });
+  }
+  disconnect(pi) {
+    const p = PROVIDERS[pi];
+    this.setState(s => { const conns = { ...s.conns }; delete conns[pi]; return { conns, provOpen: null, editing: null }; });
+    this.addLog('Disc', { p: p.n });
+    this.later(0, () => {
+      const S = this.state;
+      if (S.prov === pi && !this.avail(pi)) { const fb = S.route.fb; if (S.fbOn && this.avail(fb[0])) { this.setState({ prov: fb[0], model: fb[1] }); this.push({ kind: 'sys', key: 'note', text: { pt: PX.pt.mainLost, en: PX.en.mainLost } }); } }
+    });
+  }
+  panelVals(S, cfg, lang, t, accent, accentFg, tr, fmt) {
+    const X = PX[lang], fill = (s, o) => s.replace(/\{(\w+)\}/g, (a, k) => (o[k] == null ? a : tr(o[k])));
+    const tabsDef = [['now', X.tNow], ['brain', X.tBrain], ['mem', X.tMem], ['rules', X.tRules]];
+    const ptabs = tabsDef.map(([k, l]) => { const on = S.ptab === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', hasN: k === 'brain' && !this.avail(S.prov, S), onClick: () => this.setState({ ptab: k }) }; });
+    const payOpts = [['own', X.payOwn], ['credits', X.payCredits]].map(([k, l]) => { const on = S.payMode === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', onClick: () => { if (S.payMode !== k) { this.setState({ payMode: k, provOpen: null, editing: null }); this.addLog('Pay', { s: l }); } } }; });
+    const allOpts = PROVIDERS.flatMap((p, pi) => p.models.map((m, mi) => { const av = this.avail(pi, S); return { v: pi + ':' + mi, l: tr(m) + ' · ' + tr(p.n) + (av ? '' : ' (' + X.needConn + ')'), dis: !av }; }));
+    const sw = on => ({ swBg: on ? t.ink : t.line, swX: on ? '16px' : '2px' });
+    const routes = [
+      { label: X.rMain, desc: X.rMainD, on: true, hasToggle: false, value: S.prov + ':' + S.model, onChange: e => { const [a, b] = e.target.value.split(':').map(Number); this.swapBrain(a, b); } },
+      { label: X.rRoutine, desc: X.rRoutineD, on: true, hasToggle: false, value: S.route.routine.join(':'), onChange: e => this.setRoute('routine', e.target.value) },
+      { label: X.rFb, desc: X.rFbD, on: S.fbOn, hasToggle: true, ...sw(S.fbOn), toggle: () => { this.setState(s => ({ fbOn: !s.fbOn })); this.addLog(S.fbOn ? 'FbOff' : 'FbOn'); }, value: S.route.fb.join(':'), onChange: e => this.setRoute('fb', e.target.value) },
+    ].map((r, i) => ({ ...r, key: 'rt' + i + '-' + r.value, opts: allOpts.map(o => ({ ...o, sel: o.v === r.value })), line: i ? t.line : 'transparent' }));
+    let ready = 0;
+    const provs = PROVIDERS.map((p, pi) => {
+      const c = S.conns[pi], ok = !!(c && c.status === 'ok'), credits = S.payMode === 'credits' && !p.local && !p.custom, open = S.provOpen === pi, editing = S.editing === pi;
+      if (ok || credits) ready++;
+      const nm = fill(X.models, { k: String(p.models.length) });
+      let pill, pillBg, pillFg, line2;
+      if (ok && !credits) { pill = p.local ? X.running : X.connected; pillBg = '#DDF3E4'; pillFg = '#1F6B3A'; line2 = (c.mask || c.url) + ' · ' + c.ms + ' ms · ' + nm; }
+      else if (credits) { pill = X.viaCredits; pillBg = t.chip; pillFg = t.ink; line2 = nm + ' · ' + tr(p.sub); }
+      else { pill = X.connect; pillBg = t.ink; pillFg = t.inv; line2 = tr(p.sub); }
+      const isMain = S.prov === pi;
+      if (isMain) line2 = X.main + ' · ' + line2;
+      return {
+        name: tr(p.n), mono: tr(p.n).slice(0, 1).toUpperCase(), monoBg: isMain ? accent : t.chip, monoFg: isMain ? accentFg : t.ink, line2, pill, pillBg, pillFg, line: pi ? t.line : 'transparent', rowBg: open ? t.bg : 'transparent',
+        toggle: () => this.setState(s => ({ provOpen: s.provOpen === pi ? null : pi, editing: (ok || credits) ? null : pi, draftKey: '', draftUrl: (c && c.url) || (p.local ? 'http://localhost:11434' : ''), provErr: '' })),
+        showForm: open && (editing || (!ok && !credits)), showInfo: open && !editing && (ok || credits),
+        needsUrl: !!(p.local || p.custom), needsKey: !p.local, keyLabel: p.custom ? X.apiKeyOpt : X.apiKey, url: S.draftUrl, key: S.draftKey,
+        urlPh: p.local ? 'http://localhost:11434' : 'https://api.exemplo.com/v1', keyPh: ok ? X.keyMasked : (KEY_PREFIX[provName(p)] || '') + '••••••••••••••••', canClear: ok && !credits,
+        onUrl: e => this.setState({ draftUrl: e.target.value, provErr: '' }), onKey: e => this.setState({ draftKey: e.target.value, provErr: '' }), onKeyDown: e => { if (e.key === 'Enter') this.testConn(pi); },
+        hasErr: open && !!S.provErr, err: S.provErr, inputBd: open && S.provErr ? '#C4402A' : t.line,
+        test: () => this.testConn(pi), testLabel: open && S.testing ? X.testing : X.test, testOp: open && S.testing ? 0.6 : 1, cancel: () => this.setState({ provOpen: ok ? pi : null, editing: null, provErr: '' }),
+        models: p.models.map((m, mi) => { const on = isMain && S.model === mi, tg = MODEL_TAG[tr(m)] || MODEL_TAG[typeof m === 'string' ? m : m.pt]; return { n: tr(m), tag: tg ? tg[lang === 'pt' ? 0 : 1] : '', bg: on ? accent : t.chip, fg: on ? accentFg : t.ink, onClick: () => this.swapBrain(pi, mi) }; }),
+        canChange: ok && !credits, change: () => this.setState({ editing: pi, draftKey: '', provErr: '' }), changeLabel: p.local ? X.changeUrl : X.change,
+        canDisc: ok && !credits, disconnect: () => this.disconnect(pi),
+      };
+    });
+    const byProv = Object.keys(S.spendBy).filter(k => S.spendBy[k] > 0).map(k => ({ n: tr(PROVIDERS[k].n), v: fmt(S.spendBy[k]) }));
+    const activity = S.log.map((e, i) => ({ t: e.t, text: fill(X['log' + e.k] || e.k, e.v), dot: i === 0 ? accent : t.line }));
+    const rs = S.railSel == null ? S.prov : S.railSel, rp = PROVIDERS[rs], rav = this.avail(rs, S), rc = S.conns[rs];
+    const rail = PROVIDERS.map((p, pi) => { const on = rs === pi, av = this.avail(pi, S); return { name: tr(p.n), mono: tr(p.n).slice(0, 2).toUpperCase(), bg: on ? t.ink : 'transparent', fg: on ? t.inv : t.ink, op: av || on ? 1 : 0.45, dot: S.prov === pi ? accent : av ? '#6DBB7B' : 'transparent', onClick: () => this.setState({ railSel: pi }) }; });
+    const pick = { name: tr(rp.n), dot: rav ? '#6DBB7B' : t.line,
+      status: !rav ? X.pickNo : (rc && rc.status === 'ok' && !(S.payMode === 'credits' && !rp.local && !rp.custom)) ? fill(X.pickOk, { ms: String(rc.ms) }) : X.pickCredits,
+      models: rp.models.map((m, mi) => { const on = S.prov === rs && S.model === mi, tg = MODEL_TAG[typeof m === 'string' ? m : m.pt]; return { model: tr(m), isDef: mi === 0, tag: tg ? tg[lang === 'pt' ? 0 : 1] : tr(rp.sub), mark: on ? '✓' : '', bg: on ? t.chip : 'transparent', op: rav ? 1 : 0.5, cursor: rav ? 'pointer' : 'default', onClick: () => { if (rav) this.swapBrain(rs, mi); } }; }),
+      needConn: !rav, connectL: fill(X.connectP, { p: tr(rp.n) }), connect: () => this.openConnect(rs) };
+    const run = S.runOn || 'cloud';
+    const runOpts = [['cloud', X.runCloud], ['here', X.runHere], ['off', X.runOff]].map(([k, l]) => { const on = run === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', onClick: () => { if (run !== k) { this.setState({ runOn: k }); this.addLog('Run', { s: l }); } } }; });
+    return { rail, pick, runOpts, runNote: run === 'here' ? X.runHereN : run === 'off' ? X.runOffN : X.runCloudN, px: X, ptabs, isNow: S.ptab === 'now', isBrain: S.ptab === 'brain', isMem: S.ptab === 'mem', isRules: S.ptab === 'rules',
+      payOpts, payNote: S.payMode === 'credits' ? X.payCreditsNote : X.payOwnNote, routes, provs, provCount: fill(X.provCount, { k: String(ready), n: String(PROVIDERS.length) }),
+      byProv, activity, manageBrains: () => this.setState({ brainOpen: false, panelOpen: true, ptab: 'brain' }) };
+  }
+  renderVals() {
+    const S = this.state, cfg = this.cfg, lang = S.lang, T = CX[lang], tr = v => (v == null ? '' : typeof v === 'string' ? v : (v[lang] ?? v.pt));
+    const sp = SPECIES[cfg.sp], c = sp.colors[cfg.ci] || sp.colors[0], name = cfg.name;
+    const t = S.dark
+      ? { bg: '#121110', panel: '#1C1A18', ink: '#F3F1EC', mute: '#A8A29A', line: '#34302B', inv: '#121110', chip: '#2A2724' }
+      : { bg: '#F3F1EC', panel: '#FFFFFF', ink: '#161514', mute: '#635E57', line: '#E2DED6', inv: '#FFFFFF', chip: '#E9E5DE' };
+    const accent = c.body === '#10101A' && S.dark ? '#3A3AF4' : c.body, accentFg = lumaFg(accent);
+    const bot = S.bot === 'idle' && S.draft.trim() ? 'listening' : S.bot;
+    const prov = PROVIDERS[S.prov], model = tr(prov.models[S.model] || prov.models[0]);
+    const access = prov.local ? T.localRun : S.payMode === 'credits' ? T.credits : T.yourKey;
+    const curTask = S.msgs.slice().reverse().find(m => m.kind === 'task');
+    const working = S.bot === 'working' && curTask, tk = working ? TASKS.find(x => x.id === curTask.task) : null;
+    const vw = S.vw, showSide = vw >= 880, panelInline = vw >= 1180, showPanel = S.panelOpen;
+    const cols = (showSide ? '252px ' : '') + 'minmax(0,1fr)' + (showPanel && panelInline ? ' 380px' : '');
+    const fmt = v => 'R$ ' + (lang === 'pt' ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
+    const appsTxt = APPS.filter(a => cfg.apps.includes(a[0])).map(a => (lang === 'pt' ? a[1] : a[2])).join(', ');
+    const msgs = S.msgs.map(m => {
+      const v = { id: m.id, isSys: m.kind === 'sys', isUser: m.kind === 'user', isBot: m.kind === 'bot', isTyping: m.kind === 'typing', isSugs: m.kind === 'sugs', isTask: m.kind === 'task', isAsk: m.kind === 'ask', isChips: m.kind === 'chips' && !m.used, isMemo: m.kind === 'memo' };
+      if (m.kind === 'sys') v.text = m.key === 'note' ? tr(m.text) : m.key === 'born' ? T.born.replace('{n}', name) : m.key === 'rule' ? T.ruleMade.replace('{r}', tr(TASKS.find(q => q.id === m.task).rule)) : T.swap.replace('{a}', m.a).replace('{b}', m.b);
+      if (m.kind === 'user' || m.kind === 'bot' || m.kind === 'memo') v.text = tr(m.text);
+      if (m.kind === 'sugs') v.cards = TASKS.map(x => {
+        const used = S.used.includes(x.id), active = S.busyTask === x.id, blocked = !!S.busyTask || used;
+        return { app: tr(x.app), title: tr(x.title), desc: tr(x.desc), cta: active ? T.busyCta : used ? T.doneCta : T.cta, ctaColor: used ? t.mute : t.ink, border: active ? accent : t.line, cursor: blocked ? 'default' : 'pointer', opacity: used && !active ? 0.55 : 1, onClick: () => { if (!blocked) this.runTask(x); } };
+      });
+      if (m.kind === 'task') {
+        const x = TASKS.find(q => q.id === m.task), st = x.steps[lang];
+        v.title = tr(x.title); v.count = Math.min(m.step, 4) + '/4'; v.pct = (Math.min(m.step, 4) / 4 * 100) + '%';
+        v.steps = st.map((l, i) => { const done = i < m.step, cur = i === m.step; return { label: l, mark: done ? '✓' : '', fill: done ? accent : 'transparent', ring: done ? accent : cur ? t.ink : t.line, color: done || cur ? t.ink : t.mute }; });
+      }
+      if (m.kind === 'ask') {
+        const x = TASKS.find(q => q.id === m.task);
+        const dn = m.res === 'deny';
+        Object.assign(v, { title: tr(x.ask), sub: tr(x.askSub), details: x.details[lang], open: m.open, pending: !m.done, resolved: m.done, border: m.done ? t.line : accent, reviewLabel: m.open ? T.hide : T.review, scope: T.scope.replace('{r}', tr(x.rule)),
+          resLabel: dn ? T.resDeny : m.res === 'always' ? T.resAlways : T.resOnce, resBg: dn ? t.chip : accent, resFg: dn ? t.mute : accentFg,
+          onReview: () => this.patch(m.id, { open: !m.open }), onOnce: () => this.approve(m, 'once'), onAlways: () => this.approve(m, 'always'), onDeny: () => this.deny(m) });
+      }
+      if (m.kind === 'chips') v.chips = [{ label: T.yes, bg: t.ink, fg: t.inv, onClick: () => this.answerOffer(m, true) }, { label: T.no, bg: 'transparent', fg: t.ink, onClick: () => this.answerOffer(m, false) }];
+      return v;
+    });
+    const memory = S.mem.map(r => {
+      let text = '';
+      if (r.k === 'name') text = T.memName;
+      else if (r.k === 'vibe') text = T.memVibe.replace('{p}', PERSONAS[cfg.persona].l[lang]);
+      else if (r.k === 'auto') text = AUTO[cfg.auto].l[lang] + ' · ' + AUTO[cfg.auto].d[lang];
+      else if (r.k === 'uses') text = T.memUses.replace('{a}', appsTxt || '—');
+      else text = tr(TASKS.find(x => x.id === r.task).memo);
+      return { text, bg: r.k === 'task' && S.freshMem === r.task ? accent + '33' : t.panel };
+    });
+    const step = working ? Math.min(curTask.step, 3) : 0;
+    const rowW = [['22%', '58%'], ['30%', '46%'], ['18%', '62%'], ['26%', '50%'], ['34%', '40%'], ['20%', '55%'], ['28%', '44%']];
+    return {
+      ...this.panelVals(S, cfg, lang, t, accent, accentFg, tr, fmt), panelChar: this.char(30, bot, false), panelSub: T.status[bot] + ' · ' + model,
+      t, tx: T, cols, showSide, showPanel,
+      pp: panelInline ? { position: 'relative', width: 'auto', shadow: 'none', top: '0px' } : { position: 'absolute', width: 'min(380px,94vw)', shadow: '-20px 0 60px rgba(0,0,0,.18)', top: '83px' },
+      closeVis: panelInline ? 'none' : 'flex', closePanel: () => this.setState({ panelOpen: false }),
+      accent, accentFg, name, nameFont: sp.nameFont, nameFontLg: sp.nameFont.replace(/(\d+)px/, (a, n) => Math.round(n * 1.15) + 'px'), chatFont: CHAT_FONT[cfg.sp],
+      sideChar: this.char(40, bot, false), headChar: this.char(54, bot, true), screenChar: this.char(70, 'idle', false),
+      statusText: T.status[bot], statusDot: bot === 'needsYou' ? '#E0705A' : bot === 'idle' ? '#6DBB7B' : accent,
+      langOpts: [['pt', 'PT'], ['en', 'EN']].map(([k, l]) => ({ label: l, bg: lang === k ? t.ink : 'transparent', fg: lang === k ? t.inv : t.mute, onClick: () => this.setState({ lang: k }) })),
+      themeOpts: [[false, T.light], [true, T.dark]].map(([k, l]) => ({ label: l, bg: S.dark === k ? t.ink : 'transparent', fg: S.dark === k ? t.inv : t.mute, onClick: () => this.setState({ dark: k }) })),
+      brainLabel: model, brainOpen: S.brainOpen, toggleBrain: () => this.setState(s => ({ brainOpen: !s.brainOpen, railSel: s.prov })),
+      brainOpts: PROVIDERS.flatMap((p, pi) => p.models.map((m, mi) => { const on = pi === S.prov && mi === S.model; const av = this.avail(pi); return { model: tr(m), prov: tr(p.n), mark: on ? '✓' : av ? '' : PX[lang].needConn + ' →', markC: av ? t.ink : t.mute, op: av ? 1 : 0.5, bg: on ? t.chip : 'transparent', onClick: () => this.swapBrain(pi, mi) }; })),
+      togglePanel: () => this.setState(s => ({ panelOpen: !s.panelOpen })), panelBtnBg: showPanel ? t.ink : 'transparent', panelBtnFg: showPanel ? t.inv : t.ink,
+      scrollRef: this.scrollRef, msgs,
+      draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }), onKey: e => { if (e.key === 'Enter') this.send(); }, onSend: () => this.send(),
+      composerPh: (S.busyTask ? T.busyPh : T.ph).replace('{n}', name), composerBorder: S.draft.trim() ? accent : t.line,
+      sendBg: S.draft.trim() && !S.busyTask ? t.ink : t.chip, sendFg: S.draft.trim() && !S.busyTask ? t.inv : t.mute,
+      footNote: T.foot.replace('{b}', tr(prov.n) + ' · ' + model).replace('{k}', access),
+      computerTitle: T.computer, rulesNoteN: name, liveLabel: working ? T.live : T.resting, liveDot: working ? '#E0705A' : t.mute, liveAnim: working ? 'xo-live 1.2s ease-in-out infinite' : 'none',
+      screenUrl: tk ? tk.url : name.toLowerCase() + '-pc · ~/', screenIdle: !working, screenBusy: !!working,
+      stageBg: c.stage, stageImg: sp.dotted ? 'radial-gradient(rgba(20,23,20,.16) 1.6px,transparent 1.9px)' : 'none', stageInk: c.stageInk,
+      screenRows: rowW.map(([a, b]) => ({ a, b })), hlTop: (9 + Math.round(step * 1.7) * 26) + 'px',
+      screenCaption: tk ? (S.takeover ? T.youCaption.replace('{n}', name) : tk.steps[lang][step] + '…') : T.idleCaption,
+      memory,
+      hasSaved: S.saved.length > 0, saved: S.saved.map(id => { const x = TASKS.find(q => q.id === id); return { what: x.saved[lang][0], where: x.saved[lang][1] }; }),
+      rules: [
+        ...S.rules.map(id => ({ tag: T.rAlways, bg: accent, fg: accentFg, text: tr(TASKS.find(q => q.id === id).rule) })),
+        ...T.fixedAsk.map(x => ({ tag: T.rAsk, bg: t.chip, fg: t.ink, text: x })),
+        ...T.fixedYou.map(x => ({ tag: T.rYou, bg: t.ink, fg: t.inv, text: x })),
+      ],
+      conns: [
+        ...APPS.filter(a => cfg.apps.includes(a[0])).map(a => ({ kind: T.kApp, name: lang === 'pt' ? a[1] : a[2], value: a[0] === 'gmail' ? T.permGmail : a[0] === 'cal' ? T.permCal : T.permOther, vc: t.ink })),
+        { kind: T.kBrowser, name: T.connBrowser, value: S.used.includes('research') ? T.connSessions.replace('{k}', '1') : T.connSessions0, vc: t.mute },
+        { kind: T.kPc, name: T.connPc, value: T.connOff, vc: t.mute },
+        { kind: T.kCh, name: T.connCh, value: T.connChV, vc: t.mute },
+      ].map((r, i) => ({ ...r, line: i ? t.line : 'transparent' })),
+      sharedBy: T.sharedBy.replace('{n}', working ? name : '—'),
+      canTakeover: !!working, takeover: !!(working && S.takeover), toggleTakeover: () => this.setState(s => ({ takeover: !s.takeover })),
+      takeoverLabel: S.takeover ? T.giveBack : T.takeover, takeBg: S.takeover ? t.ink : 'transparent', takeFg: S.takeover ? t.inv : t.ink,
+      btnDot: working ? '#E0705A' : S.bot === 'needsYou' ? '#E0705A' : '#6DBB7B',
+      spendText: fmt(S.spend) + ' ' + T.of + ' ' + fmt(cfg.budget), spendPct: Math.min(100, S.spend / cfg.budget * 100) + '%', accessLabel: access,
+    };
+  }
+}
+</script>
+</body>
+</html>
