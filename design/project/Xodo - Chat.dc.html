@@ -220,7 +220,7 @@ input::placeholder{color:#9A948C}
 <sc-if value="{{ isBrain }}" hint-placeholder-val="{{ false }}">
 <div style="background:{{ t.panel }};border:1px solid {{ t.line }};border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px">
 <span style="font:600 10.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:{{ t.mute }}">{{ px.payTitle }}</span>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;background:{{ t.chip }};border-radius:12px;padding:3px"><sc-for list="{{ payOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.onClick }}" style="cursor:pointer;text-align:center;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};border-radius:9px;padding:9px 6px;font:600 12.5px/1 'Geist',sans-serif">{{ o.label }}</span></sc-for></div>
+<div style="display:grid;grid-template-columns:1fr;gap:3px;background:{{ t.chip }};border-radius:12px;padding:3px"><sc-for list="{{ payOpts }}" as="o" hint-placeholder-count="2"><span onClick="{{ o.onClick }}" style="cursor:pointer;text-align:center;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};border-radius:9px;padding:9px 6px;font:600 12.5px/1 'Geist',sans-serif">{{ o.label }}</span></sc-for></div>
 <span style="font:500 12.5px/1.45 'Geist',sans-serif;color:{{ t.mute }};text-wrap:pretty">{{ payNote }}</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:8px">
@@ -657,7 +657,7 @@ function initPanel(cfg) {
   const P0 = PROVIDERS[cfg.prov] || PROVIDERS[0], conns = {};
   conns[cfg.prov] = P0.local ? { status: 'ok', url: 'http://localhost:11434', ms: 38 } : { status: 'ok', mask: (KEY_PREFIX[provName(P0)] || 'sk-') + '…7Q2c', ms: 384 };
   if (cfg.prov !== 0) conns[0] = { status: 'ok', mask: 'sk-…a91F', ms: 412 };
-  return { payMode: cfg.keyMode === 'credits' ? 'credits' : 'own', conns, ptab: 'now', provOpen: null, editing: null, draftKey: '', draftUrl: '', provErr: '', testing: false, fbOn: true,
+  return { payMode: 'own', conns, ptab: 'now', provOpen: null, editing: null, draftKey: '', draftUrl: '', provErr: '', testing: false, fbOn: true,
     route: { routine: [cfg.prov, P0.models.length - 1], fb: cfg.prov !== 0 ? [0, 0] : [0, 1] }, spendBy: {}, log: [{ t: '9:41', k: 'Born', v: { b: (typeof P0.models[cfg.model] === 'string' ? P0.models[cfg.model] : (P0.models[cfg.model] || P0.models[0])) } }] };
 }
 const DEF_CFG = { sp: 'pingo', ci: 0, name: 'Faísca', persona: 0, prov: 1, model: 0, keyMode: 'own', auto: 1, budget: 20, apps: ['gmail', 'cal'], lang: 'pt', dark: false };
@@ -827,7 +827,7 @@ class Component extends DCLogic {
     const X = PX[lang], fill = (s, o) => s.replace(/\{(\w+)\}/g, (a, k) => (o[k] == null ? a : tr(o[k])));
     const tabsDef = [['now', X.tNow], ['brain', X.tBrain], ['mem', X.tMem], ['rules', X.tRules]];
     const ptabs = tabsDef.map(([k, l]) => { const on = S.ptab === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', hasN: k === 'brain' && !this.avail(S.prov, S), onClick: () => this.setState({ ptab: k }) }; });
-    const payOpts = [['own', X.payOwn], ['credits', X.payCredits]].map(([k, l]) => { const on = S.payMode === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', onClick: () => { if (S.payMode !== k) { this.setState({ payMode: k, provOpen: null, editing: null }); this.addLog('Pay', { s: l }); } } }; });
+    const payOpts = [['own', X.payOwn]].map(([k, l]) => { const on = S.payMode === k; return { label: l, bg: on ? t.panel : 'transparent', fg: on ? t.ink : t.mute, sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', onClick: () => { if (S.payMode !== k) { this.setState({ payMode: k, provOpen: null, editing: null }); this.addLog('Pay', { s: l }); } } }; });
     const allOpts = PROVIDERS.flatMap((p, pi) => p.models.map((m, mi) => { const av = this.avail(pi, S); return { v: pi + ':' + mi, l: tr(m) + ' · ' + tr(p.n) + (av ? '' : ' (' + X.needConn + ')'), dis: !av }; }));
     const sw = on => ({ swBg: on ? t.ink : t.line, swX: on ? '16px' : '2px' });
     const routes = [
