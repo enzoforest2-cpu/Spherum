@@ -56,6 +56,25 @@ test("a chave cifrada e a conversa interna nunca chegam ao navegador", async () 
   });
 });
 
+test("tokens das integrações e estados de login nunca chegam ao navegador", async () => {
+  const a = await seedAgency(sql, "E");
+  const b = await seedAgency(sql, "F");
+  await sql.query(
+    `insert into integration_connections (agency_id, provider, label, ciphertext) values ($1, 'google', 'Ana', 'v1:segredo'), ($2, 'google', 'Outra', 'v1:x')`,
+    [a.agencyId, b.agencyId],
+  );
+  await sql.query(
+    `insert into oauth_states (state, agency_id, user_id, provider, expires_at) values ('s1', $1, $2, 'google', now() + interval '5 minutes')`,
+    [a.agencyId, a.ownerId],
+  );
+  await asUser(a.ownerId, async () => {
+    const rows = await db.query<{ label: string }>(`select label, provider, status from integration_connections`);
+    assert.deepEqual(rows.rows.map((r) => r.label), ["Ana"]);
+    await assert.rejects(db.query(`select ciphertext from integration_connections`), /permission denied/);
+    await assert.rejects(db.query(`select * from oauth_states`), /permission denied/);
+  });
+});
+
 test("quem não está logado não lê nada", async () => {
   const a = await seedAgency(sql, "D");
   await seedXodo(sql, a.agencyId);

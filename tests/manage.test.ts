@@ -229,3 +229,26 @@ test("troca o cérebro só com modelo e chave do novo provedor", async () => {
   const swapped = await updateXodo(sql, llm, a.agencyId, xodo.id, { provider: "local", model: "llama3", credential_id: local!.id });
   assert.deepEqual([swapped.provider, swapped.model, swapped.credential_id], ["local", "llama3", local!.id]);
 });
+
+test("apps do xodó (Pode mexer em): conexão fixada precisa ser da agência e do provedor do app", async () => {
+  const a = await agencyWithKey();
+  const b = await agencyWithKey();
+  const insertConn = async (agencyId: string, provider: string) =>
+    (await one<{ id: string }>(
+      sql,
+      `insert into integration_connections (agency_id, provider, label, ciphertext) values ($1, $2, 'x', 'v1:x') returning id`,
+      [agencyId, provider],
+    ))!.id;
+  const googleA = await insertConn(a.agencyId, "google");
+  const slackA = await insertConn(a.agencyId, "slack");
+  const googleB = await insertConn(b.agencyId, "google");
+
+  const xodo = await createXodo(sql, llm, a.agencyId, escolhas(a.credentialId, { apps: [{ app: "gmail" }, { app: "calendar", connection_id: googleA }] }), a.ownerId);
+  const apps = await sql.query<{ app: string; connection_id: string | null }>(`select app, connection_id from xodo_apps where xodo_id = $1 order by app`, [xodo.id]);
+  assert.deepEqual(apps, [{ app: "calendar", connection_id: googleA }, { app: "gmail", connection_id: null }]);
+
+  await assert.rejects(updateXodo(sql, llm, a.agencyId, xodo.id, { apps: [{ app: "gmail", connection_id: googleB }] }), /não é desta agência/);
+  await assert.rejects(updateXodo(sql, llm, a.agencyId, xodo.id, { apps: [{ app: "gmail", connection_id: slackA }] }), /outro app/);
+  await updateXodo(sql, llm, a.agencyId, xodo.id, { apps: [{ app: "slack", connection_id: slackA }] });
+  assert.deepEqual((await sql.query(`select app from xodo_apps where xodo_id = $1`, [xodo.id])).map((r) => r.app), ["slack"]);
+});

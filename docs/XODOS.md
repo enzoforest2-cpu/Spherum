@@ -4,6 +4,8 @@ Os xodós são colegas de IA que cada agência cria do seu jeito. Este documento
 
 Faísca, Zuca e Nina, que aparecem no design, são só exemplos. Não existe xodó fixo nem função fixa.
 
+As integrações com apps e plataformas têm um guia próprio: [`docs/INTEGRACOES.md`](INTEGRACOES.md).
+
 O front continua sendo o HTML do design (`public/`). O motor é só backend: código em `src/lib/xodos/`, rotas em `src/app/api/`, banco em `supabase/migrations/20261018120000_xodos.sql` e testes em `tests/`.
 
 ## Criação
@@ -191,7 +193,7 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 62 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 74 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
@@ -203,7 +205,7 @@ São 62 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Do
 
 - **Integrações de anúncios** para alimentar `metrics_daily` (Meta Ads, Google Ads, GA4, TikTok).
 - **Ferramentas de campanha** (pausar, remanejar verba) na categoria `campanha`, com limite por agência.
-- **Apps:** o passo "Limites" tem "Pode mexer em" (Gmail, Agenda, Slack, WhatsApp, Notion, GitHub, Drive). Essas integrações ainda não existem.
+- **Ferramentas dos apps:** a base das integrações (login próprio, conexões cifradas, apps por xodó, servidores MCP) existe; as ferramentas de cada app estão sendo construídas (veja `docs/INTEGRACOES.md`).
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
 - **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.

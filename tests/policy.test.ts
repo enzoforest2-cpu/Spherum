@@ -12,10 +12,12 @@ const decide = (category: Category, autonomy: Autonomy, rules: ApprovalRule[] = 
   decideApproval({ toolName, category, rules, autonomy }).decision;
 
 test("autonomia escolhida na criação define o padrão", () => {
+  const ask = "ask" as const;
+  const allow = "allow" as const;
   const table: Record<Autonomy, Record<Category, "allow" | "ask">> = {
-    sempre_pergunta: { leitura: "allow", rascunho: "ask", memoria: "ask", equipe: "ask", campanha: "ask", cliente: "ask" },
-    pergunta_no_que_importa: { leitura: "allow", rascunho: "allow", memoria: "allow", equipe: "allow", campanha: "ask", cliente: "ask" },
-    age_sozinho: { leitura: "allow", rascunho: "allow", memoria: "allow", equipe: "allow", campanha: "allow", cliente: "ask" },
+    sempre_pergunta: { leitura: allow, rascunho: ask, memoria: ask, equipe: ask, alteracao: ask, envio: ask, exclusao: ask, pagamento: ask, campanha: ask, cliente: ask },
+    pergunta_no_que_importa: { leitura: allow, rascunho: allow, memoria: allow, equipe: allow, alteracao: allow, envio: ask, exclusao: ask, pagamento: ask, campanha: ask, cliente: ask },
+    age_sozinho: { leitura: allow, rascunho: allow, memoria: allow, equipe: allow, alteracao: allow, envio: allow, exclusao: allow, pagamento: allow, campanha: allow, cliente: ask },
   };
   for (const [autonomy, row] of Object.entries(table) as [Autonomy, Record<Category, string>][]) {
     for (const [category, expected] of Object.entries(row) as [Category, string][]) {

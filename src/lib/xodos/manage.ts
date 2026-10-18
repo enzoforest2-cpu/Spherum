@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { APP_IDS, APPS, type AppId } from "../integrations/apps";
 import type { CredentialSecret } from "./brain";
 import { one, type Sql } from "./db";
 import { isSelfHosted, type LlmClient } from "./llm";
@@ -116,6 +117,8 @@ const xodoFields = {
   backup_models: z.array(modelChoice).max(MAX_BACKUP_MODELS),
   /** Modelo das rotinas agendadas; nulo usa o principal. */
   routine_model: modelChoice.nullable(),
+  /** Apps que o xodó pode usar ("Pode mexer em"), opcionalmente presos a uma conexão. */
+  apps: z.array(z.object({ app: z.enum(APP_IDS as [AppId, ...AppId[]]), connection_id: z.uuid().nullable().optional() })).max(30),
   /** Teto do dia em reais; nulo: só registra o gasto. */
   daily_budget_brl: z.number().positive().max(100_000).nullable(),
   warn_at_percent: z.number().int().min(1).max(99),
@@ -131,6 +134,7 @@ export const xodoInput = z.object({
   autonomy: xodoFields.autonomy.default("pergunta_no_que_importa"),
   backup_models: xodoFields.backup_models.default([]),
   routine_model: xodoFields.routine_model.default(null),
+  apps: xodoFields.apps.default([]),
   daily_budget_brl: xodoFields.daily_budget_brl.default(null),
   warn_at_percent: xodoFields.warn_at_percent.default(80),
   timezone: xodoFields.timezone.default("America/Sao_Paulo"),
@@ -153,6 +157,29 @@ async function assertModelChoice(sql: Sql, llm: LlmClient, agencyId: string, cho
   if (!credential) throw new XodoError("A chave escolhida não existe nesta agência ou é de outro provedor.");
   if (!llm.resolve({ provider: choice.provider, model: choice.model, baseUrl: credential.base_url })) {
     throw new XodoError(`O modelo ${choice.model} não está no catálogo de ${choice.provider}.`);
+  }
+}
+
+/** Troca a lista de apps do xodó. Conexão fixada precisa ser da agência e do provedor do app. */
+async function saveApps(sql: Sql, agencyId: string, xodoId: string, apps: { app: AppId; connection_id?: string | null }[]) {
+  const unique = [...new Map(apps.map((a) => [a.app, a])).values()];
+  for (const a of unique) {
+    if (!a.connection_id) continue;
+    const ok = await one(
+      sql,
+      `select 1 from integration_connections where id = $1 and agency_id = $2 and provider = any($3::text[]) and status <> 'revoked'`,
+      [a.connection_id, agencyId, APPS[a.app].providers],
+    );
+    if (!ok) throw new XodoError(`A conexão escolhida para ${APPS[a.app].label} não é desta agência ou é de outro app.`);
+  }
+  await sql.query(`delete from xodo_apps where xodo_id = $1 and agency_id = $2`, [xodoId, agencyId]);
+  for (const a of unique) {
+    await sql.query(`insert into xodo_apps (xodo_id, agency_id, app, connection_id) values ($1, $2, $3, $4)`, [
+      xodoId,
+      agencyId,
+      a.app,
+      a.connection_id ?? null,
+    ]);
   }
 }
 
@@ -200,6 +227,7 @@ export async function createXodo(sql: Sql, llm: LlmClient, agencyId: string, raw
         input.warn_at_percent, input.timezone, scope, createdBy],
     );
     await saveBackups(tx, agencyId, xodo!.id, input.backup_models);
+    await saveApps(tx, agencyId, xodo!.id, input.apps);
     for (const clientId of clientIds) {
       // O gatilho do banco também recusa cliente de outra agência.
       await tx.query(`insert into xodo_clients (xodo_id, client_id, agency_id) values ($1, $2, $3)`, [xodo!.id, clientId, agencyId]);
@@ -243,6 +271,7 @@ export async function updateXodo(sql: Sql, llm: LlmClient, agencyId: string, xod
         routine.provider, routine.model, routine.credential_id],
     );
     if (patch.backup_models) await saveBackups(tx, agencyId, xodoId, patch.backup_models);
+    if (patch.apps) await saveApps(tx, agencyId, xodoId, patch.apps);
     return row!;
   });
 }

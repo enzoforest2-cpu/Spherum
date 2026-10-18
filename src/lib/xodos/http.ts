@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
+import { IntegrationError } from "../integrations/http";
 import { one, type Sql } from "./db";
 import { XodoError } from "./runner";
 
@@ -39,6 +40,7 @@ export const uuid = z.uuid();
 
 export function fail(error: unknown) {
   if (error instanceof XodoError) return NextResponse.json({ error: error.message }, { status: error.status });
+  if (error instanceof IntegrationError) return NextResponse.json({ error: error.message, reconnect: error.reauth }, { status: error.status });
   if (error instanceof ZodError) return NextResponse.json({ error: "Dados inválidos", issues: z.treeifyError(error) }, { status: 400 });
   if (error instanceof SyntaxError) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   console.error("[xodos]", error);

@@ -1,4 +1,7 @@
 import { z } from "zod";
+import type { AppAccess } from "../integrations/access";
+import type { AppId } from "../integrations/apps";
+import { IntegrationError } from "../integrations/http";
 import { notify } from "./budget";
 import { num, one, type Sql } from "./db";
 import { saveMemory } from "./memory";
@@ -10,13 +13,24 @@ import type { Xodo } from "./types";
  * entrada com zod e só enxerga dados da própria agência e dos clientes liberados ao xodó.
  */
 
-export type ToolContext = { sql: Sql; xodo: Xodo; runId: string; now: Date };
+export type ToolContext = {
+  sql: Sql;
+  xodo: Xodo;
+  runId: string;
+  now: Date;
+  /** Acesso às conexões da agência; nulo quando o motor roda sem integrações. */
+  apps: AppAccess | null;
+};
 
 export type ToolDef<I = unknown> = {
   name: string;
   description: string;
   category: Category;
+  /** App de onde a ferramenta vem; só aparece para xodós com o app em "Pode mexer em". */
+  app?: AppId;
   input: z.ZodType<I>;
+  /** Esquema JSON pronto (ferramentas de servidores MCP); senão, sai do zod. */
+  jsonSchema?: Record<string, unknown>;
   /** Frase curta mostrada no pedido de aprovação. */
   summarize(input: I): string;
   execute(ctx: ToolContext, input: I): Promise<unknown>;
@@ -24,6 +38,27 @@ export type ToolDef<I = unknown> = {
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */
 export class ToolError extends Error {}
+
+/** Acesso a um app dentro de uma ferramenta, com os erros de integração virando ToolError. */
+export async function useApp(ctx: ToolContext, app: AppId) {
+  if (!ctx.apps) throw new ToolError("As integrações não estão disponíveis agora.");
+  try {
+    return await ctx.apps.use(app);
+  } catch (error) {
+    if (error instanceof IntegrationError) throw new ToolError(error.message);
+    throw error;
+  }
+}
+
+/** Roda uma chamada a um app e transforma erro do provedor em ToolError com a mensagem dele. */
+export async function appCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof IntegrationError) throw new ToolError(error.message);
+    throw error;
+  }
+}
 
 const day = z.iso.date();
 const clientId = z.uuid();
@@ -318,5 +353,5 @@ export function toolJsonSchema(def: ToolDef): Record<string, unknown> {
     );
     return Object.fromEntries(entries.map(([key, value]) => [key, strip(value)]));
   };
-  return strip(z.toJSONSchema(def.input, { io: "input" })) as Record<string, unknown>;
+  return strip(def.jsonSchema ?? z.toJSONSchema(def.input, { io: "input" })) as Record<string, unknown>;
 }

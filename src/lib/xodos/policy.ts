@@ -10,19 +10,37 @@ import type { Autonomy } from "./types";
  *  3. Qualquer regra "sempre permitir" que case.
  *  4. A autonomia escolhida na criação do xodó (passo "Limites" do design):
  *     - "Sempre pergunta": tudo que muda alguma coisa pergunta; só leitura roda direto.
- *     - "Pergunta no que importa": pergunta antes de enviar, pagar ou apagar (cliente e campanha).
+ *     - "Pergunta no que importa": pergunta antes de enviar, pagar ou apagar (envio, pagamento,
+ *       exclusão, cliente e campanha); criar e editar em apps roda direto.
  *     - "Age sozinho": faz e conta depois. O piso do item 1 continua valendo.
  *
  * Diferente do Rakazo, a especificidade não importa: "exigir" sempre vence "permitir",
  * para que uma regra larga da agência nunca seja furada por uma regra estreita de um xodó.
  */
 
-export const CATEGORIES = ["leitura", "rascunho", "memoria", "equipe", "cliente", "campanha"] as const;
+/**
+ * leitura: só consulta. rascunho, memoria, equipe: trabalho interno do Spherum.
+ * alteracao: cria ou edita algo num app (evento na agenda, página no Notion).
+ * envio: chega a alguém de fora (e-mail, mensagem, post). exclusao: apaga ou arquiva.
+ * pagamento: move dinheiro. campanha: mexe em anúncios e verba. cliente: vai para o portal do cliente.
+ */
+export const CATEGORIES = [
+  "leitura",
+  "rascunho",
+  "memoria",
+  "equipe",
+  "alteracao",
+  "envio",
+  "exclusao",
+  "pagamento",
+  "campanha",
+  "cliente",
+] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 const ASK_BY_AUTONOMY: Record<Autonomy, Set<Category>> = {
-  sempre_pergunta: new Set(["rascunho", "memoria", "equipe", "cliente", "campanha"]),
-  pergunta_no_que_importa: new Set(["cliente", "campanha"]),
+  sempre_pergunta: new Set(CATEGORIES.filter((c) => c !== "leitura")),
+  pergunta_no_que_importa: new Set(["envio", "exclusao", "pagamento", "campanha", "cliente"]),
   age_sozinho: new Set(),
 };
 const SAFETY_FLOOR = new Set<Category>(["cliente"]);

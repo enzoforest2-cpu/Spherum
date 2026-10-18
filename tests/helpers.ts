@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import {
   createModels,
   fauxAssistantMessage,
@@ -18,12 +18,15 @@ import type { ToolCall, ToolResult, Xodo } from "../src/lib/xodos/types";
 
 // Os testes rodam da raiz do repositório (npm test).
 const FOUNDATION = readFileSync("tests/fixtures/foundation.sql", "utf8");
-const MIGRATION = readFileSync("supabase/migrations/20261018120000_xodos.sql", "utf8");
+const MIGRATIONS = readdirSync("supabase/migrations")
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"));
 
 export async function createTestDb(): Promise<{ db: PGlite; sql: Sql }> {
   const db = new PGlite();
   await db.exec(FOUNDATION);
-  await db.exec(MIGRATION);
+  for (const migration of MIGRATIONS) await db.exec(migration);
   return { db, sql: fromPGlite(db) };
 }
 

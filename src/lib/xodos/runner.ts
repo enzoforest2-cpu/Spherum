@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { Type, type AssistantMessage, type Message, type Tool, type ToolResultMessage } from "@earendil-works/pi-ai";
 import { z } from "zod";
+import { appAccess } from "../integrations/access";
+import { IntegrationError } from "../integrations/http";
+import { appToolsFor } from "../integrations/registry";
+import type { IntegrationDeps } from "../integrations/store";
 import { callWithFallback, loadCandidates, prepare, type BrainDeps } from "./brain";
 import { dayIn, notify } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
@@ -30,7 +34,13 @@ const TOOL_RESULT_MAX_CHARS = 20_000;
 
 export type EngineDeps = BrainDeps & {
   now?: () => Date;
+  /** Conexões com apps (chave do cofre, fetch, endereço do Spherum). Sem isto, só as ferramentas internas. */
+  integrations?: Omit<IntegrationDeps, "sql" | "now">;
 };
+
+function integrationDeps(deps: EngineDeps): IntegrationDeps | null {
+  return deps.integrations ? { ...deps.integrations, sql: deps.sql, now: deps.now } : null;
+}
 
 export class XodoError extends Error {
   constructor(
@@ -76,14 +86,25 @@ async function loadRun(sql: Sql, runId: string): Promise<RunRow> {
   return run;
 }
 
-/** Todas as ferramentas, menos as que a agência desligou para este xodó. */
-export async function enabledTools(sql: Sql, xodo: Xodo): Promise<ToolDef[]> {
+async function disabledTools(sql: Sql, xodo: Xodo): Promise<Set<string>> {
   const off = await sql.query<{ tool_name: string }>(
     `select tool_name from xodo_tools where xodo_id = $1 and agency_id = $2 and not enabled`,
     [xodo.id, xodo.agency_id],
   );
-  const disabled = new Set(off.map((r) => r.tool_name));
+  return new Set(off.map((r) => r.tool_name));
+}
+
+/** Ferramentas internas, menos as que a agência desligou para este xodó. */
+export async function enabledTools(sql: Sql, xodo: Xodo): Promise<ToolDef[]> {
+  const disabled = await disabledTools(sql, xodo);
   return TOOLS.filter((t) => !disabled.has(t.name));
+}
+
+/** Tudo que o xodó pode usar: ferramentas internas e as dos apps liberados para ele. */
+export async function toolsFor(deps: EngineDeps, xodo: Xodo): Promise<ToolDef[]> {
+  const disabled = await disabledTools(deps.sql, xodo);
+  const apps = await appToolsFor(integrationDeps(deps), xodo);
+  return [...TOOLS, ...apps].filter((t) => !disabled.has(t.name));
 }
 
 async function clientsInScope(sql: Sql, xodo: Xodo) {
@@ -242,7 +263,7 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
   const xodo = await loadXodo(sql, run.xodo_id, run.agency_id);
 
   try {
-    const tools = await enabledTools(sql, xodo);
+    const tools = await toolsFor(deps, xodo);
     const systemPrompt = await systemPromptFor(sql, xodo, run, nowOf(deps));
     const candidates = await loadCandidates(sql, xodo, run.trigger);
     let messages = parseJson<Message[]>(run.transcript);
@@ -396,7 +417,7 @@ async function handleToolCalls(
       continue;
     }
     const actionId = await insertAction(sql, base, tool.category, parsed.data, "executing", null);
-    await runAction(deps, xodo, actionId);
+    await runAction(deps, xodo, actionId, tools);
   }
   return pending;
 }
@@ -444,7 +465,7 @@ export function inputHash(input: unknown): string {
  * Executa uma ação já marcada como "executing" com o input guardado no banco.
  * Quem chama garante a transição para "executing" (que só acontece uma vez).
  */
-export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string) {
+export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, known?: ToolDef[]) {
   const { sql } = deps;
   const action = await one<{ tool_name: string; input: unknown; input_hash: string; run_id: string; status: string }>(
     sql,
@@ -453,7 +474,9 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string) 
   );
   if (!action || action.status !== "executing") throw new XodoError("Ação não está pronta para executar", 409);
   const input = parseJson<unknown>(action.input);
-  const tool = TOOLS_BY_NAME.get(action.tool_name);
+  // Ferramenta de app pode ter sido desligada entre o pedido e a aprovação: aí não roda.
+  const tool =
+    TOOLS_BY_NAME.get(action.tool_name) ?? (known ?? (await toolsFor(deps, xodo))).find((t) => t.name === action.tool_name);
 
   let status: "executed" | "failed" = "failed";
   let result: unknown;
@@ -463,12 +486,15 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string) 
     result = { error: "O pedido guardado foi alterado depois de criado; nada foi executado." };
   } else {
     try {
-      const data = await tool.execute({ sql, xodo, runId: action.run_id, now: nowOf(deps) }, tool.input.parse(input));
+      const integrations = integrationDeps(deps);
+      const ctx = { sql, xodo, runId: action.run_id, now: nowOf(deps), apps: integrations ? appAccess(integrations, xodo) : null };
+      const data = await tool.execute(ctx, tool.input.parse(input));
       status = "executed";
       result = { data };
     } catch (error) {
-      if (!(error instanceof ToolError)) console.error("[xodos] erro na ferramenta", action.tool_name, error);
-      result = { error: error instanceof ToolError ? error.message : "Erro interno ao executar a ferramenta." };
+      const expected = error instanceof ToolError || error instanceof IntegrationError;
+      if (!expected) console.error("[xodos] erro na ferramenta", action.tool_name, error);
+      result = { error: expected ? (error as Error).message : "Erro interno ao executar a ferramenta." };
     }
   }
   await sql.query(

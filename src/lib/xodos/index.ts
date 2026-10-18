@@ -1,3 +1,4 @@
+import { serverIntegrations } from "../integrations";
 import { serverSql, type Sql } from "./db";
 import { serverLlm } from "./llm";
 import { loadCredentialSecret } from "./manage";
@@ -18,5 +19,6 @@ export async function productionDeps(sql?: Sql): Promise<EngineDeps> {
     sql: db,
     llm: serverLlm(),
     secretFor: (agencyId, credentialId) => loadCredentialSecret(db, agencyId, credentialId, masterKey),
+    integrations: serverIntegrations(),
   };
 }
