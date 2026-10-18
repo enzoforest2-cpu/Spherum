@@ -34,7 +34,7 @@ Os arquivos em `public/` são *bundles* (com fontes e scripts embutidos). Para e
 
 Banco: Supabase, projeto **spherum** (`fszbxwlxuncqefcwttru`, região São Paulo), na organização *enzoforest2-3275's projects*.
 
-- URL e publishable key em `.env.example`. Copie para `.env.local` para rodar localmente; na Vercel, as mesmas variáveis ficam em Settings → Environment Variables.
+- URL e publishable key já estão em `src/lib/supabase.ts` como padrão (são públicas). As variáveis de `.env.example` são opcionais e, se definidas, têm prioridade.
 - Cliente pronto em `src/lib/supabase.ts`.
 - Migrações SQL em `supabase/migrations/`.
 
