@@ -1,36 +1,34 @@
 import { createHash } from "node:crypto";
+import { Type, type AssistantMessage, type Message, type Tool, type ToolResultMessage } from "@earendil-works/pi-ai";
 import { z } from "zod";
-import { dayIn, notify, reserveBudget, settleBudget } from "./budget";
+import { callWithFallback, loadCandidates, prepare, type BrainDeps } from "./brain";
+import { dayIn, notify } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
+import { usdBrl } from "./fx";
+import { providerErrorMessage } from "./llm";
 import { loadMemory } from "./memory";
 import { buildSystemPrompt } from "./persona";
 import { decideApproval, loadRules } from "./policy";
-import { costUsd, loadPrice, worstCaseUsd, type Price } from "./pricing";
-import type { ModelDriver, StepResponse, ToolSpec, Turn } from "./providers";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolDef } from "./tools";
 import type { RunStatus, ToolCall, ToolResult, Xodo } from "./types";
 
 /**
  * O executor dos Xodós: um laço de passos com o modelo, no estilo do Rakazo e do OpenDots.
  *
- * Cada passo reserva o pior caso no teto do dia, chama o modelo, acerta o custo real e
+ * Cada passo chama o cérebro do xodó (modelo principal ou um reserva), registra o gasto e
  * trata as ferramentas pedidas. O que pode rodar direto roda; o que precisa de aprovação
  * vira um pedido guardado em xodo_actions e a execução para em waiting_approval. Quando a
  * equipe decide, o servidor executa exatamente o input guardado, uma vez só, e retoma.
  */
 
 export const MAX_STEPS = 12;
-export const MAX_TOKENS_PER_STEP = 8_000;
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 /** Uma execução "running" parada há mais que isso é tratada como travada. */
 export const STALE_RUN_MS = 10 * 60 * 1000;
 const TRANSCRIPT_MESSAGES = 20;
 const TOOL_RESULT_MAX_CHARS = 20_000;
 
-export type EngineDeps = {
-  sql: Sql;
-  /** Cria o adaptador do modelo do xodó (com a chave da agência). Nos testes, um modelo falso. */
-  driverFor: (xodo: Xodo) => Promise<ModelDriver>;
+export type EngineDeps = BrainDeps & {
   now?: () => Date;
 };
 
@@ -66,7 +64,7 @@ type RunRow = {
   trigger: "user" | "routine";
   routine_id: string | null;
   status: RunStatus;
-  native_messages: unknown;
+  transcript: unknown;
   steps: number;
   tool_calls: number;
   final_text: string | null;
@@ -98,11 +96,70 @@ async function clientsInScope(sql: Sql, xodo: Xodo) {
   );
 }
 
-async function requirePrice(sql: Sql, xodo: Xodo): Promise<Price> {
-  const price = await loadPrice(sql, xodo.provider, xodo.model);
-  // Sem preço não há como garantir o teto do dia, então o xodó não roda.
-  if (!price) throw new XodoError(`O modelo ${xodo.model} não tem preço cadastrado; peça ao admin para cadastrar.`, 422);
-  return price;
+// ---------------------------------------------------------------------------
+// Conversa no formato da pi-ai
+// ---------------------------------------------------------------------------
+
+const ZERO_USAGE = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: 0,
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+};
+
+/**
+ * Mensagens visíveis anteriores viram turnos da conversa. Falas seguidas do mesmo lado são
+ * juntadas e a conversa começa pelo usuário. As respostas antigas entram como texto de um
+ * "modelo de histórico", que qualquer provedor aceita.
+ */
+export function historyMessages(turns: { role: "user" | "assistant"; text: string }[]): Message[] {
+  const merged: { role: "user" | "assistant"; text: string }[] = [];
+  for (const turn of turns) {
+    if (!turn.text.trim()) continue;
+    const last = merged[merged.length - 1];
+    if (last && last.role === turn.role) last.text += `\n\n${turn.text}`;
+    else merged.push({ ...turn });
+  }
+  while (merged.length && merged[0].role !== "user") merged.shift();
+  return merged.map((t, i): Message =>
+    t.role === "user"
+      ? { role: "user", content: t.text, timestamp: i }
+      : {
+          role: "assistant",
+          content: [{ type: "text", text: t.text }],
+          api: "openai-completions",
+          provider: "spherum-historico",
+          model: "historico",
+          usage: ZERO_USAGE,
+          stopReason: "stop",
+          timestamp: i,
+        },
+  );
+}
+
+function toolResultMessages(results: ToolResult[], at: number): ToolResultMessage[] {
+  return results.map((r) => ({
+    role: "toolResult",
+    toolCallId: r.id,
+    toolName: r.name,
+    content: [{ type: "text", text: r.content }],
+    isError: r.isError,
+    timestamp: at,
+  }));
+}
+
+function textOf(message: AssistantMessage): string {
+  return message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+}
+
+function toolCallsOf(message: AssistantMessage): ToolCall[] {
+  return message.content.flatMap((b) => (b.type === "toolCall" ? [{ id: b.id, name: b.name, input: b.arguments }] : []));
+}
+
+function piTools(tools: ToolDef[]): Tool[] {
+  return tools.map((t) => ({ name: t.name, description: t.description, parameters: Type.Unsafe(toolJsonSchema(t)) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -123,12 +180,22 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   const { sql } = deps;
   const xodo = await loadXodo(sql, input.xodoId, input.agencyId);
   if (xodo.status !== "active") throw new XodoError(`${xodo.name} está pausado.`, 409);
-  await requirePrice(sql, xodo);
   const text = input.text.trim();
   if (!text || text.length > 8000) throw new XodoError("Mensagem vazia ou longa demais (máximo de 8000 caracteres).");
 
-  // Prepara o modelo antes de criar a execução: chave revogada falha aqui, sem deixar nada pela metade.
-  const driver = await deps.driverFor(xodo);
+  // Confere o cérebro antes de criar a execução: sem nenhum modelo utilizável, nada fica pela metade.
+  const problems: string[] = [];
+  let usable = false;
+  for (const candidate of await loadCandidates(sql, xodo)) {
+    const ready = await prepare(deps, xodo, candidate);
+    if ("problem" in ready) problems.push(ready.problem);
+    else {
+      usable = true;
+      break;
+    }
+  }
+  if (!usable) throw new XodoError(`${xodo.name} não tem um modelo utilizável: ${problems.join("; ")}.`, 422);
+
   const now = nowOf(deps);
   if (input.trigger === "user") {
     const busy = await one(
@@ -157,10 +224,10 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
      ) m order by id`,
     [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES],
   );
-  const turns: Turn[] = recent.map((m) => ({ role: m.role, text: m.text }));
+  const turns = recent.map((m) => ({ role: m.role, text: m.text }));
   if (input.trigger === "routine") turns.push({ role: "user", text });
 
-  await sql.query(`update xodo_runs set native_messages = $2::jsonb where id = $1`, [runId, json(driver.start(turns))]);
+  await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(historyMessages(turns))]);
   return runId;
 }
 
@@ -175,16 +242,13 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
   const xodo = await loadXodo(sql, run.xodo_id, run.agency_id);
 
   try {
-    const price = await requirePrice(sql, xodo);
-    const driver = await deps.driverFor(xodo);
     const tools = await enabledTools(sql, xodo);
-    const specs: ToolSpec[] = tools.map((t) => ({ name: t.name, description: t.description, parameters: toolJsonSchema(t) }));
-    const system = await systemPromptFor(sql, xodo, run, nowOf(deps));
-    const fixedChars = system.length + JSON.stringify(specs).length;
-    const prices = new Map<string, Price>([[price.model, price]]);
-
-    let history = parseJson<unknown[]>(run.native_messages);
+    const systemPrompt = await systemPromptFor(sql, xodo, run, nowOf(deps));
+    const candidates = await loadCandidates(sql, xodo);
+    let messages = parseJson<Message[]>(run.transcript);
     let steps = run.steps;
+    // Começa pelo modelo principal; se um reserva assumir, segue com ele até o fim da execução.
+    let active = 0;
 
     while (true) {
       if (steps >= MAX_STEPS) {
@@ -194,65 +258,57 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       }
 
       const day = dayIn(xodo.timezone, nowOf(deps));
-      const estimate = worstCaseUsd(price, fixedChars + JSON.stringify(history).length, MAX_TOKENS_PER_STEP);
-      const reservation = await reserveBudget(sql, xodo, day, estimate);
-      if (!reservation.ok) {
-        return finish(sql, xodo, runId, "paused_budget", {
-          note: `Pausei: o teto de hoje (US$ ${reservation.cap.toFixed(2)}) não comporta o próximo passo. Volto amanhã ou quando o teto for aumentado.`,
+      const rate = await usdBrl(sql, day);
+      if (xodo.daily_budget_brl !== null && rate === null) {
+        return finish(sql, xodo, runId, "failed", {
+          error: "Ainda não há cotação do dólar para garantir o teto em reais. Tente de novo em alguns minutos.",
         });
       }
 
-      let step: StepResponse;
-      try {
-        step = await driver.step({ system, history, tools: specs, maxTokens: MAX_TOKENS_PER_STEP });
-      } catch (error) {
-        await settleBudget(sql, xodo, day, estimate, 0);
-        return finish(sql, xodo, runId, "failed", { error: providerErrorMessage(error) });
+      const result = await callWithFallback(deps, {
+        xodo,
+        runId,
+        step: steps + 1,
+        day,
+        usdBrl: rate,
+        context: { systemPrompt, messages, tools: piTools(tools) },
+        candidates,
+        startAt: active,
+      });
+      if (!result.ok && result.reason === "budget") {
+        const cap = num(result.cap).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        return finish(sql, xodo, runId, "paused_budget", {
+          note: `Pausei: o teto de hoje (${cap}) não comporta o próximo passo. Volto amanhã ou quando o teto for aumentado.`,
+        });
       }
+      if (!result.ok && result.reason === "refused") {
+        return finish(sql, xodo, runId, "refused", { text: "Não posso ajudar com esse pedido." });
+      }
+      if (!result.ok) {
+        const reason = result.detail ? providerErrorMessage(result.detail) : `nenhum modelo pôde ser usado (${result.problems.join("; ")})`;
+        return finish(sql, xodo, runId, "failed", { error: reason });
+      }
+
+      active = result.index;
+      const message = result.message;
+      const calls = toolCallsOf(message);
       steps += 1;
-
-      let actual = 0;
-      for (const [i, slice] of step.usage.entries()) {
-        let slicePrice = prices.get(slice.model);
-        if (!slicePrice) {
-          // Modelo de fallback sem preço próprio: cobra pelo preço do modelo pedido.
-          slicePrice = (await loadPrice(sql, xodo.provider, slice.model)) ?? price;
-          prices.set(slice.model, slicePrice);
-        }
-        const cost = costUsd(slicePrice, slice.usage);
-        actual += cost;
-        await sql.query(
-          `insert into ai_usage (agency_id, xodo_id, run_id, provider, model, input_tokens, output_tokens,
-             cache_read_tokens, cache_write_tokens, cost_usd, cost_source, pricing_version, call_id, day)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'list_price', $11, $12, $13::date)
-           on conflict (call_id) do nothing`,
-          [xodo.agency_id, xodo.id, runId, xodo.provider, slice.model, slice.usage.inputTokens, slice.usage.outputTokens,
-            slice.usage.cacheReadTokens, slice.usage.cacheWriteTokens, cost, slicePrice.version, `${runId}:${steps}:${i}`, day],
-        );
-      }
-      await settleBudget(sql, xodo, day, estimate, actual);
-
-      history = step.history;
+      messages = [...messages, message];
       await sql.query(
-        `update xodo_runs set native_messages = $2::jsonb, steps = $3, tool_calls = tool_calls + $4, heartbeat_at = $5::timestamptz
+        `update xodo_runs set transcript = $2::jsonb, steps = $3, tool_calls = tool_calls + $4, heartbeat_at = $5::timestamptz
           where id = $1`,
-        [runId, json(history), steps, step.toolCalls.length, nowOf(deps).toISOString()],
+        [runId, json(messages), steps, calls.length, nowOf(deps).toISOString()],
       );
 
-      if (step.stop === "refusal") {
-        return finish(sql, xodo, runId, "refused", {
-          text: step.text.trim() || "Não posso ajudar com esse pedido.",
-        });
-      }
-      if (step.stop !== "tool_use") {
-        const text = step.text.trim() || "(sem resposta)";
-        const cut = step.stop === "max_tokens" ? "\n\n(Minha resposta foi cortada por tamanho.)" : "";
-        return finish(sql, xodo, runId, "completed", { text: text + cut });
+      const text = textOf(message).trim();
+      if (!calls.length) {
+        const cut = message.stopReason === "length" ? "\n\n(Minha resposta foi cortada por tamanho.)" : "";
+        return finish(sql, xodo, runId, "completed", { text: (text || "(sem resposta)") + cut });
       }
 
-      if (step.text.trim()) await addMessage(sql, xodo, runId, "assistant", step.text.trim(), null);
+      if (text) await addMessage(sql, xodo, runId, "assistant", text, null);
 
-      const pending = await handleToolCalls(deps, xodo, runId, steps, step.toolCalls, tools);
+      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
         const list = pending.map((p) => `• ${p}`).join("\n");
@@ -265,10 +321,10 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
         });
         return "waiting_approval";
       }
-      history = driver.addToolResults(history, await stepResults(sql, runId, steps));
-      await sql.query(`update xodo_runs set native_messages = $2::jsonb, heartbeat_at = $3::timestamptz where id = $1`, [
+      messages = [...messages, ...toolResultMessages(await stepResults(sql, runId, steps), nowOf(deps).getTime())];
+      await sql.query(`update xodo_runs set transcript = $2::jsonb, heartbeat_at = $3::timestamptz where id = $1`, [
         runId,
-        json(history),
+        json(messages),
         nowOf(deps).toISOString(),
       ]);
     }
@@ -471,10 +527,11 @@ export async function resumeRun(deps: EngineDeps, runId: string): Promise<RunSta
     [runId, nowOf(deps).toISOString()],
   );
   if (!claimed) return null;
-  const xodo = await loadXodo(sql, claimed.xodo_id, claimed.agency_id);
-  const driver = await deps.driverFor(xodo);
-  const history = driver.addToolResults(parseJson<unknown[]>(claimed.native_messages), await stepResults(sql, runId, claimed.steps));
-  await sql.query(`update xodo_runs set native_messages = $2::jsonb where id = $1`, [runId, json(history)]);
+  const messages = [
+    ...parseJson<Message[]>(claimed.transcript),
+    ...toolResultMessages(await stepResults(sql, runId, claimed.steps), nowOf(deps).getTime()),
+  ];
+  await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(messages)]);
   return continueRun(deps, runId);
 }
 
@@ -511,14 +568,4 @@ export async function addMessage(
     `insert into xodo_messages (xodo_id, agency_id, run_id, role, author_user, text) values ($1, $2, $3, $4, $5, $6)`,
     [xodo.id, xodo.agency_id, runId, role, authorUser, text],
   );
-}
-
-export function providerErrorMessage(error: unknown): string {
-  const status = num((error as { status?: unknown })?.status);
-  if (status === 401 || status === 403) return "A chave de API foi recusada pelo provedor. Confira a chave da agência.";
-  if (status === 429) return "O provedor limitou as chamadas desta chave (limite de uso). Tente de novo em instantes.";
-  if (status === 404) return "O provedor não encontrou o modelo configurado.";
-  if (status >= 500) return "O provedor do modelo está instável agora. Tente de novo em instantes.";
-  const message = error instanceof Error ? error.message : String(error);
-  return `Falha ao chamar o modelo: ${message.slice(0, 300)}`;
 }

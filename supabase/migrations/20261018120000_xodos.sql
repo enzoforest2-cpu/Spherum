@@ -58,11 +58,15 @@ create trigger metrics_daily_client_agency before insert or update on public.met
 -- Chaves de API das agências (cifradas pelo servidor, AES-256-GCM)
 -- ---------------------------------------------------------------------------
 
+-- provider é o id do catálogo de modelos (anthropic, openai, google, xai, mistral, deepseek,
+-- openrouter…) ou 'local' / 'custom' para servidores compatíveis com OpenAI no endereço base_url.
 create table public.ai_credentials (
   id uuid primary key default gen_random_uuid(),
   agency_id uuid not null references public.agencies(id) on delete cascade,
-  provider text not null check (provider in ('anthropic', 'openai', 'google', 'xai')),
+  provider text not null check (char_length(provider) between 1 and 40),
   label text not null check (char_length(label) between 1 and 60),
+  base_url text check (base_url ~ '^https?://' and char_length(base_url) <= 300),
+  -- Servidor local pode não ter chave: ciphertext guarda a chave vazia cifrada.
   ciphertext text not null,
   key_last4 text not null check (char_length(key_last4) <= 4),
   created_by uuid,
@@ -71,22 +75,14 @@ create table public.ai_credentials (
 );
 create index ai_credentials_agency on public.ai_credentials (agency_id);
 
--- Preço de tabela por modelo, para estimar e registrar o gasto (US$ por milhão de tokens).
-create table public.ai_model_prices (
-  provider text not null check (provider in ('anthropic', 'openai', 'google', 'xai')),
-  model text not null,
-  input_usd_per_mtok numeric(12, 6) not null check (input_usd_per_mtok >= 0),
-  output_usd_per_mtok numeric(12, 6) not null check (output_usd_per_mtok >= 0),
-  cache_read_usd_per_mtok numeric(12, 6),
-  pricing_version text not null,
-  primary key (provider, model)
+-- Cotação do dólar (PTAX de venda do Banco Central) para registrar o gasto em reais.
+-- Os preços dos modelos vêm do catálogo da biblioteca de modelos, em dólar.
+create table public.fx_rates (
+  day date primary key,
+  usd_brl numeric(12, 6) not null check (usd_brl > 0),
+  source text not null default 'bcb_ptax',
+  fetched_at timestamptz not null default now()
 );
-
--- Preços de tabela da Anthropic (outubro de 2026). Os demais provedores entram pelo admin.
-insert into public.ai_model_prices (provider, model, input_usd_per_mtok, output_usd_per_mtok, cache_read_usd_per_mtok, pricing_version) values
-  ('anthropic', 'claude-opus-5-5', 4.00, 20.00, 0.20, '2026-10-06'),
-  ('anthropic', 'claude-sonnet-5-5', 2.00, 10.00, 0.20, '2026-10-06'),
-  ('anthropic', 'claude-haiku-5-5', 0.10, 0.50, null, '2026-10-06');
 
 -- ---------------------------------------------------------------------------
 -- Xodós
@@ -106,10 +102,11 @@ create table public.xodos (
   instructions text not null default '' check (char_length(instructions) <= 8000),
   autonomy text not null default 'pergunta_no_que_importa'
     check (autonomy in ('sempre_pergunta', 'pergunta_no_que_importa', 'age_sozinho')),
-  provider text not null check (provider in ('anthropic', 'openai', 'google', 'xai')),
-  model text not null,
+  provider text not null check (char_length(provider) between 1 and 40),
+  model text not null check (char_length(model) between 1 and 200),
   credential_id uuid references public.ai_credentials(id) on delete set null,
-  daily_budget_usd numeric(10, 4) not null default 2 check (daily_budget_usd > 0),
+  -- Teto do dia em reais. Nulo: sem teto, o gasto só é registrado.
+  daily_budget_brl numeric(10, 2) check (daily_budget_brl > 0),
   warn_at_percent integer not null default 80 check (warn_at_percent between 1 and 99),
   timezone text not null default 'America/Sao_Paulo',
   status text not null default 'active' check (status in ('active', 'paused')),
@@ -129,6 +126,18 @@ create table public.xodo_clients (
 );
 create trigger xodo_clients_client_agency before insert or update on public.xodo_clients
   for each row execute function public.app_check_client_agency();
+
+-- Modelos reserva, em ordem: se o modelo principal falhar ou recusar, o próximo assume
+-- no meio da tarefa (como no Rakazo). Cada um pode usar outra chave e outro provedor.
+create table public.xodo_models (
+  xodo_id uuid not null references public.xodos(id) on delete cascade,
+  agency_id uuid not null references public.agencies(id) on delete cascade,
+  position integer not null check (position between 1 and 5),
+  provider text not null check (char_length(provider) between 1 and 40),
+  model text not null check (char_length(model) between 1 and 200),
+  credential_id uuid not null references public.ai_credentials(id) on delete cascade,
+  primary key (xodo_id, position)
+);
 
 -- Ferramentas desligadas para um xodó. Sem linha, a ferramenta está ligada.
 create table public.xodo_tools (
@@ -169,8 +178,9 @@ create table public.xodo_memory_revisions (
   created_at timestamptz not null default now()
 );
 
--- Execuções. native_messages guarda a conversa no formato do provedor para retomar
--- depois de uma aprovação; nunca é exposta às pessoas.
+-- Execuções. transcript guarda a conversa no formato da biblioteca de modelos (passa de um
+-- provedor para outro quando um modelo reserva assume) para retomar depois de uma aprovação;
+-- nunca é exposta às pessoas.
 create table public.xodo_runs (
   id uuid primary key default gen_random_uuid(),
   xodo_id uuid not null references public.xodos(id) on delete cascade,
@@ -182,7 +192,7 @@ create table public.xodo_runs (
     check (status in ('running', 'waiting_approval', 'completed', 'failed', 'paused_budget', 'refused')),
   provider text not null,
   model text not null,
-  native_messages jsonb not null default '[]'::jsonb,
+  transcript jsonb not null default '[]'::jsonb,
   steps integer not null default 0,
   tool_calls integer not null default 0,
   final_text text,
@@ -248,21 +258,26 @@ create table public.ai_usage (
   cache_read_tokens integer not null default 0,
   cache_write_tokens integer not null default 0,
   cost_usd numeric(12, 6) not null default 0,
-  cost_source text not null check (cost_source in ('list_price', 'unknown')),
-  pricing_version text,
+  -- catalog: preço do catálogo; unknown: modelo sem preço conhecido (local ou API própria).
+  cost_source text not null check (cost_source in ('catalog', 'unknown')),
+  usd_brl numeric(12, 6),
+  cost_brl numeric(12, 4),
+  -- 0 = modelo principal; 1, 2… = modelos reserva. Tentativas que falharam também ficam aqui.
+  attempt integer not null default 0,
+  error text,
   call_id text not null unique,
   day date not null,
   created_at timestamptz not null default now()
 );
 create index ai_usage_agency_day on public.ai_usage (agency_id, day);
 
--- Teto diário por xodó: o gasto confirmado e o reservado pelas chamadas em andamento.
+-- Gasto do dia por xodó, em reais, e o reservado pelas chamadas em andamento (só quando há teto).
 create table public.xodo_budget_days (
   xodo_id uuid not null references public.xodos(id) on delete cascade,
   day date not null,
   agency_id uuid not null references public.agencies(id) on delete cascade,
-  spent_usd numeric(12, 6) not null default 0,
-  reserved_usd numeric(12, 6) not null default 0 check (reserved_usd >= 0),
+  spent_brl numeric(12, 4) not null default 0,
+  reserved_brl numeric(12, 4) not null default 0 check (reserved_brl >= 0),
   warned_at timestamptz,
   capped_at timestamptz,
   primary key (xodo_id, day)
@@ -327,8 +342,8 @@ create trigger reports_client_agency before insert or update on public.reports
 -- Reserva e acerto do teto diário (atômicos, com trava de linha)
 -- ---------------------------------------------------------------------------
 
--- Reserva o pior caso de uma chamada antes de ela começar. Se não couber no teto,
--- recusa e marca o dia como estourado: o xodó termina o passo atual e pausa.
+-- Reserva o pior caso de uma chamada antes de ela começar. Sem teto, só garante a linha do dia.
+-- Se não couber no teto, recusa e marca o dia como estourado: o xodó termina o passo e pausa.
 create or replace function public.xodo_budget_reserve(p_xodo uuid, p_day date, p_estimate numeric)
 returns jsonb language plpgsql set search_path = public as $$
 declare
@@ -337,47 +352,53 @@ declare
   v_row public.xodo_budget_days;
   v_first_cap boolean;
 begin
-  select daily_budget_usd, agency_id into v_cap, v_agency from public.xodos where id = p_xodo;
-  if v_cap is null then
+  select daily_budget_brl, agency_id into v_cap, v_agency from public.xodos where id = p_xodo;
+  if v_agency is null then
     raise exception 'xodó % não existe', p_xodo;
   end if;
   insert into public.xodo_budget_days (xodo_id, day, agency_id) values (p_xodo, p_day, v_agency)
     on conflict (xodo_id, day) do nothing;
+  if v_cap is null then
+    return jsonb_build_object('ok', true, 'cap', null, 'first_cap', false);
+  end if;
   select * into v_row from public.xodo_budget_days where xodo_id = p_xodo and day = p_day for update;
-  if v_row.spent_usd + v_row.reserved_usd + p_estimate > v_cap then
+  if v_row.spent_brl + v_row.reserved_brl + p_estimate > v_cap then
     v_first_cap := v_row.capped_at is null;
     update public.xodo_budget_days set capped_at = coalesce(capped_at, now())
       where xodo_id = p_xodo and day = p_day;
-    return jsonb_build_object('ok', false, 'spent', v_row.spent_usd, 'reserved', v_row.reserved_usd,
+    return jsonb_build_object('ok', false, 'spent', v_row.spent_brl, 'reserved', v_row.reserved_brl,
       'cap', v_cap, 'first_cap', v_first_cap);
   end if;
-  update public.xodo_budget_days set reserved_usd = reserved_usd + p_estimate
+  update public.xodo_budget_days set reserved_brl = reserved_brl + p_estimate
     where xodo_id = p_xodo and day = p_day;
-  return jsonb_build_object('ok', true, 'spent', v_row.spent_usd, 'reserved', v_row.reserved_usd + p_estimate,
+  return jsonb_build_object('ok', true, 'spent', v_row.spent_brl, 'reserved', v_row.reserved_brl + p_estimate,
     'cap', v_cap, 'first_cap', false);
 end;
 $$;
 
--- Libera a reserva e soma o custo real. Avisa uma única vez ao cruzar o percentual de aviso.
+-- Libera a reserva e soma o gasto real. Com teto, avisa uma única vez ao cruzar o percentual.
 create or replace function public.xodo_budget_settle(p_xodo uuid, p_day date, p_reserved numeric, p_actual numeric)
 returns jsonb language plpgsql set search_path = public as $$
 declare
   v_cap numeric;
   v_warn integer;
+  v_agency uuid;
   v_row public.xodo_budget_days;
   v_warn_now boolean := false;
 begin
-  select daily_budget_usd, warn_at_percent into v_cap, v_warn from public.xodos where id = p_xodo;
+  select daily_budget_brl, warn_at_percent, agency_id into v_cap, v_warn, v_agency from public.xodos where id = p_xodo;
+  insert into public.xodo_budget_days (xodo_id, day, agency_id) values (p_xodo, p_day, v_agency)
+    on conflict (xodo_id, day) do nothing;
   update public.xodo_budget_days
-     set reserved_usd = greatest(0, reserved_usd - p_reserved),
-         spent_usd = spent_usd + p_actual
+     set reserved_brl = greatest(0, reserved_brl - p_reserved),
+         spent_brl = spent_brl + p_actual
    where xodo_id = p_xodo and day = p_day
    returning * into v_row;
-  if v_row.warned_at is null and v_row.spent_usd >= v_cap * v_warn / 100.0 then
+  if v_cap is not null and v_row.warned_at is null and v_row.spent_brl >= v_cap * v_warn / 100.0 then
     update public.xodo_budget_days set warned_at = now() where xodo_id = p_xodo and day = p_day;
     v_warn_now := true;
   end if;
-  return jsonb_build_object('spent', v_row.spent_usd, 'cap', v_cap, 'warn_now', v_warn_now);
+  return jsonb_build_object('spent', v_row.spent_brl, 'cap', v_cap, 'warn_now', v_warn_now);
 end;
 $$;
 
@@ -407,7 +428,7 @@ declare
 begin
   foreach t in array array[
     'metrics_daily', 'ai_credentials', 'xodos', 'xodo_clients', 'xodo_tools', 'approval_rules',
-    'xodo_memories', 'xodo_memory_revisions', 'xodo_runs', 'xodo_messages', 'xodo_actions',
+    'xodo_models', 'xodo_memories', 'xodo_memory_revisions', 'xodo_runs', 'xodo_messages', 'xodo_actions',
     'ai_usage', 'xodo_budget_days', 'xodo_routines', 'notifications', 'reports'
   ] loop
     execute format('alter table public.%I enable row level security', t);
@@ -420,12 +441,12 @@ end;
 $$;
 
 -- Leitura só das colunas seguras: a chave cifrada e a conversa interna nunca chegam ao navegador.
-grant select (id, agency_id, provider, label, key_last4, created_by, created_at, revoked_at)
+grant select (id, agency_id, provider, label, base_url, key_last4, created_by, created_at, revoked_at)
   on public.ai_credentials to authenticated;
 grant select (id, xodo_id, agency_id, trigger, routine_id, requested_by, status, provider, model,
   steps, tool_calls, final_text, error, started_at, heartbeat_at, finished_at)
   on public.xodo_runs to authenticated;
-grant select on public.metrics_daily, public.xodos, public.xodo_clients, public.xodo_tools,
+grant select on public.metrics_daily, public.xodos, public.xodo_models, public.xodo_clients, public.xodo_tools,
   public.approval_rules, public.xodo_memories, public.xodo_memory_revisions, public.xodo_messages,
   public.xodo_actions, public.ai_usage, public.xodo_budget_days, public.xodo_routines,
   public.reports to authenticated;
@@ -435,8 +456,8 @@ drop policy notifications_member_read on public.notifications;
 create policy notifications_member_read on public.notifications for select to authenticated
   using (public.app_is_agency_member(agency_id) and (user_id is null or user_id = auth.uid()));
 
--- Preços de modelo são públicos para quem está logado.
-alter table public.ai_model_prices enable row level security;
-revoke all on public.ai_model_prices from anon, authenticated;
-grant select on public.ai_model_prices to authenticated;
-create policy ai_model_prices_read on public.ai_model_prices for select to authenticated using (true);
+-- A cotação do dólar é pública para quem está logado.
+alter table public.fx_rates enable row level security;
+revoke all on public.fx_rates from anon, authenticated;
+grant select on public.fx_rates to authenticated;
+create policy fx_rates_read on public.fx_rates for select to authenticated using (true);

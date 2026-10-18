@@ -1,10 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import {
+  createModels,
+  fauxAssistantMessage,
+  fauxProvider,
+  fauxText,
+  fauxToolCall,
+  type AssistantMessage,
+  type Message,
+  type Tool,
+} from "@earendil-works/pi-ai";
 import { PGlite } from "@electric-sql/pglite";
 import { fromPGlite, one, type Sql } from "../src/lib/xodos/db";
-import type { ModelDriver, StepRequest, StepResponse, Turn } from "../src/lib/xodos/providers";
+import { llmFromModels, type LlmClient } from "../src/lib/xodos/llm";
 import type { EngineDeps } from "../src/lib/xodos/runner";
-import type { ToolCall, ToolResult, Usage, Xodo } from "../src/lib/xodos/types";
+import type { ToolCall, ToolResult, Xodo } from "../src/lib/xodos/types";
 
 // Os testes rodam da raiz do repositório (npm test).
 const FOUNDATION = readFileSync("tests/fixtures/foundation.sql", "utf8");
@@ -32,7 +42,7 @@ export async function seedClient(sql: Sql, agencyId: string, name: string) {
 export async function seedXodo(sql: Sql, agencyId: string, overrides: Partial<Record<keyof Xodo, unknown>> = {}): Promise<Xodo> {
   const credential = await one<{ id: string }>(
     sql,
-    `insert into ai_credentials (agency_id, provider, label, ciphertext, key_last4) values ($1, 'anthropic', 'Teste', 'v1:x', 'abcd') returning id`,
+    `insert into ai_credentials (agency_id, provider, label, ciphertext, key_last4) values ($1, 'faux', 'Teste', 'v1:x', 'abcd') returning id`,
     [agencyId],
   );
   const values = {
@@ -40,10 +50,9 @@ export async function seedXodo(sql: Sql, agencyId: string, overrides: Partial<Re
     species: "pingo",
     color: "Tomate",
     personality: "curioso",
-    provider: "anthropic",
-    model: "claude-sonnet-5-5",
+    provider: "faux",
+    model: "faux-1",
     credential_id: credential!.id,
-    daily_budget_usd: 5,
     ...overrides,
   };
   const keys = Object.keys(values);
@@ -68,50 +77,68 @@ export async function seedMetrics(sql: Sql, agencyId: string, clientId: string, 
 }
 
 // ---------------------------------------------------------------------------
-// Modelo falso: segue um roteiro de passos e guarda o que recebeu
+// Modelo falso: provedor "faux" da pi-ai seguindo um roteiro, guardando o que recebeu
 // ---------------------------------------------------------------------------
 
-export type ScriptStep =
-  | { text?: string; toolCalls?: ToolCall[]; stop?: StepResponse["stop"]; usage?: Partial<Usage> }
-  | ((req: StepRequest) => { text?: string; toolCalls?: ToolCall[]; stop?: StepResponse["stop"]; usage?: Partial<Usage> });
+/** Preço dos modelos falsos (US$ por milhão de tokens), para o gasto não ser zero. */
+export const FAUX_COST = { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 };
 
-export type FakeMessage =
-  | { role: "user" | "assistant"; text: string; toolCalls?: ToolCall[] }
-  | { role: "tool"; results: ToolResult[] };
+type Reply = { text?: string; toolCalls?: ToolCall[]; stop?: "stop" | "length" | "toolUse"; error?: string; refusal?: boolean };
+export type ScriptStep = Reply | ((req: FakeRequest) => Reply);
+
+export type FakeRequest = { model: string; system: string; tools: Tool[]; messages: Message[] };
 
 export class FakeModel {
-  requests: StepRequest[] = [];
+  requests: FakeRequest[] = [];
+  readonly llm: LlmClient;
   private cursor = 0;
-  constructor(private script: ScriptStep[]) {}
 
-  driver(model = "claude-sonnet-5-5"): ModelDriver {
-    return {
-      provider: "anthropic",
-      model,
-      start: (turns: Turn[]) => turns.map((t) => ({ role: t.role, text: t.text })),
-      step: async (req) => {
-        this.requests.push(structuredClone(req));
-        const entry = this.script[this.cursor++];
-        if (!entry) throw new Error(`roteiro acabou no passo ${this.cursor}`);
-        const out = typeof entry === "function" ? entry(req) : entry;
-        const toolCalls = out.toolCalls ?? [];
-        return {
-          history: [...req.history, { role: "assistant", text: out.text ?? "", toolCalls }],
-          text: out.text ?? "",
-          toolCalls,
-          stop: out.stop ?? (toolCalls.length ? "tool_use" : "end"),
-          usage: [{ model, usage: { inputTokens: 1000, outputTokens: 200, cacheReadTokens: 0, cacheWriteTokens: 0, ...out.usage } }],
-        };
-      },
-      addToolResults: (history, results) => [...history, { role: "tool", results }],
+  constructor(private script: ScriptStep[]) {
+    const models = createModels();
+    const faux = fauxProvider({
+      provider: "faux",
+      models: [
+        { id: "faux-1", cost: FAUX_COST },
+        { id: "faux-2", cost: FAUX_COST },
+      ],
+    });
+    models.setProvider(faux.provider);
+    this.llm = llmFromModels(models);
+    const step = (context: { messages: Message[] }, _o: unknown, _s: unknown, model: { id: string }): AssistantMessage => {
+      const [system, ...rest] = context.messages;
+      const sys = system?.role === "system" ? system : null;
+      const request: FakeRequest = {
+        model: model.id,
+        system: typeof sys?.content === "string" ? sys.content : (sys?.content ?? []).map((c) => c.text).join(""),
+        tools: sys?.toolsAdded ?? [],
+        messages: sys ? rest : context.messages,
+      };
+      this.requests.push(structuredClone(request));
+      const entry = this.script[this.cursor++];
+      if (!entry) return fauxAssistantMessage("roteiro acabou", { stopReason: "error", errorMessage: "roteiro acabou" });
+      const out = typeof entry === "function" ? entry(request) : entry;
+      if (out.refusal) {
+        return { ...fauxAssistantMessage("", { stopReason: "error", errorMessage: "recusou" }), rawStopReason: "refusal" };
+      }
+      if (out.error) return fauxAssistantMessage("", { stopReason: "error", errorMessage: out.error });
+      const calls = (out.toolCalls ?? []).map((c) => fauxToolCall(c.name, c.input as Record<string, never>, { id: c.id }));
+      const content = [...(out.text ? [fauxText(out.text)] : []), ...calls];
+      return fauxAssistantMessage(content.length ? content : "", { stopReason: out.stop ?? (calls.length ? "toolUse" : "stop") });
     };
+    faux.setResponses(Array.from({ length: 200 }, () => step as never));
   }
 
   /** Último bloco de resultados de ferramenta que o modelo recebeu. */
   lastToolResults(): ToolResult[] {
-    const history = this.requests[this.requests.length - 1].history as FakeMessage[];
-    const last = [...history].reverse().find((m) => m.role === "tool");
-    return last && last.role === "tool" ? last.results : [];
+    const messages = this.requests[this.requests.length - 1].messages;
+    let i = messages.length - 1;
+    const results: ToolResult[] = [];
+    while (i >= 0 && messages[i].role === "toolResult") {
+      const m = messages[i] as Extract<Message, { role: "toolResult" }>;
+      results.unshift({ id: m.toolCallId, name: m.toolName, isError: m.isError, content: m.content.map((c) => ("text" in c ? c.text : "")).join("") });
+      i -= 1;
+    }
+    return results;
   }
 }
 
@@ -124,5 +151,23 @@ export class Clock {
 }
 
 export function testDeps(sql: Sql, model: FakeModel, clock = new Clock()): EngineDeps {
-  return { sql, now: clock.now, driverFor: async (xodo) => model.driver(xodo.model) };
+  return {
+    sql,
+    now: clock.now,
+    llm: model.llm,
+    secretFor: async (agencyId, credentialId) => {
+      const row = await one<{ provider: string; base_url: string | null }>(
+        sql,
+        `select provider, base_url from ai_credentials where id = $1 and agency_id = $2 and revoked_at is null`,
+        [credentialId, agencyId],
+      );
+      if (!row) throw new Error("chave revogada");
+      return { provider: row.provider, apiKey: "chave-de-teste", baseUrl: row.base_url };
+    },
+  };
+}
+
+/** Cotação fixa para os testes (R$ 5,50 por dólar). */
+export async function seedFx(sql: Sql, day = "2026-10-16", rate = 5.5) {
+  await sql.query(`insert into fx_rates (day, usd_brl) values ($1::date, $2) on conflict (day) do update set usd_brl = $2`, [day, rate]);
 }

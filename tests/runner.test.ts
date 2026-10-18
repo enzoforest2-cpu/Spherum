@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { before, test } from "node:test";
 import { decideAction, sweep } from "../src/lib/xodos/actions";
 import { num, one, type Sql } from "../src/lib/xodos/db";
-import { APPROVAL_TTL_MS, continueRun, MAX_STEPS, resumeRun, startRun, XodoError } from "../src/lib/xodos/runner";
-import { Clock, createTestDb, FakeModel, seedAgency, seedClient, seedMetrics, seedXodo, testDeps } from "./helpers";
+import { APPROVAL_TTL_MS, continueRun, MAX_STEPS, resumeRun, startRun } from "../src/lib/xodos/runner";
+import { Clock, createTestDb, FakeModel, seedAgency, seedClient, seedFx, seedMetrics, seedXodo, testDeps } from "./helpers";
 
 let sql: Sql;
 before(async () => {
   ({ sql } = await createTestDb());
+  await seedFx(sql);
 });
 
 async function setup(overrides = {}) {
@@ -30,7 +31,7 @@ const actions = (runId: string) =>
     [runId],
   );
 
-test("responde, registra o gasto e mostra a conversa", async () => {
+test("responde, registra o gasto em dólar e em reais e mostra a conversa", async () => {
   const { xodo, ownerId } = await setup();
   const model = new FakeModel([{ text: "Oi! Como posso ajudar?" }]);
   const deps = testDeps(sql, model);
@@ -45,13 +46,21 @@ test("responde, registra o gasto e mostra a conversa", async () => {
   assert.match(model.requests[0].system, /Você é Pipoca/);
   assert.match(model.requests[0].system, /pergunto antes de enviar, pagar ou apagar/);
   assert.match(model.requests[0].system, /Loja Verano/);
-  // 1000 de input a US$ 2/Mtok + 200 de output a US$ 10/Mtok = 0,004
-  const usage = await one(sql, `select cost_usd, call_id, model from ai_usage where run_id = $1`, [runId]);
-  assert.equal(num(usage!.cost_usd), 0.004);
-  assert.equal(usage!.model, "claude-sonnet-5-5");
-  const budget = await one(sql, `select spent_usd, reserved_usd from xodo_budget_days where xodo_id = $1`, [xodo.id]);
-  assert.equal(num(budget!.spent_usd), 0.004);
-  assert.equal(num(budget!.reserved_usd), 0);
+  // O custo vem do catálogo (US$ 2 e US$ 10 por milhão de tokens) e é convertido pela cotação (R$ 5,50).
+  const usage = await one(
+    sql,
+    `select cost_usd, cost_brl, usd_brl, cost_source, input_tokens, output_tokens, model, attempt, error from ai_usage where run_id = $1`,
+    [runId],
+  );
+  const expectedUsd = (num(usage!.input_tokens) * 2 + num(usage!.output_tokens) * 10) / 1_000_000;
+  assert.ok(num(usage!.input_tokens) > 0);
+  assert.equal(num(usage!.cost_usd), Math.round(expectedUsd * 1e6) / 1e6);
+  assert.equal(num(usage!.usd_brl), 5.5);
+  assert.equal(num(usage!.cost_brl), Math.round(num(usage!.cost_usd) * 5.5 * 1e4) / 1e4);
+  assert.deepEqual([usage!.cost_source, usage!.model, usage!.attempt, usage!.error], ["catalog", "faux-1", 0, null]);
+  const day = await one(sql, `select spent_brl, reserved_brl from xodo_budget_days where xodo_id = $1`, [xodo.id]);
+  assert.equal(num(day!.spent_brl), num(usage!.cost_brl));
+  assert.equal(num(day!.reserved_brl), 0);
 });
 
 test("ferramenta de leitura roda direto e devolve os números ao modelo", async () => {
@@ -102,8 +111,8 @@ test("publicar para o cliente espera aprovação; aprovado, executa o pedido gua
       ],
     },
     (req) => {
-      const history = req.history as { role: string; results?: { content: string }[] }[];
-      const reportId = JSON.parse(history[history.length - 1].results![0].content).report_id;
+      const last = req.messages[req.messages.length - 1] as { role: string; content: { text: string }[] };
+      const reportId = JSON.parse(last.content[0].text).report_id;
       return { toolCalls: [{ id: "t2", name: "publicar_relatorio", input: { report_id: reportId } }] };
     },
     { text: "Publicado no portal da Loja Verano." },
@@ -347,8 +356,8 @@ test("pedido alterado no banco depois de criado não é executado", async () => 
   assert.equal((await sql.query(`select 1 from notifications where agency_id = $1 and kind = 'xodo_message'`, [agencyId])).length, 0);
 });
 
-test("teto do dia pausa o xodó antes de chamar o modelo", async () => {
-  const { xodo, ownerId } = await setup({ daily_budget_usd: 0.01 });
+test("teto do dia, quando existe, pausa o xodó antes de chamar o modelo", async () => {
+  const { xodo, ownerId } = await setup({ daily_budget_brl: 0.01 });
   const model = new FakeModel([]);
   const { status } = await ask(testDeps(sql, model), xodo, "Oi", ownerId);
   assert.equal(status, "paused_budget");
@@ -357,10 +366,74 @@ test("teto do dia pausa o xodó antes de chamar o modelo", async () => {
   assert.ok(await one(sql, `select 1 from notifications where agency_id = $1 and kind = 'budget_capped'`, [xodo.agency_id]));
 });
 
-test("recusa do modelo encerra como recusada", async () => {
+test("recusa de todos os modelos encerra como recusada", async () => {
   const { xodo, ownerId } = await setup();
-  const model = new FakeModel([{ text: "", stop: "refusal" }]);
+  const model = new FakeModel([{ refusal: true }]);
   assert.equal((await ask(testDeps(sql, model), xodo, "pedido proibido", ownerId)).status, "refused");
+});
+
+async function withBackup() {
+  const ctx = await setup();
+  const [cred] = await sql.query<{ id: string }>(`select credential_id as id from xodos where id = $1`, [ctx.xodo.id]);
+  await sql.query(
+    `insert into xodo_models (xodo_id, agency_id, position, provider, model, credential_id) values ($1, $2, 1, 'faux', 'faux-2', $3)`,
+    [ctx.xodo.id, ctx.agencyId, cred.id],
+  );
+  return ctx;
+}
+
+test("se o modelo principal cai, o reserva assume no meio da tarefa e continua até o fim", async () => {
+  const { xodo, ownerId } = await withBackup();
+  const model = new FakeModel([
+    { toolCalls: [{ id: "t1", name: "listar_clientes", input: {} }] }, // principal, passo 1
+    { error: "503 overloaded" }, // principal falha no passo 2
+    { text: "Feito pelo reserva." }, // reserva assume
+  ]);
+  const { runId, status } = await ask(testDeps(sql, model), xodo, "Lista os clientes", ownerId);
+  assert.equal(status, "completed");
+  assert.deepEqual(model.requests.map((r) => r.model), ["faux-1", "faux-1", "faux-2"]);
+  // O reserva recebeu a conversa inteira, inclusive a ferramenta que o principal chamou.
+  assert.equal(model.lastToolResults()[0].name, "listar_clientes");
+  const attempts = await sql.query<{ attempt: number; model: string; error: string | null }>(
+    `select attempt, model, error from ai_usage where run_id = $1 order by id`,
+    [runId],
+  );
+  assert.deepEqual(attempts.map((a) => [a.attempt, a.model, a.error]), [
+    [0, "faux-1", null],
+    [0, "faux-1", "503 overloaded"],
+    [1, "faux-2", null],
+  ]);
+  assert.equal((await messages(xodo.id)).at(-1)!.text, "Feito pelo reserva.");
+});
+
+test("depois que o reserva assume, ele segue nos próximos passos da mesma tarefa", async () => {
+  const { xodo, ownerId } = await withBackup();
+  const model = new FakeModel([
+    { refusal: true }, // principal recusa
+    { toolCalls: [{ id: "t1", name: "listar_clientes", input: {} }] }, // reserva
+    { text: "ok" }, // reserva de novo, sem voltar ao principal
+  ]);
+  const { status } = await ask(testDeps(sql, model), xodo, "Lista", ownerId);
+  assert.equal(status, "completed");
+  assert.deepEqual(model.requests.map((r) => r.model), ["faux-1", "faux-2", "faux-2"]);
+});
+
+test("se todos os modelos falham, a tarefa falha com uma mensagem clara", async () => {
+  const { xodo, ownerId } = await withBackup();
+  const model = new FakeModel([{ error: "401 invalid x-api-key" }, { error: "429 rate limit" }]);
+  const { runId, status } = await ask(testDeps(sql, model), xodo, "Oi", ownerId);
+  assert.equal(status, "failed");
+  const run = await one<{ error: string }>(sql, `select error from xodo_runs where id = $1`, [runId]);
+  assert.match(run!.error, /limitou as chamadas/);
+});
+
+test("modelo de reserva com chave revogada é pulado", async () => {
+  const { xodo, ownerId } = await withBackup();
+  await sql.query(`update ai_credentials set revoked_at = now() where id = $1`, [xodo.credential_id]);
+  const model = new FakeModel([{ text: "nenhum dos dois" }]);
+  // As duas posições usam a mesma chave revogada: nada é chamado.
+  await assert.rejects(ask(testDeps(sql, model), xodo, "Oi", ownerId), /não tem um modelo utilizável/);
+  assert.equal(model.requests.length, 0);
 });
 
 test("limite de passos encerra a execução", async () => {
@@ -374,7 +447,7 @@ test("limite de passos encerra a execução", async () => {
   assert.match((await messages(xodo.id)).at(-1)!.text, /limite de passos/);
 });
 
-test("xodó pausado, sem preço ou ocupado não começa", async () => {
+test("xodó pausado, sem modelo utilizável ou ocupado não começa", async () => {
   const { xodo, ownerId } = await setup();
   const deps = testDeps(sql, new FakeModel([]));
   const start = (x: { id: string; agency_id: string }) =>
@@ -385,15 +458,12 @@ test("xodó pausado, sem preço ou ocupado não começa", async () => {
 
   const paused = await seedXodo(sql, xodo.agency_id, { name: "Pausado", status: "paused" });
   await assert.rejects(start(paused), /pausado/);
-  const unpriced = await seedXodo(sql, xodo.agency_id, { name: "Sem preço", provider: "openai", model: "modelo-x" });
-  await assert.rejects(start(unpriced), /não tem preço/);
+  const unknown = await seedXodo(sql, xodo.agency_id, { name: "Modelo sumiu", model: "modelo-x" });
+  await assert.rejects(start(unknown), /não existe no catálogo/);
   // Chave revogada: falha antes de criar a execução e não bloqueia o xodó.
   const revoked = await seedXodo(sql, xodo.agency_id, { name: "Sem chave" });
-  const failing = { ...deps, driverFor: async () => Promise.reject(new XodoError("A chave de API foi revogada", 422)) };
-  await assert.rejects(
-    startRun(failing, { xodoId: revoked.id, agencyId: revoked.agency_id, trigger: "user", text: "Oi", userId: ownerId }),
-    /revogada/,
-  );
+  await sql.query(`update ai_credentials set revoked_at = now() where id = $1`, [revoked.credential_id]);
+  await assert.rejects(start(revoked), /revogada/);
   assert.equal((await sql.query(`select 1 from xodo_runs where xodo_id = $1`, [revoked.id])).length, 0);
   // Xodó de outra agência não é encontrado.
   const other = await seedAgency(sql, "Outra");

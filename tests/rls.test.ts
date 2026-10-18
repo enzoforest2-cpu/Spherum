@@ -37,7 +37,7 @@ test("cada pessoa lê só a própria agência, e só lê", async () => {
     assert.deepEqual(xodos.rows.map((r) => r.name), ["Pipoca"]);
     assert.equal((await db.query(`select * from reports`)).rows.length, 1);
     assert.deepEqual((await db.query<{ title: string }>(`select title from notifications`)).rows.map((r) => r.title), ["para todos"]);
-    await assert.rejects(db.query(`update xodos set daily_budget_usd = 999 where id = $1`, [xa.id]), /permission denied/);
+    await assert.rejects(db.query(`update xodos set daily_budget_brl = 999 where id = $1`, [xa.id]), /permission denied/);
     await assert.rejects(db.query(`insert into approval_rules (agency_id, effect, match_kind, match_value) values ($1, 'always_allow', 'category', 'cliente')`, [a.agencyId]), /permission denied/);
     await assert.rejects(db.query(`delete from xodo_actions`), /permission denied/);
   });
@@ -51,7 +51,7 @@ test("a chave cifrada e a conversa interna nunca chegam ao navegador", async () 
     assert.deepEqual(safe.rows, [{ label: "Teste", key_last4: "abcd" }]);
     await assert.rejects(db.query(`select ciphertext from ai_credentials`), /permission denied/);
     await assert.rejects(db.query(`select * from ai_credentials`), /permission denied/);
-    await assert.rejects(db.query(`select native_messages from xodo_runs`), /permission denied/);
+    await assert.rejects(db.query(`select transcript from xodo_runs`), /permission denied/);
     await db.query(`select id, status, final_text from xodo_runs`);
   });
 });
@@ -62,7 +62,7 @@ test("quem não está logado não lê nada", async () => {
   await db.query(`set role anon`);
   try {
     await assert.rejects(db.query(`select * from xodos`), /permission denied/);
-    await assert.rejects(db.query(`select * from ai_model_prices`), /permission denied/);
+    await assert.rejects(db.query(`select * from fx_rates`), /permission denied/);
   } finally {
     await db.query(`reset role`);
   }

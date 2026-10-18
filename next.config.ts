@@ -10,6 +10,8 @@ import type { NextConfig } from "next";
  *   /xodo      → public/prototipo/xodo.html    (sistema dos Xodós completo)
  */
 const nextConfig: NextConfig = {
+  // A biblioteca de modelos carrega módulos do Node de forma dinâmica; roda direto, sem empacotar.
+  serverExternalPackages: ["@earendil-works/pi-ai"],
   async rewrites() {
     return {
       beforeFiles: [

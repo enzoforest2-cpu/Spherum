@@ -16,7 +16,8 @@ O assistente do design (`design/project/Xodo - Criar.dc.html`) tem 5 passos, e o
 | Cor | `color` | O nome da cor escolhida (Pingo: Tomate, Cobalto, Menta, Girassol; Bibo: Menta, Lilás, Manteiga, Pêssego; Oki: Ultramar, Coral, Lima, Noite) |
 | Nome e jeito | `name`, `personality` | Nome livre (único na agência); `curioso`, `brincalhao`, `direto`, `zen` |
 | Cérebro | `provider`, `model`, `credential_id` | Provedor, modelo e a chave de API da agência |
-| Limites | `autonomy`, `daily_budget_usd` | `sempre_pergunta`, `pergunta_no_que_importa` (padrão), `age_sozinho`; teto do dia |
+| Cérebro reserva | `xodo_models` | Até 5 modelos reserva, em ordem, de qualquer provedor (com a chave de cada um) |
+| Limites | `autonomy`, `daily_budget_brl` | `sempre_pergunta`, `pergunta_no_que_importa` (padrão), `age_sozinho`; teto do dia em reais (opcional) |
 
 Também há campos opcionais:
 - `role`: um rótulo livre do que ele faz na equipe (ex.: "Relatórios").
@@ -30,9 +31,9 @@ O jeito escolhido define o tom das respostas e a saudação, com os mesmos texto
 
 | Repositório | O que aproveitamos |
 |---|---|
-| **Rakazo** | Motor de regras de aprovação, livro de gastos por chamada (reserva antes, acerto depois), cofre AES-256-GCM com sal por registro e AAD, rotinas com continuidade |
+| **Rakazo** | A biblioteca de modelos pi-ai (catálogo amplo, conversa que passa de um provedor a outro), a lista de modelos reserva, o motor de regras de aprovação, o livro de gastos por chamada (reserva antes, acerto depois), o cofre AES-256-GCM com sal por registro e AAD, as rotinas com continuidade |
 | **OpenMausBot** | Piso de segurança (o que sai para fora sempre pergunta), memória curta carregada em toda conversa, aviso de gasto em 80% |
-| **OpenDots** | O servidor executa só o pedido guardado, uma única vez e com prazo; leitura roda sem perguntar; revisar antes de salvar |
+| **OpenDots** | O servidor executa só o pedido guardado, uma única vez e com prazo; leitura roda sem perguntar; revisar antes de salvar; a guarda contra endereços internos (SSRF) |
 
 Uma mudança em relação ao Rakazo: lá a regra mais específica vence. Aqui **"exigir aprovação" sempre vence "sempre permitir"**, para que uma regra larga da agência nunca seja furada por uma regra estreita de um xodó.
 
@@ -40,9 +41,9 @@ Uma mudança em relação ao Rakazo: lá a regra mais específica vence. Aqui **
 
 1. A pessoa manda uma mensagem (`POST /api/xodos/:id/messages`). A rota responde `202` com o `run_id`, e o xodó trabalha em segundo plano.
 2. O executor (`runner.ts`) monta a persona, a memória, os clientes que o xodó pode atender e as últimas 20 mensagens, e entra no laço de passos (no máximo 12):
-   - **reserva** no teto do dia o pior caso da chamada (prompt inteiro sem cache + 8.000 tokens de saída). Se não couber, o xodó para e avisa;
-   - **chama o modelo** com a chave da agência;
-   - **acerta** o custo real em `ai_usage` e libera a reserva;
+   - se houver teto, **reserva** o pior caso da chamada em reais (prompt inteiro sem cache + 8.000 tokens de saída). Se não couber, o xodó para e avisa;
+   - **chama o modelo** com a chave da agência. Se o provedor falhar ou o modelo recusar, o próximo modelo reserva assume com a mesma conversa;
+   - **registra** o gasto real em `ai_usage` (dólar e reais) e libera a reserva;
    - **trata as ferramentas pedidas**: o que pode rodar, roda; o que precisa de aprovação vira um pedido em `xodo_actions` e a execução para em `waiting_approval`.
 3. Alguém da equipe decide (`POST /api/xodos/actions/:id`). Aprovado, o servidor executa **o input guardado** (o corpo da requisição só decide), confere o hash do input e retoma a execução quando todas as ações daquele passo estiverem decididas.
 4. A resposta final entra em `xodo_messages`. O navegador lê por `GET /api/xodos/:id/messages` ou direto do Supabase (RLS deixa cada pessoa ler só a própria agência).
@@ -67,33 +68,34 @@ Ler dados nunca pede aprovação, porque não muda nada. O que vai para o client
 
 Cada pedido vale por 24 horas, e só a primeira decisão conta: a troca de `pending` para `approved` ou `denied` é atômica, então cliques simultâneos executam uma vez só. Os pedidos que vencem são retomados pelo cron, e o xodó avisa que nada foi feito.
 
-## Teto de gasto
+## Cérebro: provedores e modelos reserva
 
-Cada xodó tem `daily_budget_usd` (padrão US$ 2) e `warn_at_percent` (padrão 80). O dia segue o fuso do xodó. As funções `xodo_budget_reserve` e `xodo_budget_settle` travam a linha do dia, então chamadas em paralelo não estouram o teto.
+A camada de modelos usa a biblioteca **pi-ai** (MIT), a mesma do Rakazo (`llm.ts`):
+- **Catálogo amplo:** mais de 30 provedores que funcionam com chave de API (Anthropic, OpenAI, Google, xAI, Mistral, DeepSeek, Groq, OpenRouter, Together, Fireworks, Cerebras, Moonshot, MiniMax, Z.AI, Hugging Face, NVIDIA e outros), com janela de contexto e preço de cada modelo. `GET /api/xodos/catalog` lista tudo para o passo "Cérebro".
+- **Servidor próprio:** `local` (Ollama, LM Studio) e `custom` (qualquer API compatível com OpenAI), num endereço informado pela agência. O endereço precisa ser público: o servidor do Spherum não alcança o computador da agência, e endereços de rede interna são recusados (proteção contra SSRF).
+- **Ficam de fora** os provedores que pedem credencial de nuvem ou login de assinatura (Bedrock, Azure, Vertex, Cloudflare, Copilot, Codex).
+
+**Modelos reserva (`xodo_models`):** até 5, em ordem, cada um com sua chave. Se o principal falhar (instabilidade, limite de uso, chave recusada) ou recusar o pedido, o próximo assume no meio da tarefa com a mesma conversa; a pi-ai converte o histórico entre provedores. Depois que um reserva assume, ele segue até o fim daquela tarefa. Cada tentativa, inclusive as que falharam, fica em `ai_usage` com o número da tentativa e o erro.
+
+A conversa interna fica em `xodo_runs.transcript`, no formato da pi-ai, e nunca vai para o navegador.
+
+## Gasto em reais e teto opcional
+
+Todo gasto é registrado em `ai_usage` em dólar (preço do catálogo) e em reais, pela cotação PTAX de venda do Banco Central (`fx_rates`). O cron busca a cotação; fins de semana e feriados usam a última conhecida. Modelos de servidor próprio não têm preço: o gasto fica registrado com `cost_source = 'unknown'`.
+
+O gasto do dia por xodó fica somado em `xodo_budget_days`. **Por padrão não há teto: o gasto só é registrado.** Se a agência quiser, pode definir `daily_budget_brl` (o "Orçamento por dia" do design). Aí:
 
 | Momento | O que acontece |
 |---|---|
-| Passa do percentual de aviso | Notificação `budget_warning`, uma vez por dia |
+| Passa do percentual de aviso (`warn_at_percent`, padrão 80) | Notificação `budget_warning`, uma vez por dia |
 | A próxima chamada não cabe | O xodó para (`paused_budget`), com notificação `budget_capped` uma vez por dia |
-| Dia seguinte, ou teto aumentado | O xodó volta a rodar |
+| Dia seguinte, ou teto aumentado ou removido | O xodó volta a rodar |
 
-O preço vem de `ai_model_prices`. A migração já traz os preços de tabela da Anthropic (Opus, Sonnet e Haiku 5.5). **Modelo sem preço não roda**, porque sem preço não há como garantir o teto. Os preços dos modelos de OpenAI, Google e xAI que as agências forem usar precisam ser cadastrados pelo admin.
-
-## Provedores
-
-`providers.ts` tem um adaptador por provedor. A conversa fica no formato nativo de cada um (`xodo_runs.native_messages`, que nunca vai para o navegador):
-
-- **Anthropic:**
-  - O fallback do servidor vem ligado (`fallbacks: "default"`): se o modelo recusar por política, a própria API tenta o modelo reserva.
-  - Cada tentativa é cobrada pelo modelo que rodou.
-  - O cache do prompt fica ativo entre os passos.
-  - A resposta inteira (raciocínio incluso) volta na conversa.
-- **OpenAI e xAI:** Chat Completions; a xAI usa a mesma API em `api.x.ai`.
-- **Google (Gemini):** as partes da resposta voltam intactas, com as assinaturas de pensamento.
+As funções `xodo_budget_reserve` e `xodo_budget_settle` travam a linha do dia, então chamadas em paralelo não estouram o teto.
 
 ## Chaves de API
 
-A agência cadastra a própria chave (`POST /api/xodos/credentials`). Ela é cifrada com AES-256-GCM (chave derivada de `XODOS_ENCRYPTION_KEY` por scrypt, sal novo a cada gravação e AAD com agência + id) e só é decifrada na hora da chamada. Depois de cadastrada, só os 4 últimos caracteres aparecem. A coluna `ciphertext` não é legível nem por quem está logado (permissão por coluna).
+A agência cadastra a própria chave (`POST /api/xodos/credentials` com `provider`, `label`, `api_key` e, para `local` e `custom`, `base_url`; servidor local pode não ter chave). Ela é cifrada com AES-256-GCM (chave derivada de `XODOS_ENCRYPTION_KEY` por scrypt, sal novo a cada gravação e AAD com agência + id) e só é decifrada na hora da chamada. Depois de cadastrada, só os 4 últimos caracteres aparecem. A coluna `ciphertext` não é legível nem por quem está logado (permissão por coluna).
 
 **Não troque `XODOS_ENCRYPTION_KEY` depois de ter chaves cadastradas:** elas deixam de abrir.
 
@@ -153,21 +155,22 @@ Toda rota exige o token do Supabase Auth em `Authorization: Bearer <access_token
 | Rota | Quem pode | O que faz |
 |---|---|---|
 | `GET /api/xodos?agency_id=` | todos da agência | Lista os xodós da agência |
-| `POST /api/xodos` | owner, admin | Cria um xodó com o que saiu do assistente (`agency_id`, `name`, `species`, `color`, `personality`, `provider`, `model`, `credential_id`, `autonomy`, `daily_budget_usd`; opcionais: `role`, `instructions`, `client_ids`) |
-| `PATCH /api/xodos/:id` | owner, admin | Troca qualquer escolha (nome, forma, cor, jeito, cérebro, autonomia, teto), pausa ou retoma |
+| `GET /api/xodos/catalog[?provider=]` | qualquer pessoa logada | Provedores do catálogo e, com `provider`, os modelos com contexto e preço |
+| `POST /api/xodos` | owner, admin | Cria um xodó com o que saiu do assistente (`agency_id`, `name`, `species`, `color`, `personality`, `provider`, `model`, `credential_id`, `autonomy`; opcionais: `backup_models`, `daily_budget_brl`, `role`, `instructions`, `client_ids`) |
+| `PATCH /api/xodos/:id` | owner, admin | Troca qualquer escolha (nome, forma, cor, jeito, cérebro, reservas, autonomia, teto), pausa ou retoma |
 | `GET /api/xodos/:id/messages` | todos da agência | Conversa recente, pedidos pendentes e a última execução |
 | `POST /api/xodos/:id/messages` | owner, admin, member | Manda uma mensagem (`{ text }`) e responde `202` |
 | `POST /api/xodos/actions/:id` | owner, admin, member | Decide um pedido (`{ approve, scope: "once" \| "always", reason }`) |
 | `GET/POST /api/xodos/:id/routines` | leitura: todos; criar: owner, admin | Lista e cria rotinas |
 | `GET/POST/DELETE /api/xodos/credentials` | owner, admin | Lista, cadastra e revoga chaves de API |
-| `GET /api/cron/xodos` | o agendador, com `CRON_SECRET` | Faxina e rotinas |
+| `GET /api/cron/xodos` | o agendador, com `CRON_SECRET` | Cotação do dólar, faxina e rotinas |
 
 ## Banco
 
 A migração `20261018120000_xodos.sql` cria as tabelas, as funções de teto e de rotinas e as políticas de acesso:
 - Quem está logado só **lê**, e só a própria agência.
 - Toda escrita passa pelo servidor, que filtra por `agency_id`.
-- A chave cifrada e a conversa interna (`native_messages`) ficam fora do alcance do navegador.
+- A chave cifrada e a conversa interna (`transcript`) ficam fora do alcance do navegador.
 
 **Ordem:** essa migração depende das tabelas `agencies`, `agency_members` e `clients` da migração base do backend. Aplique a base primeiro. O arquivo `tests/fixtures/foundation.sql` mostra o mínimo que o motor espera dessas tabelas (`agencies.name`, `agency_members.role` com owner/admin/member/viewer, `clients.agency_id` e `clients.name`).
 
@@ -187,23 +190,19 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 57 testes com `node:test` e PGlite (Postgres em memória, sem precisar de Docker). Eles cobrem:
+São 60 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
-- o teto do dia (inclusive com reservas simultâneas);
+- o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
+- a troca para o modelo reserva no meio da tarefa;
 - o isolamento entre agências e a RLS;
-- o cofre, os preços, a memória, as rotinas e os adaptadores dos três provedores.
+- o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas.
 
 ## O que falta
 
 - **Integrações de anúncios** para alimentar `metrics_daily` (Meta Ads, Google Ads, GA4, TikTok).
 - **Ferramentas de campanha** (pausar, remanejar verba) na categoria `campanha`, com limite por agência.
-- **Diferenças com o assistente do design** que precisam de decisão:
-  - **Moeda do teto:** o design mostra o orçamento em reais (R$ 5 a R$ 100 por dia), e o motor guarda em dólares, porque é assim que os provedores cobram. É preciso converter com uma cotação, ou guardar em reais.
-  - **Provedores:** o design também oferece Mistral, DeepSeek, modelo local (Ollama/LM Studio) e "outra API compatível com OpenAI". O motor tem Anthropic, OpenAI, xAI e Gemini; os outros cabem no adaptador da OpenAI com um endereço próprio.
-  - **Apps:** o passo "Limites" tem "Pode mexer em" (Gmail, Agenda, Slack, WhatsApp, Notion, GitHub, Drive). Essas integrações ainda não existem.
-  - **Créditos:** o design ainda oferece "Créditos xodó" no passo "Cérebro". A decisão foi usar só a chave de API da agência.
+- **Apps:** o passo "Limites" tem "Pode mexer em" (Gmail, Agenda, Slack, WhatsApp, Notion, GitHub, Drive). Essas integrações ainda não existem.
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
-- **Preços** dos modelos de OpenAI, Google e xAI em `ai_model_prices`.
 - **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.

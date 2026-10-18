@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { serverSql } from "@/lib/xodos/db";
 import { CAN_MANAGE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 import { createCredential, listCredentials, revokeCredential } from "@/lib/xodos";
-import { credentialInput } from "@/lib/xodos/manage";
+import { serverLlm } from "@/lib/xodos/llm";
 import { masterKeyFromEnv } from "@/lib/xodos/vault";
 
 /** Chaves de API da agência. A chave entra uma vez e nunca mais sai: só os 4 últimos dígitos. */
@@ -19,16 +19,15 @@ export async function GET(request: Request) {
   }
 }
 
-/** POST { agency_id, provider, label, api_key } */
+/** POST { agency_id, provider, label, api_key, base_url? }  (base_url para "local" e "custom") */
 export async function POST(request: Request) {
   try {
     const userId = await requireUser(request);
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id);
-    const input = credentialInput.parse(body);
     const sql = await serverSql();
     await requireRole(sql, userId, agencyId, CAN_MANAGE);
-    const credential = await createCredential(sql, agencyId, input, userId, masterKeyFromEnv());
+    const credential = await createCredential(sql, serverLlm(), agencyId, body, userId, masterKeyFromEnv());
     return NextResponse.json({ credential }, { status: 201 });
   } catch (error) {
     return fail(error);

@@ -10,12 +10,10 @@
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
-    "@google/genai": "^2.30.0",
+    "@earendil-works/pi-ai": "1.3.0",
     "@supabase/supabase-js": "^2.118.0",
     "croner": "^10.0.1",
     "next": "15.5.28",
-    "openai": "^7.38.0",
     "postgres": "^3.4.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -33,5 +31,6 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
-  }
+  },
+  "type": "module"
 }

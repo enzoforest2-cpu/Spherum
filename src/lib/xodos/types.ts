@@ -1,6 +1,3 @@
-export const PROVIDERS = ["anthropic", "openai", "google", "xai"] as const;
-export type Provider = (typeof PROVIDERS)[number];
-
 export const SPECIES = ["pingo", "bibo", "oki"] as const;
 export const PERSONALITIES = ["curioso", "brincalhao", "direto", "zen"] as const;
 /** Os três níveis do passo "Limites" do assistente de criação. */
@@ -19,10 +16,12 @@ export type Xodo = {
   role: string | null;
   instructions: string;
   autonomy: Autonomy;
-  provider: Provider;
+  /** Id do provedor no catálogo de modelos, ou "local" / "custom". */
+  provider: string;
   model: string;
   credential_id: string | null;
-  daily_budget_usd: string | number;
+  /** Teto do dia em reais; nulo quando só registramos o gasto. */
+  daily_budget_brl: string | number | null;
   warn_at_percent: number;
   timezone: string;
   status: "active" | "paused";
@@ -37,19 +36,6 @@ export type RunStatus =
   | "paused_budget"
   | "refused";
 
-/** Tokens de uma chamada, já normalizados: input não inclui o que veio do cache. */
-export type Usage = {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-};
-
-export const ZERO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
-
 export type ToolCall = { id: string; name: string; input: unknown };
 
 export type ToolResult = { id: string; name: string; content: string; isError: boolean };
-
-/** Fatia do uso cobrada por um modelo (o fallback do servidor pode servir outro modelo). */
-export type UsageSlice = { model: string; usage: Usage };
