@@ -5,6 +5,7 @@ import { access, loadConnection, readSecret, saveConnection, type ConnectionRow,
 import { json, type Sql } from "../xodos/db";
 import { assertPublicUrl, type Resolver } from "../xodos/net";
 import { channelConnection, receiveMessage } from "./core";
+import { pendingInThread } from "./outbox";
 import { randomToken, safeEqual, sha256Hex } from "./security";
 import { ChannelError, type Adapters, type ChannelAdapter, type ChannelDeps, type InboundMessage, type InboundResult, type OutboundApproval, type SendContext } from "./types";
 
@@ -625,26 +626,13 @@ export function approvalInstructions(approvals: OutboundApproval[], pending = ap
 }
 
 /**
- * Número de cada pedido como o núcleo vai entender "aprovar N": a posição entre todos os pendentes
- * da conversa, na mesma ordem de receiveMessage. A fila numera só os desta mensagem, e um pedido
- * antigo ainda aberto faria "aprovar 1" decidir outro. Pedido que já não está pendente sai.
+ * O número de cada pedido já vem da fila (o número fixo da conversa, o mesmo que "aprovar N"
+ * entende). Aqui só conta quantos estão pendentes, para saber se "aprovar" sozinho basta.
  */
 async function numberApprovals(ctx: SendContext, number: string, approvals: OutboundApproval[]) {
   if (!approvals.length) return { approvals, pending: 0 };
-  const rows = await ctx.deps.sql.query<{ id: string }>(
-    `select a.id from xodo_actions a
-       join xodo_runs r on r.id = a.run_id
-       join xodo_conversations c on c.id = r.conversation_id
-      where c.connection_id = $1 and c.external_key = $2 and a.agency_id = $3 and a.status = 'pending'
-      order by a.created_at, a.call_index`,
-    [ctx.access.connection.id, number, ctx.access.connection.agency_id],
-  );
-  const position = new Map(rows.map((r, i) => [r.id, i + 1]));
-  const numbered = approvals.flatMap((a) => {
-    const index = position.get(a.actionId);
-    return index ? [{ ...a, index }] : [];
-  });
-  return { approvals: numbered, pending: rows.length };
+  const pending = await pendingInThread(ctx.deps.sql, ctx.access.connection.id, number, ctx.access.connection.agency_id);
+  return { approvals: approvals.filter((a) => pending.includes(a.actionId)), pending: pending.length };
 }
 
 const MAX_CHARS = 4096;

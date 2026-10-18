@@ -11,9 +11,13 @@ Código em `src/lib/channels/`, rotas em `src/app/api/channels/`, `src/app/api/h
 3. **Quem é.** Só conversa quem é da equipe e se vinculou por código (veja "Pareamento"). O papel na agência continua valendo: owner, admin e member conversam e decidem pedidos; viewer não. Quem não está vinculado recebe, uma vez por dia e só em conversa direta, a explicação de como se vincular. Em canal com várias pessoas, silêncio.
 4. **Qual xodó.** Se a mensagem chama um xodó pelo nome ("Faísca, como estão os leads?"), é ele. Senão, o xodó daquele canal do Slack e, por último, o do workspace ou número todo (`xodo_channels`).
 5. **Conversa.** Cada thread do Slack, número de WhatsApp ou chat do Telegram é uma conversa separada (`xodo_conversations`), com histórico próprio, sem misturar com a conversa do app. As mensagens aparecem no app com o autor ("Ana pelo Slack").
-6. **Resposta.** O que o xodó escreve vai para a fila `channel_outbox` junto com a mensagem e é entregue logo depois. Se falhar, a fila tenta de novo com espera crescente (até 1 minuto) e desiste depois de 5 tentativas. Textos longos são divididos no limite de cada plataforma.
+6. **Resposta.** O que o xodó escreve vai para a fila `channel_outbox` junto com a mensagem e é entregue logo depois, na ordem: numa conversa, uma mensagem só sai depois das anteriores. Se falhar, a fila tenta de novo com espera crescente (até 1 minuto) e desiste depois de 5 tentativas. Textos longos são divididos no limite de cada plataforma, e uma nova tentativa continua do pedaço que faltou, sem repetir o que já chegou.
 
 Um pedido por vez em cada conversa: se o xodó ainda está trabalhando naquela thread, ele avisa. Em conversas diferentes (app, outra thread), trabalha ao mesmo tempo.
+
+## Quem vê o quê
+
+Os vínculos (número de WhatsApp, id do Telegram, usuário do Slack) e o número de cada conversa não são lidos direto pelo navegador: saem só pela API, que mostra a cada pessoa os vínculos dela (owner e admin veem todos). Segredos dos gatilhos, códigos de pareamento e a fila de entrega nunca saem do servidor.
 
 ## Pareamento
 
@@ -32,7 +36,9 @@ Quando o xodó precisa de aprovação numa conversa de canal, o pedido chega ali
 | WhatsApp oficial | Botões de resposta (um pedido por mensagem) |
 | WhatsApp por QR | Texto: "aprovar" ou "negar" (o gateway não oficial não garante botões) |
 
-Em todos os canais também vale responder "aprovar", "sim", "negar", "não", ou "aprovar 2" quando houver mais de um pedido aberto. A numeração é a mesma nos botões, no texto e nos comandos: a posição entre todos os pedidos abertos daquela conversa. Pedido decidido no app não é pedido de novo no canal, e a continuação do xodó é entregue no canal depois de uma decisão tomada no app.
+Em todos os canais também vale responder "aprovar", "sim", "negar", "não", ou "aprovar 2" quando houver mais de um pedido aberto. Cada pedido ganha um **número fixo na conversa** quando nasce, e esse número é o mesmo nos botões, no texto e nos comandos. Ele não muda quando outros pedidos são decididos: "aprovar 1" para um pedido que já foi decidido responde que ele já foi, e nunca decide outro no lugar. Depois de uma decisão por texto, se o xodó ainda espera outros pedidos do mesmo passo, ele confirma e diz quais faltam. No Slack, "aprovar" respondido na thread da conversa vale sem mencionar o xodó.
+
+Pedido decidido no app não é pedido de novo no canal, e a continuação do xodó é entregue no canal depois de uma decisão tomada no app. Se a execução parar no meio (tempo do servidor esgotado), o xodó avisa na conversa.
 
 Quem decide precisa estar vinculado e ter papel que pode aprovar. A decisão registra quem foi e por onde (`xodo_actions.decided_via`: app, slack, whatsapp ou telegram).
 
@@ -95,8 +101,9 @@ Regras:
 - **Limites:** `max_per_hour` execuções por hora (padrão 20) e no máximo 3 abertas ao mesmo tempo por gatilho; acima disso, 429.
 - **GitHub só com metadados** (modelo do Rakazo): repositório, evento, ação, número, autor, link, branch, sha e conclusão. Nunca o título, o corpo ou o comentário, que qualquer pessoa pode escrever. Se o xodó precisar do texto, ele lê pela ferramenta do GitHub, cujo resultado já é tratado como dado.
 - **Conteúdo de fora cercado:** os dados entram no pedido dentro de `<dados_nao_confiaveis>`, com `<`, `>` e `&` escapados, e o xodó é instruído a tratá-los como informação, nunca como instrução.
-- **Autonomia limitada:** a execução de um gatilho segue no máximo o `autonomy_cap` dele (padrão "pergunta no que importa": envio, exclusão, pagamento e campanha sempre perguntam, mesmo que o xodó aja sozinho na conversa). Se o gatilho for apagado no meio, vale a mais cautelosa.
-- **E-mail:** na primeira vez só marca o ponto de partida (não dispara para e-mails antigos). Remetente, assunto e trecho entram cercados como dados.
+- **Autonomia limitada:** a execução de um gatilho segue no máximo o `autonomy_cap` dele (padrão "pergunta no que importa": envio, exclusão, pagamento e campanha sempre perguntam, mesmo que o xodó aja sozinho na conversa). O teto vale também por cima das regras "sempre permitir" criadas no app; só "exigir aprovação" e o piso do cliente vêm antes. Se o gatilho for apagado no meio, vale a mais cautelosa.
+- **Fora da conversa:** a execução de um gatilho não ocupa a conversa do app (a equipe continua falando com o xodó) e o que ela escreve aparece no app como nota, sem entrar no histórico do xodó como fala dele.
+- **E-mail:** na primeira vez só marca o ponto de partida (não dispara para e-mails antigos). Depois, lê todos os e-mails novos da janela, página por página; se o limite por hora segurar parte deles, a janela não avança e eles entram no ciclo seguinte. Remetente, assunto e trecho entram cercados como dados.
 - **Registro:** cada chegada fica em `event_deliveries` (aceita, repetida, ignorada, recusada, limitada ou falha), mostrado em `GET /api/xodos/:id/triggers`.
 
 Rotas: `GET/POST /api/xodos/:id/triggers`, `PATCH/DELETE /api/xodos/triggers/:id`, `POST /api/xodos/triggers/:id/rotate` (novo segredo, mostrado uma vez só).
@@ -117,7 +124,11 @@ Rotas: `GET/POST /api/xodos/:id/triggers`, `PATCH/DELETE /api/xodos/triggers/:id
 | `POST /api/channels/whatsapp-qr/:connectionId/:token` | o gateway | Entrada do WhatsApp por QR |
 | `POST /api/channels/telegram/:connectionId` | o Telegram | Entrada do Telegram |
 
-O cron (`/api/cron/xodos`) também confere os gatilhos de e-mail, entrega o que ficou na fila e limpa eventos antigos (7 dias), códigos vencidos e o registro de entregas dos gatilhos (30 dias).
+O cron (`/api/cron/xodos`) entrega o que ficou na fila logo no começo e de novo no fim (com prazo para não estourar o tempo da função), confere os gatilhos de e-mail e limpa eventos antigos (7 dias), códigos vencidos, entregas encerradas e o registro de entregas dos gatilhos (30 dias). Entrega presa no meio volta para a fila enquanto houver tentativas.
+
+## Desconectar e reconectar
+
+Desconectar desliga o canal na plataforma (webhook do Telegram, sessão e webhook do gateway do WhatsApp) e marca os gatilhos daquela conexão com o motivo. Se a mesma conta (o mesmo Slack, o mesmo Google) também estiver conectada por outra agência, o Spherum só apaga os tokens daqui, sem revogar na plataforma, para não derrubar a outra. Reconectar a mesma conta devolve para a conexão nova os apps fixados, as contas de anúncio, os canais, as conversas e os gatilhos.
 
 ## Limites conhecidos
 

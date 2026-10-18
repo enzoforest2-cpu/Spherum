@@ -529,14 +529,16 @@ test("aprovação por texto: o número mostrado é o que o núcleo entende, com 
   );
   assert.deepEqual(rows.map((r) => [r.tool_call_id, r.status]), [["t1", "pending"], ["t2", "executed"], ["t3", "pending"]]);
 
-  // Um pedido só nesta mensagem, mas outros pendentes na conversa: vai com número, sem "aprovar" solto.
+  // Um pedido só nesta mensagem, mas outros pendentes na conversa: vai com o número fixo dele (o
+  // que a fila manda), sem "aprovar" solto.
   const a = await access(w.deps, w.agencyId, w.result.id);
-  const t3 = await one<{ id: string }>(sql, `select id from xodo_actions where xodo_id = $1 and tool_call_id = 't3'`, [w.xodo.id]);
+  const t3 = await one<{ id: string; channel_seq: number }>(sql, `select id, channel_seq from xodo_actions where xodo_id = $1 and tool_call_id = 't3'`, [w.xodo.id]);
+  assert.equal(t3!.channel_seq, 3);
   await whatsappQrAdapter.send({ deps: w.deps, access: a, target: { number: FROM }, xodoName: "Pipoca" }, {
     text: "Ainda falta:",
-    approvals: [{ actionId: t3!.id, summary: "avisar a equipe: Terceiro", index: 1 }],
+    approvals: [{ actionId: t3!.id, summary: "avisar a equipe: Terceiro", index: t3!.channel_seq }],
   });
-  assert.equal(w.ev.sends().at(-1)!.text, "Ainda falta:\n\nPara decidir, responda com o número do pedido:\n• *aprovar 2* ou *negar 2*: avisar a equipe: Terceiro");
+  assert.equal(w.ev.sends().at(-1)!.text, "Ainda falta:\n\nPara decidir, responda com o número do pedido:\n• *aprovar 3* ou *negar 3*: avisar a equipe: Terceiro");
 });
 
 test("connection.update: atualiza o estado sem segredo; 'open' tira o erro, 'close' pede QR de novo", async () => {
@@ -607,10 +609,10 @@ test("envio: texto com apikey, aprovações viram instruções, texto longo sepa
   const a = await access(c.deps, c.agencyId, c.result.id);
   const ctx = { deps: c.deps, access: a, target: { number: FROM }, xodoName: "Pipoca" };
   const [first, , third] = await seedPending(c.agencyId, c.result.id, 3);
-  // A fila numera só os desta mensagem (1 e 2); o núcleo conta todos os pendentes da conversa (1 e 3).
+  // A fila manda o número fixo de cada pedido na conversa (1 e 3); o adaptador mostra esse número.
   const approvals: OutboundApproval[] = [
     { actionId: first, summary: "avisar a equipe", index: 1 },
-    { actionId: third, summary: "pausar a campanha\nVerão", index: 2 },
+    { actionId: third, summary: "pausar a campanha\nVerão", index: 3 },
   ];
 
   await whatsappQrAdapter.send(ctx, { text: "Preciso de aprovação para:\n1. avisar a equipe\n2. pausar a campanha", approvals });
@@ -620,7 +622,7 @@ test("envio: texto com apikey, aprovações viram instruções, texto longo sepa
   assert.match(text, /\*aprovar 3\* ou \*negar 3\*: pausar a campanha Verão/);
   assert.equal(approvalInstructions([]), "");
   assert.equal(approvalInstructions([approvals[1]]), "Responda *aprovar* ou *negar*.");
-  assert.match(approvalInstructions([approvals[1]], 2), /^Para decidir.*\n• \*aprovar 2\* ou \*negar 2\*: pausar a campanha Verão$/);
+  assert.match(approvalInstructions([approvals[1]], 2), /^Para decidir.*\n• \*aprovar 3\* ou \*negar 3\*: pausar a campanha Verão$/);
 
   let before = c.ev.sends().length;
   await whatsappQrAdapter.send(ctx, { text: "x".repeat(4090), approvals: [approvals[0]] });

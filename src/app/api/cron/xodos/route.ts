@@ -27,6 +27,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
     const deps = await productionDeps();
+    const channelDeps = deps as ChannelDeps;
+    // Prazo interno abaixo do maxDuration: a fila não começa entregas que não dariam tempo de terminar.
+    const deadline = Date.now() + 240_000;
+    // Primeiro o que é rápido e pendente desde o último ciclo: entregas dos canais e faxina.
+    const channels = await cleanupChannels(deps.sql, new Date());
+    const queued = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
     // Cotação falhando não impede o resto: o gasto usa a última conhecida.
     const fx = await refreshFx(deps.sql, new Date()).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     const integrations = { sql: deps.sql, ...deps.integrations! };
@@ -34,12 +40,10 @@ export async function GET(request: Request) {
     const expiring = await warnExpiringConnections(integrations);
     const cleanup = await sweep(deps);
     const routines = await runDueRoutines(deps);
-    const channelDeps = deps as ChannelDeps;
     const email = await pollEmailTriggers(channelDeps);
-    // Depois da faxina: pedidos vencidos retomam execuções que avisam pelo canal.
-    const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100 });
-    const channels = await cleanupChannels(deps.sql, new Date());
-    return NextResponse.json({ fx, ads, expiring, cleanup, routines, email, delivered, channels });
+    // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
+    const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
+    return NextResponse.json({ fx, ads, expiring, cleanup, routines, email, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

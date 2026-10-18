@@ -7,8 +7,10 @@ import type { Autonomy } from "./types";
  * Ordem, da mais forte para a mais fraca:
  *  1. Piso de segurança: o que vai para o cliente sempre pede aprovação, sem exceção.
  *  2. Qualquer regra "exigir aprovação" que case (da agência ou do xodó) vence.
- *  3. Qualquer regra "sempre permitir" que case.
- *  4. A autonomia escolhida na criação do xodó (passo "Limites" do design):
+ *  3. Teto do gatilho: numa execução disparada por evento, o que a autonomia do gatilho manda
+ *     perguntar pergunta, mesmo com "sempre permitir" (o conteúdo veio de fora).
+ *  4. Qualquer regra "sempre permitir" que case.
+ *  5. A autonomia escolhida na criação do xodó (passo "Limites" do design):
  *     - "Sempre pergunta": tudo que muda alguma coisa pergunta; só leitura roda direto.
  *     - "Pergunta no que importa": pergunta antes de enviar, pagar ou apagar (envio, pagamento,
  *       exclusão, cliente e campanha); criar e editar em apps roda direto.
@@ -53,7 +55,7 @@ export type ApprovalRule = {
 
 export type ApprovalDecision = {
   decision: "allow" | "ask";
-  source: "floor" | "require_approval" | "always_allow" | "autonomy";
+  source: "floor" | "require_approval" | "cap" | "always_allow" | "autonomy";
 };
 
 export function decideApproval(input: {
@@ -61,12 +63,15 @@ export function decideApproval(input: {
   category: Category;
   rules: ApprovalRule[];
   autonomy: Autonomy;
+  /** Autonomia máxima de uma execução por gatilho; nulo nas outras. */
+  cap?: Autonomy | null;
 }): ApprovalDecision {
   if (SAFETY_FLOOR.has(input.category)) return { decision: "ask", source: "floor" };
   const matching = input.rules.filter((rule) =>
     rule.match_kind === "tool" ? rule.match_value === input.toolName : rule.match_value === input.category,
   );
   if (matching.some((rule) => rule.effect === "require_approval")) return { decision: "ask", source: "require_approval" };
+  if (input.cap && ASK_BY_AUTONOMY[input.cap].has(input.category)) return { decision: "ask", source: "cap" };
   if (matching.some((rule) => rule.effect === "always_allow")) return { decision: "allow", source: "always_allow" };
   return { decision: ASK_BY_AUTONOMY[input.autonomy].has(input.category) ? "ask" : "allow", source: "autonomy" };
 }

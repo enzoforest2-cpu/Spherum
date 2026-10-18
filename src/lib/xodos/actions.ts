@@ -1,6 +1,6 @@
 import { one } from "./db";
 import { canAlwaysAllow, type Category } from "./policy";
-import { loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
+import { addMessage, loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
 
 /**
  * Decisões da equipe sobre os pedidos dos xodós (modelo do OpenDots).
@@ -116,12 +116,16 @@ export async function sweep(deps: EngineDeps) {
   const runs = ready.map((r) => r.id);
   for (const runId of runs) await resumeRun(deps, runId);
 
-  const stale = await sql.query<{ id: string }>(
+  const stale = await sql.query<{ id: string; xodo_id: string; agency_id: string }>(
     `update xodo_runs set status = 'failed', error = 'A execução parou no meio e foi encerrada.', finished_at = $1::timestamptz
       where status = 'running' and heartbeat_at < $2::timestamptz
         and not exists (select 1 from xodo_actions a where a.run_id = xodo_runs.id and a.status = 'executing')
-      returning id`,
+      returning id, xodo_id, agency_id`,
     [now.toISOString(), new Date(now.getTime() - 3 * STALE_RUN_MS).toISOString()],
   );
+  // Quem pediu fica sabendo (num canal, a nota vai pela fila de entrega).
+  for (const run of stale) {
+    await addMessage(sql, { id: run.xodo_id, agency_id: run.agency_id }, run.id, "note", "Não consegui terminar: a execução parou no meio e foi encerrada. Pode pedir de novo?", null);
+  }
   return { expiredActions: expired.length, resumedRuns: runs.length, staleRuns: stale.length };
 }

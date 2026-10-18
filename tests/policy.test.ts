@@ -61,3 +61,21 @@ test("regras de outras ferramentas e categorias não interferem", () => {
   const rules = [requireTool("publicar_relatorio"), requireCategory("campanha")];
   assert.equal(decide("leitura", "pergunta_no_que_importa", rules, "consultar_metricas"), "allow");
 });
+
+test("teto do gatilho: pergunta acima do teto mesmo com 'sempre permitir'; 'exigir' e o piso continuam na frente", () => {
+  const allowAll: ApprovalRule[] = [{ effect: "always_allow", match_kind: "category", match_value: "envio" }];
+  assert.deepEqual(decideApproval({ toolName: "enviar_email", category: "envio", rules: allowAll, autonomy: "age_sozinho", cap: "pergunta_no_que_importa" }), {
+    decision: "ask",
+    source: "cap",
+  });
+  assert.deepEqual(decideApproval({ toolName: "enviar_email", category: "envio", rules: allowAll, autonomy: "age_sozinho", cap: "age_sozinho" }), {
+    decision: "allow",
+    source: "always_allow",
+  });
+  assert.deepEqual(decideApproval({ toolName: "x", category: "alteracao", rules: [], autonomy: "age_sozinho", cap: "pergunta_no_que_importa" }), {
+    decision: "allow",
+    source: "autonomy",
+  });
+  const requireRule: ApprovalRule[] = [{ effect: "require_approval", match_kind: "tool", match_value: "enviar_email" }];
+  assert.equal(decideApproval({ toolName: "enviar_email", category: "envio", rules: requireRule, autonomy: "age_sozinho", cap: "sempre_pergunta" }).source, "require_approval");
+});

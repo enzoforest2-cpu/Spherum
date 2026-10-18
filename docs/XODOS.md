@@ -193,7 +193,7 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 181 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 192 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;

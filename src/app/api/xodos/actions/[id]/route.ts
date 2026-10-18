@@ -33,10 +33,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     after(async () => {
       try {
         await resumeRun(deps, result.runId);
-        // Se a conversa é de um canal (Slack, WhatsApp, Telegram), entrega a continuação por lá.
-        await deliverRun(deps as ChannelDeps, ADAPTERS, result.runId);
       } catch (error) {
         console.error("[xodos] retomada falhou", result.runId, error);
+      } finally {
+        // Se a conversa é de um canal (Slack, WhatsApp, Telegram), entrega por lá o que houver.
+        await deliverRun(deps as ChannelDeps, ADAPTERS, result.runId).catch((error) =>
+          console.error("[canais] entrega falhou", result.runId, error),
+        );
       }
     });
     return NextResponse.json(result);

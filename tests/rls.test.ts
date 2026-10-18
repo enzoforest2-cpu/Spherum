@@ -86,3 +86,27 @@ test("quem não está logado não lê nada", async () => {
     await db.query(`reset role`);
   }
 });
+
+test("canais: vínculos e números das conversas nunca chegam ao navegador; segredos dos gatilhos também não", async () => {
+  const a = await seedAgency(sql, "Canais");
+  const xodo = await seedXodo(sql, a.agencyId);
+  await sql.query(`insert into channel_identities (agency_id, provider, external_user, user_id) values ($1, 'whatsapp', '5511999990000', $2)`, [
+    a.agencyId,
+    a.ownerId,
+  ]);
+  await sql.query(
+    `insert into xodo_conversations (agency_id, xodo_id, channel, external_key, metadata) values ($1, $2, 'whatsapp', '5511999990000', '{"to":"5511999990000"}')`,
+    [a.agencyId, xodo.id],
+  );
+  await sql.query(`insert into event_triggers (agency_id, xodo_id, kind, name, secret_hash) values ($1, $2, 'webhook', 'Site', 'hash')`, [a.agencyId, xodo.id]);
+  await asUser(a.ownerId, async () => {
+    await assert.rejects(db.query(`select external_user from channel_identities`), /permission denied/);
+    await assert.rejects(db.query(`select external_key from xodo_conversations`), /permission denied/);
+    await assert.rejects(db.query(`select metadata from xodo_conversations`), /permission denied/);
+    assert.equal((await db.query(`select id, channel, title from xodo_conversations`)).rows.length, 1);
+    await assert.rejects(db.query(`select secret_hash from event_triggers`), /permission denied/);
+    assert.equal((await db.query(`select id, name from event_triggers`)).rows.length, 1);
+    await assert.rejects(db.query(`select * from channel_outbox`), /permission denied/);
+    await assert.rejects(db.query(`select * from channel_pairing_codes`), /permission denied/);
+  });
+});

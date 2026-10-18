@@ -572,3 +572,22 @@ test("o app pede chat:write.customize para o xodó falar com o próprio nome", (
   assert.ok(SLACK_BOT_SCOPES.includes("chat:write.customize"));
   assert.equal(new Set(SLACK_BOT_SCOPES).size, SLACK_BOT_SCOPES.length);
 });
+
+test("'aprovar' respondido na thread da conversa vale sem mencionar o xodó; em outra thread, não", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const model = new FakeModel([
+    { toolCalls: [{ id: "t1", name: "avisar_equipe", input: { titulo: "Atenção" } }] },
+    { text: "Feito, avisei." },
+  ]);
+  await w.send(w.mention("avisa a equipe", { ts: "1760000000.100000" }), model);
+  const thread = { type: "message", channel_type: "channel", channel: "C0MIDIA", user: "U0ANA" };
+  // Em outra thread, "aprovar" é só mensagem comum de canal.
+  await w.send(w.envelope({ ...thread, text: "aprovar", ts: "1760000001.000000", thread_ts: "1760000000.999999" }), model);
+  const still = await one<{ status: string }>(sql, `select status from xodo_actions where xodo_id = $1`, [w.xodo.id]);
+  assert.equal(still!.status, "pending");
+  await w.send(w.envelope({ ...thread, text: "aprovar", ts: "1760000002.000000", thread_ts: "1760000000.100000" }), model);
+  const done = await one<{ status: string; decided_via: string }>(sql, `select status, decided_via from xodo_actions where xodo_id = $1`, [w.xodo.id]);
+  assert.deepEqual(done, { status: "executed", decided_via: "slack" });
+  assert.equal(w.api.posts().at(-1)!.text, "Feito, avisei.");
+});

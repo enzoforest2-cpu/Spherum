@@ -26,6 +26,9 @@ create table public.xodo_conversations (
   unique (xodo_id, connection_id, external_key)
 );
 create index xodo_conversations_agency on public.xodo_conversations (agency_id, last_message_at desc);
+-- Entradas dos canais acham a conexão pela conta (time do Slack, número) sem varrer a tabela.
+create index integration_connections_provider_account on public.integration_connections (provider, external_account)
+  where status <> 'revoked' and external_account is not null;
 
 alter table public.xodo_runs drop constraint if exists xodo_runs_trigger_check;
 alter table public.xodo_runs add constraint xodo_runs_trigger_check
@@ -41,6 +44,8 @@ create index xodo_messages_conversation on public.xodo_messages (conversation_id
 
 -- De onde veio a decisão de um pedido (app, slack, whatsapp, telegram).
 alter table public.xodo_actions add column decided_via text;
+-- Número fixo do pedido na conversa do canal ("aprovar 3"): não muda quando outros são decididos.
+alter table public.xodo_actions add column channel_seq integer;
 
 -- ---------------------------------------------------------------------------
 -- Quem fala com os xodós pelos canais
@@ -99,12 +104,18 @@ create table public.channel_outbox (
   approvals jsonb not null default '[]'::jsonb,
   status text not null default 'pending' check (status in ('pending', 'sending', 'sent', 'failed')),
   attempts integer not null default 0,
+  -- Pedaços guardados na primeira tentativa e quantos já chegaram (a nova tentativa continua dali).
+  parts jsonb,
+  parts_sent integer not null default 0,
   next_attempt_at timestamptz not null default now(),
   error text,
   created_at timestamptz not null default now(),
   sent_at timestamptz
 );
 create index channel_outbox_pending on public.channel_outbox (next_attempt_at) where status = 'pending';
+-- Ordem dentro da conversa (a próxima só sai depois das anteriores) e entregas presas.
+create index channel_outbox_open on public.channel_outbox (conversation_id, id) where status in ('pending', 'sending');
+create index channel_outbox_sending on public.channel_outbox (next_attempt_at) where status = 'sending';
 
 -- Eventos já recebidos: as plataformas reenviam, e cada evento só pode valer uma vez.
 create table public.channel_events (
@@ -172,7 +183,8 @@ create index event_deliveries_trigger on public.event_deliveries (trigger_id, re
 -- ---------------------------------------------------------------------------
 
 -- Leitura para quem é da agência; toda escrita passa pelo servidor. Códigos de pareamento,
--- fila de entrega e eventos recebidos não são lidos pelo navegador.
+-- fila de entrega, eventos recebidos e vínculos (números e ids de cada pessoa) não são lidos
+-- pelo navegador: os vínculos saem pela API, que mostra a cada um só os seus.
 do $$
 declare t text;
 begin
@@ -181,14 +193,17 @@ begin
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
   end loop;
-  foreach t in array array['xodo_conversations', 'channel_identities', 'xodo_channels', 'event_triggers', 'event_deliveries'] loop
+  foreach t in array array['xodo_conversations', 'xodo_channels', 'event_triggers', 'event_deliveries'] loop
     execute format(
       'create policy %I on public.%I for select to authenticated using (public.app_is_agency_member(agency_id))',
       t || '_member_read', t);
   end loop;
 end $$;
 
-grant select on public.xodo_conversations, public.channel_identities, public.xodo_channels, public.event_deliveries to authenticated;
+grant select on public.xodo_channels, public.event_deliveries to authenticated;
+-- Das conversas, sem o número ou o chat de quem fala (external_key, metadata).
+grant select (id, agency_id, xodo_id, channel, connection_id, title, created_at, last_message_at)
+  on public.xodo_conversations to authenticated;
 -- Os segredos dos gatilhos nunca saem do servidor.
 grant select (id, agency_id, xodo_id, kind, name, instructions, connection_id, filters, autonomy_cap, max_per_hour,
               enabled, last_fired_at, fire_count, last_error, created_by, created_at)

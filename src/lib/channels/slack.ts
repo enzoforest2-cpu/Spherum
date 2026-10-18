@@ -2,7 +2,7 @@ import { z } from "zod";
 import { access } from "../integrations/store";
 import { requestJson, requestText, type Fetch } from "../integrations/http";
 import { one, parseJson, type Sql } from "../xodos/db";
-import { decideFromChannel, receiveMessage } from "./core";
+import { decideFromChannel, parseDecision, receiveMessage } from "./core";
 import { chunkText } from "./outbox";
 import { extractPairingCode, identityFor } from "./pairing";
 import { readBody, sha256Hex, verifySlackSignature } from "./security";
@@ -337,6 +337,25 @@ export async function handleSlackEvent(deps: ChannelDeps, adapters: Adapters, ev
   if (event.kind === "channel") {
     const conns = await teamConnections(deps.sql, event.teamId);
     if (!conns.length) return { status: "ignored", detail: "workspace sem conexão ativa" };
+    // "aprovar"/"negar" respondido na thread de uma conversa com o xodó vale sem a menção.
+    if (event.threadTs && parseDecision(fromSlackText(event.text, null))) {
+      const key = `${event.channel}:${event.threadTs}`;
+      for (const conn of conns) {
+        if (!(await one(deps.sql, `select 1 from xodo_conversations where connection_id = $1 and external_key = $2`, [conn.id, key]))) continue;
+        return receiveMessage(deps, adapters, {
+          provider: "slack",
+          connectionId: conn.id,
+          agencyId: conn.agencyId,
+          eventId: event.eventId,
+          externalUser: `${conn.teamId}:${event.user}`,
+          conversationKey: key,
+          scope: event.channel,
+          text: fromSlackText(event.text, conn.botUserId),
+          reply: { channel: event.channel, thread_ts: event.threadTs },
+          direct: false,
+        });
+      }
+    }
     // O bot não dispara gatilho; a menção a ele também chega como app_mention, que é quem responde.
     const targets = conns.filter((c) => !c.botUserId || (event.user !== c.botUserId && !event.text.includes(`<@${c.botUserId}`)));
     if (!targets.length) return { status: "ignored", detail: "menção ou o próprio bot" };

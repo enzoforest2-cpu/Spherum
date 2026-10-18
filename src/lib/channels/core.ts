@@ -3,7 +3,7 @@ import { decideAction } from "../xodos/actions";
 import { dayIn } from "../xodos/budget";
 import { one, parseJson, type Sql } from "../xodos/db";
 import { continueRun, resumeRun, startRun, XodoError } from "../xodos/runner";
-import { flushOutbox, pendingInThread } from "./outbox";
+import { flushOutbox, threadActions } from "./outbox";
 import { extractPairingCode, identityFor, linkIdentity, redeemPairingCode } from "./pairing";
 import {
   CHANNEL_LABEL,
@@ -115,27 +115,8 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
 
   const decision = parseDecision(text);
   if (decision) {
-    const pending = await pendingInThread(sql, msg.connectionId, msg.conversationKey, msg.agencyId);
-    if (pending.length) {
-      if (decision.index === null && pending.length > 1) {
-        await sendDirect(deps, adapters, msg, `Há ${pending.length} pedidos esperando. Diga qual: "aprovar 1", "negar 2"…`);
-        return { status: "decided", detail: "ambíguo" };
-      }
-      const chosen = pending[(decision.index ?? 1) - 1];
-      if (!chosen) {
-        await sendDirect(deps, adapters, msg, `Não achei o pedido ${decision.index}. Há ${pending.length} esperando.`);
-        return { status: "decided", detail: "número inválido" };
-      }
-      const outcome = await decideFromChannel(deps, adapters, {
-        provider: msg.provider,
-        agencyId: msg.agencyId,
-        externalUser: msg.externalUser,
-        actionId: chosen,
-        approve: decision.approve,
-      });
-      if (!outcome.ok) await sendDirect(deps, adapters, msg, outcome.message);
-      return { status: "decided", detail: outcome.message };
-    }
+    const handled = await decideByText(deps, adapters, msg, decision);
+    if (handled) return handled;
   }
 
   const xodo = await routeXodo(sql, msg.connectionId, msg.scope, text);
@@ -177,6 +158,60 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
   return { status: "started", runId };
 }
 
+/**
+ * "aprovar", "negar 3"… pelo número fixo do pedido na conversa. Sem pedido pendente nem número
+ * conhecido, não é decisão: a mensagem segue para o xodó como conversa normal.
+ */
+async function decideByText(
+  deps: ChannelDeps,
+  adapters: Adapters,
+  msg: InboundMessage,
+  decision: { approve: boolean; index: number | null },
+): Promise<InboundResult | null> {
+  const { sql } = deps;
+  const pending = await threadActions(sql, msg.connectionId, msg.conversationKey, msg.agencyId, { pendingOnly: true });
+  let chosen: { id: string; number: number };
+  if (decision.index === null) {
+    if (!pending.length) return null;
+    if (pending.length > 1) {
+      const numbers = pending.map((a) => a.number).join(", ");
+      await sendDirect(deps, adapters, msg, `Há ${pending.length} pedidos esperando (${numbers}). Diga qual: "aprovar ${pending[0].number}", "negar ${pending[1].number}"…`);
+      return { status: "decided", detail: "ambíguo" };
+    }
+    chosen = pending[0];
+  } else {
+    const all = await threadActions(sql, msg.connectionId, msg.conversationKey, msg.agencyId);
+    const target = all.find((a) => a.number === decision.index);
+    if (!target) {
+      if (!pending.length) return null;
+      await sendDirect(deps, adapters, msg, `Não achei o pedido ${decision.index}. Esperando: ${pending.map((a) => a.number).join(", ")}.`);
+      return { status: "decided", detail: "número inválido" };
+    }
+    if (target.status !== "pending") {
+      // Nunca escolhe outro pedido no lugar: o número é o que a pessoa viu.
+      await sendDirect(deps, adapters, msg, `O pedido ${target.number} já foi ${target.status === "expired" ? "encerrado (expirou)" : "decidido"}.`);
+      return { status: "decided", detail: "já decidido" };
+    }
+    chosen = target;
+  }
+  const outcome = await decideFromChannel(deps, adapters, {
+    provider: msg.provider,
+    agencyId: msg.agencyId,
+    externalUser: msg.externalUser,
+    actionId: chosen.id,
+    approve: decision.approve,
+  });
+  if (!outcome.ok) {
+    await sendDirect(deps, adapters, msg, outcome.message);
+  } else if (!outcome.resumed) {
+    // O xodó só continua quando todos os pedidos do passo forem decididos: confirma e diz o que falta.
+    const left = await threadActions(sql, msg.connectionId, msg.conversationKey, msg.agencyId, { pendingOnly: true });
+    const rest = left.length ? ` Ainda esperando: ${left.map((a) => a.number).join(", ")}.` : "";
+    await sendDirect(deps, adapters, msg, `Pedido ${chosen.number}: ${outcome.message}${rest}`);
+  }
+  return { status: "decided", detail: outcome.message };
+}
+
 export type ChannelDecision = {
   provider: ChannelProvider;
   agencyId: string;
@@ -193,7 +228,7 @@ export async function decideFromChannel(
   deps: ChannelDeps,
   adapters: Adapters,
   input: ChannelDecision,
-): Promise<{ ok: boolean; message: string; runId?: string }> {
+): Promise<{ ok: boolean; message: string; runId?: string; resumed?: boolean }> {
   const channel = CHANNEL_OF[input.provider];
   const identity = await identityFor(deps.sql, input.agencyId, channel, input.externalUser);
   if (!identity) return { ok: false, message: "Só quem está vinculado à equipe no Spherum pode decidir pedidos." };
@@ -212,13 +247,14 @@ export async function decideFromChannel(
     throw error;
   }
   const run = await one<{ conversation_id: string | null }>(deps.sql, `select conversation_id from xodo_runs where id = $1`, [result.runId]);
+  let resumed = false;
   try {
-    await resumeRun(deps, result.runId);
+    resumed = (await resumeRun(deps, result.runId)) !== null;
   } finally {
     if (run?.conversation_id) await flushOutbox(deps, adapters, { conversationId: run.conversation_id });
   }
   const verb = input.approve ? (result.status === "executed" ? "Aprovado e feito." : "Aprovado.") : "Negado.";
-  return { ok: true, message: verb, runId: result.runId };
+  return { ok: true, message: verb, runId: result.runId, resumed };
 }
 
 /** Conexão de canal ativa (para as rotas de entrada acharem a agência). */

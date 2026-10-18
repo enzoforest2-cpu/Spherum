@@ -231,12 +231,14 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   const conversationId = input.conversationId ?? null;
   const spoken = input.trigger === "user" || input.trigger === "channel";
   if (spoken) {
-    // Um pedido por vez em cada conversa (a do app ou a de um canal).
+    // Um pedido por vez em cada conversa (a do app ou a de um canal). Rotinas e gatilhos rodam à parte.
     const busy = await one(
       sql,
       `select 1 from xodo_runs where xodo_id = $1 and status = 'running' and heartbeat_at > $2::timestamptz
-          and conversation_id is not distinct from $3::uuid`,
-      [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString(), conversationId],
+          and trigger in ('user', 'channel') and ${conversationId ? "conversation_id = $3::uuid" : "conversation_id is null"}`,
+      conversationId
+        ? [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString(), conversationId]
+        : [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString()],
     );
     if (busy) throw new XodoError(`${xodo.name} ainda está trabalhando no pedido anterior.`, 409);
   }
@@ -258,13 +260,14 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
     input.trigger === "event"
       ? []
       : await sql.query<{ role: "user" | "assistant"; text: string }>(
+          // Filtros separados para cada caso usar o próprio índice (conversa do app ou do canal).
           `select role, text from (
              select id, role, text from xodo_messages
               where xodo_id = $1 and agency_id = $2 and role in ('user', 'assistant')
-                and conversation_id is not distinct from $4::uuid
+                and ${conversationId ? "conversation_id = $4::uuid" : "conversation_id is null"}
               order by id desc limit $3
            ) m order by id`,
-          [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES, conversationId],
+          conversationId ? [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES, conversationId] : [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES],
         );
   const turns = recent.map((m) => ({ role: m.role, text: m.text }));
   if (!spoken) turns.push({ role: "user", text });
@@ -281,7 +284,9 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
   const { sql } = deps;
   const run = await loadRun(sql, runId);
   if (run.status !== "running") return run.status;
-  const xodo = await effectiveXodo(sql, run, await loadXodo(sql, run.xodo_id, run.agency_id));
+  const cap = await eventCap(sql, run);
+  const loaded = await loadXodo(sql, run.xodo_id, run.agency_id);
+  const xodo = cap && STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(loaded.autonomy) ? { ...loaded, autonomy: cap } : loaded;
 
   try {
     const tools = await toolsFor(deps, xodo);
@@ -350,10 +355,14 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
 
       if (text) await addMessage(sql, xodo, runId, "assistant", text, null);
 
-      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools);
+      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools, cap);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
-        const list = pending.length === 1 ? `• ${pending[0].summary}` : pending.map((p, i) => `${i + 1}. ${p.summary}`).join("\n");
+        const numbers = await numberChannelActions(sql, runId, pending.map((p) => p.actionId));
+        const list =
+          pending.length === 1 && !numbers.size
+            ? `• ${pending[0].summary}`
+            : pending.map((p, i) => `${numbers.get(p.actionId) ?? i + 1}. ${p.summary}`).join("\n");
         await addMessage(sql, xodo, runId, "note", `Preciso de aprovação para:\n${list}`, null, { approvals: pending });
         await notify(sql, xodo.agency_id, {
           kind: "approval_pending",
@@ -412,6 +421,7 @@ async function handleToolCalls(
   step: number,
   calls: ToolCall[],
   tools: ToolDef[],
+  cap: Autonomy | null = null,
 ): Promise<{ actionId: string; summary: string }[]> {
   const { sql } = deps;
   const byName = new Map(tools.map((t) => [t.name, t]));
@@ -442,7 +452,7 @@ async function handleToolCalls(
         console.warn("[xodós] categoria dinâmica falhou", tool.name, error instanceof Error ? error.message : error);
       }
     }
-    const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy });
+    const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy, cap });
     let reason: string | null = decision.decision === "ask" ? decision.source : null;
     if (!reason && tool.mustAsk) {
       try {
@@ -647,9 +657,13 @@ export async function addMessage(
   extra: { authorLabel?: string | null; approvals?: { actionId: string; summary: string }[] } = {},
 ) {
   await sql.query(
+    // O que um gatilho produz aparece no app como nota: fica visível, mas não entra no histórico
+    // do xodó como fala dele (o conteúdo veio de fora).
     `with m as (
        insert into xodo_messages (xodo_id, agency_id, run_id, role, author_user, text, author_label, conversation_id)
-       values ($1, $2, $3, $4, $5, $6, $7, (select conversation_id from xodo_runs where id = $3))
+       values ($1, $2, $3,
+               case when $4 = 'assistant' and (select trigger from xodo_runs where id = $3) = 'event' then 'note' else $4 end,
+               $5, $6, $7, (select conversation_id from xodo_runs where id = $3))
        returning id, agency_id, conversation_id, role, text
      ), touched as (
        update xodo_conversations set last_message_at = now() where id = (select conversation_id from m)
@@ -661,19 +675,48 @@ export async function addMessage(
   );
 }
 
+/**
+ * Dá aos pedidos de uma conversa de canal o próximo número fixo daquela thread ("aprovar 3").
+ * Fora de canal, não faz nada. A trava por thread evita dois pedidos com o mesmo número.
+ */
+async function numberChannelActions(sql: Sql, runId: string, actionIds: string[]): Promise<Map<string, number>> {
+  const thread = await one<{ connection_id: string; external_key: string }>(
+    sql,
+    `select c.connection_id, c.external_key from xodo_runs r join xodo_conversations c on c.id = r.conversation_id
+      where r.id = $1 and c.connection_id is not null`,
+    [runId],
+  );
+  if (!thread || !actionIds.length) return new Map();
+  const rows = await sql.transaction(async (tx) => {
+    await tx.query(`select pg_advisory_xact_lock(hashtext($1))`, [`canal:${thread.connection_id}:${thread.external_key}`]);
+    return tx.query<{ id: string; channel_seq: number }>(
+      `with base as (
+         select coalesce(max(a.channel_seq), 0) as m from xodo_actions a
+           join xodo_runs r on r.id = a.run_id
+           join xodo_conversations c on c.id = r.conversation_id
+          where c.connection_id = $2 and c.external_key = $3)
+       update xodo_actions a set channel_seq = base.m + x.ord
+         from base, unnest($1::uuid[]) with ordinality as x(id, ord)
+        where a.id = x.id
+       returning a.id, a.channel_seq`,
+      [actionIds, thread.connection_id, thread.external_key],
+    );
+  });
+  return new Map(rows.map((r) => [r.id, Number(r.channel_seq)]));
+}
+
 const STRICTNESS: Autonomy[] = ["age_sozinho", "pergunta_no_que_importa", "sempre_pergunta"];
 
 /**
- * Execução disparada por gatilho segue no máximo a autonomia do gatilho: o conteúdo vem de
- * fora, então por padrão envio, exclusão, pagamento e campanha sempre perguntam.
+ * Teto de autonomia de uma execução por gatilho: o conteúdo vem de fora, então por padrão
+ * envio, exclusão, pagamento e campanha sempre perguntam, mesmo com "sempre permitir".
+ * Nulo para as outras execuções.
  */
-async function effectiveXodo(sql: Sql, run: RunRow, xodo: Xodo): Promise<Xodo> {
-  if (run.trigger !== "event") return xodo;
+async function eventCap(sql: Sql, run: RunRow): Promise<Autonomy | null> {
+  if (run.trigger !== "event") return null;
   const trigger = run.event_trigger_id
     ? await one<{ autonomy_cap: Autonomy }>(sql, `select autonomy_cap from event_triggers where id = $1`, [run.event_trigger_id])
     : null;
   // Gatilho apagado no meio do caminho: na dúvida, a mais cautelosa.
-  const cap = trigger?.autonomy_cap ?? "sempre_pergunta";
-  const autonomy = STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(xodo.autonomy) ? cap : xodo.autonomy;
-  return { ...xodo, autonomy };
+  return trigger?.autonomy_cap ?? "sempre_pergunta";
 }

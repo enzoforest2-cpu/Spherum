@@ -248,6 +248,35 @@ test("desconectar revoga na plataforma e apaga os tokens", async () => {
   await assert.rejects(access(d, agencyId, id), /desconectada/);
 });
 
+test("conta usada por outra agência não é revogada na plataforma; reconectar devolve apps e gatilhos", async () => {
+  const a = await seedAgency(sql);
+  const b = await seedAgency(sql);
+  const google = fakeFetch({ "https://oauth2.googleapis.com/revoke": () => ({}) });
+  const d = deps(google.fn);
+  const secret = { accessToken: "a", refreshToken: "r" };
+  const idA = await saveConnection(d, { agencyId: a.agencyId, provider: "google", label: "Ana", account: "dupla@x.com", secret });
+  await saveConnection(d, { agencyId: b.agencyId, provider: "google", label: "Ana", account: "dupla@x.com", secret });
+  const xodo = await seedXodo(sql, a.agencyId);
+  await sql.query(`insert into xodo_apps (xodo_id, agency_id, app, connection_id) values ($1, $2, 'gmail', $3)`, [xodo.id, a.agencyId, idA]);
+  const trigger = await one<{ id: string }>(
+    sql,
+    `insert into event_triggers (agency_id, xodo_id, kind, name, connection_id) values ($1, $2, 'email', 'Novo e-mail', $3) returning id`,
+    [a.agencyId, xodo.id, idA],
+  );
+
+  await revokeConnection(d, a.agencyId, idA);
+  assert.equal(google.calls.length, 0, "a outra agência continua com acesso");
+  const after1 = await one<{ last_error: string }>(sql, `select last_error from event_triggers where id = $1`, [trigger!.id]);
+  assert.match(after1!.last_error, /desconectada/);
+
+  const again = await saveConnection(d, { agencyId: a.agencyId, provider: "google", label: "Ana", account: "dupla@x.com", secret });
+  assert.notEqual(again, idA);
+  const app = await one<{ connection_id: string }>(sql, `select connection_id from xodo_apps where xodo_id = $1`, [xodo.id]);
+  const t = await one<{ connection_id: string; last_error: string | null }>(sql, `select connection_id, last_error from event_triggers where id = $1`, [trigger!.id]);
+  assert.equal(app!.connection_id, again);
+  assert.deepEqual(t, { connection_id: again, last_error: null });
+});
+
 // ---------------------------------------------------------------------------
 // MCP de ponta a ponta, com um servidor de verdade
 // ---------------------------------------------------------------------------

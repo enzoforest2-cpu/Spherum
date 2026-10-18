@@ -8,9 +8,9 @@ import { createPairingCode, extractPairingCode } from "../src/lib/channels/pairi
 import { hmacHex, readBody, verifyHubSignature, verifySlackSignature } from "../src/lib/channels/security";
 import type { ChannelAdapter, ChannelDeps, InboundMessage, OutboundApproval } from "../src/lib/channels/types";
 import { saveConnection } from "../src/lib/integrations/store";
-import { decideAction } from "../src/lib/xodos/actions";
+import { decideAction, sweep } from "../src/lib/xodos/actions";
 import { one, type Sql } from "../src/lib/xodos/db";
-import { resumeRun } from "../src/lib/xodos/runner";
+import { continueRun, resumeRun, startRun } from "../src/lib/xodos/runner";
 import { Clock, createTestDb, FakeModel, seedAgency, seedXodo, testDeps } from "./helpers";
 
 const MASTER = "chave-mestra-de-teste-com-mais-de-32-caracteres";
@@ -430,4 +430,124 @@ test("quem já está vinculado pode se vincular de novo com um código (outra pe
   assert.equal(r.status, "paired");
   const link = await one<{ user_id: string }>(sql, `select user_id from channel_identities where agency_id = $1 and external_user = 'tg-42'`, [w.agencyId]);
   assert.equal(link!.user_id, colleague);
+});
+
+test("número fixo: decidido o 1 no app, 'aprovar 1' avisa que já foi e o 2 continua sendo o 2", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const deps = w.deps(
+    new FakeModel([
+      { toolCalls: [{ id: "b1", name: "avisar_equipe", input: { titulo: "Um" } }] },
+      { toolCalls: [{ id: "b2", name: "avisar_equipe", input: { titulo: "Dois" } }] },
+      { text: "Pronto, mandei o primeiro." },
+      { text: "Pronto, mandei o segundo." },
+    ]),
+  );
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("Avisa: um"));
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("Avisa: dois"));
+  const [first] = await sql.query<{ id: string; channel_seq: number }>(
+    `select id, channel_seq from xodo_actions where xodo_id = $1 order by created_at`,
+    [w.xodo.id],
+  );
+  assert.equal(first.channel_seq, 1);
+  await decideAction(deps, { actionId: first.id, agencyId: w.agencyId, userId: w.ownerId, approve: true });
+
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("aprovar 1"));
+  assert.match(w.fake.sent.at(-1)!.text, /O pedido 1 já foi decidido/);
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("negar 2"));
+  const second = await one<{ status: string }>(sql, `select status from xodo_actions where xodo_id = $1 and channel_seq = 2`, [w.xodo.id]);
+  assert.equal(second!.status, "denied");
+});
+
+test("entrega: falha no meio continua do pedaço que faltou; a próxima mensagem da conversa espera a anterior", async () => {
+  const w = await world();
+  const conv = async (key: string) =>
+    (await one<{ id: string }>(
+      sql,
+      `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, metadata) values ($1, $2, 'telegram', $3, $4, $5::jsonb) returning id`,
+      [w.agencyId, w.xodo.id, w.connectionId, key, JSON.stringify({ k: key })],
+    ))!.id;
+  const a = await conv("ordem-a");
+  const b = await conv("ordem-b");
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text) values ($1, $2, $3), ($1, $2, 'segunda'), ($1, $4, 'outra conversa')`, [
+    w.agencyId,
+    a,
+    `${"p".repeat(60)} ${"q".repeat(60)}`,
+    b,
+  ]);
+  // Envia o primeiro pedaço e cai no segundo.
+  const sent: string[] = [];
+  let calls = 0;
+  const adapter: ChannelAdapter = {
+    provider: "telegram",
+    maxChars: 100,
+    async send(ctx, m) {
+      // A base é compartilhada entre os testes: só conta o que é destas duas conversas.
+      if (!String(ctx.target.k ?? "").startsWith("ordem-")) return;
+      calls += 1;
+      if (calls === 2) throw new Error("caiu no meio");
+      sent.push(m.text);
+    },
+  };
+  const deps = w.deps(new FakeModel([]));
+  await flushOutbox(deps, { telegram: adapter });
+  // A primeira mensagem de A falhou no segundo pedaço; a "segunda" de A espera; B segue.
+  assert.deepEqual(sent, ["p".repeat(60), "outra conversa"]);
+  w.clock.advance(2_000);
+  await flushOutbox(deps, { telegram: adapter });
+  assert.deepEqual(sent, ["p".repeat(60), "outra conversa", "q".repeat(60), "segunda"], "sem repetir o primeiro pedaço e na ordem");
+});
+
+test("entrega presa no meio volta para a fila enquanto houver tentativas", async () => {
+  const w = await world();
+  const conv = await one<{ id: string }>(
+    sql,
+    `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, metadata) values ($1, $2, 'telegram', $3, 'presa', '{}') returning id`,
+    [w.agencyId, w.xodo.id, w.connectionId],
+  );
+  const old = new Date(w.clock.now().getTime() - 11 * 60_000).toISOString();
+  await sql.query(
+    `insert into channel_outbox (agency_id, conversation_id, text, status, attempts, next_attempt_at) values
+       ($1, $2, 'volta', 'sending', 1, $3::timestamptz), ($1, $2, 'desiste', 'sending', $4, $3::timestamptz)`,
+    [w.agencyId, conv!.id, old, MAX_ATTEMPTS],
+  );
+  assert.deepEqual(await cleanupChannels(sql, w.clock.now()), { stuckDeliveries: 2, requeued: 1 });
+  const rows = await sql.query<{ text: string; status: string }>(`select text, status from channel_outbox where conversation_id = $1 order by id`, [conv!.id]);
+  assert.deepEqual(rows.map((r) => [r.text, r.status]), [["volta", "pending"], ["desiste", "failed"]]);
+});
+
+test("gatilho rodando não ocupa a conversa do app, e o que ele escreve fica como nota fora do histórico", async () => {
+  const w = await world();
+  const trigger = await one<{ id: string }>(sql, `insert into event_triggers (agency_id, xodo_id, kind, name) values ($1, $2, 'webhook', 'Site') returning id`, [
+    w.agencyId,
+    w.xodo.id,
+  ]);
+  const deps = w.deps(new FakeModel([{ text: "Resumo do evento: chegou um lead." }, { text: "Oi! Tudo certo." }]));
+  const eventRun = await startRun(deps, { xodoId: w.xodo.id, agencyId: w.agencyId, trigger: "event", eventTriggerId: trigger!.id, text: "Evento" });
+  // Com a execução do gatilho em andamento, a equipe ainda conversa pelo app.
+  const appRun = await startRun(deps, { xodoId: w.xodo.id, agencyId: w.agencyId, trigger: "user", text: "Oi", userId: w.ownerId });
+  await continueRun(deps, eventRun);
+  await continueRun(deps, appRun);
+  const note = await one<{ role: string }>(sql, `select role from xodo_messages where run_id = $1 and text like 'Resumo do evento%'`, [eventRun]);
+  assert.equal(note!.role, "note");
+});
+
+test("execução de canal que para no meio avisa na conversa do canal", async () => {
+  const w = await world();
+  await w.pair();
+  const conv = await one<{ id: string }>(
+    sql,
+    `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, metadata) values ($1, $2, 'telegram', $3, 'travada', '{"chat_id":9}') returning id`,
+    [w.agencyId, w.xodo.id, w.connectionId],
+  );
+  const old = new Date(w.clock.now().getTime() - 60 * 60_000).toISOString();
+  await sql.query(
+    `insert into xodo_runs (xodo_id, agency_id, trigger, provider, model, conversation_id, heartbeat_at) values ($1, $2, 'channel', 'faux', 'faux-1', $3, $4::timestamptz)`,
+    [w.xodo.id, w.agencyId, conv!.id, old],
+  );
+  const deps = w.deps(new FakeModel([]));
+  assert.equal((await sweep(deps)).staleRuns >= 1, true);
+  await flushOutbox(deps, { telegram: w.fake.adapter }, { conversationId: conv!.id });
+  assert.match(w.fake.sent.at(-1)!.text, /parou no meio/);
+  assert.deepEqual(w.fake.sent.at(-1)!.target, { chat_id: 9 });
 });

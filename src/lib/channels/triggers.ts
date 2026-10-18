@@ -46,7 +46,9 @@ const HOUR_MS = 60 * 60 * 1000;
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
-const EMAIL_BATCH = 10;
+/** Ids por página da listagem do Gmail e páginas por ciclo (a janela é de no máximo 6 dias). */
+const EMAIL_PAGE_SIZE = 100;
+const EMAIL_MAX_PAGES = 10;
 const EMAIL_LOOKBACK_MS = 6 * 24 * HOUR_MS;
 const METADATA = ["From", "Subject", "Date"].map((h) => `metadataHeaders=${h}`).join("&");
 /** Execuções do cron de e-mail rodando ao mesmo tempo. */
@@ -908,19 +910,28 @@ async function pollEmail(deps: ChannelDeps, t: EmailRow, now: Date, started: str
   // A janela não passa de 6 dias: as marcas de "já visto" (channel_events) duram 7.
   const from = Math.max(since.getTime(), now.getTime() - EMAIL_LOOKBACK_MS);
   const q = [query, "in:inbox", `after:${Math.floor(from / 1000) - 60}`].filter(Boolean).join(" ");
-  const list = await requestJson<{ messages?: { id?: unknown }[] }>(
-    http,
-    `${GMAIL}/messages?${new URLSearchParams({ q, maxResults: String(EMAIL_BATCH) })}`,
-    { bearer: a.accessToken },
-  );
+  // Lista a janela inteira (página por página): pegar só os mais novos perderia e-mails quando
+  // chegam muitos de uma vez. Se a janela não couber nas páginas, ela não avança neste ciclo.
+  const listed: unknown[] = [];
+  let pageToken: string | undefined;
+  let complete = true;
+  for (let page = 0; ; page += 1) {
+    if (page === EMAIL_MAX_PAGES) {
+      complete = false;
+      break;
+    }
+    const params = new URLSearchParams({ q, maxResults: String(EMAIL_PAGE_SIZE), ...(pageToken ? { pageToken } : {}) });
+    const list = await requestJson<{ messages?: { id?: unknown }[]; nextPageToken?: unknown }>(http, `${GMAIL}/messages?${params}`, {
+      bearer: a.accessToken,
+    });
+    listed.push(...(list.messages ?? []).map((m) => m.id));
+    pageToken = typeof list.nextPageToken === "string" && list.nextPageToken ? list.nextPageToken : undefined;
+    if (!pageToken) break;
+  }
   // A lista vem do mais novo para o mais antigo; dispara na ordem em que chegaram.
-  const ids = (list.messages ?? [])
-    .map((m) => m.id)
-    .filter((id): id is string => typeof id === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(id))
-    .reverse();
+  const ids = listed.filter((id): id is string => typeof id === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(id)).reverse();
   const source = `email:${t.id}`;
   let fired = 0;
-  let complete = true;
   for (const id of ids) {
     if (await seenBefore(sql, source, id)) continue;
     try {
