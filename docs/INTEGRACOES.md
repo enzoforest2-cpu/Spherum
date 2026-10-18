@@ -76,7 +76,7 @@ Se não der para ver o destino (canal sumiu, API fora do ar), vale a categoria d
 
 Notas:
 - **Drive:** com `drive.readonly` + `drive.file`, o xodó lê qualquer arquivo e só altera o que ele mesmo criou. PDFs e imagens ainda não são lidos (o xodó devolve o link).
-- **Slack:** o app precisa estar no canal para ler. Para mandar mensagem em canal público, ele entra sozinho (`channels:join`); em canal privado, alguém precisa convidá-lo. Conexões feitas antes dessa permissão precisam reconectar para ganhar o `channels:join`.
+- **Slack:** o mesmo app serve as ferramentas e o canal de conversa com os xodós (veja [`CANAIS.md`](CANAIS.md) para Event Subscriptions e Interactivity). O app precisa estar no canal para ler. Para mandar mensagem em canal público, ele entra sozinho (`channels:join`); em canal privado, alguém precisa convidá-lo. Conexões feitas antes dessa permissão precisam reconectar para ganhar o `channels:join`.
 - **Notion:** o xodó só enxerga as páginas que a agência compartilhou com a integração no login. A API usada é a versão `2022-06-28`; bases com várias fontes de dados (recurso novo do Notion) pedem a versão `2025-09-03`, que fica para quando aparecer o caso.
 - O conteúdo que volta das ferramentas (e-mails, mensagens, documentos) entra no contexto do modelo como informação, nunca como instrução. As instruções do xodó dizem isso explicitamente, e as ações sensíveis continuam passando pela aprovação.
 

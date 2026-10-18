@@ -4,7 +4,7 @@ Os xodós são colegas de IA que cada agência cria do seu jeito. Este documento
 
 Faísca, Zuca e Nina, que aparecem no design, são só exemplos. Não existe xodó fixo nem função fixa.
 
-As integrações com apps e plataformas têm um guia próprio: [`docs/INTEGRACOES.md`](INTEGRACOES.md).
+As integrações com apps e plataformas têm um guia próprio: [`docs/INTEGRACOES.md`](INTEGRACOES.md). Os canais (Slack, WhatsApp, Telegram) e os gatilhos por evento estão em [`docs/CANAIS.md`](CANAIS.md).
 
 O front continua sendo o HTML do design (`public/`). O motor é só backend: código em `src/lib/xodos/`, rotas em `src/app/api/`, banco em `supabase/migrations/20261018120000_xodos.sql` e testes em `tests/`.
 
@@ -193,18 +193,18 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 105 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 181 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
 - a troca para o modelo reserva no meio da tarefa;
 - o isolamento entre agências e a RLS;
 - o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas;
-- as integrações (login, renovação de token, MCP, classificador), os anúncios (contas, sincronização e limites de campanha) e as ferramentas de Gmail, Agenda, Drive, Slack, Notion e GitHub (com a categoria pelo destino), com as plataformas simuladas.
+- as integrações (login, renovação de token, MCP, classificador), os anúncios (contas, sincronização e limites de campanha) e as ferramentas de Gmail, Agenda, Drive, Slack, Notion e GitHub (com a categoria pelo destino), com as plataformas simuladas;
+- os canais (pareamento, roteamento, fila de entrega, aprovação por botão e por texto, assinaturas do Slack, Meta, Telegram e do gateway do WhatsApp) e os gatilhos (webhook, GitHub, e-mail, Slack, limites e autonomia limitada).
 
 ## O que falta
 
-- **Canais e gatilhos:** Slack instalado por agência, WhatsApp (oficial e QR), Telegram e gatilhos por evento estão sendo construídos (veja `docs/INTEGRACOES.md`).
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
 - **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.

@@ -52,8 +52,8 @@ Rotas de API podem ser criadas em `src/app/api/` sem afetar o front.
 
 Execução por API com a chave da própria agência, em qualquer um dos mais de 30 provedores do catálogo, modelo local ou outra API compatível com OpenAI, com modelos reserva: aprovações que a equipe decide, gasto registrado em reais (teto diário opcional), chaves cifradas, memória, rotinas agendadas e ferramentas de métricas e relatórios. Cada agência cria os seus xodós (forma, cor, nome, jeito, cérebro e autonomia), como no assistente do design. Código em `src/lib/xodos/`, rotas em `src/app/api/xodos/` e `src/app/api/cron/xodos/`.
 
-Guias: [`docs/XODOS.md`](docs/XODOS.md) e [`docs/INTEGRACOES.md`](docs/INTEGRACOES.md).
+Guias: [`docs/XODOS.md`](docs/XODOS.md), [`docs/INTEGRACOES.md`](docs/INTEGRACOES.md) e [`docs/CANAIS.md`](docs/CANAIS.md).
 
 ```bash
-npm test   # 105 testes com PGlite, sem precisar de banco
+npm test   # 181 testes com PGlite, sem precisar de banco
 ```
