@@ -1,5 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
+import { ADAPTERS } from "@/lib/channels";
+import { deliverRun } from "@/lib/channels/manage";
+import type { ChannelDeps } from "@/lib/channels/types";
 import { one } from "@/lib/xodos/db";
 import { CAN_USE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 import { decideAction, productionDeps, resumeRun } from "@/lib/xodos";
@@ -27,7 +30,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!action) throw new XodoError("Pedido não encontrado", 404);
     await requireRole(deps.sql, userId, action.agency_id, CAN_USE);
     const result = await decideAction(deps, { actionId, agencyId: action.agency_id, userId, ...body });
-    after(() => resumeRun(deps, result.runId).catch((error) => console.error("[xodos] retomada falhou", result.runId, error)));
+    after(async () => {
+      try {
+        await resumeRun(deps, result.runId);
+        // Se a conversa é de um canal (Slack, WhatsApp, Telegram), entrega a continuação por lá.
+        await deliverRun(deps as ChannelDeps, ADAPTERS, result.runId);
+      } catch (error) {
+        console.error("[xodos] retomada falhou", result.runId, error);
+      }
+    });
     return NextResponse.json(result);
   } catch (error) {
     return fail(error);

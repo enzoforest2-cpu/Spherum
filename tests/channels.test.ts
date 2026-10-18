@@ -3,11 +3,14 @@ import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
 import { parseDecision, receiveMessage, routeXodo, seenBefore } from "../src/lib/channels/core";
 import { chunkText, cleanupChannels, flushOutbox, MAX_ATTEMPTS } from "../src/lib/channels/outbox";
+import { deliverRun, listIdentities, listXodoChannels, removeXodoChannel, setXodoChannel, unlinkIdentity } from "../src/lib/channels/manage";
 import { createPairingCode, extractPairingCode } from "../src/lib/channels/pairing";
 import { hmacHex, readBody, verifyHubSignature, verifySlackSignature } from "../src/lib/channels/security";
 import type { ChannelAdapter, ChannelDeps, InboundMessage, OutboundApproval } from "../src/lib/channels/types";
 import { saveConnection } from "../src/lib/integrations/store";
+import { decideAction } from "../src/lib/xodos/actions";
 import { one, type Sql } from "../src/lib/xodos/db";
+import { resumeRun } from "../src/lib/xodos/runner";
 import { Clock, createTestDb, FakeModel, seedAgency, seedXodo, testDeps } from "./helpers";
 
 const MASTER = "chave-mestra-de-teste-com-mais-de-32-caracteres";
@@ -332,4 +335,59 @@ test("pedido já decidido no app não vira botão no canal", async () => {
   const fake = fakeAdapter();
   await flushOutbox(w.deps(new FakeModel([])), { telegram: fake.adapter }, { conversationId: conv!.id });
   assert.deepEqual(fake.sent[0].approvals, []);
+});
+
+// ---------------------------------------------------------------------------
+// Gestão
+// ---------------------------------------------------------------------------
+
+test("gestão: liga xodó a canal com escopo válido; vínculos visíveis só para a pessoa ou para admins", async () => {
+  const w = await world();
+  const other = await seedXodo(sql, w.agencyId, { name: "Zuca" });
+  // Telegram só aceita "*"; escopo de canal é coisa do Slack.
+  await assert.rejects(setXodoChannel(sql, w.agencyId, other.id, { connection_id: w.connectionId, scope: "C0123ABCD" }), /Escopo inválido/);
+  const id = await setXodoChannel(sql, w.agencyId, other.id, { connection_id: w.connectionId });
+  assert.equal((await listXodoChannels(sql, w.agencyId, other.id)).length, 1);
+  // Conexão de outra agência não serve.
+  const b = await world();
+  await assert.rejects(setXodoChannel(sql, w.agencyId, other.id, { connection_id: b.connectionId }), /não encontrada/);
+  // Conexão que não é canal também não.
+  const mcp = await saveConnection(
+    { sql, masterKey: MASTER, fetch: globalThis.fetch, appUrl: "https://spherum.com.br" },
+    { agencyId: w.agencyId, provider: "mcp", label: "MCP", account: "https://mcp.example.com", secret: { apiKey: "" } },
+  );
+  await assert.rejects(setXodoChannel(sql, w.agencyId, other.id, { connection_id: mcp }), /não é um canal/);
+  await removeXodoChannel(sql, w.agencyId, other.id, id);
+  assert.equal((await listXodoChannels(sql, w.agencyId, other.id)).length, 0);
+
+  const member = randomUUID();
+  await sql.query(`insert into agency_members (agency_id, user_id, role) values ($1, $2, 'member')`, [w.agencyId, member]);
+  await sql.query(`insert into channel_identities (agency_id, provider, external_user, user_id) values ($1, 'telegram', 'tg-1', $2), ($1, 'slack', 'T:U', $3)`, [
+    w.agencyId,
+    member,
+    w.ownerId,
+  ]);
+  assert.equal((await listIdentities(sql, w.agencyId, member, "member")).length, 1);
+  assert.equal((await listIdentities(sql, w.agencyId, w.ownerId, "owner")).length, 2);
+  const mine = (await listIdentities(sql, w.agencyId, w.ownerId, "owner")).find((i) => i.user_id === w.ownerId) as { id: string };
+  await assert.rejects(unlinkIdentity(sql, w.agencyId, mine.id, member, "member"), /não encontrado/);
+  await unlinkIdentity(sql, w.agencyId, mine.id, w.ownerId, "owner");
+});
+
+test("decisão tomada no app entrega a continuação no canal", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const model = new FakeModel([
+    { toolCalls: [{ id: "t1", name: "avisar_equipe", input: { titulo: "Oi" } }] },
+    { text: "Avisei pelo app." },
+  ]);
+  const deps = w.deps(model);
+  const started = await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("Avisa a equipe"));
+  const pending = await one<{ id: string }>(sql, `select id from xodo_actions where run_id = $1 and status = 'pending'`, [started.runId]);
+  const result = await decideAction(deps, { actionId: pending!.id, agencyId: w.agencyId, userId: w.ownerId, approve: true });
+  await resumeRun(deps, result.runId);
+  await deliverRun(deps, { telegram: w.fake.adapter }, result.runId);
+  assert.equal(w.fake.sent.at(-1)!.text, "Avisei pelo app.");
+  const via = await one<{ decided_via: string }>(sql, `select decided_via from xodo_actions where id = $1`, [pending!.id]);
+  assert.equal(via!.decided_via, "app");
 });

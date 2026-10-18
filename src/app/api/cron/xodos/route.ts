@@ -1,5 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { ADAPTERS } from "@/lib/channels";
+import { cleanupChannels, flushOutbox } from "@/lib/channels/outbox";
+import { pollEmailTriggers } from "@/lib/channels/triggers";
+import type { ChannelDeps } from "@/lib/channels/types";
 import { fail } from "@/lib/xodos/http";
 import { syncDueAccounts } from "@/lib/integrations/ads/sync";
 import { warnExpiringConnections } from "@/lib/integrations/store";
@@ -10,7 +14,8 @@ export const maxDuration = 300;
 /**
  * GET /api/cron/xodos  com "Authorization: Bearer $CRON_SECRET".
  * Atualiza a cotação do dólar, sincroniza as métricas das contas de anúncio, avisa logins da
- * Meta perto de vencer, vence pedidos sem resposta, encerra execuções travadas e roda as rotinas.
+ * Meta perto de vencer, vence pedidos sem resposta, encerra execuções travadas, roda as rotinas,
+ * confere os gatilhos de e-mail e entrega o que ficou na fila dos canais.
  * Chame a cada 15 minutos (ex.: pg_cron + pg_net no Supabase; veja o README).
  */
 export async function GET(request: Request) {
@@ -29,7 +34,12 @@ export async function GET(request: Request) {
     const expiring = await warnExpiringConnections(integrations);
     const cleanup = await sweep(deps);
     const routines = await runDueRoutines(deps);
-    return NextResponse.json({ fx, ads, expiring, cleanup, routines });
+    const channelDeps = deps as ChannelDeps;
+    const email = await pollEmailTriggers(channelDeps);
+    // Depois da faxina: pedidos vencidos retomam execuções que avisam pelo canal.
+    const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100 });
+    const channels = await cleanupChannels(deps.sql, new Date());
+    return NextResponse.json({ fx, ads, expiring, cleanup, routines, email, delivered, channels });
   } catch (error) {
     return fail(error);
   }
