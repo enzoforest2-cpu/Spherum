@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { IntegrationError, type Fetch } from "../integrations/http";
-import { loadConnection, readSecret, saveConnection, type ConnectionRow, type IntegrationDeps } from "../integrations/store";
+import { access, loadConnection, readSecret, saveConnection, type ConnectionRow, type IntegrationDeps } from "../integrations/store";
 import { json, type Sql } from "../xodos/db";
 import { assertPublicUrl, type Resolver } from "../xodos/net";
 import { channelConnection, receiveMessage } from "./core";
 import { randomToken, safeEqual, sha256Hex } from "./security";
-import { ChannelError, type Adapters, type ChannelAdapter, type ChannelDeps, type InboundMessage, type InboundResult, type OutboundApproval } from "./types";
+import { ChannelError, type Adapters, type ChannelAdapter, type ChannelDeps, type InboundMessage, type InboundResult, type OutboundApproval, type SendContext } from "./types";
 
 /**
  * WhatsApp por QR Code (NÃO oficial), por um gateway Evolution API v2 que a agência hospeda ou
@@ -17,13 +17,15 @@ import { ChannelError, type Adapters, type ChannelAdapter, type ChannelDeps, typ
  *  - viola os termos do WhatsApp: o número pode ser banido a qualquer momento, sem aviso;
  *  - use um número dedicado, nunca o principal da agência;
  *  - a sessão cai (celular sem internet, aparelho desconectado) e precisa de QR de novo;
- *  - o gateway vê todas as mensagens do número: hospede você mesmo ou confie no fornecedor;
+ *  - o gateway vê todas as mensagens do número e pode forjar mensagens (até "aprovar") em nome de
+ *    quem está vinculado: hospede você mesmo ou confie no fornecedor;
  *  - não serve para disparos em massa nem para falar com clientes, só com a equipe;
  *  - não há garantia de entrega.
  *
  * Segurança:
  *  - A Evolution não assina os webhooks. A autenticação é um token aleatório no caminho da URL
- *    (/api/channels/whatsapp-qr/<conexão>/<token>); guardamos só o hash dele.
+ *    (/api/channels/whatsapp-qr/<conexão>/<token>); guardamos só o hash dele. Quem tem a URL (o
+ *    gateway) fala por qualquer número: por isso o aviso nos riscos.
  *  - O corpo do webhook traz a apikey da instância: nunca registre o corpo em log.
  *  - O endereço do gateway passa pela guarda contra rede interna ao conectar e de novo antes de
  *    cada chamada (o DNS pode mudar depois), e redirecionamentos não são seguidos.
@@ -38,7 +40,7 @@ export const WHATSAPP_QR_RISKS: readonly string[] = [
   "Não é a API oficial: viola os termos de uso do WhatsApp, e o número pode ser banido a qualquer momento, sem aviso.",
   "Use um número dedicado ao xodó, nunca o número principal da agência.",
   "A sessão cai de tempos em tempos (celular sem internet, aparelho desconectado) e é preciso ler o QR Code de novo.",
-  "O gateway vê todas as mensagens desse número: hospede você mesmo ou contrate um fornecedor de confiança.",
+  "O gateway vê todas as mensagens desse número e pode forjar mensagens (até aprovações) em nome da equipe: hospede você mesmo ou contrate um fornecedor de confiança.",
   "Não use para disparos em massa nem para falar com clientes: é só para a equipe conversar com o xodó.",
   "Não há garantia de entrega: mensagens podem atrasar ou se perder.",
 ];
@@ -110,8 +112,11 @@ async function publicBase(raw: string, resolve?: Resolver): Promise<string> {
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
-/** Mensagem que a Evolution mandou: { status, error, response: { message } } ou { error: true, message }. */
-function gatewayMessage(body: unknown): { text: string | null; noWhatsapp: boolean } {
+/**
+ * Mensagem que a Evolution mandou: { status, error, response: { message } } ou { error: true, message }.
+ * Os segredos saem antes do corte (um token cortado ao meio não seria reconhecido).
+ */
+function gatewayMessage(body: unknown, secrets: string[]): { text: string | null; noWhatsapp: boolean } {
   const b = record(body);
   const raw = record(b.response).message ?? b.message ?? (typeof b.error === "string" ? b.error : null);
   const items = (Array.isArray(raw) ? raw : [raw]).flat(2);
@@ -123,12 +128,11 @@ function gatewayMessage(body: unknown): { text: string | null; noWhatsapp: boole
     .join("; ")
     .replace(/\s+/g, " ")
     .trim();
-  return { text: text ? clip(text, 200) : null, noWhatsapp };
+  return { text: text ? clip(redact(text, secrets), 200) : null, noWhatsapp };
 }
 
 function gatewayError(httpStatus: number, body: unknown, secrets: string[]): GatewayError {
-  const { text, noWhatsapp } = gatewayMessage(body);
-  const said = text ? redact(text, secrets) : null;
+  const { text: said, noWhatsapp } = gatewayMessage(body, secrets);
   if (httpStatus === 401) {
     return new GatewayError("O gateway recusou a chave (apikey). Confira a chave da Evolution API e reconecte.", 400, true, httpStatus);
   }
@@ -149,7 +153,7 @@ function gatewayError(httpStatus: number, body: unknown, secrets: string[]): Gat
 async function call<T = Record<string, unknown>>(
   http: Fetch,
   gw: Gateway,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   body?: unknown,
   opts: CallOpts = {},
@@ -160,6 +164,7 @@ async function call<T = Record<string, unknown>>(
   const headers: Record<string, string> = { apikey: gw.apiKey, accept: "application/json" };
   if (body !== undefined) headers["content-type"] = "application/json";
   let response: Response;
+  let text: string;
   try {
     response = await http(`${base}${path}`, {
       method,
@@ -168,7 +173,13 @@ async function call<T = Record<string, unknown>>(
       redirect: "manual",
       signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
     });
+    if (response.status >= 300 && response.status < 400) {
+      throw new IntegrationError("O gateway respondeu com um redirecionamento. Informe o endereço final (com https).", 502);
+    }
+    // O tempo limite vale também para a leitura do corpo.
+    text = await readLimited(response);
   } catch (error) {
+    if (error instanceof IntegrationError) throw error;
     const name = (error as { name?: unknown } | null)?.name;
     throw new IntegrationError(
       name === "TimeoutError" || name === "AbortError"
@@ -177,13 +188,6 @@ async function call<T = Record<string, unknown>>(
       502,
     );
   }
-  if (response.status >= 300 && response.status < 400) {
-    throw new IntegrationError("O gateway respondeu com um redirecionamento. Informe o endereço final (com https).", 502);
-  }
-  if (Number(response.headers.get("content-length") ?? 0) > MAX_RESPONSE_BYTES) {
-    throw new IntegrationError("O gateway respondeu grande demais.", 502);
-  }
-  const text = await response.text();
   let parsed: unknown = null;
   try {
     parsed = text ? JSON.parse(text) : {};
@@ -191,9 +195,35 @@ async function call<T = Record<string, unknown>>(
     // Página de erro de proxy: fica só o status.
   }
   if (!response.ok) throw gatewayError(response.status, parsed, secrets);
+  // 200 com HTML (o painel da Evolution, um site qualquer): não é a API, e o envio não aconteceu.
+  if (parsed === null) throw new IntegrationError(`O endereço ${host} não respondeu como a Evolution API. Confira o endereço do gateway.`, 502);
   // O connect responde 200 com { error: true, message } quando falha.
   if (record(parsed).error === true) throw gatewayError(400, parsed, secrets);
-  return (parsed ?? {}) as T;
+  return parsed as T;
+}
+
+/** Corpo da resposta com limite (sem confiar só no Content-Length: resposta em pedaços não o traz). */
+async function readLimited(response: Response): Promise<string> {
+  if (!response.body) return "";
+  const tooBig = () => new IntegrationError("O gateway respondeu grande demais.", 502);
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_RESPONSE_BYTES) {
+    await response.body.cancel().catch(() => undefined);
+    throw tooBig();
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_RESPONSE_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw tooBig();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 const path = (action: string, instance: string) => `/${action}/${encodeURIComponent(instance)}`;
@@ -208,11 +238,11 @@ export function qrImage(value: unknown): string | null {
   return null;
 }
 
-/** Estado da sessão nas respostas da Evolution ({ instance: { state } } ou { instance: { status } }). */
+/** Estado da sessão nas respostas da Evolution ({ instance: { state } } ou { instance: { status } }); só os conhecidos. */
 function stateOf(body: unknown): string | null {
   const instance = record(record(body).instance);
   const state = instance.state ?? instance.status;
-  return typeof state === "string" ? state : null;
+  return typeof state === "string" && STATES.has(state) ? state : null;
 }
 
 /** Pede o QR (GET /instance/connect): aberta = conectado; QR novo = aguardando; limite de QR = desconectado. */
@@ -406,6 +436,20 @@ export async function whatsappQrStatus(
 // Entrada
 // ---------------------------------------------------------------------------
 
+/**
+ * Ao desconectar no Spherum: desliga o webhook e encerra a sessão no gateway (sem isso a
+ * instância continua logada e mandando mensagens para uma URL que não aceita mais nada).
+ * Melhor esforço: o gateway fora do ar não impede a desconexão.
+ */
+export async function disconnectWhatsappQr(deps: IntegrationDeps, agencyId: string, connectionId: string): Promise<void> {
+  const a = await access(deps, agencyId, connectionId);
+  const gw = gatewayOf(a.connection, a.accessToken);
+  await call(deps.fetch, gw, "POST", path("webhook/set", gw.instance), {
+    webhook: { enabled: false, url: `${deps.appUrl.replace(/\/+$/, "")}/api/channels/whatsapp-qr/desligado`, events: [] },
+  }).catch(() => undefined);
+  await call(deps.fetch, gw, "DELETE", path("instance/logout", gw.instance)).catch(() => undefined);
+}
+
 export type WhatsappQrHook = { id: string; agencyId: string; instance: string };
 
 /**
@@ -428,22 +472,24 @@ export type EvolutionEvent =
   | { kind: "connection"; instance: string | null; state: string; number: string | null };
 
 const jid = z.string().max(200);
+const textContent = z.object({
+  conversation: z.string().nullish(),
+  extendedTextMessage: z.object({ text: z.string().nullish() }).nullish(),
+});
+const textOf = (m: z.infer<typeof textContent> | null | undefined) => (m?.conversation || m?.extendedTextMessage?.text || "").trim();
 const upsertSchema = z.object({
   key: z.object({
     remoteJid: jid,
     fromMe: z.boolean(),
     id: z.string().min(1).max(200),
-    remoteJidAlt: jid.nullish(),
-    senderPn: jid.nullish(),
+    remoteJidAlt: jid.nullish().catch(null),
+    senderPn: jid.nullish().catch(null),
   }),
-  pushName: z.string().max(500).nullish(),
-  message: z
-    .object({
-      conversation: z.string().nullish(),
-      extendedTextMessage: z.object({ text: z.string().nullish() }).nullish(),
-    })
-    .nullish(),
-  messageTimestamp: z.union([z.number().nonnegative(), z.string().regex(/^\d{1,13}$/)]).nullish(),
+  // Nome e hora são opcionais: valor estranho neles não derruba a mensagem.
+  pushName: z.unknown().optional(),
+  // Com mensagens temporárias ligadas, o texto pode vir dentro de ephemeralMessage.message.
+  message: textContent.extend({ ephemeralMessage: z.object({ message: textContent.nullish() }).nullish() }).nullish(),
+  messageTimestamp: z.unknown().optional(),
 });
 
 /** Número de um jid de conversa individual ("5511…@s.whatsapp.net", com ou sem ":aparelho"). */
@@ -459,8 +505,8 @@ function senderOf(key: z.infer<typeof upsertSchema>["key"]): string | null {
   return numberOf(remote);
 }
 
-function timeOf(value: number | string | null | undefined): Date | null {
-  if (value === null || value === undefined) return null;
+function timeOf(value: unknown): Date | null {
+  if (typeof value !== "number" && !(typeof value === "string" && /^\d{1,13}$/.test(value))) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   return new Date(n > 1e12 ? n : n * 1000);
@@ -484,10 +530,10 @@ export function parseEvolutionWebhook(body: unknown): EvolutionEvent[] {
       const { key, pushName, message, messageTimestamp } = parsed.data;
       const number = senderOf(key);
       if (!number) continue;
-      const text = (message?.conversation || message?.extendedTextMessage?.text || "").trim();
+      const text = textOf(message) || textOf(message?.ephemeralMessage?.message);
       if (!text) continue;
       // O nome do perfil é escolhido pela pessoa: sem quebras de linha nem caracteres de controle.
-      const name = pushName?.replace(/\p{Cc}+/gu, " ").trim();
+      const name = typeof pushName === "string" ? pushName.replace(/\p{Cc}+/gu, " ").trim() : null;
       out.push({ kind: "message", instance, eventId: key.id, number, name: name ? clip(name, 100) : null, text, sentAt: timeOf(messageTimestamp) });
     }
     return out;
@@ -564,15 +610,41 @@ export function toWhatsappText(text: string): string {
     .replace(/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)");
 }
 
-/** Sem botões garantidos: como decidir por texto (o núcleo entende "aprovar", "negar 2"…). */
-export function approvalInstructions(approvals: OutboundApproval[]): string {
+/**
+ * Sem botões garantidos: como decidir por texto (o núcleo entende "aprovar", "negar 2"…). Com mais
+ * de um pedido pendente na conversa, sempre com o número, porque "aprovar" sozinho fica ambíguo.
+ */
+export function approvalInstructions(approvals: OutboundApproval[], pending = approvals.length): string {
   if (!approvals.length) return "";
-  if (approvals.length === 1) return "Responda *aprovar* ou *negar*.";
+  if (approvals.length === 1 && pending <= 1) return "Responda *aprovar* ou *negar*.";
   const lines = approvals.map((a) => {
     const summary = clip(a.summary.replace(/\s+/g, " ").trim() || "pedido", 80);
     return `• *aprovar ${a.index}* ou *negar ${a.index}*: ${summary}`;
   });
   return ["Para decidir, responda com o número do pedido:", ...lines].join("\n");
+}
+
+/**
+ * Número de cada pedido como o núcleo vai entender "aprovar N": a posição entre todos os pendentes
+ * da conversa, na mesma ordem de receiveMessage. A fila numera só os desta mensagem, e um pedido
+ * antigo ainda aberto faria "aprovar 1" decidir outro. Pedido que já não está pendente sai.
+ */
+async function numberApprovals(ctx: SendContext, number: string, approvals: OutboundApproval[]) {
+  if (!approvals.length) return { approvals, pending: 0 };
+  const rows = await ctx.deps.sql.query<{ id: string }>(
+    `select a.id from xodo_actions a
+       join xodo_runs r on r.id = a.run_id
+       join xodo_conversations c on c.id = r.conversation_id
+      where c.connection_id = $1 and c.external_key = $2 and a.agency_id = $3 and a.status = 'pending'
+      order by a.created_at, a.call_index`,
+    [ctx.access.connection.id, number, ctx.access.connection.agency_id],
+  );
+  const position = new Map(rows.map((r, i) => [r.id, i + 1]));
+  const numbered = approvals.flatMap((a) => {
+    const index = position.get(a.actionId);
+    return index ? [{ ...a, index }] : [];
+  });
+  return { approvals: numbered, pending: rows.length };
 }
 
 const MAX_CHARS = 4096;
@@ -585,7 +657,8 @@ export const whatsappQrAdapter: ChannelAdapter = {
     if (!target.success) throw new ChannelError("A conversa não tem o número do WhatsApp para responder.");
     const gw = gatewayOf(ctx.access.connection, ctx.access.accessToken);
     const text = toWhatsappText(message.text.trim());
-    const extra = approvalInstructions(message.approvals);
+    const { approvals, pending } = await numberApprovals(ctx, target.data.number, message.approvals);
+    const extra = approvalInstructions(approvals, pending);
     // As instruções vão junto do último pedaço; se não couberem, numa mensagem logo depois.
     const parts = !extra ? [text] : !text ? [extra] : text.length + extra.length + 2 <= MAX_CHARS ? [`${text}\n\n${extra}`] : [text, extra];
     for (const part of parts) {

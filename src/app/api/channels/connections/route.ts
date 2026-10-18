@@ -16,6 +16,9 @@ import { XodoError } from "@/lib/xodos/runner";
  *   whatsapp_cloud: { phone_number_id, access_token, app_secret, label? }  devolve a URL e o token de verificação do webhook
  *   whatsapp_qr:    { base_url, api_key, instance?, label?, accept_risks: true }  devolve o QR Code
  */
+// Criar o WhatsApp por QR conversa com o gateway várias vezes (cada chamada com tempo limite próprio).
+export const maxDuration = 120;
+
 export async function GET() {
   return NextResponse.json({ whatsapp_qr_risks: WHATSAPP_QR_RISKS });
 }

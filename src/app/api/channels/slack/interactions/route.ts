@@ -12,19 +12,19 @@ export const maxDuration = 300;
  * response_url.
  */
 export async function POST(request: Request) {
-  let payload: unknown;
   try {
-    payload = parseInteractionBody(await readSlackRequest(request, process.env.SLACK_SIGNING_SECRET));
+    const payload = parseInteractionBody(await readSlackRequest(request, process.env.SLACK_SIGNING_SECRET));
+    after(async () => {
+      try {
+        await handleSlackInteraction(await channelDeps(), ADAPTERS, payload);
+      } catch (error) {
+        console.error("[canais] slack: interação falhou", error instanceof Error ? error.message : error);
+      }
+    });
+    return new NextResponse(null, { status: 200 });
   } catch (error) {
     if (error instanceof ChannelError) return NextResponse.json({ error: error.message }, { status: error.status });
-    throw error;
+    console.error("[canais] slack: entrada falhou", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
-  after(async () => {
-    try {
-      await handleSlackInteraction(await channelDeps(), ADAPTERS, payload);
-    } catch (error) {
-      console.error("[canais] slack: interação falhou", error instanceof Error ? error.message : error);
-    }
-  });
-  return new NextResponse(null, { status: 200 });
 }

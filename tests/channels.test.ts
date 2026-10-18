@@ -309,7 +309,7 @@ test("entrega: tenta de novo com espera e desiste depois de 5 tentativas; divide
   assert.equal((await cleanupChannels(sql, w.clock.now())).stuckDeliveries, 1);
 });
 
-test("pedido já decidido no app não vira botão no canal", async () => {
+test("pedido já decidido no app não é pedido de novo no canal", async () => {
   const w = await world();
   const conv = await one<{ id: string }>(
     sql,
@@ -334,7 +334,9 @@ test("pedido já decidido no app não vira botão no canal", async () => {
   ]);
   const fake = fakeAdapter();
   await flushOutbox(w.deps(new FakeModel([])), { telegram: fake.adapter }, { conversationId: conv!.id });
-  assert.deepEqual(fake.sent[0].approvals, []);
+  assert.equal(fake.sent.length, 0, "não pede de novo o que já foi decidido");
+  const row = await one<{ status: string }>(sql, `select status from channel_outbox where conversation_id = $1`, [conv!.id]);
+  assert.equal(row!.status, "sent");
 });
 
 // ---------------------------------------------------------------------------
@@ -390,4 +392,42 @@ test("decisão tomada no app entrega a continuação no canal", async () => {
   assert.equal(w.fake.sent.at(-1)!.text, "Avisei pelo app.");
   const via = await one<{ decided_via: string }>(sql, `select decided_via from xodo_actions where id = $1`, [pending!.id]);
   assert.equal(via!.decided_via, "app");
+});
+
+test("numeração única: com dois pedidos abertos na conversa, o segundo é o 2 nos botões, no texto e no 'aprovar 2'", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const deps = w.deps(
+    new FakeModel([
+      { toolCalls: [{ id: "a1", name: "avisar_equipe", input: { titulo: "Primeiro" } }] },
+      { toolCalls: [{ id: "a2", name: "avisar_equipe", input: { titulo: "Segundo" } }] },
+      { text: "Mandei o segundo aviso." },
+    ]),
+  );
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("Avisa: primeiro"));
+  // A primeira execução espera aprovação; uma nova mensagem abre outra execução na mesma conversa.
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("Avisa: segundo"));
+  const ask = w.fake.sent.at(-1)!;
+  assert.deepEqual(ask.approvals.map((a) => a.index), [2]);
+  assert.match(ask.text, /^Preciso de aprovação para:\n2\. avisar a equipe: Segundo$/);
+
+  assert.equal((await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("aprovar"))).detail, "ambíguo");
+  await receiveMessage(deps, { telegram: w.fake.adapter }, w.msg("aprovar 2"));
+  const statuses = await sql.query<{ status: string; input: { titulo: string } }>(
+    `select status, input from xodo_actions where xodo_id = $1 order by created_at`,
+    [w.xodo.id],
+  );
+  assert.deepEqual(statuses.map((s) => [s.input.titulo, s.status]), [["Primeiro", "pending"], ["Segundo", "executed"]]);
+});
+
+test("quem já está vinculado pode se vincular de novo com um código (outra pessoa da equipe)", async () => {
+  const w = await world();
+  await w.pair();
+  const colleague = randomUUID();
+  await sql.query(`insert into agency_members (agency_id, user_id, role) values ($1, $2, 'member')`, [w.agencyId, colleague]);
+  const { code } = await createPairingCode(sql, w.agencyId, colleague, w.clock.now());
+  const r = await receiveMessage(w.deps(new FakeModel([])), { telegram: w.fake.adapter }, w.msg(`/start ${code}`));
+  assert.equal(r.status, "paired");
+  const link = await one<{ user_id: string }>(sql, `select user_id from channel_identities where agency_id = $1 and external_user = 'tg-42'`, [w.agencyId]);
+  assert.equal(link!.user_id, colleague);
 });

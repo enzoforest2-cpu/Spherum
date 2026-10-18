@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
 import { ZodError } from "zod";
 import { createPairingCode } from "../src/lib/channels/pairing";
@@ -173,6 +174,11 @@ test("parseTelegramUpdate: conversa privada com texto, grupos, bots, mídia e bo
   const other = parseTelegramUpdate({ update_id: 19, callback_query: { id: "q2", from: ana, data: `ap:${UUID_A}:2` } });
   assert.equal(other?.kind === "callback" && other.decision, null);
   assert.equal(other?.kind === "callback" && other.chatId, null, "sem a mensagem (inline ou inacessível)");
+  const oddMessage = parseTelegramUpdate({ update_id: 21, callback_query: { id: "q3", from: ana, data: `ap:${UUID_A}:1`, message: { chat: 1 } } });
+  assert.equal(oddMessage?.kind === "callback" && oddMessage.decision?.approve, true, "mensagem estranha não derruba o toque");
+  assert.equal(oddMessage?.kind === "callback" && oddMessage.messageId, null);
+  const botTap = parseTelegramUpdate({ update_id: 22, callback_query: { id: "q4", from: { id: 5, is_bot: true }, data: `ap:${UUID_A}:1` } });
+  assert.deepEqual(botTap, { kind: "ignored", updateId: "22", reason: "bot" });
 
   assert.equal(parseTelegramUpdate({ message: { text: "oi" } }), null);
   assert.equal(parseTelegramUpdate({ update_id: "20" }), null);
@@ -284,9 +290,48 @@ test("conexão: token inválido, recusado ou webhook recusado viram erros claros
   delete tg.on.getMe;
   tg.on.setWebhook = () => tgError(400, "Bad Request: bad webhook: HTTPS url must be provided for webhook");
   await assert.rejects(createTelegramConnection(integ, agencyId, { token }, ownerId), /não aceitou o endereço do webhook: .*HTTPS url/);
-  const row = await one<{ status: string; last_error: string }>(sql, `select status, last_error from integration_connections where agency_id = $1`, [agencyId]);
-  assert.equal(row!.status, "error");
-  assert.match(row!.last_error, /HTTPS url must be provided/);
+  const conn = async () =>
+    (await one<{ id: string; status: string; last_error: string | null }>(
+      sql,
+      `select id, status, last_error from integration_connections where agency_id = $1`,
+      [agencyId],
+    ))!;
+  const failed = await conn();
+  assert.equal(failed.status, "error");
+  assert.match(String(failed.last_error), /HTTPS url must be provided/);
+
+  // Tentar de novo depois de arrumar: a mesma linha volta a ficar ativa.
+  delete tg.on.setWebhook;
+  const fixed = await createTelegramConnection(integ, agencyId, { token }, ownerId);
+  assert.equal(fixed.id, failed.id);
+  assert.deepEqual(await conn(), { id: failed.id, status: "active", last_error: null });
+  assert.equal(await count(), 1);
+  const working = String(tg.of("setWebhook").at(-1)!.secret_token);
+
+  // Reconexão que falha no setWebhook não estraga a conexão que já funcionava: o Telegram
+  // continua mandando o segredo antigo, e é ele que vale.
+  tg.on.setWebhook = (_body, call) => {
+    throw new Error(`request to ${call.url} failed, reason: ETIMEDOUT`);
+  };
+  await assert.rejects(createTelegramConnection(integ, agencyId, { token }, ownerId), (e: Error) => {
+    assert.match(e.message, /não aceitou o endereço do webhook/);
+    assert.ok(!e.message.includes(SECRET_PART), "o token não aparece no erro");
+    return true;
+  });
+  assert.equal((await conn()).status, "active");
+  assert.deepEqual(await telegramHookFor(integ, failed.id, working), { id: failed.id, agencyId });
+
+  // Conexão nova com erro de rede no setWebhook: o last_error gravado também sai sem o token.
+  const other = await seedAgency(sql);
+  await assert.rejects(createTelegramConnection(integ, other.agencyId, { token: `${(botSeq += 1)}:${SECRET_PART}` }, other.ownerId));
+  const stored = await one<{ status: string; last_error: string }>(
+    sql,
+    `select status, last_error from integration_connections where agency_id = $1`,
+    [other.agencyId],
+  );
+  assert.equal(stored!.status, "error");
+  assert.match(stored!.last_error, /ETIMEDOUT/);
+  assert.ok(!stored!.last_error.includes(SECRET_PART));
 });
 
 // ---------------------------------------------------------------------------
@@ -307,7 +352,6 @@ test("envio: texto puro sem parse_mode, botões de aprovação e erros do Telegr
     chat_id: 42,
     text: "Oi! *Negrito* e [link](https://x.com)",
     link_preview_options: { is_disabled: true },
-    disable_web_page_preview: true,
   });
   assert.equal(telegramAdapter.maxChars, 4096);
 
@@ -335,6 +379,9 @@ test("envio: texto puro sem parse_mode, botões de aprovação e erros do Telegr
     ["Aprovar", "Negar"],
   );
   assert.deepEqual(approvalKeyboard([{ actionId: "nao-e-uuid", summary: "A", index: 1 }]), []);
+  const many = approvalKeyboard(Array.from({ length: 25 }, (_, i) => ({ actionId: randomUUID(), summary: "x", index: i + 1 })));
+  assert.equal(many.length, 20, "no máximo 20 pedidos com botão por mensagem");
+  assert.equal(many[19][0].text, "Aprovar 20");
 
   await telegramAdapter.send(await ctx(), { text: "", approvals: [{ actionId: UUID_A, summary: "A", index: 1 }] });
   assert.equal(lastText(w.tg), "Pedidos de aprovação:");
@@ -346,6 +393,12 @@ test("envio: texto puro sem parse_mode, botões de aprovação e erros do Telegr
 
   w.tg.on.sendMessage = () => tgError(400, "Bad Request: chat not found");
   await assert.rejects(telegramAdapter.send(await ctx(), { text: "oi", approvals: [] }), /O Telegram recusou: Bad Request: chat not found/);
+  // Token perto do corte de 200 caracteres: sai inteiro, sem sobrar um pedaço dele no texto.
+  w.tg.on.sendMessage = () => tgError(400, `${"x".repeat(180)} ${w.token} fim`);
+  await assert.rejects(telegramAdapter.send(await ctx(), { text: "oi", approvals: [] }), (e: Error) => {
+    assert.ok(!e.message.includes(SECRET_PART.slice(0, 4)), e.message);
+    return true;
+  });
   w.tg.on.sendMessage = () => ({ ok: false, error_code: 400, description: "Bad Request: message text is empty" });
   await assert.rejects(telegramAdapter.send(await ctx(), { text: "oi", approvals: [] }), /message text is empty/, "ok:false com 200 também é erro");
   w.tg.on.sendMessage = () => tgError(403, "Forbidden: bot was blocked by the user");
@@ -359,6 +412,19 @@ test("envio: texto puro sem parse_mode, botões de aprovação e erros do Telegr
   w.tg.on.sendMessage = () => tgError(401, "Unauthorized");
   await assert.rejects(telegramAdapter.send(await ctx(), { text: "oi", approvals: [] }), /recusou o token/);
   assert.equal((await loadConnection(sql, w.agencyId, w.connectionId)).status, "expired");
+
+  // Desconectada enquanto a mensagem saía: o 401 não a traz de volta como "vencida".
+  const w2 = await world();
+  const stale: SendContext = {
+    deps: w2.integ,
+    access: await access(w2.integ, w2.agencyId, w2.connectionId),
+    target: { chat_id: 42 },
+    xodoName: null,
+  };
+  await revokeConnection(w2.integ, w2.agencyId, w2.connectionId);
+  w2.tg.on.sendMessage = () => tgError(401, "Unauthorized");
+  await assert.rejects(telegramAdapter.send(stale, { text: "oi", approvals: [] }), /recusou o token/);
+  assert.equal((await loadConnection(sql, w2.agencyId, w2.connectionId)).status, "revoked");
 });
 
 // ---------------------------------------------------------------------------
@@ -388,7 +454,6 @@ test("entrada: /start CÓDIGO vincula; texto vira conversa; repetição e grupos
     chat_id: 42,
     text: "Bom dia, Ana!",
     link_preview_options: { is_disabled: true },
-    disable_web_page_preview: true,
   });
   const conv = await one<{ external_key: string; metadata: unknown }>(
     sql,
@@ -549,5 +614,11 @@ test("botões: decisão demorada responde 'recebido' na hora e o erro chega como
   // Mensagem inacessível (sem a mensagem no callback): responde, mas não tenta editar.
   const edits = w.tg.of("editMessageReplyMarkup").length;
   await w.run(w.tap(`ap:${actionId}:1`, { message: undefined }), model);
+  assert.equal(w.tg.of("editMessageReplyMarkup").length, edits);
+
+  // Mensagem num formato inesperado: o toque ainda é decidido e respondido, só não edita.
+  const odd = w.tap(`ap:${actionId}:0`, { message: { message_id: "x", chat: null } });
+  assert.equal((await w.run(odd, model)).status, "decided");
+  assert.deepEqual(w.tg.of("answerCallbackQuery").at(-1), { callback_query_id: odd.callback_query.id, text: "Este pedido já foi decidido." });
   assert.equal(w.tg.of("editMessageReplyMarkup").length, edits);
 });

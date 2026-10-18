@@ -18,7 +18,7 @@ import {
   WHATSAPP_QR_RISKS,
 } from "../src/lib/channels/whatsapp-qr";
 import { IntegrationError } from "../src/lib/integrations/http";
-import { access, loadConnection, readSecret, type IntegrationDeps } from "../src/lib/integrations/store";
+import { access, loadConnection, readSecret, saveConnection, type IntegrationDeps } from "../src/lib/integrations/store";
 import { one, type Sql } from "../src/lib/xodos/db";
 import type { Resolver } from "../src/lib/xodos/net";
 import { Clock, createTestDb, FakeModel, seedAgency, seedXodo, testDeps } from "./helpers";
@@ -157,7 +157,7 @@ async function world(opts: { autonomy?: string } = {}) {
 test("riscos: sem accept_risks: true literal a conexão é recusada com a lista de riscos", async () => {
   assert.ok(WHATSAPP_QR_RISKS.length >= 6);
   const all = WHATSAPP_QR_RISKS.join(" ");
-  for (const word of [/banido/, /número dedicado/, /QR Code de novo/, /gateway vê todas as mensagens/, /disparos em massa/, /garantia de entrega/]) {
+  for (const word of [/banido/, /número dedicado/, /QR Code de novo/, /gateway vê todas as mensagens/, /forjar mensagens/, /disparos em massa/, /garantia de entrega/]) {
     assert.match(all, word);
   }
   const ev = fakeEvolution(HOST_BASE);
@@ -297,7 +297,8 @@ test("instância que já existe é reaproveitada e o QR vem do connect; QR que n
 
 test("gateway falha depois de gravar: a conexão fica com erro, a mensagem é clara e não vaza o token", async () => {
   const ev = fakeEvolution(HOST_BASE);
-  ev.s.fail["/webhook/set/"] = (call) => evoError(500, `Invalid url ${JSON.parse(call.body).webhook.url}`);
+  // O token fica bem no corte de 200 caracteres: se a troca por *** viesse depois, vazaria um pedaço.
+  ev.s.fail["/webhook/set/"] = (call) => evoError(500, `Invalid url ${"x".repeat(90)} ${JSON.parse(call.body).webhook.url}`);
   const { agencyId, ownerId } = await seedAgency(sql);
   const deps: IntegrationDeps = { sql, masterKey: MASTER, fetch: ev.fn, appUrl: APP_URL };
   let thrown: unknown;
@@ -306,7 +307,7 @@ test("gateway falha depois de gravar: a conexão fica com erro, a mensagem é cl
   assert.equal(thrown.status, 502);
   assert.match(thrown.message, /O gateway recusou: Invalid url .*\*\*\*.*\[HTTP 500\]\. A conexão ficou marcada com erro/);
   const token = (JSON.parse(ev.calls.find((x) => x.url.includes("/webhook/set/"))!.body).webhook.url as string).split("/").at(-1)!;
-  assert.ok(!thrown.message.includes(token));
+  assert.ok(!thrown.message.includes(token.slice(0, 8)), "nem um pedaço do token");
   const row = await one<{ status: string; last_error: string }>(sql, `select status, last_error from integration_connections where agency_id = $1`, [agencyId]);
   assert.equal(row!.status, "error");
   assert.ok(row!.last_error.includes("***") && !row!.last_error.includes(token));
@@ -339,6 +340,15 @@ test("gateway fora do ar, lento ou redirecionando: mensagens claras", async () =
       /não respondeu a tempo/,
     ],
     ["redirecionando", () => new Response(null, { status: 302, headers: { location: "http://169.254.169.254/" } }), /redirecionamento/],
+    // Endereço do painel ou de um site qualquer: 200 com HTML não pode passar por sucesso.
+    ["não é a API", () => new Response("<html>Evolution Manager</html>", { status: 200, headers: { "content-type": "text/html" } }), /não respondeu como a Evolution API/],
+    // Resposta em pedaços, sem Content-Length e sem fim: a leitura para no limite.
+    ["grande demais", () => new Response(new ReadableStream({ pull: (ctrl) => ctrl.enqueue(new Uint8Array(256 * 1024)) })), /grande demais/],
+    [
+      "lento no corpo",
+      () => new Response(new ReadableStream({ pull: (ctrl) => ctrl.error(new DOMException("The operation was aborted due to timeout", "TimeoutError")) })),
+      /não respondeu a tempo/,
+    ],
   ];
   for (const [name, respond, expected] of cases) {
     const f = fakeFetch(respond);
@@ -381,6 +391,10 @@ test("situação: open = conectado; connecting/close pedem QR novo; limite de QR
   await assert.rejects(status(), (error: unknown) => error instanceof IntegrationError && error.status === 404 && /não existe no gateway/.test(error.message));
   const other = await seedAgency(sql);
   await assert.rejects(whatsappQrStatus(c.deps, other.agencyId, c.result.id, resolver), /Conexão não encontrada/);
+  // Conexão de outro canal da mesma agência não vira gateway.
+  const telegram = await saveConnection(c.deps, { agencyId: c.agencyId, provider: "telegram", label: "Bot", account: "bot-1", secret: { apiKey: "123:abc" } });
+  await assert.rejects(whatsappQrStatus(c.deps, c.agencyId, telegram, resolver), (e: unknown) => e instanceof IntegrationError && e.status === 404);
+  assert.equal(await authenticateWhatsappQr(c.deps, telegram, c.token), null);
 });
 
 // ---------------------------------------------------------------------------
@@ -421,6 +435,19 @@ test("parse: texto de conversa individual nas variações do payload; o resto fi
   assert.deepEqual(parseEvolutionWebhook({ event: "connection.update", instance: INSTANCE, data: { instance: INSTANCE, state: "open", statusReason: 200, wuid: "5511400000000:12@s.whatsapp.net" } }), [
     { kind: "connection", instance: INSTANCE, state: "open", number: "5511400000000" },
   ]);
+  // Hora e nome em formato estranho (Long sem converter, número) não derrubam o texto.
+  const odd = parseEvolutionWebhook({
+    event: "messages.upsert",
+    data: { key: { remoteJid: `${FROM}@s.whatsapp.net`, fromMe: false, id: "B1", remoteJidAlt: 42 }, pushName: 123, message: { conversation: "oi" }, messageTimestamp: { low: 1, high: 0 } },
+  });
+  assert.deepEqual(odd, [{ kind: "message", instance: null, eventId: "B1", number: FROM, name: null, text: "oi", sentAt: null }]);
+  // Mensagens temporárias: o texto vem embrulhado.
+  const ephemeral = parseEvolutionWebhook({
+    event: "messages.upsert",
+    data: { key: { remoteJid: `${FROM}@s.whatsapp.net`, fromMe: false, id: "B2" }, message: { ephemeralMessage: { message: { extendedTextMessage: { text: "sumindo" } } } } },
+  });
+  assert.deepEqual(ephemeral.map((e) => (e.kind === "message" ? e.text : e.kind)), ["sumindo"]);
+  assert.equal((parseEvolutionWebhook({ ...upsert("x"), data: { ...upsert("x").data, messageTimestamp: "1792411200" } })[0] as { sentAt: Date }).sentAt.toISOString(), "2026-10-19T12:00:00.000Z");
   assert.deepEqual(parseEvolutionWebhook({ event: "CONNECTION_UPDATE", data: { state: "hackeado" } }), []);
   assert.deepEqual(parseEvolutionWebhook({ event: "qrcode.updated", data: { qrcode: { base64: QR } } }), []);
   assert.deepEqual(parseEvolutionWebhook(null), []);
@@ -479,6 +506,39 @@ test("aprovação por texto: o pedido chega com instruções e 'aprovar' decide 
   assert.equal(w.ev.sends().at(-1)!.text, "Feito, avisei.");
 });
 
+test("aprovação por texto: o número mostrado é o que o núcleo entende, com pedido antigo ainda na conversa", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const ask = (id: string, titulo: string) => ({ id, name: "avisar_equipe", input: { titulo, mensagem: "" } });
+  const model = new FakeModel([{ toolCalls: [ask("t1", "Antigo")] }, { toolCalls: [ask("t2", "Segundo"), ask("t3", "Terceiro")] }]);
+  await w.deliver(upsert("Avisa do antigo"), model);
+  assert.match(w.ev.sends().at(-1)!.text, /Responda \*aprovar\* ou \*negar\*\.$/);
+
+  // Uma execução esperando aprovação não impede outra: agora há 3 pedidos na conversa.
+  await w.deliver(upsert("Agora avisa do segundo e do terceiro"), model);
+  const text = w.ev.sends().at(-1)!.text;
+  assert.match(text, /\*aprovar 2\* ou \*negar 2\*: avisar a equipe: Segundo/);
+  assert.match(text, /\*aprovar 3\* ou \*negar 3\*: avisar a equipe: Terceiro/);
+  assert.doesNotMatch(text, /\*aprovar 1\*/, "o antigo não é desta mensagem");
+
+  // "aprovar 2" decide exatamente o pedido mostrado com o 2.
+  assert.equal((await w.deliver(upsert("aprovar 2"), model)).messages[0].status, "decided");
+  const rows = await sql.query<{ tool_call_id: string; status: string }>(
+    `select tool_call_id, status from xodo_actions where xodo_id = $1 order by tool_call_id`,
+    [w.xodo.id],
+  );
+  assert.deepEqual(rows.map((r) => [r.tool_call_id, r.status]), [["t1", "pending"], ["t2", "executed"], ["t3", "pending"]]);
+
+  // Um pedido só nesta mensagem, mas outros pendentes na conversa: vai com número, sem "aprovar" solto.
+  const a = await access(w.deps, w.agencyId, w.result.id);
+  const t3 = await one<{ id: string }>(sql, `select id from xodo_actions where xodo_id = $1 and tool_call_id = 't3'`, [w.xodo.id]);
+  await whatsappQrAdapter.send({ deps: w.deps, access: a, target: { number: FROM }, xodoName: "Pipoca" }, {
+    text: "Ainda falta:",
+    approvals: [{ actionId: t3!.id, summary: "avisar a equipe: Terceiro", index: 1 }],
+  });
+  assert.equal(w.ev.sends().at(-1)!.text, "Ainda falta:\n\nPara decidir, responda com o número do pedido:\n• *aprovar 2* ou *negar 2*: avisar a equipe: Terceiro");
+});
+
 test("connection.update: atualiza o estado sem segredo; 'open' tira o erro, 'close' pede QR de novo", async () => {
   const w = await world();
   await sql.query(`update integration_connections set status = 'error', last_error = 'falhou antes' where id = $1`, [w.result.id]);
@@ -514,26 +574,65 @@ test("connection.update: atualiza o estado sem segredo; 'open' tira o erro, 'clo
 // Envio
 // ---------------------------------------------------------------------------
 
+/** Pedidos pendentes numa conversa da conexão com FROM (como uma execução que espera aprovação). */
+async function seedPending(agencyId: string, connectionId: string, count: number): Promise<string[]> {
+  const xodo = await seedXodo(sql, agencyId);
+  const conv = await one<{ id: string }>(
+    sql,
+    `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, metadata)
+     values ($1, $2, 'whatsapp', $3, $4, $5::jsonb) returning id`,
+    [agencyId, xodo.id, connectionId, FROM, JSON.stringify({ number: FROM })],
+  );
+  const run = await one<{ id: string }>(
+    sql,
+    `insert into xodo_runs (xodo_id, agency_id, trigger, provider, model, status, conversation_id)
+     values ($1, $2, 'channel', 'faux', 'faux-1', 'waiting_approval', $3) returning id`,
+    [xodo.id, agencyId, conv!.id],
+  );
+  const ids: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const row = await one<{ id: string }>(
+      sql,
+      `insert into xodo_actions (run_id, xodo_id, agency_id, tool_name, category, tool_call_id, step, call_index, input, input_hash, status)
+       values ($1, $2, $3, 'avisar_equipe', 'equipe', $4, 1, $5, '{}'::jsonb, 'h', 'pending') returning id`,
+      [run!.id, xodo.id, agencyId, `t${i}`, i],
+    );
+    ids.push(row!.id);
+  }
+  return ids;
+}
+
 test("envio: texto com apikey, aprovações viram instruções, texto longo separa as instruções e erros são claros", async () => {
   const c = await connect(IP_BASE, { instance: "envio" });
   const a = await access(c.deps, c.agencyId, c.result.id);
   const ctx = { deps: c.deps, access: a, target: { number: FROM }, xodoName: "Pipoca" };
+  const [first, , third] = await seedPending(c.agencyId, c.result.id, 3);
+  // A fila numera só os desta mensagem (1 e 2); o núcleo conta todos os pendentes da conversa (1 e 3).
   const approvals: OutboundApproval[] = [
-    { actionId: "0b9d2f4e-1c3a-4e5f-8a7b-6c5d4e3f2a1b", summary: "avisar a equipe", index: 1 },
-    { actionId: "1b9d2f4e-1c3a-4e5f-8a7b-6c5d4e3f2a1b", summary: "pausar a campanha\nVerão", index: 3 },
+    { actionId: first, summary: "avisar a equipe", index: 1 },
+    { actionId: third, summary: "pausar a campanha\nVerão", index: 2 },
   ];
 
-  await whatsappQrAdapter.send(ctx, { text: "Preciso de aprovação para:\n1. avisar a equipe\n3. pausar a campanha", approvals });
+  await whatsappQrAdapter.send(ctx, { text: "Preciso de aprovação para:\n1. avisar a equipe\n2. pausar a campanha", approvals });
   const text = c.ev.sends().at(-1)!.text;
   assert.match(text, /^Preciso de aprovação/);
   assert.match(text, /\*aprovar 1\* ou \*negar 1\*: avisar a equipe/);
   assert.match(text, /\*aprovar 3\* ou \*negar 3\*: pausar a campanha Verão/);
   assert.equal(approvalInstructions([]), "");
   assert.equal(approvalInstructions([approvals[1]]), "Responda *aprovar* ou *negar*.");
+  assert.match(approvalInstructions([approvals[1]], 2), /^Para decidir.*\n• \*aprovar 2\* ou \*negar 2\*: pausar a campanha Verão$/);
 
-  const before = c.ev.sends().length;
+  let before = c.ev.sends().length;
   await whatsappQrAdapter.send(ctx, { text: "x".repeat(4090), approvals: [approvals[0]] });
-  assert.deepEqual(c.ev.sends().slice(before).map((s) => s.text.length > 100 ? "longo" : s.text), ["longo", "Responda *aprovar* ou *negar*."]);
+  assert.deepEqual(c.ev.sends().slice(before).map((s) => (s.text.length > 1000 ? "longo" : s.text)), [
+    "longo",
+    "Para decidir, responda com o número do pedido:\n• *aprovar 1* ou *negar 1*: avisar a equipe",
+  ]);
+
+  // Pedido decidido no app enquanto a mensagem esperava: não vira instrução.
+  before = c.ev.sends().length;
+  await whatsappQrAdapter.send(ctx, { text: "oi", approvals: [{ actionId: "0b9d2f4e-1c3a-4e5f-8a7b-6c5d4e3f2a1b", summary: "x", index: 1 }] });
+  assert.deepEqual(c.ev.sends().slice(before).map((s) => s.text), ["oi"]);
   assert.equal(whatsappQrAdapter.maxChars, 4096);
   assert.equal(toWhatsappText("# Título **forte**"), "*Título forte*");
 
@@ -544,6 +643,10 @@ test("envio: texto com apikey, aprovações viram instruções, texto longo sepa
   await assert.rejects(whatsappQrAdapter.send(ctx, { text: "oi", approvals: [] }), (e: unknown) => e instanceof IntegrationError && e.message === SESSION_DROPPED);
   c.ev.s.fail["/message/sendText/"] = () => evoError(400, { jid: `${FROM}@s.whatsapp.net`, exists: false, number: FROM });
   await assert.rejects(whatsappQrAdapter.send(ctx, { text: "oi", approvals: [] }), /Este número não tem WhatsApp/);
+
+  // 200 que não é da Evolution (proxy, página de login): a entrega falha e a fila tenta de novo.
+  c.ev.s.fail["/message/sendText/"] = () => new Response("<html>login</html>", { status: 200, headers: { "content-type": "text/html" } });
+  await assert.rejects(whatsappQrAdapter.send(ctx, { text: "oi", approvals: [] }), /não respondeu como a Evolution API/);
 
   // Chave recusada: a conexão fica marcada para reconectar.
   c.ev.s.fail["/message/sendText/"] = () => evoError(401, "Unauthorized");

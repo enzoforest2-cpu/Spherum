@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteTelegramWebhook } from "@/lib/channels/telegram";
+import { disconnectWhatsappQr } from "@/lib/channels/whatsapp-qr";
 import { serverIntegrations } from "@/lib/integrations";
 import { revokeConnection } from "@/lib/integrations/store";
 import { one, serverSql } from "@/lib/xodos/db";
@@ -18,12 +19,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       connectionId,
       agencyId,
     ]);
-    // O Telegram para de mandar mensagens para o Spherum antes de a conexão sumir.
-    if (conn?.provider === "telegram") {
-      await deleteTelegramWebhook(deps, agencyId, connectionId).catch((error) =>
-        console.warn("[canais] não consegui remover o webhook do Telegram", error instanceof Error ? error.message : error),
-      );
-    }
+    // Telegram e gateway do WhatsApp param de mandar mensagens para o Spherum antes de a conexão sumir.
+    const unhook =
+      conn?.provider === "telegram"
+        ? deleteTelegramWebhook(deps, agencyId, connectionId)
+        : conn?.provider === "whatsapp_qr"
+          ? disconnectWhatsappQr(deps, agencyId, connectionId)
+          : null;
+    await unhook?.catch((error: unknown) =>
+      console.warn("[canais] não consegui desligar o canal na plataforma", error instanceof Error ? error.message : error),
+    );
     await revokeConnection(deps, agencyId, connectionId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

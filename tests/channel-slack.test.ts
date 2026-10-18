@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
-import { createPairingCode } from "../src/lib/channels/pairing";
+import { createPairingCode, linkIdentity } from "../src/lib/channels/pairing";
 import { hmacHex } from "../src/lib/channels/security";
 import {
   fromSlackText,
@@ -11,6 +11,7 @@ import {
   parseSlackEvent,
   readSlackRequest,
   slackAdapter,
+  slackBlocks,
   slackConnectionForTeam,
   toMrkdwn,
 } from "../src/lib/channels/slack";
@@ -186,13 +187,14 @@ test("texto: o que vem do Slack fica legível; o que vai é escapado e vira mrkd
     "veja o relatório (https://x.com/a?b=1&c=2) em #midia <urgente>",
   );
   assert.equal(fromSlackText("<@U2> e <https://x.com>", BOT), "<@U2> e https://x.com", "outras menções ficam");
+  assert.equal(fromSlackText("em <#C0MIDIA|> e <#C0GERAL>", BOT), "em #C0MIDIA e #C0GERAL", "canal sem nome fica com o id");
   assert.equal(
     toMrkdwn("## Resumo\n**CPL** subiu & <!channel> veja [o painel](https://x.com/p?a=1&b=2)"),
     "*Resumo*\n*CPL* subiu &amp; &lt;!channel&gt; veja <https://x.com/p?a=1&amp;b=2|o painel>",
   );
 });
 
-test("conexão do workspace: a agência com xodó no Slack vence; revogada não conta", async () => {
+test("conexão do workspace: com duas agências no mesmo Slack, código, vínculo e xodó do canal decidem; revogada não conta", async () => {
   const team = `T${rand()}`;
   const withXodo = await world({ team });
   const without = await world({ team, channel: false });
@@ -203,10 +205,92 @@ test("conexão do workspace: a agência com xodó no Slack vence; revogada não 
     { id: conn!.id, agencyId: conn!.agencyId, teamId: conn!.teamId, bot: conn!.botUserId },
     { id: withXodo.connectionId, agencyId: withXodo.agencyId, teamId: team, bot: BOT },
   );
+
+  // A outra agência (o cliente) escolhe um xodó só para o canal dela: as menções ali são dela.
+  await sql.query(`insert into xodo_channels (agency_id, xodo_id, connection_id, scope) values ($1, $2, $3, 'C0CLIENTE')`, [
+    without.agencyId,
+    without.xodo.id,
+    without.connectionId,
+  ]);
+  const cliente = without;
+  assert.equal((await slackConnectionForTeam(sql, team, { channel: "C0CLIENTE" }))!.id, cliente.connectionId);
+  assert.equal((await slackConnectionForTeam(sql, team, { channel: "C0MIDIA" }))!.id, withXodo.connectionId);
+  // Quem já está vinculado a uma agência fala com ela; o código de pareamento leva à agência que o gerou.
+  await linkIdentity(sql, { agencyId: cliente.agencyId, provider: "slack", externalUser: `${team}:U0BIA`, userId: cliente.ownerId });
+  assert.equal((await slackConnectionForTeam(sql, team, { user: "U0BIA" }))!.id, cliente.connectionId);
+  const { code } = await createPairingCode(sql, cliente.agencyId, cliente.ownerId, NOW);
+  assert.equal((await slackConnectionForTeam(sql, team, { user: "U0NOVO", code }))!.id, cliente.connectionId);
+
+  // De ponta a ponta: o pareamento por mensagem direta cai na agência do código e a menção no canal dela, no xodó dela.
+  assert.equal((await cliente.send(cliente.dm(code, "U0NOVO"))).status, "paired");
+  const linked = await one<{ agency_id: string }>(sql, `select agency_id from channel_identities where external_user = $1`, [`${team}:U0NOVO`]);
+  assert.equal(linked!.agency_id, cliente.agencyId);
+  const model = new FakeModel([{ text: "Oi!" }]);
+  const ask = cliente.envelope({ type: "app_mention", channel: "C0CLIENTE", user: "U0NOVO", text: `<@${BOT}> oi` });
+  assert.equal((await cliente.send(ask, model)).status, "started");
+  const conv = await one<{ agency_id: string; xodo_id: string }>(sql, `select agency_id, xodo_id from xodo_conversations where external_key = $1`, [
+    `C0CLIENTE:${ask.event.ts}`,
+  ]);
+  assert.deepEqual(conv, { agency_id: cliente.agencyId, xodo_id: cliente.xodo.id });
+
   await sql.query(`update integration_connections set status = 'revoked' where id = $1`, [withXodo.connectionId]);
   assert.equal((await slackConnectionForTeam(sql, team))!.id, without.connectionId);
   assert.equal(await slackConnectionForTeam(sql, `T${rand()}`), null);
   assert.equal(await slackConnectionForTeam(sql, "t' or 1=1 --"), null);
+});
+
+/** Espera as execuções dos gatilhos (que seguem em segundo plano) terminarem. */
+async function settledRuns(triggerIds: string[]) {
+  for (let i = 0; i < 300; i += 1) {
+    const rows = await sql.query<{ status: string }>(`select status from xodo_runs where event_trigger_id = any($1::uuid[])`, [triggerIds]);
+    if (rows.length >= triggerIds.length && rows.every((r) => r.status !== "running")) return rows.map((r) => r.status);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("as execuções não terminaram");
+}
+
+test("gatilhos: mensagem comum de canal dispara os gatilhos de todas as agências do workspace, com o texto limpo e sem repetir", async () => {
+  const team = `T${rand()}`;
+  const agencia = await world({ team });
+  const cliente = await world({ team, channel: false });
+  const trigger = async (w: typeof agencia, filters: Record<string, unknown>) => {
+    const row = await one<{ id: string }>(
+      sql,
+      `insert into event_triggers (agency_id, xodo_id, kind, name, connection_id, filters) values ($1, $2, 'slack', 'CPL', $3, $4::jsonb) returning id`,
+      [w.agencyId, w.xodo.id, w.connectionId, JSON.stringify(filters)],
+    );
+    return row!.id;
+  };
+  const ids = [await trigger(agencia, {}), await trigger(cliente, { channel: "C0CLIENTE" })];
+  const model = new FakeModel([{ text: "Anotado." }, { text: "Anotado." }]);
+  const msg = agencia.envelope({
+    type: "message",
+    channel_type: "channel",
+    channel: "C0CLIENTE",
+    user: "U0ANA",
+    text: "subiu o CPL &amp; o CPA, veja <https://x.com/p|o painel>",
+  });
+  assert.deepEqual(await agencia.send(msg, model), { status: "trigger", fired: 2 });
+  assert.deepEqual(await settledRuns(ids), ["completed", "completed"]);
+  const deliveries = await sql.query<{ trigger_id: string; outcome: string; delivery_id: string }>(
+    `select trigger_id, outcome, delivery_id from event_deliveries where trigger_id = any($1::uuid[]) order by trigger_id`,
+    [ids],
+  );
+  assert.deepEqual(
+    deliveries.map((d) => [d.outcome, d.delivery_id]),
+    [
+      ["accepted", msg.event_id],
+      ["accepted", msg.event_id],
+    ],
+  );
+  for (const req of model.requests) assert.ok(JSON.stringify(req.messages).includes("subiu o CPL &amp; o CPA, veja o painel (https://x.com/p)"));
+  assert.equal(agencia.api.posts().length + cliente.api.posts().length, 0, "gatilho não conversa no canal");
+
+  // O Slack reenvia o mesmo evento: nenhum gatilho dispara de novo.
+  assert.deepEqual(await agencia.send(msg, model), { status: "trigger", fired: 0 });
+  // Pessoa de outro workspace (canal compartilhado) não dispara nada.
+  const outsider = agencia.envelope({ type: "message", channel_type: "channel", channel: "C0CLIENTE", user: "U0FORA", user_team: "T0OUTRA", text: "oi" });
+  assert.deepEqual(await agencia.send(outsider, model), { status: "ignored", detail: "pessoa de outro workspace" });
 });
 
 // ---------------------------------------------------------------------------
@@ -265,14 +349,15 @@ test("filtros: o próprio bot, outro workspace, workspace sem conexão e mensage
   assert.equal((await w.send(w.dm("oi", BOT), model)).status, "ignored", "o próprio bot");
   const stranger = w.envelope({ type: "app_mention", channel: "C0MIDIA", user: "U0FORA", user_team: "T0OUTRA", text: `<@${BOT}> oi` });
   assert.deepEqual(await w.send(stranger, model), { status: "ignored", detail: "pessoa de outro workspace" });
-  const elsewhere = { ...w.mention("oi"), team_id: `T${rand()}` };
+  const unknownTeam = `T${rand()}`;
+  const elsewhere = { ...w.mention("oi", { team: unknownTeam }), team_id: unknownTeam };
   assert.deepEqual(await w.send(elsewhere, model), { status: "ignored", detail: "workspace sem conexão ativa" });
 
   // Mensagem comum de canal vai para os gatilhos, sem conversa; com menção, quem atende é o app_mention.
   const plain = w.envelope({ type: "message", channel_type: "channel", channel: "C0MIDIA", user: "U0ANA", text: "subiu o CPL" });
   assert.equal((await w.send(plain, model)).status, "trigger");
   const mentioned = w.envelope({ type: "message", channel_type: "channel", channel: "C0MIDIA", user: "U0ANA", text: `<@${BOT}> oi` });
-  assert.deepEqual(await w.send(mentioned, model), { status: "ignored", detail: "menção" });
+  assert.deepEqual(await w.send(mentioned, model), { status: "ignored", detail: "menção ou o próprio bot" });
   assert.equal(w.api.posts().length, before, "nada foi respondido");
   assert.equal(model.requests.length, 0, "o xodó não foi chamado");
   const convs = await one<{ n: number }>(sql, `select count(*)::int as n from xodo_conversations where xodo_id = $1`, [w.xodo.id]);
@@ -323,6 +408,19 @@ test("envio: botões de aprovação em Block Kit, sem nome do xodó sem a permis
   assert.ok(sections.length > 2);
   assert.ok(sections.every((b) => b.text!.text.length <= 3000));
   assert.ok(!("thread_ts" in w.api.posts().at(-1)!));
+
+  // Muitos pedidos: no máximo 50 blocos por mensagem; o que não cabe vira o aviso.
+  const many = Array.from({ length: 30 }, (_, i) => ({ actionId: randomUUID(), summary: `pedido ${i + 1}`, index: i + 1 }));
+  const plenty = slackBlocks("Preciso de aprovação.", many);
+  assert.equal(plenty.filter((b) => b.type === "actions").length, 20);
+  assert.equal(plenty.length, 42);
+  assert.deepEqual(plenty.at(-1), { type: "context", elements: [{ type: "mrkdwn", text: 'Há mais 10 pedidos: decida no Spherum ou responda "aprovar N".' }] });
+  const heavy = slackBlocks("&".repeat(3900), many);
+  assert.ok(heavy.length <= 50, `${heavy.length} blocos`);
+  assert.ok(heavy.every((b) => b.type !== "section" || (b.text as { text: string }).text.length <= 3000));
+  assert.match(JSON.stringify(heavy.at(-1)), /Há mais \d+ pedidos/);
+  const ids = heavy.flatMap((b) => (typeof b.block_id === "string" ? [b.block_id] : []));
+  assert.equal(new Set(ids).size, ids.length, "block_id único");
 
   w.api.failPosts({ ok: false, error: "channel_not_found" });
   await assert.rejects(
@@ -409,6 +507,65 @@ test("botões: quem não está vinculado não decide; o clique aprova, o xodó c
     type: "context",
     elements: [{ type: "mrkdwn", text: "Este pedido já foi decidido." }],
   });
+});
+
+test("botões: negar, erro antes da decisão mantém os botões, erro depois avisa que foi decidido", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const call = (id: string, titulo: string) => ({ id, name: "avisar_equipe", input: { titulo, mensagem: "CPL subiu" } });
+  const model = new FakeModel([{ toolCalls: [call("t1", "Um"), call("t2", "Dois")] }, { text: "Certo." }]);
+  const deps = w.deps(model);
+  await w.send(w.mention("avisa a equipe duas vezes"), model);
+  const ask = w.api.posts().at(-1)!;
+  const pending = await sql.query<{ id: string }>(
+    `select id from xodo_actions where status = 'pending' and xodo_id = $1 order by call_index`,
+    [w.xodo.id],
+  );
+  assert.equal(pending.length, 2);
+  const click = (value: string, blocks: unknown) => ({
+    type: "block_actions",
+    team: { id: w.team, domain: "agencia" },
+    user: { id: "U0ANA", username: "ana", team_id: w.team },
+    response_url: `https://hooks.slack.com/actions/${w.team}/2/xyz`,
+    message: { type: "message", text: ask.text, blocks },
+    actions: [{ type: "button", action_id: value.endsWith(":1") ? "xodo_aprovar" : "xodo_negar", value }],
+  });
+  const statusOf = async (id: string) => (await one<{ status: string }>(sql, `select status from xodo_actions where id = $1`, [id]))!.status;
+
+  // O banco cai antes de decidir: só quem clicou vê o erro e os botões ficam.
+  const broken: ChannelDeps = { ...deps, sql: { query: sql.query, transaction: () => Promise.reject(new Error("banco fora")) } };
+  const failed = await handleSlackInteraction(broken, ADAPTERS, click(`ap:${pending[0].id}:0`, ask.blocks));
+  assert.equal(failed.status, "failed");
+  assert.deepEqual(w.api.hooks().at(-1), { response_type: "ephemeral", replace_original: false, text: failed.message });
+  assert.equal(await statusOf(pending[0].id), "pending");
+
+  // Negar o primeiro: os botões dele viram "Negado por", os do segundo continuam.
+  const denied = await handleSlackInteraction(deps, ADAPTERS, click(`ap:${pending[0].id}:0`, ask.blocks));
+  assert.equal(denied.status, "decided");
+  assert.equal(await statusOf(pending[0].id), "denied");
+  const afterDeny = w.api.hooks().at(-1)!.blocks as Record<string, unknown>[];
+  assert.deepEqual(afterDeny.filter((b) => b.type === "context"), [{ type: "context", elements: [{ type: "mrkdwn", text: "Negado por <@U0ANA>" }] }]);
+  assert.equal(afterDeny.filter((b) => b.type === "actions").length, 1);
+
+  // Aprovar o segundo, e o banco cai logo depois da decisão: a mensagem diz que foi aprovado.
+  const late: ChannelDeps = {
+    ...deps,
+    sql: {
+      query: (text, params) => (text.includes("select conversation_id from xodo_runs") ? Promise.reject(new Error("banco fora")) : sql.query(text, params)),
+      transaction: (fn) => sql.transaction(fn),
+    } as ChannelDeps["sql"],
+  };
+  const approved = await handleSlackInteraction(late, ADAPTERS, click(`ap:${pending[1].id}:1`, afterDeny));
+  assert.equal(approved.status, "failed");
+  assert.notEqual(await statusOf(pending[1].id), "pending");
+  const final = w.api.hooks().at(-1)!;
+  assert.equal(final.replace_original, true);
+  const finalBlocks = final.blocks as Record<string, unknown>[];
+  assert.ok(!finalBlocks.some((b) => b.type === "actions"), "sem botões");
+  assert.deepEqual(
+    finalBlocks.filter((b) => b.type === "context").map((b) => (b.elements as { text: string }[])[0].text),
+    ["Negado por <@U0ANA>", "Aprovado por <@U0ANA>, mas o xodó não conseguiu continuar. Veja no Spherum."],
+  );
 });
 
 test("o app pede chat:write.customize para o xodó falar com o próprio nome", () => {

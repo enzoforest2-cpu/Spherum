@@ -3,7 +3,7 @@ import { decideAction } from "../xodos/actions";
 import { dayIn } from "../xodos/budget";
 import { one, parseJson, type Sql } from "../xodos/db";
 import { continueRun, resumeRun, startRun, XodoError } from "../xodos/runner";
-import { flushOutbox } from "./outbox";
+import { flushOutbox, pendingInThread } from "./outbox";
 import { extractPairingCode, identityFor, linkIdentity, redeemPairingCode } from "./pairing";
 import {
   CHANNEL_LABEL,
@@ -95,15 +95,17 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
   const text = msg.text.trim();
   if (!text) return { status: "ignored" };
 
+  // Um código válido vincula (ou revincula a outra pessoa da equipe) antes de qualquer coisa.
+  const code = extractPairingCode(text);
+  const pairedUser = code ? await redeemPairingCode(sql, msg.agencyId, code, now) : null;
+  if (pairedUser) {
+    await linkIdentity(sql, { agencyId: msg.agencyId, provider: channel, externalUser: msg.externalUser, userId: pairedUser, displayName: msg.displayName });
+    await sendDirect(deps, adapters, msg, "Pronto, conta vinculada! Agora é só me chamar por aqui.");
+    return { status: "paired" };
+  }
+
   const identity = await identityFor(sql, msg.agencyId, channel, msg.externalUser);
   if (!identity) {
-    const code = extractPairingCode(text);
-    const userId = code ? await redeemPairingCode(sql, msg.agencyId, code, now) : null;
-    if (userId) {
-      await linkIdentity(sql, { agencyId: msg.agencyId, provider: channel, externalUser: msg.externalUser, userId, displayName: msg.displayName });
-      await sendDirect(deps, adapters, msg, "Pronto, conta vinculada! Agora é só me chamar por aqui.");
-      return { status: "paired" };
-    }
     // Explica uma vez por dia, e só em conversa direta: em canal com várias pessoas, silêncio.
     if (msg.direct && !(await seenBefore(sql, `dica:${msg.provider}:${msg.connectionId}:${msg.externalUser}`, dayIn("UTC", now)))) {
       await sendDirect(deps, adapters, msg, HINT);
@@ -113,14 +115,7 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
 
   const decision = parseDecision(text);
   if (decision) {
-    const pending = await sql.query<{ id: string }>(
-      `select a.id from xodo_actions a
-         join xodo_runs r on r.id = a.run_id
-         join xodo_conversations c on c.id = r.conversation_id
-        where c.connection_id = $1 and c.external_key = $2 and a.agency_id = $3 and a.status = 'pending'
-        order by a.created_at, a.call_index`,
-      [msg.connectionId, msg.conversationKey, msg.agencyId],
-    );
+    const pending = await pendingInThread(sql, msg.connectionId, msg.conversationKey, msg.agencyId);
     if (pending.length) {
       if (decision.index === null && pending.length > 1) {
         await sendDirect(deps, adapters, msg, `Há ${pending.length} pedidos esperando. Diga qual: "aprovar 1", "negar 2"…`);
@@ -135,7 +130,7 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
         provider: msg.provider,
         agencyId: msg.agencyId,
         externalUser: msg.externalUser,
-        actionId: chosen.id,
+        actionId: chosen,
         approve: decision.approve,
       });
       if (!outcome.ok) await sendDirect(deps, adapters, msg, outcome.message);
@@ -153,8 +148,7 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
     sql,
     `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, title, metadata)
      values ($1, $2, $3, $4, $5, $6, $7::jsonb)
-     on conflict (xodo_id, channel, external_key) do update
-       set connection_id = excluded.connection_id, metadata = excluded.metadata
+     on conflict (xodo_id, connection_id, external_key) do update set metadata = excluded.metadata
      returning id`,
     [msg.agencyId, xodo.id, channel, msg.connectionId, msg.conversationKey, msg.displayName ?? null, JSON.stringify(msg.reply)],
   );

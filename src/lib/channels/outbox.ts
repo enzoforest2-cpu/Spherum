@@ -17,7 +17,9 @@ export function chunkText(text: string, max: number): string[] {
   while (rest.length > max) {
     const window = rest.slice(0, max);
     const cut = Math.max(window.lastIndexOf("\n\n"), window.lastIndexOf("\n"), window.lastIndexOf(" "));
-    const at = cut > max * 0.5 ? cut : max;
+    let at = cut > max * 0.5 ? cut : max;
+    // Não parte um emoji (par substituto) ao meio.
+    if (at === max && /[\uD800-\uDBFF]/.test(rest[at - 1])) at -= 1;
     out.push(rest.slice(0, at).trimEnd());
     rest = rest.slice(at).trimStart();
   }
@@ -37,19 +39,51 @@ type OutboxRow = {
 type ConversationInfo = {
   id: string;
   connection_id: string | null;
+  external_key: string;
   metadata: unknown;
   xodo_name: string;
   provider: string | null;
 };
 
-/** Pedidos que ainda esperam decisão (um pedido decidido no app não vira botão no canal). */
-async function stillPending(sql: Sql, approvals: { action_id: string; summary: string }[]): Promise<OutboundApproval[]> {
-  if (!approvals.length) return [];
-  const rows = await sql.query<{ id: string }>(`select id from xodo_actions where id = any($1::uuid[]) and status = 'pending'`, [
-    approvals.map((a) => a.action_id),
-  ]);
-  const open = new Set(rows.map((r) => r.id));
-  return approvals.map((a, i) => ({ actionId: a.action_id, summary: a.summary, index: i + 1 })).filter((a) => open.has(a.actionId));
+/**
+ * Pedidos pendentes de uma conversa do canal (de todos os xodós naquela thread ou número), na
+ * ordem que vale para "aprovar N". A fila, os botões e o núcleo usam esta mesma numeração.
+ */
+export async function pendingInThread(sql: Sql, connectionId: string, externalKey: string, agencyId: string): Promise<string[]> {
+  const rows = await sql.query<{ id: string }>(
+    `select a.id from xodo_actions a
+       join xodo_runs r on r.id = a.run_id
+       join xodo_conversations c on c.id = r.conversation_id
+      where c.connection_id = $1 and c.external_key = $2 and a.agency_id = $3 and a.status = 'pending'
+      order by a.created_at, a.call_index`,
+    [connectionId, externalKey, agencyId],
+  );
+  return rows.map((r) => r.id);
+}
+
+/** Pedidos que ainda esperam decisão (um pedido decidido no app não vira botão no canal), com o número da conversa. */
+async function stillPending(
+  sql: Sql,
+  conversation: ConversationInfo,
+  agencyId: string,
+  approvals: { action_id: string; summary: string }[],
+): Promise<{ approvals: OutboundApproval[]; total: number }> {
+  if (!approvals.length || !conversation.connection_id) return { approvals: [], total: 0 };
+  const order = await pendingInThread(sql, conversation.connection_id, conversation.external_key, agencyId);
+  const position = new Map(order.map((id, i) => [id, i + 1]));
+  return {
+    approvals: approvals.flatMap((a) => {
+      const index = position.get(a.action_id);
+      return index ? [{ actionId: a.action_id, summary: a.summary, index }] : [];
+    }),
+    total: order.length,
+  };
+}
+
+/** Texto do pedido de aprovação com a numeração da conversa (a mesma que "aprovar N" entende). */
+function approvalText(approvals: OutboundApproval[], total: number): string {
+  const list = total <= 1 ? `• ${approvals[0].summary}` : approvals.map((a) => `${a.index}. ${a.summary}`).join("\n");
+  return `Preciso de aprovação para:\n${list}`;
 }
 
 export async function flushOutbox(
@@ -76,7 +110,7 @@ export async function flushOutbox(
     try {
       const conversation = await one<ConversationInfo>(
         sql,
-        `select c.id, c.connection_id, c.metadata, x.name as xodo_name, ic.provider
+        `select c.id, c.connection_id, c.external_key, c.metadata, x.name as xodo_name, ic.provider
            from xodo_conversations c join xodos x on x.id = c.xodo_id
            left join integration_connections ic on ic.id = c.connection_id
           where c.id = $1`,
@@ -85,9 +119,18 @@ export async function flushOutbox(
       if (!conversation?.connection_id || !conversation.provider) throw new Error("A conversa ficou sem conexão.");
       const adapter = adapters[conversation.provider as keyof Adapters];
       if (!adapter) throw new Error(`Canal ${conversation.provider} não está disponível.`);
+      const asked = parseJson<{ action_id: string; summary: string }[]>(row.approvals) ?? [];
+      const { approvals, total } = await stillPending(sql, conversation, row.agency_id, asked);
+      if (asked.length && !approvals.length) {
+        // Tudo já foi decidido no app: não há o que pedir no canal.
+        await sql.query(`update channel_outbox set status = 'sent', sent_at = $2::timestamptz, error = 'Já decidido.' where id = $1`, [
+          row.id,
+          now.toISOString(),
+        ]);
+        continue;
+      }
       const a = await access(integrations, row.agency_id, conversation.connection_id);
-      const approvals = await stillPending(sql, parseJson<{ action_id: string; summary: string }[]>(row.approvals) ?? []);
-      const chunks = chunkText(row.text, adapter.maxChars);
+      const chunks = chunkText(approvals.length ? approvalText(approvals, total) : row.text, adapter.maxChars);
       for (const [i, text] of chunks.entries()) {
         await adapter.send(
           { deps: integrations, access: a, target: parseJson<Record<string, unknown>>(conversation.metadata) ?? {}, xodoName: conversation.xodo_name },
@@ -123,5 +166,6 @@ export async function cleanupChannels(sql: Sql, now: Date) {
   );
   await sql.query(`delete from channel_events where received_at < $1::timestamptz`, [new Date(now.getTime() - 7 * 86_400_000).toISOString()]);
   await sql.query(`delete from channel_pairing_codes where expires_at < $1::timestamptz`, [now.toISOString()]);
+  await sql.query(`delete from event_deliveries where received_at < $1::timestamptz`, [new Date(now.getTime() - 30 * 86_400_000).toISOString()]);
   return { stuckDeliveries: stuck.length };
 }

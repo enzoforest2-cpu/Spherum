@@ -40,8 +40,6 @@ const TOKEN = /^\d+:[A-Za-z0-9_-]{30,}$/;
 const APPROVAL_DATA = /^ap:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):([01])$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIMEOUT_MS = 20_000;
-/** callback_data aceita até 64 bytes; "ap:<uuid>:1" tem 41. */
-const CALLBACK_DATA_MAX_BYTES = 64;
 /** Texto do aviso de answerCallbackQuery. */
 const ANSWER_MAX = 200;
 /** O Telegram desiste de esperar a resposta ao botão depois de alguns segundos. */
@@ -79,7 +77,8 @@ type ApiResponse = { ok?: unknown; result?: unknown; description?: unknown; erro
 /** Erros do Telegram em mensagens claras; o token nunca entra no texto. */
 function telegramError(status: number, body: ApiResponse | null, scrub: (text: string) => string): IntegrationError {
   const code = typeof body?.error_code === "number" ? body.error_code : status;
-  const said = scrub(clip(typeof body?.description === "string" ? body.description : `HTTP ${status}`, 200));
+  // Scrub antes de cortar: um corte no meio do token deixaria um pedaço dele no texto.
+  const said = clip(scrub(typeof body?.description === "string" ? body.description : `HTTP ${status}`), 200);
   // 404 é o que o Telegram responde para token que não existe.
   if (code === 401 || code === 404) {
     return new IntegrationError("O Telegram recusou o token do bot (revogado ou trocado no @BotFather).", 401, true);
@@ -189,31 +188,54 @@ export async function createTelegramConnection(
 
   const name = cleanName(me.first_name);
   const username = me.username ? cleanName(me.username) : null;
+  const account = String(me.id);
   const webhookSecret = randomToken();
-  const id = await saveConnection(deps, {
-    agencyId,
-    provider: PROVIDER,
-    label: input.label ?? clip(`Telegram ${username ? `@${username}` : name}`, 60),
-    account: String(me.id),
-    secret: { apiKey: token, extra: { webhook_secret: webhookSecret } },
-    metadata: { bot_id: me.id, username, name },
-    createdBy,
-  });
-
-  try {
-    await telegramCall(deps.fetch, token, "setWebhook", {
-      url: telegramWebhookUrl(deps.appUrl, id),
-      secret_token: webhookSecret,
-      allowed_updates: ["message", "callback_query"],
-      drop_pending_updates: true,
+  const save = () =>
+    saveConnection(deps, {
+      agencyId,
+      provider: PROVIDER,
+      label: input.label ?? clip(`Telegram ${username ? `@${username}` : name}`, 60),
+      account,
+      secret: { apiKey: token, extra: { webhook_secret: webhookSecret } },
+      metadata: { bot_id: me.id, username, name },
+      createdBy,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await deps.sql.query(`update integration_connections set status = 'error', last_error = $2, updated_at = now() where id = $1`, [
-      id,
-      clip(message, 500),
-    ]);
-    throw new IntegrationError(`O bot foi conferido, mas o Telegram não aceitou o endereço do webhook: ${message}`, 502);
+  const pointWebhook = async (connectionId: string) => {
+    try {
+      await telegramCall(deps.fetch, token, "setWebhook", {
+        url: telegramWebhookUrl(deps.appUrl, connectionId),
+        secret_token: webhookSecret,
+        allowed_updates: ["message", "callback_query"],
+        drop_pending_updates: true,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new IntegrationError(`O bot foi conferido, mas o Telegram não aceitou o endereço do webhook: ${message}`, 502);
+    }
+  };
+
+  // Reconexão: o webhook muda antes de gravar o segredo novo. Se o Telegram recusar, a conexão
+  // que já funcionava continua com o segredo que ele ainda manda.
+  const previous = await one<{ id: string }>(
+    deps.sql,
+    `select id from integration_connections where agency_id = $1 and provider = $2 and external_account = $3 and status <> 'revoked'`,
+    [agencyId, PROVIDER, account],
+  );
+  let id: string;
+  if (previous) {
+    await pointWebhook(previous.id);
+    id = await save();
+  } else {
+    id = await save();
+    try {
+      await pointWebhook(id);
+    } catch (error) {
+      await deps.sql.query(`update integration_connections set status = 'error', last_error = $2, updated_at = now() where id = $1`, [
+        id,
+        clip(error instanceof Error ? error.message : String(error), 500),
+      ]);
+      throw error;
+    }
   }
 
   // O webhook é um só por bot: outra conexão com o mesmo bot deixou de receber mensagens.
@@ -221,7 +243,7 @@ export async function createTelegramConnection(
     `update integration_connections set status = 'error', last_error = $3, updated_at = now()
       where provider = $4 and external_account = $1 and id <> $2 and status <> 'revoked'`,
     [
-      String(me.id),
+      account,
       id,
       "Este bot foi conectado de novo em outro lugar do Spherum e parou de mandar mensagens para cá. Se não foi você, revogue o token no @BotFather e conecte de novo.",
       PROVIDER,
@@ -307,7 +329,11 @@ const callbackSchema = z.object({
   id: z.string().min(1).max(200),
   from: userSchema,
   data: z.string().max(256).optional(),
-  message: z.object({ message_id: z.number().int(), chat: chatSchema, reply_markup: z.unknown().optional() }).optional(),
+  // Mensagem estranha não impede a decisão nem a resposta ao toque: só fica sem tirar os botões.
+  message: z
+    .object({ message_id: z.number().int(), chat: chatSchema, reply_markup: z.unknown().optional() })
+    .optional()
+    .catch(undefined),
 });
 const updateSchema = z.object({ update_id: z.number().int().nonnegative() });
 
@@ -540,7 +566,10 @@ export async function handleTelegramCallback(
 
 const targetSchema = z.object({ chat_id: z.union([z.number().int(), z.string().regex(/^-?\d{1,20}$/)]) });
 
-/** Uma linha por pedido: [Aprovar N] [Negar N] (sem número quando há um pedido só). */
+/**
+ * Uma linha por pedido: [Aprovar N] [Negar N] (sem número quando há um pedido só). Só ids no
+ * formato UUID, o que garante o callback_data em 41 bytes (o limite é 64).
+ */
 export function approvalKeyboard(approvals: OutboundApproval[]): InlineButton[][] {
   const numbered = approvals.length > 1 || approvals.some((a) => a.index > 1);
   return approvals
@@ -552,20 +581,20 @@ export function approvalKeyboard(approvals: OutboundApproval[]): InlineButton[][
         { text: `Aprovar${n}`, callback_data: `ap:${a.actionId.toLowerCase()}:1` },
         { text: `Negar${n}`, callback_data: `ap:${a.actionId.toLowerCase()}:0` },
       ];
-    })
-    .filter((row) => row.every((b) => Buffer.byteLength(b.callback_data, "utf8") <= CALLBACK_DATA_MAX_BYTES));
+    });
 }
 
 async function sendMessage(ctx: SendContext, payload: Record<string, unknown>) {
   try {
     await telegramCall(ctx.deps.fetch, ctx.access.accessToken, "sendMessage", payload);
   } catch (error) {
-    // Token recusado: marca a conexão, para o app pedir o token novo em vez de tentar para sempre.
+    // Token recusado: marca a conexão, para o app pedir o token novo em vez de tentar para sempre
+    // (uma desconectada no meio do caminho continua desconectada).
     if (error instanceof IntegrationError && error.reauth) {
-      await ctx.deps.sql.query(`update integration_connections set status = 'expired', last_error = $2, updated_at = now() where id = $1`, [
-        ctx.access.connection.id,
-        error.message,
-      ]);
+      await ctx.deps.sql.query(
+        `update integration_connections set status = 'expired', last_error = $2, updated_at = now() where id = $1 and status <> 'revoked'`,
+        [ctx.access.connection.id, error.message],
+      );
     }
     throw error;
   }
@@ -583,9 +612,9 @@ export const telegramAdapter: ChannelAdapter = {
     await sendMessage(ctx, {
       chat_id: target.data.chat_id,
       text,
-      // link_preview_options é o nome atual; disable_web_page_preview fica pela compatibilidade.
+      // Sem prévia de links. É o substituto de disable_web_page_preview (Bot API 7.0); os dois juntos
+      // são tratados como exclusivos pelas bibliotecas, então vai só o atual.
       link_preview_options: { is_disabled: true },
-      disable_web_page_preview: true,
       ...(keyboard.length ? { reply_markup: { inline_keyboard: keyboard } } : {}),
     });
   },

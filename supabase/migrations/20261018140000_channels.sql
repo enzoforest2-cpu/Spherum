@@ -22,7 +22,8 @@ create table public.xodo_conversations (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   last_message_at timestamptz not null default now(),
-  unique (xodo_id, channel, external_key)
+  -- Por conexão: o mesmo número no WhatsApp oficial e no QR são conversas diferentes.
+  unique (xodo_id, connection_id, external_key)
 );
 create index xodo_conversations_agency on public.xodo_conversations (agency_id, last_message_at desc);
 

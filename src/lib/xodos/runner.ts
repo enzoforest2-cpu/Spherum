@@ -672,7 +672,8 @@ async function effectiveXodo(sql: Sql, run: RunRow, xodo: Xodo): Promise<Xodo> {
   const trigger = run.event_trigger_id
     ? await one<{ autonomy_cap: Autonomy }>(sql, `select autonomy_cap from event_triggers where id = $1`, [run.event_trigger_id])
     : null;
-  const cap = trigger?.autonomy_cap ?? "pergunta_no_que_importa";
+  // Gatilho apagado no meio do caminho: na dúvida, a mais cautelosa.
+  const cap = trigger?.autonomy_cap ?? "sempre_pergunta";
   const autonomy = STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(xodo.autonomy) ? cap : xodo.autonomy;
   return { ...xodo, autonomy };
 }

@@ -5,7 +5,7 @@ import { one, parseJson, type Sql } from "../xodos/db";
 import { decideFromChannel, receiveMessage } from "./core";
 import { chunkText } from "./outbox";
 import { extractPairingCode, identityFor } from "./pairing";
-import { readBody, verifySlackSignature } from "./security";
+import { readBody, sha256Hex, verifySlackSignature } from "./security";
 import { fireSlackTriggers } from "./triggers";
 import {
   ChannelError,
@@ -33,7 +33,8 @@ import {
 const SLACK_API = "https://slack.com/api";
 /** Limite de texto de um bloco section do Block Kit. */
 const SECTION_MAX = 3000;
-/** Cada pedido usa 2 blocos e uma mensagem aceita 50; o resto fica para o app ou "aprovar N". */
+/** Blocos por mensagem. Cada pedido usa 2; o que não couber fica para o app ou "aprovar N". */
+const MAX_BLOCKS = 50;
 const MAX_BUTTONS = 20;
 const SLACK_ID = /^[A-Z0-9]{2,40}$/;
 const SLACK_TS = /^\d{1,12}\.\d{1,9}$/;
@@ -61,7 +62,7 @@ export function fromSlackText(text: string, botUserId: string | null): string {
   let out = text;
   if (botUserId) out = out.split(new RegExp(`<@${botUserId}(?:\\|[^>]*)?>`, "g")).join(" ");
   return out
-    .replace(/<#[A-Z0-9]+\|([^>]*)>/g, "#$1")
+    .replace(/<#([A-Z0-9]+)(?:\|([^>]*))?>/g, (_, id: string, name?: string) => `#${name || id}`)
     .replace(/<mailto:[^|>]+\|([^>]+)>/g, "$1")
     .replace(/<(https?:[^|>]+)\|([^>]+)>/g, "$2 ($1)")
     .replace(/<(https?:[^>]+)>/g, "$1")
@@ -96,7 +97,9 @@ export function slackBlocks(text: string, approvals: OutboundApproval[]): Record
     block_id: `xodo_txt_${i}`,
     text: { type: "mrkdwn", text: md },
   }));
-  const shown = approvals.slice(0, MAX_BUTTONS);
+  // Sobra um bloco para o aviso dos pedidos que não couberam.
+  const room = Math.max(0, Math.floor((MAX_BLOCKS - 1 - blocks.length) / 2));
+  const shown = approvals.slice(0, Math.min(MAX_BUTTONS, room));
   for (const a of shown) {
     blocks.push({
       type: "section",
@@ -173,26 +176,43 @@ export async function readSlackRequest(request: Request, signingSecret: string |
 
 export type SlackConnection = { id: string; agencyId: string; teamId: string; botUserId: string | null; metadata: Record<string, unknown> };
 
+/** Pistas de quem deve atender: quem escreveu, em que canal e o código de pareamento, se veio um. */
+export type TeamHint = { user?: string; channel?: string; code?: string | null };
+
 /**
- * Conexão Slack ativa de um workspace. O app do Spherum é um só, então o mesmo workspace pode
- * ter sido conectado por mais de uma agência (ex.: agência e cliente que dividem o Slack).
- * Nesse caso vale a que escolheu um xodó para atender no Slack (xodo_channels) e, entre
- * essas, a atualizada por último; uma conexão sem xodó não teria quem responder.
+ * Conexões Slack ativas de um workspace, da preferida para a última. O app do Spherum é um só,
+ * então o mesmo workspace pode ter sido conectado por mais de uma agência (ex.: agência e
+ * cliente que dividem o Slack). A conversa fica com uma só, nesta ordem: a agência do código de
+ * pareamento que veio na mensagem; a agência em que quem escreve já está vinculado; a que tem
+ * xodó ativo para aquele canal; a que tem xodó para o workspace todo (scope '*'); a atualizada
+ * por último. Uma conexão sem xodó não teria quem responder.
  */
-export async function slackConnectionForTeam(sql: Sql, teamId: string): Promise<SlackConnection | null> {
-  if (!SLACK_ID.test(teamId)) return null;
-  const row = await one<{ id: string; agency_id: string; metadata: unknown }>(
-    sql,
+async function teamConnections(sql: Sql, teamId: string, hint: TeamHint = {}): Promise<SlackConnection[]> {
+  if (!SLACK_ID.test(teamId)) return [];
+  const rows = await sql.query<{ id: string; agency_id: string; metadata: unknown }>(
     `select c.id, c.agency_id, c.metadata from integration_connections c
       where c.provider = 'slack' and c.external_account = $1 and c.status in ('active', 'error')
-      order by exists (select 1 from xodo_channels x where x.connection_id = c.id and x.enabled) desc, c.updated_at desc
-      limit 1`,
-    [teamId],
+      order by
+        exists (select 1 from channel_pairing_codes p where p.agency_id = c.agency_id and p.code_hash = $2) desc,
+        exists (select 1 from channel_identities i
+                 where i.agency_id = c.agency_id and i.provider = 'slack' and i.external_user = $3) desc,
+        exists (select 1 from xodo_channels x join xodos o on o.id = x.xodo_id
+                 where x.connection_id = c.id and x.enabled and o.status = 'active' and x.scope = $4) desc,
+        exists (select 1 from xodo_channels x join xodos o on o.id = x.xodo_id
+                 where x.connection_id = c.id and x.enabled and o.status = 'active' and x.scope = '*') desc,
+        c.updated_at desc`,
+    [teamId, hint.code ? sha256Hex(hint.code) : null, hint.user ? `${teamId}:${hint.user}` : null, hint.channel ?? "*"],
   );
-  if (!row) return null;
-  const metadata = parseJson<Record<string, unknown>>(row.metadata) ?? {};
-  const bot = typeof metadata.bot_user_id === "string" && SLACK_ID.test(metadata.bot_user_id) ? metadata.bot_user_id : null;
-  return { id: row.id, agencyId: row.agency_id, teamId, botUserId: bot, metadata };
+  return rows.map((row) => {
+    const metadata = parseJson<Record<string, unknown>>(row.metadata) ?? {};
+    const bot = typeof metadata.bot_user_id === "string" && SLACK_ID.test(metadata.bot_user_id) ? metadata.bot_user_id : null;
+    return { id: row.id, agencyId: row.agency_id, teamId, botUserId: bot, metadata };
+  });
+}
+
+/** Conexão que atende uma mensagem do workspace (a ordem de preferência está em teamConnections). */
+export async function slackConnectionForTeam(sql: Sql, teamId: string, hint: TeamHint = {}): Promise<SlackConnection | null> {
+  return (await teamConnections(sql, teamId, hint))[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -301,38 +321,50 @@ async function displayNameOf(deps: ChannelDeps, conn: SlackConnection, user: str
   }
 }
 
+/** Menções a pessoas ou ao bot (<@U123> ou <@U123|nome>). */
+const USER_MENTION = /<@[A-Z0-9]+(?:\|[^>]*)?>/g;
+
 /**
  * Leva um evento traduzido adiante: menção e mensagem direta viram conversa com o xodó
  * (receiveMessage, que também descarta repetições pelo event_id); mensagem comum em canal
- * dispara os gatilhos.
+ * dispara os gatilhos de todas as agências que conectaram o workspace.
  */
 export async function handleSlackEvent(deps: ChannelDeps, adapters: Adapters, event: SlackEvent): Promise<SlackEventResult> {
   if (event.kind === "url_verification" || event.kind === "ignored") return { status: "ignored" };
-  const conn = await slackConnectionForTeam(deps.sql, event.teamId);
-  if (!conn) return { status: "ignored", detail: "workspace sem conexão ativa" };
-  if ((event.userTeam ?? event.teamId) !== conn.teamId) return { status: "ignored", detail: "pessoa de outro workspace" };
-  if (conn.botUserId && event.user === conn.botUserId) return { status: "ignored", detail: "o próprio bot" };
+  // Em canal compartilhado com outra empresa, quem é de fora não conversa nem dispara gatilho.
+  if (event.userTeam && event.userTeam !== event.teamId) return { status: "ignored", detail: "pessoa de outro workspace" };
 
   if (event.kind === "channel") {
-    // A menção ao bot também chega como app_mention, que é quem responde.
-    if (conn.botUserId && event.text.includes(`<@${conn.botUserId}`)) return { status: "ignored", detail: "menção" };
-    const fired = await fireSlackTriggers(deps, {
-      agencyId: conn.agencyId,
-      connectionId: conn.id,
-      channel: event.channel,
-      user: event.user,
-      text: fromSlackText(event.text, conn.botUserId),
-      ts: event.ts,
-      eventId: event.eventId,
-    });
+    const conns = await teamConnections(deps.sql, event.teamId);
+    if (!conns.length) return { status: "ignored", detail: "workspace sem conexão ativa" };
+    // O bot não dispara gatilho; a menção a ele também chega como app_mention, que é quem responde.
+    const targets = conns.filter((c) => !c.botUserId || (event.user !== c.botUserId && !event.text.includes(`<@${c.botUserId}`)));
+    if (!targets.length) return { status: "ignored", detail: "menção ou o próprio bot" };
+    let fired = 0;
+    for (const conn of targets) {
+      fired += await fireSlackTriggers(deps, {
+        agencyId: conn.agencyId,
+        connectionId: conn.id,
+        channel: event.channel,
+        user: event.user,
+        text: fromSlackText(event.text, conn.botUserId),
+        ts: event.ts,
+        eventId: event.eventId,
+      });
+    }
     return { status: "trigger", fired };
   }
+
+  const mention = event.kind === "mention";
+  const code = extractPairingCode(event.text.replace(USER_MENTION, " "));
+  const conn = await slackConnectionForTeam(deps.sql, event.teamId, { user: event.user, channel: mention ? event.channel : undefined, code });
+  if (!conn) return { status: "ignored", detail: "workspace sem conexão ativa" };
+  if (conn.botUserId && event.user === conn.botUserId) return { status: "ignored", detail: "o próprio bot" };
 
   const text = fromSlackText(event.text, conn.botUserId);
   const externalUser = `${conn.teamId}:${event.user}`;
   const identity = await identityFor(deps.sql, conn.agencyId, "slack", externalUser);
-  const displayName = identity?.displayName ?? (extractPairingCode(text) ? await displayNameOf(deps, conn, event.user) : null);
-  const mention = event.kind === "mention";
+  const displayName = identity?.displayName ?? (code ? await displayNameOf(deps, conn, event.user) : null);
   const thread = event.threadTs ?? event.ts;
   const msg: InboundMessage = {
     provider: "slack",
@@ -417,28 +449,28 @@ const STATUS_NOTE: Record<string, string> = {
   expired: "Expirou.",
 };
 
+/** Estado de cada pedido no banco (só os da agência). */
+async function actionStatuses(sql: Sql, agencyId: string, ids: string[]): Promise<Map<string, string>> {
+  const rows = await sql.query<{ id: string; status: string }>(`select id, status from xodo_actions where agency_id = $1 and id = any($2::uuid[])`, [
+    agencyId,
+    [...new Set(ids)],
+  ]);
+  return new Map(rows.map((r) => [r.id, r.status]));
+}
+
 /**
  * Mensagem atualizada depois da decisão: os botões do pedido decidido viram o resultado e os
  * dos outros pedidos seguem o estado do banco (assim duas decisões quase juntas não trazem de
  * volta botões de um pedido que já foi decidido).
  */
-async function settledMessage(
-  sql: Sql,
-  agencyId: string,
+function settledMessage(
   message: { text?: string | null; blocks?: unknown[] | null } | null | undefined,
+  status: Map<string, string>,
   clicked: string,
   label: string,
-): Promise<Record<string, unknown>> {
+): Record<string, unknown> {
   const blocks = message?.blocks ?? [];
   if (!blocks.length) return { replace_original: true, text: [message?.text, label].filter(Boolean).join("\n\n") };
-  const ids = blocks.map(buttonsOf).filter((id): id is string => Boolean(id));
-  const rows = ids.length
-    ? await sql.query<{ id: string; status: string }>(`select id, status from xodo_actions where agency_id = $1 and id = any($2::uuid[])`, [
-        agencyId,
-        ids,
-      ])
-    : [];
-  const status = new Map(rows.map((r) => [r.id, r.status]));
   const next = blocks.map((block) => {
     const id = buttonsOf(block);
     if (!id) return block;
@@ -506,7 +538,8 @@ export async function handleSlackInteraction(deps: ChannelDeps, adapters: Adapte
     return { status: "denied", message: NOT_LINKED };
   }
 
-  let outcome: { ok: boolean; message: string };
+  // Nulo: a decisão (ou a continuação do xodó depois dela) quebrou no meio.
+  let outcome: { ok: boolean; message: string } | null;
   try {
     outcome = await decideFromChannel(deps, adapters, {
       provider: "slack",
@@ -517,9 +550,18 @@ export async function handleSlackInteraction(deps: ChannelDeps, adapters: Adapte
     });
   } catch (error) {
     console.error("[canais] slack: decisão pelo botão falhou", error instanceof Error ? error.message : error);
-    outcome = { ok: false, message: "Não consegui terminar agora. Veja o pedido no Spherum." };
+    outcome = null;
   }
-  const label = outcome.ok ? `${choice.approve ? "Aprovado" : "Negado"} por <@${p.user.id}>` : escapeMrkdwn(outcome.message);
-  await respond(http, p.response_url, await settledMessage(deps.sql, agencyId, p.message, choice.actionId, label));
-  return { status: outcome.ok ? "decided" : "failed", message: outcome.message };
+  const blockIds = (p.message?.blocks ?? []).map(buttonsOf).filter((id): id is string => Boolean(id));
+  const status = await actionStatuses(deps.sql, agencyId, [choice.actionId, ...blockIds]);
+  if (!outcome?.ok && status.get(choice.actionId) === "pending") {
+    // Nada foi decidido: avisa só quem clicou e os botões ficam para tentar de novo.
+    const message = outcome?.message ?? "Não consegui decidir agora. Tente de novo ou decida no Spherum.";
+    await respond(http, p.response_url, ephemeral(escapeMrkdwn(message)));
+    return { status: "failed", message };
+  }
+  const who = `${choice.approve ? "Aprovado" : "Negado"} por <@${p.user.id}>`;
+  const label = !outcome ? `${who}, mas o xodó não conseguiu continuar. Veja no Spherum.` : outcome.ok ? who : escapeMrkdwn(outcome.message);
+  await respond(http, p.response_url, settledMessage(p.message, status, choice.actionId, label));
+  return outcome?.ok ? { status: "decided", message: outcome.message } : { status: "failed", message: outcome?.message ?? label };
 }

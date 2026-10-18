@@ -1,5 +1,5 @@
 import type { Access, IntegrationDeps } from "../integrations/store";
-import type { EngineDeps } from "../xodos/runner";
+import { XodoError, type EngineDeps } from "../xodos/runner";
 
 /**
  * Tipos dos canais de mensagens dos xodós (Slack, WhatsApp e Telegram).
@@ -86,11 +86,5 @@ export type ChannelAdapter = {
 
 export type Adapters = Partial<Record<ChannelProvider, ChannelAdapter>>;
 
-export class ChannelError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
-    super(message);
-  }
-}
+/** Erro esperado de um canal; as rotas respondem com o status dele. */
+export class ChannelError extends XodoError {}

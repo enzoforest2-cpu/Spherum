@@ -4,6 +4,8 @@ import { serverIntegrations } from "@/lib/integrations";
 import { serverSql } from "@/lib/xodos/db";
 import { CAN_MANAGE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 
+export const maxDuration = 60;
+
 /** GET /api/channels/connections/:id/status?agency_id=…  situação do WhatsApp por QR Code (e um QR novo, se precisar). */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

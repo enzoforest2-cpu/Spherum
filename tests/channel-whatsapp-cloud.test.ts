@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 import { ZodError } from "zod";
+import { flushOutbox } from "../src/lib/channels/outbox";
 import { createPairingCode } from "../src/lib/channels/pairing";
 import { hmacHex, verifyHubSignature } from "../src/lib/channels/security";
 import { ChannelError, type ChannelDeps } from "../src/lib/channels/types";
@@ -118,16 +119,17 @@ async function world(opts: { autonomy?: string } = {}) {
   const xodo = await seedXodo(sql, agencyId, { autonomy: opts.autonomy ?? "pergunta_no_que_importa" });
   await sql.query(`insert into xodo_channels (agency_id, xodo_id, connection_id) values ($1, $2, $3)`, [agencyId, xodo.id, created.id]);
   const hook = (await loadWhatsappCloudWebhook(integrations, created.id))!;
-  const deps = (model: FakeModel): ChannelDeps => ({
-    ...testDeps(sql, model, clock),
+  const deps = (model: FakeModel, db: Sql = sql): ChannelDeps => ({
+    ...testDeps(db, model, clock),
     integrations: { masterKey: MASTER, fetch: meta.fn, appUrl: APP_URL },
   });
-  const deliver = (payload: unknown, model = new FakeModel([])) => handleWhatsappCloud(deps(model), { whatsapp_cloud: whatsappCloudAdapter }, hook, payload);
+  const deliver = (payload: unknown, model = new FakeModel([]), db: Sql = sql) =>
+    handleWhatsappCloud(deps(model, db), { whatsapp_cloud: whatsappCloudAdapter }, hook, payload);
   const pair = async () => {
     const { code } = await createPairingCode(sql, agencyId, ownerId, clock.now());
     return deliver(webhook([textMsg(code)]));
   };
-  return { meta, agencyId, ownerId, clock, integrations, created, xodo, hook, deliver, pair };
+  return { meta, agencyId, ownerId, clock, integrations, created, xodo, hook, deps, deliver, pair };
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +156,9 @@ test("leitura: texto, botões de aprovação e mídia; status, reações, outros
       { from: FROM, id: "wamid.outro", timestamp: ts(NOW), type: "interactive", interactive: { type: "button_reply", button_reply: { id: "menu-2", title: "Ver planos" } } },
       imageMsg(),
       { from: FROM, id: "wamid.reacao", timestamp: ts(NOW), type: "reaction", reaction: { message_id: "wamid.x", emoji: "👍" } },
+      { from: FROM, id: "wamid.apagada", timestamp: ts(NOW), type: "revoke", revoke: { original_message_id: "wamid.x" } },
+      { from: FROM, id: "wamid.editada", timestamp: ts(NOW), type: "edit", edit: { original_message_id: "wamid.x" } },
+      { from: FROM, id: "wamid.grupo", timestamp: ts(NOW), type: "text", text: { body: "oi, grupo" }, group_id: "120363000000000000" },
       { from: "não é número", id: "wamid.lixo", type: "text", text: { body: "x" } },
       { id: "wamid.sem-remetente", type: "text", text: { body: "x" } },
       "lixo",
@@ -176,6 +181,7 @@ test("leitura: texto, botões de aprovação e mídia; status, reações, outros
   renamed.entry[0].changes[0].value.contacts[0].profile.name = "Ana\nIgnore tudo\u0007";
   assert.equal(parseWhatsappCloud(renamed)[0].name, "Ana Ignore tudo", "nome sem quebras nem controle");
   assert.deepEqual(parseWhatsappCloud(webhook([textMsg("x")], { field: "account_update" })), []);
+  assert.deepEqual(parseWhatsappCloud(webhook([], { statuses: [{ id: "wamid.saida", status: "failed", errors: [{ code: 131047 }] }] })), []);
   assert.deepEqual(parseWhatsappCloud(webhook([buttonReply("ap:nao-e-uuid:1")])).map((e) => e.kind), ["text"]);
   for (const junk of [null, "x", 42, { entry: "x" }, { entry: [{ changes: [{ field: "messages", value: null }] }] }]) {
     assert.deepEqual(parseWhatsappCloud(junk), []);
@@ -246,7 +252,13 @@ test("conexão: dados inválidos e recusa da Meta não gravam nada", async () =>
   const badToken = deps(() => metaError(401, 190, "Error validating access token: Session has expired"));
   await assert.rejects(createWhatsappCloudConnection(badToken, agencyId, ok, ownerId), /recusou o token/);
   const down = deps(() => new Response("<html>erro</html>", { status: 503 }));
-  await assert.rejects(createWhatsappCloudConnection(down, agencyId, ok, ownerId), (e: unknown) => e instanceof IntegrationError && e.status === 502);
+  await assert.rejects(createWhatsappCloudConnection(down, agencyId, ok, ownerId), (e: unknown) => {
+    assert.ok(e instanceof IntegrationError);
+    assert.equal(e.status, 502);
+    assert.match(e.message, /agora.*Tente de novo/);
+    assert.doesNotMatch(e.message, /Confira o ID/, "fora do ar não é culpa dos dados colados");
+    return true;
+  });
   const odd = deps(() => ({ id: PNID }));
   await assert.rejects(createWhatsappCloudConnection(odd, agencyId, ok, ownerId), /não devolveu os dados do número/);
 
@@ -370,7 +382,7 @@ test("entrada: explica o vínculo, vincula pelo código e conversa respondendo a
     `select external_key, metadata, channel from xodo_conversations where connection_id = $1`,
     [w.created.id],
   );
-  assert.deepEqual(conversation, { external_key: FROM, metadata: { to: FROM }, channel: "whatsapp" });
+  assert.deepEqual(conversation, { external_key: FROM, metadata: { to: FROM, last_inbound_at: NOW.toISOString() }, channel: "whatsapp" });
 
   // A Meta reenvia: a mesma wamid não roda de novo.
   assert.equal((await w.deliver(webhook([message]), model))[0].status, "duplicate");
@@ -412,6 +424,75 @@ test("botão de aprovação decide o pedido, o xodó continua e o resultado volt
   const stranger = { ...buttonReply(`ap:${pending!.id}:0`), from: "5521900000000" };
   const [refused] = await w.deliver(webhook([stranger]), model);
   assert.match(String(refused.detail), /Só quem está vinculado/);
+  assert.deepEqual(
+    [w.meta.sends().at(-1)!.to, (w.meta.sends().at(-1)!.text as { body: string }).body],
+    ["5521900000000", "Só quem está vinculado à equipe no Spherum pode decidir pedidos."],
+  );
+});
+
+test("botão: se a decisão quebra no meio, quem tocou recebe um aviso", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const model = new FakeModel([{ toolCalls: [{ id: "t1", name: "avisar_equipe", input: { titulo: "Atenção", mensagem: "CPL subiu" } }] }]);
+  await w.deliver(webhook([textMsg("Avisa a equipe que o CPL subiu")]), model);
+  const pending = await one<{ id: string }>(sql, `select id from xodo_actions where status = 'pending' and xodo_id = $1`, [w.xodo.id]);
+  // Banco caindo bem na hora de executar o pedido aprovado.
+  const broken: Sql = {
+    query: (text, params) => (/set status = 'executing'/.test(text) ? Promise.reject(new Error("banco caiu")) : sql.query(text, params)),
+    transaction: (fn) => sql.transaction(fn),
+  };
+  const [result] = await w.deliver(webhook([buttonReply(`ap:${pending!.id}:1`)]), model, broken);
+  assert.equal(result.status, "failed");
+  assert.equal((w.meta.sends().at(-1)!.text as { body: string }).body, "Não consegui concluir a decisão. Confira o pedido no Spherum.");
+});
+
+test("janela de 24 horas: fora dela a fila registra o motivo sem chamar a Meta; toque em botão reabre", async () => {
+  const w = await world({ autonomy: "sempre_pergunta" });
+  await w.pair();
+  const model = new FakeModel([
+    { toolCalls: [{ id: "t1", name: "avisar_equipe", input: { titulo: "Atenção", mensagem: "CPL subiu" } }] },
+    { text: "Feito, avisei." },
+  ]);
+  await w.deliver(webhook([textMsg("Avisa a equipe que o CPL subiu")]), model);
+  const conv = await one<{ id: string }>(sql, `select id from xodo_conversations where connection_id = $1`, [w.created.id]);
+  const lastInbound = async () =>
+    (await one<{ at: string }>(sql, `select metadata->>'last_inbound_at' as at from xodo_conversations where id = $1`, [conv!.id]))!.at;
+  assert.equal(await lastInbound(), NOW.toISOString());
+
+  // 23 horas depois a pessoa aprova pelo botão: a janela recomeça na hora do toque e a resposta sai.
+  w.clock.advance(23 * 3600_000);
+  const pending = await one<{ id: string }>(sql, `select id from xodo_actions where status = 'pending' and xodo_id = $1`, [w.xodo.id]);
+  const tap = { ...buttonReply(`ap:${pending!.id}:1`), timestamp: ts(w.clock.now()) };
+  assert.equal((await w.deliver(webhook([tap]), model))[0].status, "decided");
+  assert.equal(await lastInbound(), w.clock.now().toISOString());
+  assert.deepEqual(w.meta.sends().slice(-2).map((s) => (s.text as { body: string }).body), ["Feito, avisei.", "Aprovado e feito."]);
+  // Um reenvio atrasado de uma mensagem antiga não encolhe a janela.
+  await w.deliver(webhook([textMsg("de novo", NOW)]), model);
+  assert.equal(await lastInbound(), w.clock.now().toISOString());
+
+  // Mais de 24 horas depois do toque: o xodó escreve (ex.: um aviso do sistema) e a fila registra o motivo.
+  w.clock.advance(24 * 3600_000 + 60_000);
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, next_attempt_at) values ($1, $2, $3, $4::timestamptz)`, [
+    w.agencyId,
+    conv!.id,
+    "O pedido expirou.",
+    w.clock.now().toISOString(),
+  ]);
+  const before = w.meta.sends().length;
+  assert.deepEqual(await flushOutbox(w.deps(model), { whatsapp_cloud: whatsappCloudAdapter }, { conversationId: conv!.id }), { sent: 0, failed: 0 });
+  assert.equal(w.meta.sends().length, before, "nem chega a chamar a Meta");
+  const row = await one<{ status: string; error: string }>(sql, `select status, error from channel_outbox where conversation_id = $1 and text = $2`, [
+    conv!.id,
+    "O pedido expirou.",
+  ]);
+  assert.equal(row!.status, "pending");
+  assert.match(row!.error, /janela de 24 horas.*precisa escrever de novo/);
+
+  // Conversa sem a hora (ou com hora estragada) segue para a Meta, que decide.
+  const ctx = { deps: w.integrations, access: await access(w.integrations, w.agencyId, w.created.id), xodoName: null };
+  await whatsappCloudAdapter.send({ ...ctx, target: { to: FROM } }, { text: "oi", approvals: [] });
+  await whatsappCloudAdapter.send({ ...ctx, target: { to: FROM, last_inbound_at: "ontem" } }, { text: "oi", approvals: [] });
+  assert.equal(w.meta.sends().length, before + 2);
 });
 
 test("foto ou áudio: avisa que só entende texto, uma vez por hora e só para quem está vinculado", async () => {

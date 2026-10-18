@@ -2,6 +2,7 @@ import { z, ZodError } from "zod";
 import { IntegrationError } from "../integrations/http";
 import { metaGraph } from "../integrations/oauth-providers";
 import { loadConnection, readSecret, saveConnection, type IntegrationDeps } from "../integrations/store";
+import type { Sql } from "../xodos/db";
 import { channelConnection, decideFromChannel, receiveMessage, seenBefore, sendDirect } from "./core";
 import { identityFor } from "./pairing";
 import { randomToken, safeEqual } from "./security";
@@ -25,7 +26,10 @@ import {
  * cola no painel (assinando o campo "messages").
  *
  * A Meta só aceita texto livre até 24 horas depois da última mensagem da pessoa; depois disso,
- * só modelos aprovados, que o Spherum não usa. Esse erro vira uma explicação clara na fila.
+ * só modelos aprovados, que o Spherum não usa. Na maioria das vezes ela aceita o envio e só
+ * avisa a falha depois (em value.statuses), quando a fila já deu a mensagem por entregue. Por
+ * isso guardamos na conversa quando a pessoa escreveu por último e conferimos antes de mandar:
+ * fora da janela, o envio vira uma explicação clara na fila.
  */
 
 const PROVIDER = "whatsapp_cloud" as const;
@@ -34,13 +38,19 @@ const WA_ID = /^\d{5,20}$/;
 const PHONE_NUMBER_ID = /^\d{5,30}$/;
 /** Botão de aprovação: "ap:<id do pedido>:1" aprova, ":0" nega. */
 const APPROVAL_BUTTON = /^ap:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):([01])$/i;
-/** Mensagem mais velha que isso não tem resposta possível (a janela fechou); a Meta reenvia por dias. */
-const STALE_MS = 24 * 60 * 60 * 1000;
+/**
+ * Janela de atendimento: texto livre só até 24 horas depois da última mensagem da pessoa.
+ * Mensagem recebida mais velha que isso também não tem resposta possível (a Meta reenvia por dias).
+ */
+const WINDOW_MS = 24 * 60 * 60 * 1000;
 const GRAPH_TIMEOUT_MS = 20_000;
 /** Texto máximo de uma mensagem com botões (os títulos "Aprovar"/"Negar" cabem nos 20 caracteres). */
 const BUTTON_BODY_MAX = 1024;
 
 export const ONLY_TEXT = "Por enquanto eu só entendo mensagens de texto. Pode escrever o que você precisa?";
+const WINDOW_CLOSED =
+  "Passou a janela de 24 horas do WhatsApp: a Meta só aceita mensagem livre até 24 horas depois da última mensagem da pessoa. Ela precisa escrever de novo para o xodó poder responder.";
+const DECISION_FAILED = "Não consegui concluir a decisão. Confira o pedido no Spherum.";
 
 /** Corta em caracteres (sem partir emoji ao meio), com reticências. */
 function clip(text: string, max: number): string {
@@ -59,11 +69,7 @@ const NO_PERMISSION = { message: "O token não tem permissão para usar este nú
 
 /** Erros da Meta que merecem explicação própria, pelo código. */
 const KNOWN_ERRORS: Record<number, { message: string; status: number; reauth?: boolean }> = {
-  131047: {
-    message:
-      "Passou a janela de 24 horas do WhatsApp: a Meta só aceita mensagem livre até 24 horas depois da última mensagem da pessoa. Ela precisa escrever de novo para o xodó poder responder.",
-    status: 409,
-  },
+  131047: { message: WINDOW_CLOSED, status: 409 },
   131026: { message: "O WhatsApp não conseguiu entregar para este número (sem WhatsApp, aplicativo desatualizado ou termos não aceitos).", status: 422 },
   131030: { message: "Este número não está na lista de destinatários permitidos do número de teste da Meta.", status: 422 },
   133010: { message: "O número da agência não está registrado na Cloud API. Termine o cadastro no painel da Meta.", status: 409 },
@@ -100,7 +106,7 @@ async function graph<T>(deps: IntegrationDeps, token: string, path: string, body
       signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new IntegrationError(`Não consegui falar com o WhatsApp: ${error instanceof Error ? error.message : error}`);
+    throw new IntegrationError(`Não consegui falar com o WhatsApp (${error instanceof Error ? error.message : error}).`);
   }
   const text = await response.text();
   let parsed: unknown = null;
@@ -152,9 +158,11 @@ export async function createWhatsappCloudConnection(
   } catch (error) {
     if (error instanceof IntegrationError) {
       if (error.reauth) throw new IntegrationError("A Meta recusou o token. Use o token permanente de um usuário do sistema com acesso a este número.", 400);
+      // Fora do ar ou sem resposta: o problema não está nos dados colados.
+      if (error.status >= 500) throw new IntegrationError(`Não consegui confirmar o número na Meta agora. ${error.message} Tente de novo daqui a pouco.`, 502);
       throw new IntegrationError(
         `Não consegui confirmar o número na Meta. ${error.message} Confira o ID do número de telefone (não é o número em si) e se o token tem acesso a ele.`,
-        error.status >= 500 ? 502 : 400,
+        400,
       );
     }
     if (error instanceof ZodError) throw new IntegrationError("A Meta não devolveu os dados do número.", 502);
@@ -227,8 +235,8 @@ export type WhatsappCloudEvent =
   | (EventBase & { kind: "decision"; actionId: string; approve: boolean })
   | (EventBase & { kind: "unsupported"; type: string });
 
-/** Tipos que não pedem resposta: reação a uma mensagem, aviso de troca de número, boas-vindas. */
-const SILENT_TYPES = new Set(["reaction", "system", "request_welcome"]);
+/** Tipos que não pedem resposta: reação, aviso de troca de número, boas-vindas, mensagem editada ou apagada. */
+const SILENT_TYPES = new Set(["reaction", "system", "request_welcome", "edit", "revoke"]);
 
 const contactSchema = z.object({ wa_id: z.string(), profile: z.object({ name: z.string().optional() }).optional() });
 const messageSchema = z.object({
@@ -241,6 +249,7 @@ const messageSchema = z.object({
     .object({ type: z.string().optional(), button_reply: z.object({ id: z.string(), title: z.string().optional() }).optional() })
     .optional(),
   button: z.object({ payload: z.string().optional(), text: z.string().optional() }).optional(),
+  group_id: z.unknown().optional(),
 });
 
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
@@ -254,7 +263,7 @@ function approvalOf(id: string | undefined): { actionId: string; approve: boolea
 /**
  * Traduz o corpo do webhook (entry[].changes[] do campo "messages") em mensagens de texto,
  * toques nos botões de aprovação e mensagens que ainda não entendemos. Status de entrega
- * (value.statuses) e o que vier malformado ficam de fora.
+ * (value.statuses), mensagens de grupo e o que vier malformado ficam de fora.
  */
 export function parseWhatsappCloud(body: unknown): WhatsappCloudEvent[] {
   const out: WhatsappCloudEvent[] = [];
@@ -276,7 +285,8 @@ export function parseWhatsappCloud(body: unknown): WhatsappCloudEvent[] {
         const parsed = messageSchema.safeParse(raw);
         if (!parsed.success) continue;
         const m = parsed.data;
-        if (SILENT_TYPES.has(m.type)) continue;
+        // Grupo (Groups API): responder no privado de quem falou no grupo seria errado; fica de fora.
+        if (SILENT_TYPES.has(m.type) || m.group_id !== undefined) continue;
         const base: EventBase = {
           phoneNumberId,
           eventId: m.id,
@@ -312,6 +322,22 @@ export function parseWhatsappCloud(body: unknown): WhatsappCloudEvent[] {
 export type WhatsappCloudResult = InboundResult & { eventId: string };
 
 /**
+ * Guarda nas conversas com a pessoa quando ela escreveu por último (de onde contam as 24 horas)
+ * e devolve a hora mais recente, para um reenvio atrasado da Meta não encolher a janela. Toque
+ * em botão e foto também abrem a janela, mas não passam pela conversa no núcleo.
+ */
+async function touchWindow(sql: Sql, hook: Pick<WhatsappCloudWebhook, "id" | "agencyId">, from: string, at: string): Promise<string> {
+  const rows = await sql.query<{ at: string }>(
+    `update xodo_conversations
+        set metadata = metadata || jsonb_build_object('last_inbound_at', greatest(coalesce(metadata->>'last_inbound_at', '') collate "C", $4::text))
+      where agency_id = $1 and connection_id = $2 and channel = 'whatsapp' and external_key = $3
+      returning metadata->>'last_inbound_at' as at`,
+    [hook.agencyId, hook.id, from, at],
+  );
+  return rows.reduce((latest, row) => (row.at > latest ? row.at : latest), at);
+}
+
+/**
  * Processa um webhook já verificado: texto vai para o núcleo, botão decide o pedido e responde
  * o resultado, e o resto (foto, áudio…) recebe uma explicação curta, no máximo uma vez por hora
  * para cada pessoa vinculada (quem não está vinculado não conversa com o xodó).
@@ -328,23 +354,26 @@ export async function handleWhatsappCloud(
   for (const event of parseWhatsappCloud(payload)) {
     // Outro número do mesmo app da Meta: não é desta conexão.
     if (event.phoneNumberId !== hook.phoneNumberId) continue;
-    if (event.sentAt && now.getTime() - event.sentAt.getTime() > STALE_MS) {
+    if (event.sentAt && now.getTime() - event.sentAt.getTime() > WINDOW_MS) {
       results.push({ eventId: event.eventId, status: "ignored", detail: "antiga" });
       continue;
     }
-    const msg: InboundMessage = {
-      provider: PROVIDER,
-      connectionId: hook.id,
-      agencyId: hook.agencyId,
-      eventId: event.eventId,
-      externalUser: event.from,
-      displayName: event.name,
-      conversationKey: event.from,
-      text: event.kind === "text" ? event.text : "",
-      reply: { to: event.from },
-      direct: true,
-    };
+    // A hora da Meta (quando a pessoa mandou) e nunca no futuro: a janela não fica maior que a real.
+    const sentAt = new Date(Math.min((event.sentAt ?? now).getTime(), now.getTime())).toISOString();
     try {
+      const msg: InboundMessage = {
+        provider: PROVIDER,
+        connectionId: hook.id,
+        agencyId: hook.agencyId,
+        eventId: event.eventId,
+        externalUser: event.from,
+        displayName: event.name,
+        conversationKey: event.from,
+        text: event.kind === "text" ? event.text : "",
+        // O núcleo grava o reply na conversa: vai junto a hora da última mensagem da pessoa.
+        reply: { to: event.from, last_inbound_at: await touchWindow(deps.sql, hook, event.from, sentAt) },
+        direct: true,
+      };
       let result: InboundResult;
       if (event.kind === "text") {
         result = await receiveMessage(deps, adapters, msg);
@@ -357,6 +386,10 @@ export async function handleWhatsappCloud(
           externalUser: event.from,
           actionId: event.actionId,
           approve: event.approve,
+        }).catch(async (error: unknown) => {
+          // Quem tocou não fica sem resposta (a decisão pode já ter valido; o app mostra).
+          await sendDirect(deps, adapters, msg, DECISION_FAILED);
+          throw error;
         });
         await sendDirect(deps, adapters, msg, outcome.message);
         result = { status: "decided", runId: outcome.runId, detail: outcome.message };
@@ -381,7 +414,11 @@ export async function handleWhatsappCloud(
 // Envio
 // ---------------------------------------------------------------------------
 
-const targetSchema = z.object({ to: z.string().regex(WA_ID) });
+const targetSchema = z.object({
+  to: z.string().regex(WA_ID),
+  // Sem a hora (conversa antiga) ou com hora estragada, não conferimos: vale a recusa da Meta.
+  last_inbound_at: z.iso.datetime().optional().catch(undefined),
+});
 
 function approvalButtons(approval: OutboundApproval, total: number) {
   const summary = approval.summary.trim() || "Pedido de aprovação";
@@ -401,12 +438,13 @@ async function postMessage(ctx: SendContext, phoneNumberId: string, payload: Rec
   try {
     await graph(ctx.deps, ctx.access.accessToken, `${phoneNumberId}/messages`, payload);
   } catch (error) {
-    // Token recusado: marca a conexão, para o app pedir a reconexão em vez de tentar para sempre.
+    // Token recusado: marca a conexão, para o app pedir a reconexão em vez de tentar para sempre
+    // (só a ativa: uma desconectada no meio do caminho continua desconectada).
     if (error instanceof IntegrationError && error.reauth) {
-      await ctx.deps.sql.query(`update integration_connections set status = 'expired', last_error = $2, updated_at = now() where id = $1`, [
-        ctx.access.connection.id,
-        error.message,
-      ]);
+      await ctx.deps.sql.query(
+        `update integration_connections set status = 'expired', last_error = $2, updated_at = now() where id = $1 and status = 'active'`,
+        [ctx.access.connection.id, error.message],
+      );
     }
     throw error;
   }
@@ -418,6 +456,9 @@ export const whatsappCloudAdapter: ChannelAdapter = {
   async send(ctx, message) {
     const target = targetSchema.safeParse(ctx.target);
     if (!target.success) throw new ChannelError("A conversa não tem o número do WhatsApp para responder.");
+    const now = ctx.deps.now ? ctx.deps.now() : new Date();
+    const since = target.data.last_inbound_at ? Date.parse(target.data.last_inbound_at) : null;
+    if (since !== null && now.getTime() - since > WINDOW_MS) throw new IntegrationError(WINDOW_CLOSED, 409);
     const { connection } = ctx.access;
     const phoneNumberId = String(connection.metadata.phone_number_id ?? connection.external_account ?? "");
     if (!PHONE_NUMBER_ID.test(phoneNumberId)) throw new ChannelError("A conexão do WhatsApp está sem o ID do número.");

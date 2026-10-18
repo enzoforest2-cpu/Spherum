@@ -12,7 +12,9 @@ import { uuid } from "@/lib/xodos/http";
  *
  * GET: a Meta confirma o endereço com o token de verificação da conexão.
  * POST: mensagens, assinadas com a chave secreta do app (X-Hub-Signature-256 sobre o corpo cru).
- * Respondemos 200 na hora e o xodó trabalha depois (after): a Meta reenvia o que demora.
+ * Conexão inexistente e assinatura errada recebem a mesma resposta (403 no GET, 401 no POST),
+ * para o endereço não revelar quais conexões existem. Respondemos 200 na hora e o xodó trabalha
+ * depois (after): a Meta reenvia o que demora.
  */
 
 // Depois da resposta, uma execução do xodó pode levar alguns minutos.
@@ -21,6 +23,7 @@ export const maxDuration = 300;
 type Params = { params: Promise<{ connectionId: string }> };
 
 const forbidden = () => new Response("Proibido", { status: 403 });
+const unauthorized = () => NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
 export async function GET(request: Request, { params }: Params) {
   try {
@@ -39,14 +42,12 @@ export async function GET(request: Request, { params }: Params) {
 export async function POST(request: Request, { params }: Params) {
   try {
     const { connectionId } = await params;
-    if (!uuid.safeParse(connectionId).success) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+    const signature = request.headers.get("x-hub-signature-256");
+    if (!signature || !uuid.safeParse(connectionId).success) return unauthorized();
     const body = await readBody(request);
     const deps = await channelDeps();
     const hook = await loadWhatsappCloudWebhook(integrationDepsOf(deps), connectionId);
-    if (!hook) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
-    if (!verifyHubSignature(hook.appSecret, request.headers.get("x-hub-signature-256"), body)) {
-      return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
-    }
+    if (!hook || !verifyHubSignature(hook.appSecret, signature, body)) return unauthorized();
     let payload: unknown;
     try {
       payload = JSON.parse(body);
