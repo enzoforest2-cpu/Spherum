@@ -39,13 +39,18 @@ export type ToolDef<I = unknown> = {
    * acima do limite do xodó). Nulo: segue a política normal.
    */
   mustAsk?(ctx: ToolContext, input: I): Promise<string | null>;
+  /**
+   * Categoria que depende do destino (ex.: mensagem num canal interno do Slack é "equipe"; num
+   * canal compartilhado com outra empresa, "envio"). Se falhar, vale `category`.
+   */
+  categoryFor?(ctx: ToolContext, input: I): Promise<Category>;
 };
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */
 export class ToolError extends Error {}
 
 /** Acesso a um app dentro de uma ferramenta, com os erros de integração virando ToolError. */
-export async function useApp(ctx: ToolContext, app: AppId) {
+export async function openApp(ctx: ToolContext, app: AppId) {
   if (!ctx.apps) throw new ToolError("As integrações não estão disponíveis agora.");
   try {
     return await ctx.apps.use(app);

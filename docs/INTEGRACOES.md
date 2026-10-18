@@ -41,6 +41,45 @@ As ferramentas dos conectores nativos já vêm com a categoria certa. As de serv
 - criar uma mensagem conta como envio, mas criar um rascunho não;
 - o aviso de "só leitura" do servidor nunca alivia o que o nome diz, e na dúvida a ferramenta não é tratada como leitura.
 
+**Categoria pelo destino.** Algumas ferramentas olham para quem vai receber antes de decidir a categoria. Isso evita pedir aprovação para falar com o próprio time:
+- **E-mail:** para colegas do mesmo domínio da conta conectada é `equipe`; se houver alguém de fora, é `envio`. Domínios de provedores abertos (gmail.com, outlook.com, uol.com.br…) nunca contam como "mesma empresa".
+- **Slack:** canal interno é `equipe`; canal compartilhado com outra empresa (Slack Connect) ou mensagem direta para alguém de outro workspace é `envio`.
+- **Agenda:** convite que chega a alguém de fora é `envio`; sem convidados de fora, é `alteracao`.
+- **GitHub:** issue ou comentário em repositório público é `envio` (fica visível para todos); em privado, é `alteracao`.
+
+Se não der para ver o destino (canal sumiu, API fora do ar), vale a categoria declarada da ferramenta, que é sempre a mais cautelosa.
+
+## Ferramentas dos apps
+
+| App | Ferramenta | Categoria |
+|---|---|---|
+| Gmail | `buscar_emails`, `ler_email` | leitura |
+| | `rascunho_de_email` | rascunho |
+| | `enviar_email` (novo, resposta ou rascunho pronto) | envio ou equipe |
+| | `organizar_emails` (lido, arquivar, marcadores) | alteracao |
+| | `apagar_emails` (lixeira, recuperável por 30 dias) | exclusao |
+| Agenda | `ver_agenda` | leitura |
+| | `criar_evento` (com Meet se quiser), `alterar_evento` | alteracao ou envio |
+| | `responder_convite` | envio ou alteracao |
+| | `cancelar_evento` | exclusao |
+| Drive | `buscar_no_drive`, `ler_arquivo_do_drive` (Documentos, Planilhas em CSV, Apresentações, texto) | leitura |
+| | `criar_documento_no_drive` | alteracao |
+| Slack | `listar_canais_do_slack`, `ler_canal_do_slack` | leitura |
+| | `enviar_mensagem_no_slack` (canal, thread ou mensagem direta) | equipe ou envio |
+| | `reagir_no_slack` | equipe |
+| Notion | `buscar_no_notion`, `ler_pagina_do_notion`, `consultar_base_do_notion` | leitura |
+| | `criar_pagina_no_notion` (página ou linha de base, com propriedades), `adicionar_na_pagina_do_notion`, `atualizar_pagina_do_notion` | alteracao |
+| | `arquivar_pagina_do_notion` | exclusao |
+| GitHub | `listar_repositorios_do_github`, `buscar_no_github`, `ler_issue_do_github`, `ler_arquivo_do_github` | leitura |
+| | `criar_issue_no_github`, `comentar_no_github` | envio ou alteracao |
+| | `mudar_estado_da_issue` | alteracao |
+
+Notas:
+- **Drive:** com `drive.readonly` + `drive.file`, o xodó lê qualquer arquivo e só altera o que ele mesmo criou. PDFs e imagens ainda não são lidos (o xodó devolve o link).
+- **Slack:** o app precisa estar no canal para ler. Para mandar mensagem em canal público, ele entra sozinho (`channels:join`); em canal privado, alguém precisa convidá-lo. Conexões feitas antes dessa permissão precisam reconectar para ganhar o `channels:join`.
+- **Notion:** o xodó só enxerga as páginas que a agência compartilhou com a integração no login. A API usada é a versão `2022-06-28`; bases com várias fontes de dados (recurso novo do Notion) pedem a versão `2025-09-03`, que fica para quando aparecer o caso.
+- O conteúdo que volta das ferramentas (e-mails, mensagens, documentos) entra no contexto do modelo como informação, nunca como instrução. As instruções do xodó dizem isso explicitamente, e as ações sensíveis continuam passando pela aprovação.
+
 ## Anúncios e GA4
 
 Os xodós leem e mexem em Meta Ads, Google Ads e TikTok Ads, e leem o GA4. Tudo passa pela ligação **conta ↔ cliente** (`client_ad_accounts`): o xodó só enxerga contas dos clientes ligados, e só se o app estiver em "Pode mexer em".

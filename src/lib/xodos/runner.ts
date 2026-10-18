@@ -407,7 +407,16 @@ async function handleToolCalls(
       });
       continue;
     }
-    const decision = decideApproval({ toolName: tool.name, category: tool.category, rules, autonomy: xodo.autonomy });
+    let category = tool.category;
+    if (tool.categoryFor) {
+      try {
+        category = await tool.categoryFor(toolContext(deps, xodo, runId), parsed.data);
+      } catch (error) {
+        // Sem conseguir ver o destino, fica a categoria declarada (a mais cautelosa).
+        console.warn("[xodós] categoria dinâmica falhou", tool.name, error instanceof Error ? error.message : error);
+      }
+    }
+    const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy });
     let reason: string | null = decision.decision === "ask" ? decision.source : null;
     if (!reason && tool.mustAsk) {
       try {
@@ -416,12 +425,12 @@ async function handleToolCalls(
       } catch (error) {
         const expected = error instanceof ToolError || error instanceof IntegrationError;
         if (!expected) throw error;
-        await insertAction(sql, base, tool.category, parsed.data, "failed", { error: (error as Error).message });
+        await insertAction(sql, base, category, parsed.data, "failed", { error: (error as Error).message });
         continue;
       }
     }
     if (reason) {
-      await insertAction(sql, base, tool.category, parsed.data, "pending", null, {
+      await insertAction(sql, base, category, parsed.data, "pending", null, {
         reason,
         expiresAt: new Date(now.getTime() + APPROVAL_TTL_MS),
       });
@@ -429,7 +438,7 @@ async function handleToolCalls(
       pending.push(tool.summarize(parsed.data) + why);
       continue;
     }
-    const actionId = await insertAction(sql, base, tool.category, parsed.data, "executing", null);
+    const actionId = await insertAction(sql, base, category, parsed.data, "executing", null);
     await runAction(deps, xodo, actionId, tools);
   }
   return pending;

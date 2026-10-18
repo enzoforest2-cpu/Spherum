@@ -19,6 +19,8 @@ export class IntegrationError extends Error {
 type RequestInit2 = Omit<RequestInit, "body"> & {
   json?: unknown;
   form?: Record<string, string>;
+  /** Corpo pronto com o tipo dele (ex.: multipart do Drive). */
+  raw?: { body: string; contentType: string };
   bearer?: string;
   timeoutMs?: number;
 };
@@ -34,8 +36,8 @@ function providerMessage(body: unknown): string | null {
   return String(b.error_description ?? err ?? b.message ?? b.msg ?? "").slice(0, 300) || null;
 }
 
-export async function requestJson<T = Record<string, unknown>>(http: Fetch, url: string, init: RequestInit2 = {}): Promise<T> {
-  const { json, form, bearer, timeoutMs = 20_000, headers, ...rest } = init;
+async function send(http: Fetch, url: string, init: RequestInit2, accept: string): Promise<{ response: Response; text: string; parsed: unknown }> {
+  const { json, form, raw, bearer, timeoutMs = 20_000, headers, ...rest } = init;
   const h = new Headers(headers);
   let body: BodyInit | undefined;
   if (json !== undefined) {
@@ -44,9 +46,12 @@ export async function requestJson<T = Record<string, unknown>>(http: Fetch, url:
   } else if (form) {
     h.set("content-type", "application/x-www-form-urlencoded");
     body = new URLSearchParams(form).toString();
+  } else if (raw) {
+    h.set("content-type", raw.contentType);
+    body = raw.body;
   }
   if (bearer) h.set("authorization", `Bearer ${bearer}`);
-  if (!h.has("accept")) h.set("accept", "application/json");
+  if (!h.has("accept")) h.set("accept", accept);
 
   let response: Response;
   try {
@@ -69,5 +74,14 @@ export async function requestJson<T = Record<string, unknown>>(http: Fetch, url:
       response.status === 401 || /invalid_grant|invalid_auth|token_revoked|token_expired|expired|OAuthException/i.test(message);
     throw new IntegrationError(message, response.ok ? 502 : response.status, reauth);
   }
-  return parsed as T;
+  return { response, text, parsed };
+}
+
+export async function requestJson<T = Record<string, unknown>>(http: Fetch, url: string, init: RequestInit2 = {}): Promise<T> {
+  return (await send(http, url, init, "application/json")).parsed as T;
+}
+
+/** Corpo da resposta como texto (exportação de documentos, arquivos). */
+export async function requestText(http: Fetch, url: string, init: RequestInit2 = {}): Promise<string> {
+  return (await send(http, url, init, "*/*")).text;
 }

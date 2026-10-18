@@ -105,7 +105,7 @@ test("Google Ads: contas de uma MCC com login-customer-id e custo em micros", as
     }
     return { results: [] };
   });
-  // O SDK devolve customerClient em camelCase; o código lê customer_client e customerClient.
+  // A API REST responde em camelCase (customerClient), mesmo com a consulta em snake_case.
   const accounts = await googleAds.listAccounts(pa(f.fn));
   assert.deepEqual(accounts, [{ externalId: "222", name: "Loja Verano", currency: "BRL", metadata: { login_customer_id: "111" } }]);
   const childCall = f.calls.find((c) => c.body.includes("customer_client"))!;

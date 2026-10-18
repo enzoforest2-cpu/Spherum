@@ -193,18 +193,18 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 88 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 105 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
 - a troca para o modelo reserva no meio da tarefa;
 - o isolamento entre agências e a RLS;
 - o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas;
-- as integrações (login, renovação de token, MCP, classificador) e os anúncios (contas, sincronização e limites de campanha), com as plataformas simuladas.
+- as integrações (login, renovação de token, MCP, classificador), os anúncios (contas, sincronização e limites de campanha) e as ferramentas de Gmail, Agenda, Drive, Slack, Notion e GitHub (com a categoria pelo destino), com as plataformas simuladas.
 
 ## O que falta
 
-- **Ferramentas dos apps:** a base das integrações (login próprio, conexões cifradas, apps por xodó, servidores MCP) existe; as ferramentas de cada app estão sendo construídas (veja `docs/INTEGRACOES.md`).
+- **Canais e gatilhos:** Slack instalado por agência, WhatsApp (oficial e QR), Telegram e gatilhos por evento estão sendo construídos (veja `docs/INTEGRACOES.md`).
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
 - **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.

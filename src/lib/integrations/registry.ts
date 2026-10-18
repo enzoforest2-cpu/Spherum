@@ -4,6 +4,7 @@ import type { Xodo } from "../xodos/types";
 import { ToolError, type ToolDef } from "../xodos/tools";
 import { xodoApps } from "./access";
 import { ADS_TOOLS } from "./ads/tools";
+import { CONNECTOR_TOOLS } from "./connectors";
 import { IntegrationError } from "./http";
 import { callMcpTool, listMcpTools } from "./mcp";
 import { readSecret, type ConnectionRow, type IntegrationDeps } from "./store";
@@ -14,7 +15,7 @@ import { readSecret, type ConnectionRow, type IntegrationDeps } from "./store";
  */
 
 /** Ferramentas dos conectores nativos. */
-export const NATIVE_APP_TOOLS: readonly ToolDef[] = [...ADS_TOOLS];
+export const NATIVE_APP_TOOLS: readonly ToolDef[] = [...ADS_TOOLS, ...CONNECTOR_TOOLS];
 
 /** Nome aceito por todos os provedores de modelo: letras, números, _ e -, até 64 caracteres. */
 function toolName(prefix: string, name: string): string {
