@@ -222,6 +222,8 @@ export const SLACK_BOT_SCOPES = [
   "channels:join",
   "channels:read",
   "chat:write",
+  // O xodó aparece com o próprio nome nas mensagens dos canais (username no chat.postMessage).
+  "chat:write.customize",
   "groups:history",
   "groups:read",
   "im:history",
