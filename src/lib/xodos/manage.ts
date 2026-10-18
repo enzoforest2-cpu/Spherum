@@ -103,26 +103,42 @@ const modelChoice = z.object({
   credential_id: z.uuid(),
 });
 
-/** O que a pessoa escolhe no assistente de criação do design (forma, cor, nome e jeito, cérebro, limites). */
-export const xodoInput = z.object({
+const xodoFields = {
   name: z.string().trim().min(1).max(40),
   species: z.enum(SPECIES),
   color: z.string().trim().min(1).max(20),
   personality: z.enum(PERSONALITIES),
-  role: z.string().trim().min(1).max(40).nullable().default(null),
-  instructions: z.string().max(8000).default(""),
-  autonomy: z.enum(AUTONOMY).default("pergunta_no_que_importa"),
+  role: z.string().trim().min(1).max(40).nullable(),
+  instructions: z.string().max(8000),
+  autonomy: z.enum(AUTONOMY),
   ...modelChoice.shape,
   /** Modelos reserva, em ordem. */
-  backup_models: z.array(modelChoice).max(MAX_BACKUP_MODELS).default([]),
-  /** Teto do dia em reais; ausente ou nulo: só registra o gasto. */
-  daily_budget_brl: z.number().positive().max(100_000).nullable().default(null),
-  warn_at_percent: z.number().int().min(1).max(99).default(80),
-  timezone: z.string().default("America/Sao_Paulo"),
+  backup_models: z.array(modelChoice).max(MAX_BACKUP_MODELS),
+  /** Modelo das rotinas agendadas; nulo usa o principal. */
+  routine_model: modelChoice.nullable(),
+  /** Teto do dia em reais; nulo: só registra o gasto. */
+  daily_budget_brl: z.number().positive().max(100_000).nullable(),
+  warn_at_percent: z.number().int().min(1).max(99),
+  timezone: z.string(),
   client_ids: z.array(z.uuid()).max(500).optional(),
+};
+
+/** O que a pessoa escolhe no assistente de criação do design (forma, cor, nome e jeito, cérebro, limites). */
+export const xodoInput = z.object({
+  ...xodoFields,
+  role: xodoFields.role.default(null),
+  instructions: xodoFields.instructions.default(""),
+  autonomy: xodoFields.autonomy.default("pergunta_no_que_importa"),
+  backup_models: xodoFields.backup_models.default([]),
+  routine_model: xodoFields.routine_model.default(null),
+  daily_budget_brl: xodoFields.daily_budget_brl.default(null),
+  warn_at_percent: xodoFields.warn_at_percent.default(80),
+  timezone: xodoFields.timezone.default("America/Sao_Paulo"),
 });
 
-export const xodoPatch = xodoInput
+/** Só os campos enviados mudam: sem valores padrão aqui, senão um PATCH parcial apagaria o resto. */
+export const xodoPatch = z
+  .object(xodoFields)
   .omit({ timezone: true, client_ids: true })
   .extend({ status: z.enum(["active", "paused"]) })
   .partial();
@@ -157,7 +173,9 @@ export async function createXodo(sql: Sql, llm: LlmClient, agencyId: string, raw
   } catch {
     throw new XodoError("Fuso horário inválido.");
   }
-  for (const choice of [input, ...input.backup_models]) await assertModelChoice(sql, llm, agencyId, choice);
+  for (const choice of [input, ...input.backup_models, ...(input.routine_model ? [input.routine_model] : [])]) {
+    await assertModelChoice(sql, llm, agencyId, choice);
+  }
   const scope = input.client_ids ? "selected" : "all";
   const clientIds = [...new Set(input.client_ids ?? [])];
   if (clientIds.length) {
@@ -173,11 +191,13 @@ export async function createXodo(sql: Sql, llm: LlmClient, agencyId: string, raw
     const xodo = await one<Xodo>(
       tx,
       `insert into xodos (agency_id, name, species, color, personality, role, instructions, autonomy, provider, model,
-         credential_id, daily_budget_brl, warn_at_percent, timezone, client_scope, created_by)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+         credential_id, routine_provider, routine_model, routine_credential_id, daily_budget_brl, warn_at_percent,
+         timezone, client_scope, created_by)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) returning *`,
       [agencyId, input.name, input.species, input.color, input.personality, input.role, input.instructions, input.autonomy,
-        input.provider, input.model, input.credential_id, input.daily_budget_brl, input.warn_at_percent, input.timezone,
-        scope, createdBy],
+        input.provider, input.model, input.credential_id, input.routine_model?.provider ?? null,
+        input.routine_model?.model ?? null, input.routine_model?.credential_id ?? null, input.daily_budget_brl,
+        input.warn_at_percent, input.timezone, scope, createdBy],
     );
     await saveBackups(tx, agencyId, xodo!.id, input.backup_models);
     for (const clientId of clientIds) {
@@ -204,16 +224,23 @@ export async function updateXodo(sql: Sql, llm: LlmClient, agencyId: string, xod
     await assertModelChoice(sql, llm, agencyId, { provider: next.provider, model: next.model, credential_id: next.credential_id });
   }
   for (const backup of patch.backup_models ?? []) await assertModelChoice(sql, llm, agencyId, backup);
+  if (patch.routine_model) await assertModelChoice(sql, llm, agencyId, patch.routine_model);
+  const routine =
+    patch.routine_model === undefined
+      ? { provider: current.routine_provider, model: current.routine_model, credential_id: current.routine_credential_id }
+      : { provider: patch.routine_model?.provider ?? null, model: patch.routine_model?.model ?? null,
+          credential_id: patch.routine_model?.credential_id ?? null };
   if (patch.name && patch.name !== current.name) await assertNameFree(sql, agencyId, patch.name);
   return sql.transaction(async (tx) => {
     const row = await one<Xodo>(
       tx,
       `update xodos set name = $3, species = $4, color = $5, personality = $6, role = $7, instructions = $8, autonomy = $9,
               provider = $10, model = $11, credential_id = $12, daily_budget_brl = $13, warn_at_percent = $14, status = $15,
-              updated_at = now()
+              routine_provider = $16, routine_model = $17, routine_credential_id = $18, updated_at = now()
         where id = $1 and agency_id = $2 returning *`,
       [xodoId, agencyId, next.name, next.species, next.color, next.personality, next.role, next.instructions, next.autonomy,
-        next.provider, next.model, next.credential_id, next.daily_budget_brl, next.warn_at_percent, next.status],
+        next.provider, next.model, next.credential_id, next.daily_budget_brl, next.warn_at_percent, next.status,
+        routine.provider, routine.model, routine.credential_id],
     );
     if (patch.backup_models) await saveBackups(tx, agencyId, xodoId, patch.backup_models);
     return row!;

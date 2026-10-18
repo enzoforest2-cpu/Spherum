@@ -20,6 +20,10 @@ export type Xodo = {
   provider: string;
   model: string;
   credential_id: string | null;
+  /** Modelo das rotinas agendadas; nulo usa o principal. */
+  routine_provider: string | null;
+  routine_model: string | null;
+  routine_credential_id: string | null;
   /** Teto do dia em reais; nulo quando só registramos o gasto. */
   daily_budget_brl: string | number | null;
   warn_at_percent: number;

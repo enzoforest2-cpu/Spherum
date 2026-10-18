@@ -105,6 +105,11 @@ create table public.xodos (
   provider text not null check (char_length(provider) between 1 and 40),
   model text not null check (char_length(model) between 1 and 200),
   credential_id uuid references public.ai_credentials(id) on delete set null,
+  -- Modelo das rotinas agendadas ("Roteamento" do design: um modelo rápido e barato costuma bastar).
+  -- Nulo: as rotinas usam o modelo principal.
+  routine_provider text check (char_length(routine_provider) between 1 and 40),
+  routine_model text check (char_length(routine_model) between 1 and 200),
+  routine_credential_id uuid references public.ai_credentials(id) on delete set null,
   -- Teto do dia em reais. Nulo: sem teto, o gasto só é registrado.
   daily_budget_brl numeric(10, 2) check (daily_budget_brl > 0),
   warn_at_percent integer not null default 80 check (warn_at_percent between 1 and 99),
@@ -114,7 +119,8 @@ create table public.xodos (
   created_by uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (agency_id, name)
+  unique (agency_id, name),
+  check ((routine_provider is null) = (routine_model is null))
 );
 
 -- Clientes que o xodó pode atender quando client_scope = 'selected'.

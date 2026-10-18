@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     await requireRole(sql, userId, agencyId, CAN_READ);
     const xodos = await sql.query(
       `select x.id, x.name, x.species, x.color, x.personality, x.role, x.autonomy, x.provider, x.model, x.credential_id,
+              x.routine_provider, x.routine_model, x.routine_credential_id,
               x.daily_budget_brl::float8, x.warn_at_percent, x.timezone, x.status, x.client_scope, x.created_at::text,
               coalesce((select json_agg(json_build_object('provider', m.provider, 'model', m.model, 'credential_id', m.credential_id)
                                         order by m.position)

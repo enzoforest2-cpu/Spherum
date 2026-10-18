@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { before, test } from "node:test";
 import { one, type Sql } from "../src/lib/xodos/db";
 import { createRoutine, nextRunAt, runDueRoutines, validateCron } from "../src/lib/xodos/routines";
-import { Clock, createTestDb, FakeModel, seedAgency, seedXodo, testDeps } from "./helpers";
+import { Clock, createTestDb, FakeModel, seedAgency, seedFx, seedXodo, testDeps } from "./helpers";
 
 let sql: Sql;
 before(async () => {
   ({ sql } = await createTestDb());
+  await seedFx(sql);
 });
 
 test("agenda no fuso da agência e recusa mais de uma vez por hora", () => {
@@ -80,4 +81,24 @@ test("não cria rotina para xodó de outra agência", async () => {
     createRoutine(sql, { agencyId: b.agencyId, xodoId: xodo.id, name: "x", prompt: "y", cron: "0 8 * * 1" }),
     /não encontrado/,
   );
+});
+
+test("rotina usa o modelo escolhido para rotinas; se ele falhar, cai no principal", async () => {
+  const clock = new Clock(new Date("2026-10-19T10:00:00Z"));
+  const { agencyId } = await seedAgency(sql);
+  const base = await seedXodo(sql, agencyId, { name: "Roteado" });
+  await sql.query(
+    `update xodos set routine_provider = 'faux', routine_model = 'faux-2', routine_credential_id = credential_id where id = $1`,
+    [base.id],
+  );
+  await createRoutine(sql, { agencyId, xodoId: base.id, name: "Diária", prompt: "Resumo.", cron: "0 8 * * *" }, clock.now());
+  clock.advance(2 * 60 * 60 * 1000);
+  const model = new FakeModel([{ text: "feito pelo modelo das rotinas" }, { error: "503 overloaded" }, { text: "feito pelo principal" }]);
+  const deps = testDeps(sql, model, clock);
+  await runDueRoutines(deps);
+  assert.deepEqual(model.requests.map((r) => r.model), ["faux-2"]);
+  // No dia seguinte o modelo das rotinas cai e o principal assume.
+  clock.advance(24 * 60 * 60 * 1000);
+  await runDueRoutines(deps);
+  assert.deepEqual(model.requests.map((r) => r.model), ["faux-2", "faux-2", "faux-1"]);
 });

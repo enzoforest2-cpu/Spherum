@@ -101,8 +101,16 @@ test("cria o xodó com o que a pessoa escolheu, reservas em ordem e a saudação
       client_ids: [client],
       daily_budget_brl: 25,
       backup_models: [{ provider: "faux", model: "faux-2", credential_id: credentialId }],
+      routine_model: { provider: "faux", model: "faux-2", credential_id: credentialId },
     }),
     ownerId,
+  );
+  assert.deepEqual([xodo.routine_provider, xodo.routine_model], ["faux", "faux-2"]);
+  const cleared = await updateXodo(sql, llm, agencyId, xodo.id, { routine_model: null });
+  assert.deepEqual([cleared.routine_provider, cleared.routine_model, cleared.routine_credential_id], [null, null, null]);
+  await assert.rejects(
+    updateXodo(sql, llm, agencyId, xodo.id, { routine_model: { provider: "faux", model: "nao-existe", credential_id: credentialId } }),
+    /não está no catálogo/,
   );
 
   assert.deepEqual(
@@ -140,6 +148,28 @@ test("recusa modelo fora do catálogo, chave de outra agência ou de outro prove
     createXodo(sql, llm, a.agencyId, escolhas(a.credentialId, { client_ids: [foreignClient], name: "Juju" }), a.ownerId),
     /não é desta agência/,
   );
+});
+
+test("um PATCH com um campo só não mexe no resto", async () => {
+  const a = await agencyWithKey();
+  const xodo = await createXodo(
+    sql,
+    llm,
+    a.agencyId,
+    escolhas(a.credentialId, {
+      instructions: "Sempre em tópicos.",
+      daily_budget_brl: 30,
+      backup_models: [{ provider: "faux", model: "faux-2", credential_id: a.credentialId }],
+      routine_model: { provider: "faux", model: "faux-2", credential_id: a.credentialId },
+    }),
+    a.ownerId,
+  );
+  const paused = await updateXodo(sql, llm, a.agencyId, xodo.id, { status: "paused" });
+  assert.deepEqual(
+    [paused.status, paused.autonomy, paused.instructions, Number(paused.daily_budget_brl), paused.routine_model],
+    ["paused", "age_sozinho", "Sempre em tópicos.", 30, "faux-2"],
+  );
+  assert.equal((await sql.query(`select 1 from xodo_models where xodo_id = $1`, [xodo.id])).length, 1);
 });
 
 test("pausa, liga o teto e troca as reservas; não altera xodó de outra agência", async () => {

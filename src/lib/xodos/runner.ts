@@ -186,7 +186,7 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   // Confere o cérebro antes de criar a execução: sem nenhum modelo utilizável, nada fica pela metade.
   const problems: string[] = [];
   let usable = false;
-  for (const candidate of await loadCandidates(sql, xodo)) {
+  for (const candidate of await loadCandidates(sql, xodo, input.trigger)) {
     const ready = await prepare(deps, xodo, candidate);
     if ("problem" in ready) problems.push(ready.problem);
     else {
@@ -244,7 +244,7 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
   try {
     const tools = await enabledTools(sql, xodo);
     const systemPrompt = await systemPromptFor(sql, xodo, run, nowOf(deps));
-    const candidates = await loadCandidates(sql, xodo);
+    const candidates = await loadCandidates(sql, xodo, run.trigger);
     let messages = parseJson<Message[]>(run.transcript);
     let steps = run.steps;
     // Começa pelo modelo principal; se um reserva assumir, segue com ele até o fim da execução.

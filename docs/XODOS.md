@@ -17,6 +17,7 @@ O assistente do design (`design/project/Xodo - Criar.dc.html`) tem 5 passos, e o
 | Nome e jeito | `name`, `personality` | Nome livre (único na agência); `curioso`, `brincalhao`, `direto`, `zen` |
 | Cérebro | `provider`, `model`, `credential_id` | Provedor, modelo e a chave de API da agência |
 | Cérebro reserva | `xodo_models` | Até 5 modelos reserva, em ordem, de qualquer provedor (com a chave de cada um) |
+| Modelo das rotinas | `routine_provider`, `routine_model`, `routine_credential_id` | Opcional: um modelo mais rápido e barato para as rotinas agendadas ("Roteamento" do painel do design). Se ele falhar, o principal assume |
 | Limites | `autonomy`, `daily_budget_brl` | `sempre_pergunta`, `pergunta_no_que_importa` (padrão), `age_sozinho`; teto do dia em reais (opcional) |
 
 Também há campos opcionais:
@@ -190,7 +191,7 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 60 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 62 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
