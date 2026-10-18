@@ -1,4 +1,5 @@
 import type { Sql } from "./db";
+import type { Autonomy } from "./types";
 
 /**
  * Quem decide se uma ação do xodó roda direto ou espera alguém da equipe.
@@ -7,7 +8,10 @@ import type { Sql } from "./db";
  *  1. Piso de segurança: o que vai para o cliente sempre pede aprovação, sem exceção.
  *  2. Qualquer regra "exigir aprovação" que case (da agência ou do xodó) vence.
  *  3. Qualquer regra "sempre permitir" que case.
- *  4. O padrão da categoria: leitura e trabalho interno rodam; cliente e campanha perguntam.
+ *  4. A autonomia escolhida na criação do xodó (passo "Limites" do design):
+ *     - "Sempre pergunta": tudo que muda alguma coisa pergunta; só leitura roda direto.
+ *     - "Pergunta no que importa": pergunta antes de enviar, pagar ou apagar (cliente e campanha).
+ *     - "Age sozinho": faz e conta depois. O piso do item 1 continua valendo.
  *
  * Diferente do Rakazo, a especificidade não importa: "exigir" sempre vence "permitir",
  * para que uma regra larga da agência nunca seja furada por uma regra estreita de um xodó.
@@ -16,7 +20,11 @@ import type { Sql } from "./db";
 export const CATEGORIES = ["leitura", "rascunho", "memoria", "equipe", "cliente", "campanha"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-const ASK_BY_DEFAULT = new Set<Category>(["cliente", "campanha"]);
+const ASK_BY_AUTONOMY: Record<Autonomy, Set<Category>> = {
+  sempre_pergunta: new Set(["rascunho", "memoria", "equipe", "cliente", "campanha"]),
+  pergunta_no_que_importa: new Set(["cliente", "campanha"]),
+  age_sozinho: new Set(),
+};
 const SAFETY_FLOOR = new Set<Category>(["cliente"]);
 
 export type ApprovalRule = {
@@ -27,17 +35,22 @@ export type ApprovalRule = {
 
 export type ApprovalDecision = {
   decision: "allow" | "ask";
-  source: "floor" | "require_approval" | "always_allow" | "default";
+  source: "floor" | "require_approval" | "always_allow" | "autonomy";
 };
 
-export function decideApproval(input: { toolName: string; category: Category; rules: ApprovalRule[] }): ApprovalDecision {
+export function decideApproval(input: {
+  toolName: string;
+  category: Category;
+  rules: ApprovalRule[];
+  autonomy: Autonomy;
+}): ApprovalDecision {
   if (SAFETY_FLOOR.has(input.category)) return { decision: "ask", source: "floor" };
   const matching = input.rules.filter((rule) =>
     rule.match_kind === "tool" ? rule.match_value === input.toolName : rule.match_value === input.category,
   );
   if (matching.some((rule) => rule.effect === "require_approval")) return { decision: "ask", source: "require_approval" };
   if (matching.some((rule) => rule.effect === "always_allow")) return { decision: "allow", source: "always_allow" };
-  return { decision: ASK_BY_DEFAULT.has(input.category) ? "ask" : "allow", source: "default" };
+  return { decision: ASK_BY_AUTONOMY[input.autonomy].has(input.category) ? "ask" : "allow", source: "autonomy" };
 }
 
 /** "Aprovar sempre" não vale para o piso de segurança: vira aprovação de uma vez só. */

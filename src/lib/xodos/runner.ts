@@ -3,11 +3,11 @@ import { z } from "zod";
 import { dayIn, notify, reserveBudget, settleBudget } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
 import { loadMemory } from "./memory";
-import { buildSystemPrompt, ROLE_INFO } from "./persona";
+import { buildSystemPrompt } from "./persona";
 import { decideApproval, loadRules } from "./policy";
 import { costUsd, loadPrice, worstCaseUsd, type Price } from "./pricing";
 import type { ModelDriver, StepResponse, ToolSpec, Turn } from "./providers";
-import { TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolDef } from "./tools";
+import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolDef } from "./tools";
 import type { RunStatus, ToolCall, ToolResult, Xodo } from "./types";
 
 /**
@@ -78,16 +78,14 @@ async function loadRun(sql: Sql, runId: string): Promise<RunRow> {
   return run;
 }
 
+/** Todas as ferramentas, menos as que a agência desligou para este xodó. */
 export async function enabledTools(sql: Sql, xodo: Xodo): Promise<ToolDef[]> {
-  const rows = await sql.query<{ tool_name: string; enabled: boolean }>(
-    `select tool_name, enabled from xodo_tools where xodo_id = $1 and agency_id = $2`,
+  const off = await sql.query<{ tool_name: string }>(
+    `select tool_name from xodo_tools where xodo_id = $1 and agency_id = $2 and not enabled`,
     [xodo.id, xodo.agency_id],
   );
-  const names = rows.length ? rows.filter((r) => r.enabled).map((r) => r.tool_name) : ROLE_INFO[xodo.role].tools;
-  return names.flatMap((name) => {
-    const def = TOOLS_BY_NAME.get(name);
-    return def ? [def] : [];
-  });
+  const disabled = new Set(off.map((r) => r.tool_name));
+  return TOOLS.filter((t) => !disabled.has(t.name));
 }
 
 async function clientsInScope(sql: Sql, xodo: Xodo) {
@@ -332,7 +330,7 @@ async function handleToolCalls(
       });
       continue;
     }
-    const decision = decideApproval({ toolName: tool.name, category: tool.category, rules });
+    const decision = decideApproval({ toolName: tool.name, category: tool.category, rules, autonomy: xodo.autonomy });
     if (decision.decision === "ask") {
       await insertAction(sql, base, tool.category, parsed.data, "pending", null, {
         reason: decision.source,

@@ -3,10 +3,11 @@ export type Provider = (typeof PROVIDERS)[number];
 
 export const SPECIES = ["pingo", "bibo", "oki"] as const;
 export const PERSONALITIES = ["curioso", "brincalhao", "direto", "zen"] as const;
-export const ROLES = ["relatorios", "alertas", "otimizacao", "geral"] as const;
+/** Os três níveis do passo "Limites" do assistente de criação. */
+export const AUTONOMY = ["sempre_pergunta", "pergunta_no_que_importa", "age_sozinho"] as const;
 
 export type Personality = (typeof PERSONALITIES)[number];
-export type Role = (typeof ROLES)[number];
+export type Autonomy = (typeof AUTONOMY)[number];
 
 export type Xodo = {
   id: string;
@@ -15,8 +16,9 @@ export type Xodo = {
   species: (typeof SPECIES)[number];
   color: string;
   personality: Personality;
-  role: Role;
+  role: string | null;
   instructions: string;
+  autonomy: Autonomy;
   provider: Provider;
   model: string;
   credential_id: string | null;

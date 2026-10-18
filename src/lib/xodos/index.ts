@@ -8,7 +8,6 @@ export { decideAction, sweep } from "./actions";
 export { createCredential, createXodo, listCredentials, revokeCredential, updateXodo } from "./manage";
 export { createRoutine, runDueRoutines } from "./routines";
 export { continueRun, resumeRun, startRun, XodoError, type EngineDeps } from "./runner";
-export { TEMPLATES } from "./persona";
 
 /** Dependências de produção: banco do Supabase e o modelo de verdade, com a chave da agência. */
 export async function productionDeps(sql?: Sql): Promise<EngineDeps> {

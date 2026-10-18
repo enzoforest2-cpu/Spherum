@@ -36,10 +36,10 @@ export async function seedXodo(sql: Sql, agencyId: string, overrides: Partial<Re
     [agencyId],
   );
   const values = {
-    name: "Faísca",
+    name: "Pipoca",
     species: "pingo",
+    color: "Tomate",
     personality: "curioso",
-    role: "relatorios",
     provider: "anthropic",
     model: "claude-sonnet-5-5",
     credential_id: credential!.id,

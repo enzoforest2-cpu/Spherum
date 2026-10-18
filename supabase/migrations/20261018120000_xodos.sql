@@ -30,7 +30,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Dados que o Faísca lê e escreve
+-- Dados que os xodós leem e escrevem
 -- ---------------------------------------------------------------------------
 
 create table public.metrics_daily (
@@ -92,15 +92,20 @@ insert into public.ai_model_prices (provider, model, input_usd_per_mtok, output_
 -- Xodós
 -- ---------------------------------------------------------------------------
 
+-- Cada agência cria os seus no assistente do design: forma (espécie), cor, nome, jeito,
+-- cérebro (provedor, modelo e chave) e limites (autonomia e teto do dia). Não há xodós fixos.
 create table public.xodos (
   id uuid primary key default gen_random_uuid(),
   agency_id uuid not null references public.agencies(id) on delete cascade,
   name text not null check (char_length(name) between 1 and 40),
   species text not null check (species in ('pingo', 'bibo', 'oki')),
-  color text not null default 'coral' check (char_length(color) <= 20),
+  color text not null check (char_length(color) between 1 and 20),
   personality text not null check (personality in ('curioso', 'brincalhao', 'direto', 'zen')),
-  role text not null check (role in ('relatorios', 'alertas', 'otimizacao', 'geral')),
+  -- Rótulo livre do que ele faz na equipe (ex.: "Relatórios"); o detalhe vai em instructions.
+  role text check (char_length(role) between 1 and 40),
   instructions text not null default '' check (char_length(instructions) <= 8000),
+  autonomy text not null default 'pergunta_no_que_importa'
+    check (autonomy in ('sempre_pergunta', 'pergunta_no_que_importa', 'age_sozinho')),
   provider text not null check (provider in ('anthropic', 'openai', 'google', 'xai')),
   model text not null,
   credential_id uuid references public.ai_credentials(id) on delete set null,
@@ -125,12 +130,12 @@ create table public.xodo_clients (
 create trigger xodo_clients_client_agency before insert or update on public.xodo_clients
   for each row execute function public.app_check_client_agency();
 
--- Ferramentas liberadas para cada xodó (lista explícita).
+-- Ferramentas desligadas para um xodó. Sem linha, a ferramenta está ligada.
 create table public.xodo_tools (
   xodo_id uuid not null references public.xodos(id) on delete cascade,
   agency_id uuid not null references public.agencies(id) on delete cascade,
   tool_name text not null,
-  enabled boolean not null default true,
+  enabled boolean not null default false,
   primary key (xodo_id, tool_name)
 );
 

@@ -1,8 +1,9 @@
-import type { Personality, Provider, Role, Xodo } from "./types";
+import type { Autonomy, Personality, Xodo } from "./types";
 
 /**
- * Personas e modelos prontos, com os mesmos nomes, espécies e textos do design
- * (tela de Xodós em design/project/spherum/agencia_tpl.html).
+ * Persona do xodó, montada só com o que a agência escolheu no assistente de criação
+ * (nome, forma, cor, jeito, autonomia). Os textos de jeito e autonomia são os do design
+ * (design/project/Xodo - Criar.dc.html). Faísca, Zuca e Nina do design são só exemplos.
  */
 
 export const PERSONALITY_STYLE: Record<Personality, { label: string; style: string; greeting: string }> = {
@@ -28,55 +29,11 @@ export const PERSONALITY_STYLE: Record<Personality, { label: string; style: stri
   },
 };
 
-export const ROLE_INFO: Record<Role, { label: string; job: string; tools: string[] }> = {
-  relatorios: {
-    label: "Relatórios",
-    job: "Monta os relatórios mensais e semanais e publica no portal de cada cliente, sempre depois da aprovação da equipe.",
-    tools: [
-      "listar_clientes",
-      "consultar_metricas",
-      "comparar_periodos",
-      "listar_relatorios",
-      "ler_relatorio",
-      "criar_rascunho_relatorio",
-      "publicar_relatorio",
-      "avisar_equipe",
-      "atualizar_memoria",
-    ],
-  },
-  alertas: {
-    label: "Alertas",
-    job: "Vigia CPL e ROAS de cada cliente e avisa a equipe quando algo sai da meta.",
-    tools: ["listar_clientes", "consultar_metricas", "comparar_periodos", "avisar_equipe", "atualizar_memoria"],
-  },
-  otimizacao: {
-    label: "Otimização",
-    job: "Analisa campanhas e recomenda onde ajustar orçamento, pausar o que está ruim e escalar o que performa.",
-    tools: ["listar_clientes", "consultar_metricas", "comparar_periodos", "avisar_equipe", "atualizar_memoria"],
-  },
-  geral: {
-    label: "Geral",
-    job: "Ajuda a equipe no que for preciso com os dados da agência.",
-    tools: ["listar_clientes", "consultar_metricas", "comparar_periodos", "listar_relatorios", "ler_relatorio", "avisar_equipe", "atualizar_memoria"],
-  },
+export const AUTONOMY_INFO: Record<Autonomy, { label: string; promise: string }> = {
+  sempre_pergunta: { label: "Sempre pergunta", promise: "te pergunto antes de qualquer coisa" },
+  pergunta_no_que_importa: { label: "Pergunta no que importa", promise: "pergunto antes de enviar, pagar ou apagar" },
+  age_sozinho: { label: "Age sozinho", promise: "faço sozinho e te conto depois" },
 };
-
-export type XodoTemplate = {
-  key: string;
-  name: string;
-  species: Xodo["species"];
-  personality: Personality;
-  role: Role;
-  provider: Provider;
-  /** Só a Anthropic tem modelo sugerido; para os outros a agência escolhe o modelo da própria conta. */
-  model: string | null;
-};
-
-export const TEMPLATES: XodoTemplate[] = [
-  { key: "faisca", name: "Faísca", species: "pingo", personality: "curioso", role: "relatorios", provider: "anthropic", model: "claude-sonnet-5-5" },
-  { key: "zuca", name: "Zuca", species: "bibo", personality: "direto", role: "alertas", provider: "openai", model: null },
-  { key: "nina", name: "Nina", species: "oki", personality: "direto", role: "otimizacao", provider: "xai", model: null },
-];
 
 export function greeting(xodo: Pick<Xodo, "name" | "personality">): string {
   return PERSONALITY_STYLE[xodo.personality].greeting.replace("{n}", xodo.name);
@@ -92,11 +49,11 @@ export type PromptContext = {
 
 export function buildSystemPrompt(xodo: Xodo, ctx: PromptContext): string {
   const p = PERSONALITY_STYLE[xodo.personality];
-  const r = ROLE_INFO[xodo.role];
   const parts = [
     `Você é ${xodo.name}, um xodó: colega de IA da equipe da agência ${ctx.agencyName}, dentro do Spherum.`,
-    `Sua função: ${r.label}. ${r.job}`,
+    ...(xodo.role ? [`Sua função na equipe: ${xodo.role}.`] : []),
     `Seu jeito: ${p.label}. ${p.style}`,
+    `Combinado com a equipe: ${AUTONOMY_INFO[xodo.autonomy].promise}.`,
     `Hoje é ${ctx.today} (fuso ${xodo.timezone}).`,
     [
       "Regras:",

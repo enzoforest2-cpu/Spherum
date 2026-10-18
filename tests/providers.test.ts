@@ -21,7 +21,7 @@ function capture<T>(response: unknown) {
 test("conversa começa pelo usuário e junta falas seguidas", () => {
   assert.deepEqual(
     normalizeTurns([
-      { role: "assistant", text: "Oi! Eu sou Faísca." },
+      { role: "assistant", text: "Oi! Eu sou Pipoca." },
       { role: "user", text: "a" },
       { role: "user", text: "b" },
       { role: "assistant", text: "" },

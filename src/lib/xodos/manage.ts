@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { one, type Sql } from "./db";
-import { greeting, ROLE_INFO } from "./persona";
+import { greeting } from "./persona";
 import { addMessage, XodoError } from "./runner";
-import { PERSONALITIES, PROVIDERS, ROLES, SPECIES, type Xodo } from "./types";
+import { AUTONOMY, PERSONALITIES, PROVIDERS, SPECIES, type Xodo } from "./types";
 import { credentialAad, lastFour, openSecret, sealSecret } from "./vault";
 
 /** Cadastro de chaves de API e de xodós. Toda função recebe agencyId e filtra por ele. */
@@ -69,13 +69,15 @@ export async function loadApiKey(sql: Sql, xodo: Xodo, masterKey: string): Promi
 // Xodós
 // ---------------------------------------------------------------------------
 
+/** O que a pessoa escolhe no assistente de criação do design (forma, cor, nome e jeito, cérebro, limites). */
 export const xodoInput = z.object({
   name: z.string().trim().min(1).max(40),
   species: z.enum(SPECIES),
-  color: z.string().trim().max(20).default("coral"),
+  color: z.string().trim().min(1).max(20),
   personality: z.enum(PERSONALITIES),
-  role: z.enum(ROLES),
+  role: z.string().trim().min(1).max(40).nullable().default(null),
   instructions: z.string().max(8000).default(""),
+  autonomy: z.enum(AUTONOMY).default("pergunta_no_que_importa"),
   provider: z.enum(PROVIDERS),
   model: z.string().trim().min(1).max(100),
   credential_id: z.uuid(),
@@ -86,7 +88,7 @@ export const xodoInput = z.object({
 });
 
 export const xodoPatch = xodoInput
-  .pick({ instructions: true, model: true, credential_id: true, daily_budget_usd: true, warn_at_percent: true })
+  .omit({ timezone: true, client_ids: true })
   .extend({ status: z.enum(["active", "paused"]) })
   .partial();
 
@@ -118,22 +120,19 @@ export async function createXodo(sql: Sql, agencyId: string, raw: unknown, creat
   }
 
   return sql.transaction(async (tx) => {
-    const taken = await one(tx, `select 1 from xodos where agency_id = $1 and name = $2`, [agencyId, input.name]);
-    if (taken) throw new XodoError(`Já existe um xodó chamado ${input.name}.`, 409);
+    await assertNameFree(tx, agencyId, input.name);
     const xodo = await one<Xodo>(
       tx,
-      `insert into xodos (agency_id, name, species, color, personality, role, instructions, provider, model,
+      `insert into xodos (agency_id, name, species, color, personality, role, instructions, autonomy, provider, model,
          credential_id, daily_budget_usd, warn_at_percent, timezone, client_scope, created_by)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) returning *`,
-      [agencyId, input.name, input.species, input.color, input.personality, input.role, input.instructions, input.provider,
-        input.model, input.credential_id, input.daily_budget_usd, input.warn_at_percent, input.timezone, scope, createdBy],
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+      [agencyId, input.name, input.species, input.color, input.personality, input.role, input.instructions, input.autonomy,
+        input.provider, input.model, input.credential_id, input.daily_budget_usd, input.warn_at_percent, input.timezone,
+        scope, createdBy],
     );
     for (const clientId of clientIds) {
       // O gatilho do banco também recusa cliente de outra agência.
       await tx.query(`insert into xodo_clients (xodo_id, client_id, agency_id) values ($1, $2, $3)`, [xodo!.id, clientId, agencyId]);
-    }
-    for (const tool of ROLE_INFO[input.role].tools) {
-      await tx.query(`insert into xodo_tools (xodo_id, agency_id, tool_name) values ($1, $2, $3)`, [xodo!.id, agencyId, tool]);
     }
     await addMessage(tx, xodo!, null, "assistant", greeting(xodo!), null);
     return xodo!;
@@ -144,14 +143,27 @@ export async function updateXodo(sql: Sql, agencyId: string, xodoId: string, raw
   const patch = xodoPatch.parse(raw);
   const current = await one<Xodo>(sql, `select * from xodos where id = $1 and agency_id = $2`, [xodoId, agencyId]);
   if (!current) throw new XodoError("Xodó não encontrado", 404);
-  if (patch.credential_id) await assertCredential(sql, agencyId, patch.credential_id, current.provider);
+  // Cérebro trocável: mudar de provedor exige o modelo e a chave do novo provedor.
+  const switchesProvider = patch.provider !== undefined && patch.provider !== current.provider;
+  if (switchesProvider && (!patch.model || !patch.credential_id)) {
+    throw new XodoError("Para trocar o cérebro, informe o modelo e a chave do novo provedor.");
+  }
   const next = { ...current, ...patch };
+  if (patch.credential_id || switchesProvider) await assertCredential(sql, agencyId, next.credential_id!, next.provider);
+  if (patch.name && patch.name !== current.name) await assertNameFree(sql, agencyId, patch.name);
   const row = await one<Xodo>(
     sql,
-    `update xodos set instructions = $3, model = $4, credential_id = $5, daily_budget_usd = $6, warn_at_percent = $7,
-            status = $8, updated_at = now()
+    `update xodos set name = $3, species = $4, color = $5, personality = $6, role = $7, instructions = $8, autonomy = $9,
+            provider = $10, model = $11, credential_id = $12, daily_budget_usd = $13, warn_at_percent = $14, status = $15,
+            updated_at = now()
       where id = $1 and agency_id = $2 returning *`,
-    [xodoId, agencyId, next.instructions, next.model, next.credential_id, next.daily_budget_usd, next.warn_at_percent, next.status],
+    [xodoId, agencyId, next.name, next.species, next.color, next.personality, next.role, next.instructions, next.autonomy,
+      next.provider, next.model, next.credential_id, next.daily_budget_usd, next.warn_at_percent, next.status],
   );
   return row!;
+}
+
+async function assertNameFree(sql: Sql, agencyId: string, name: string) {
+  const taken = await one(sql, `select 1 from xodos where agency_id = $1 and name = $2`, [agencyId, name]);
+  if (taken) throw new XodoError(`Já existe um xodó chamado ${name}.`, 409);
 }

@@ -4,7 +4,7 @@ import { CAN_MANAGE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/ht
 import { updateXodo } from "@/lib/xodos";
 import { loadXodo } from "@/lib/xodos/runner";
 
-/** PATCH /api/xodos/:id  { status?, daily_budget_usd?, warn_at_percent?, instructions?, model?, credential_id? } */
+/** PATCH /api/xodos/:id  muda o que foi escolhido na criação (nome, forma, cor, jeito, autonomia, teto, modelo, chave) ou pausa. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await requireUser(request);

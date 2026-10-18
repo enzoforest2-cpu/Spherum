@@ -42,7 +42,8 @@ test("responde, registra o gasto e mostra a conversa", async () => {
     { role: "assistant", text: "Oi! Como posso ajudar?" },
   ]);
   // O modelo recebeu a persona e a mensagem.
-  assert.match(model.requests[0].system, /Você é Faísca/);
+  assert.match(model.requests[0].system, /Você é Pipoca/);
+  assert.match(model.requests[0].system, /pergunto antes de enviar, pagar ou apagar/);
   assert.match(model.requests[0].system, /Loja Verano/);
   // 1000 de input a US$ 2/Mtok + 200 de output a US$ 10/Mtok = 0,004
   const usage = await one(sql, `select cost_usd, call_id, model from ai_usage where run_id = $1`, [runId]);
@@ -265,7 +266,7 @@ test("um xodó não enxerga clientes de outra agência nem fora da lista dele", 
   // Escopo "selected": só os clientes da lista.
   const allowed = await seedClient(sql, agencyId, "Academia Pulse");
   const hidden = await seedClient(sql, agencyId, "Moraes Advocacia");
-  const scoped = await seedXodo(sql, agencyId, { name: "Zuca", role: "alertas", client_scope: "selected" });
+  const scoped = await seedXodo(sql, agencyId, { name: "Bip", client_scope: "selected" });
   await sql.query(`insert into xodo_clients (xodo_id, client_id, agency_id) values ($1, $2, $3)`, [scoped.id, allowed, agencyId]);
   const model2 = new FakeModel([{ toolCalls: [{ id: "t1", name: "listar_clientes", input: {} }, { id: "t2", name: "comparar_periodos", input: { client_id: hidden, atual: { inicio: "2026-10-01", fim: "2026-10-31" }, anterior: { inicio: "2026-09-01", fim: "2026-09-30" } } }] }, { text: "ok" }]);
   await ask(testDeps(sql, model2), scoped, "Clientes?", ownerId);
@@ -281,8 +282,12 @@ test("um xodó não enxerga clientes de outra agência nem fora da lista dele", 
   );
 });
 
-test("entrada inválida e ferramenta fora da lista viram erro para o modelo, sem executar nada", async () => {
-  const { xodo, ownerId } = await setup({ name: "Nina", role: "otimizacao" });
+test("entrada inválida e ferramenta desligada viram erro para o modelo, sem executar nada", async () => {
+  const { xodo, ownerId } = await setup({ name: "Kiki" });
+  await sql.query(`insert into xodo_tools (xodo_id, agency_id, tool_name) values ($1, $2, 'publicar_relatorio')`, [
+    xodo.id,
+    xodo.agency_id,
+  ]);
   const model = new FakeModel([
     {
       toolCalls: [
@@ -298,10 +303,35 @@ test("entrada inválida e ferramenta fora da lista viram erro para o modelo, sem
   const results = model.lastToolResults();
   assert.deepEqual(results.map((r) => [r.id, r.isError]), [["t1", true], ["t2", true], ["t3", true]]);
   assert.match(results[0].content, /Entrada inválida/);
-  assert.match(results[1].content, /indisponível/, "a Nina não tem publicar_relatorio");
+  assert.match(results[1].content, /indisponível/, "publicar_relatorio foi desligada para este xodó");
   assert.deepEqual((await actions(runId)).map((a) => a.status), ["failed", "failed", "failed"]);
-  // A ferramenta proibida nem é oferecida ao modelo.
-  assert.ok(!model.requests[0].tools.some((t) => t.name === "publicar_relatorio"));
+  // A ferramenta desligada nem é oferecida ao modelo; as outras continuam.
+  const offered = model.requests[0].tools.map((t) => t.name);
+  assert.ok(!offered.includes("publicar_relatorio"));
+  assert.ok(offered.includes("criar_rascunho_relatorio"));
+});
+
+test("quem sempre pergunta espera aprovação até para salvar um rascunho", async () => {
+  const { xodo, ownerId, clientId } = await setup({ name: "Lua", autonomy: "sempre_pergunta" });
+  const model = new FakeModel([
+    {
+      toolCalls: [
+        { id: "t1", name: "listar_clientes", input: {} },
+        {
+          id: "t2",
+          name: "criar_rascunho_relatorio",
+          input: { client_id: clientId, inicio: "2026-10-01", fim: "2026-10-31", titulo: "Out", conteudo_md: "# Out" },
+        },
+      ],
+    },
+  ]);
+  const { runId, status } = await ask(testDeps(sql, model), xodo, "Faz o rascunho", ownerId);
+  assert.equal(status, "waiting_approval");
+  assert.deepEqual((await actions(runId)).map((a) => [a.tool_name, a.status]), [
+    ["listar_clientes", "executed"],
+    ["criar_rascunho_relatorio", "pending"],
+  ]);
+  assert.match(model.requests[0].system, /te pergunto antes de qualquer coisa/);
 });
 
 test("pedido alterado no banco depois de criado não é executado", async () => {

@@ -50,10 +50,10 @@ Rotas de API podem ser criadas em `src/app/api/` sem afetar o front.
 
 ### Motor dos Xodós
 
-Execução por API com a chave da própria agência (Anthropic, OpenAI, Google ou xAI): aprovações que a equipe decide, teto de gasto diário por xodó, chaves cifradas, memória, rotinas agendadas e as ferramentas do Faísca. Código em `src/lib/xodos/`, rotas em `src/app/api/xodos/` e `src/app/api/cron/xodos/`.
+Execução por API com a chave da própria agência (Anthropic, OpenAI, Google ou xAI): aprovações que a equipe decide, teto de gasto diário por xodó, chaves cifradas, memória, rotinas agendadas e ferramentas de métricas e relatórios. Cada agência cria os seus xodós (forma, cor, nome, jeito, cérebro e autonomia), como no assistente do design. Código em `src/lib/xodos/`, rotas em `src/app/api/xodos/` e `src/app/api/cron/xodos/`.
 
 Guia completo: [`docs/XODOS.md`](docs/XODOS.md).
 
 ```bash
-npm test   # 54 testes com PGlite, sem precisar de banco
+npm test   # 57 testes com PGlite, sem precisar de banco
 ```
