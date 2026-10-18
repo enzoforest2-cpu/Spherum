@@ -18,6 +18,8 @@ export type DecideInput = {
   /** "always" também cria uma regra "sempre permitir" para esta ferramenta neste xodó. */
   scope?: "once" | "always";
   reason?: string;
+  /** De onde veio a decisão: app (padrão), slack, whatsapp ou telegram. */
+  via?: string;
 };
 
 type ActionRow = {
@@ -45,11 +47,12 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
     const decided = await one<ActionRow>(
       tx,
       `update xodo_actions
-          set status = $3, decision = $4, decided_by = $5, decided_at = $6::timestamptz, reason = coalesce($7, reason)
+          set status = $3, decision = $4, decided_by = $5, decided_at = $6::timestamptz, reason = coalesce($7, reason),
+              decided_via = $8
         where id = $1 and agency_id = $2 and status = 'pending' and (expires_at is null or expires_at > $6::timestamptz)
         returning id, run_id, xodo_id, tool_name, category, status`,
       [input.actionId, input.agencyId, input.approve ? "approved" : "denied", always ? "always" : "once",
-        input.userId, now, input.reason?.slice(0, 500) ?? null],
+        input.userId, now, input.reason?.slice(0, 500) ?? null, input.via ?? "app"],
     );
     if (!decided) return null;
     if (always) {

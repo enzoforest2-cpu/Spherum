@@ -11,10 +11,10 @@ import { json, num, one, parseJson, type Sql } from "./db";
 import { usdBrl } from "./fx";
 import { providerErrorMessage } from "./llm";
 import { loadMemory } from "./memory";
-import { buildSystemPrompt } from "./persona";
+import { buildSystemPrompt, type PromptContext } from "./persona";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
-import type { RunStatus, ToolCall, ToolResult, Xodo } from "./types";
+import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
 
 /**
  * O executor dos Xodós: um laço de passos com o modelo, no estilo do Rakazo e do OpenDots.
@@ -67,12 +67,17 @@ export async function loadXodo(sql: Sql, xodoId: string, agencyId?: string): Pro
   return xodo;
 }
 
+/** user: pela tela do app; channel: por Slack, WhatsApp ou Telegram; routine: rotina agendada; event: gatilho. */
+export type RunTrigger = "user" | "routine" | "channel" | "event";
+
 type RunRow = {
   id: string;
   xodo_id: string;
   agency_id: string;
-  trigger: "user" | "routine";
+  trigger: RunTrigger;
   routine_id: string | null;
+  conversation_id: string | null;
+  event_trigger_id: string | null;
   status: RunStatus;
   transcript: unknown;
   steps: number;
@@ -190,10 +195,15 @@ function piTools(tools: ToolDef[]): Tool[] {
 export type StartInput = {
   xodoId: string;
   agencyId: string;
-  trigger: "user" | "routine";
+  trigger: RunTrigger;
   text: string;
   userId?: string | null;
   routineId?: string | null;
+  /** Conversa de canal (Slack, WhatsApp, Telegram); sem ela, é a conversa do app. */
+  conversationId?: string | null;
+  /** Quem falou pelo canal, para mostrar no app (ex.: "Ana pelo Slack"). */
+  authorLabel?: string | null;
+  eventTriggerId?: string | null;
 };
 
 /** Cria a execução e grava a conversa inicial. Quem chama segue com continueRun(). */
@@ -218,35 +228,46 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   if (!usable) throw new XodoError(`${xodo.name} não tem um modelo utilizável: ${problems.join("; ")}.`, 422);
 
   const now = nowOf(deps);
-  if (input.trigger === "user") {
+  const conversationId = input.conversationId ?? null;
+  const spoken = input.trigger === "user" || input.trigger === "channel";
+  if (spoken) {
+    // Um pedido por vez em cada conversa (a do app ou a de um canal).
     const busy = await one(
       sql,
-      `select 1 from xodo_runs where xodo_id = $1 and status = 'running' and heartbeat_at > $2::timestamptz`,
-      [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString()],
+      `select 1 from xodo_runs where xodo_id = $1 and status = 'running' and heartbeat_at > $2::timestamptz
+          and conversation_id is not distinct from $3::uuid`,
+      [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString(), conversationId],
     );
     if (busy) throw new XodoError(`${xodo.name} ainda está trabalhando no pedido anterior.`, 409);
   }
 
   const run = await one<{ id: string }>(
     sql,
-    `insert into xodo_runs (xodo_id, agency_id, trigger, routine_id, requested_by, provider, model, started_at, heartbeat_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $8::timestamptz) returning id`,
-    [xodo.id, xodo.agency_id, input.trigger, input.routineId ?? null, input.userId ?? null, xodo.provider, xodo.model, now.toISOString()],
+    `insert into xodo_runs (xodo_id, agency_id, trigger, routine_id, requested_by, provider, model, started_at, heartbeat_at,
+       conversation_id, event_trigger_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $8::timestamptz, $9, $10) returning id`,
+    [xodo.id, xodo.agency_id, input.trigger, input.routineId ?? null, input.userId ?? null, xodo.provider, xodo.model, now.toISOString(),
+      conversationId, input.eventTriggerId ?? null],
   );
   const runId = run!.id;
 
-  if (input.trigger === "user") await addMessage(sql, xodo, runId, "user", text, input.userId ?? null);
+  if (spoken) await addMessage(sql, xodo, runId, "user", text, input.userId ?? null, { authorLabel: input.authorLabel ?? null });
 
-  const recent = await sql.query<{ role: "user" | "assistant"; text: string }>(
-    `select role, text from (
-       select id, role, text from xodo_messages
-        where xodo_id = $1 and agency_id = $2 and role in ('user', 'assistant')
-        order by id desc limit $3
-     ) m order by id`,
-    [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES],
-  );
+  // Gatilho começa do zero: o evento vem de fora e não deve se misturar com a conversa.
+  const recent =
+    input.trigger === "event"
+      ? []
+      : await sql.query<{ role: "user" | "assistant"; text: string }>(
+          `select role, text from (
+             select id, role, text from xodo_messages
+              where xodo_id = $1 and agency_id = $2 and role in ('user', 'assistant')
+                and conversation_id is not distinct from $4::uuid
+              order by id desc limit $3
+           ) m order by id`,
+          [xodo.id, xodo.agency_id, TRANSCRIPT_MESSAGES, conversationId],
+        );
   const turns = recent.map((m) => ({ role: m.role, text: m.text }));
-  if (input.trigger === "routine") turns.push({ role: "user", text });
+  if (!spoken) turns.push({ role: "user", text });
 
   await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(historyMessages(turns))]);
   return runId;
@@ -260,7 +281,7 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
   const { sql } = deps;
   const run = await loadRun(sql, runId);
   if (run.status !== "running") return run.status;
-  const xodo = await loadXodo(sql, run.xodo_id, run.agency_id);
+  const xodo = await effectiveXodo(sql, run, await loadXodo(sql, run.xodo_id, run.agency_id));
 
   try {
     const tools = await toolsFor(deps, xodo);
@@ -332,12 +353,12 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
-        const list = pending.map((p) => `• ${p}`).join("\n");
-        await addMessage(sql, xodo, runId, "note", `Preciso de aprovação para:\n${list}`, null);
+        const list = pending.length === 1 ? `• ${pending[0].summary}` : pending.map((p, i) => `${i + 1}. ${p.summary}`).join("\n");
+        await addMessage(sql, xodo, runId, "note", `Preciso de aprovação para:\n${list}`, null, { approvals: pending });
         await notify(sql, xodo.agency_id, {
           kind: "approval_pending",
           title: `${xodo.name} pede aprovação`,
-          body: pending.join("; "),
+          body: pending.map((p) => p.summary).join("; "),
           data: { xodo_id: xodo.id, run_id: runId },
         });
         return "waiting_approval";
@@ -365,12 +386,17 @@ async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date) {
         [run.routine_id, xodo.agency_id],
       )
     : null;
+  const conversation = run.conversation_id
+    ? await one<{ channel: string }>(sql, `select channel from xodo_conversations where id = $1`, [run.conversation_id])
+    : null;
   return buildSystemPrompt(xodo, {
     agencyName: agency?.name ?? "",
     today: dayIn(xodo.timezone, now),
     memory: await loadMemory(sql, xodo.agency_id, xodo.id),
     clients: await clientsInScope(sql, xodo),
     routine: routine ? { name: routine.name, lastSummary: routine.last_summary } : undefined,
+    channel: conversation?.channel as PromptContext["channel"],
+    event: run.trigger === "event",
   });
 }
 
@@ -378,7 +404,7 @@ async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date) {
 // Ferramentas e pedidos de aprovação
 // ---------------------------------------------------------------------------
 
-/** Registra todas as chamadas do passo, roda as liberadas e devolve o resumo das que esperam aprovação. */
+/** Registra todas as chamadas do passo, roda as liberadas e devolve as que esperam aprovação. */
 async function handleToolCalls(
   deps: EngineDeps,
   xodo: Xodo,
@@ -386,11 +412,11 @@ async function handleToolCalls(
   step: number,
   calls: ToolCall[],
   tools: ToolDef[],
-): Promise<string[]> {
+): Promise<{ actionId: string; summary: string }[]> {
   const { sql } = deps;
   const byName = new Map(tools.map((t) => [t.name, t]));
   const rules = await loadRules(sql, xodo.agency_id, xodo.id);
-  const pending: string[] = [];
+  const pending: { actionId: string; summary: string }[] = [];
   const now = nowOf(deps);
 
   for (const [index, call] of calls.entries()) {
@@ -430,12 +456,12 @@ async function handleToolCalls(
       }
     }
     if (reason) {
-      await insertAction(sql, base, category, parsed.data, "pending", null, {
+      const actionId = await insertAction(sql, base, category, parsed.data, "pending", null, {
         reason,
         expiresAt: new Date(now.getTime() + APPROVAL_TTL_MS),
       });
       const why = reason.startsWith("limite: ") ? ` (${reason.slice(8)})` : "";
-      pending.push(tool.summarize(parsed.data) + why);
+      pending.push({ actionId, summary: tool.summarize(parsed.data) + why });
       continue;
     }
     const actionId = await insertAction(sql, base, category, parsed.data, "executing", null);
@@ -607,6 +633,10 @@ async function finish(
   return status;
 }
 
+/**
+ * Grava uma mensagem na conversa da execução. Se a conversa é de um canal, o que o xodó
+ * escreve também entra na fila de entrega (channel_outbox), com os pedidos de aprovação.
+ */
 export async function addMessage(
   sql: Sql,
   xodo: Pick<Xodo, "id" | "agency_id">,
@@ -614,9 +644,35 @@ export async function addMessage(
   role: "user" | "assistant" | "note",
   text: string,
   authorUser: string | null,
+  extra: { authorLabel?: string | null; approvals?: { actionId: string; summary: string }[] } = {},
 ) {
   await sql.query(
-    `insert into xodo_messages (xodo_id, agency_id, run_id, role, author_user, text) values ($1, $2, $3, $4, $5, $6)`,
-    [xodo.id, xodo.agency_id, runId, role, authorUser, text],
+    `with m as (
+       insert into xodo_messages (xodo_id, agency_id, run_id, role, author_user, text, author_label, conversation_id)
+       values ($1, $2, $3, $4, $5, $6, $7, (select conversation_id from xodo_runs where id = $3))
+       returning id, agency_id, conversation_id, role, text
+     ), touched as (
+       update xodo_conversations set last_message_at = now() where id = (select conversation_id from m)
+     )
+     insert into channel_outbox (agency_id, conversation_id, message_id, text, approvals)
+     select agency_id, conversation_id, id, text, $8::jsonb from m where conversation_id is not null and role <> 'user'`,
+    [xodo.id, xodo.agency_id, runId, role, authorUser, text, extra.authorLabel ?? null,
+      json((extra.approvals ?? []).map((a) => ({ action_id: a.actionId, summary: a.summary })))],
   );
+}
+
+const STRICTNESS: Autonomy[] = ["age_sozinho", "pergunta_no_que_importa", "sempre_pergunta"];
+
+/**
+ * Execução disparada por gatilho segue no máximo a autonomia do gatilho: o conteúdo vem de
+ * fora, então por padrão envio, exclusão, pagamento e campanha sempre perguntam.
+ */
+async function effectiveXodo(sql: Sql, run: RunRow, xodo: Xodo): Promise<Xodo> {
+  if (run.trigger !== "event") return xodo;
+  const trigger = run.event_trigger_id
+    ? await one<{ autonomy_cap: Autonomy }>(sql, `select autonomy_cap from event_triggers where id = $1`, [run.event_trigger_id])
+    : null;
+  const cap = trigger?.autonomy_cap ?? "pergunta_no_que_importa";
+  const autonomy = STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(xodo.autonomy) ? cap : xodo.autonomy;
+  return { ...xodo, autonomy };
 }

@@ -30,7 +30,7 @@ export type BrainDeps = {
  * Ordem dos modelos: principal (tentativa 0) e reservas (1, 2…). Nas rotinas, se a agência
  * escolheu um modelo para elas, ele vem antes e o principal vira o primeiro reserva.
  */
-export async function loadCandidates(sql: Sql, xodo: Xodo, trigger: "user" | "routine" = "user"): Promise<Candidate[]> {
+export async function loadCandidates(sql: Sql, xodo: Xodo, trigger: string = "user"): Promise<Candidate[]> {
   const backups = await sql.query<{ position: number; provider: string; model: string; credential_id: string }>(
     `select position, provider, model, credential_id from xodo_models
       where xodo_id = $1 and agency_id = $2 order by position`,
@@ -38,7 +38,8 @@ export async function loadCandidates(sql: Sql, xodo: Xodo, trigger: "user" | "ro
   );
   const main = { provider: xodo.provider, model: xodo.model, credentialId: xodo.credential_id };
   const list = [main, ...backups.map((b) => ({ provider: b.provider, model: b.model, credentialId: b.credential_id }))];
-  if (trigger === "routine" && xodo.routine_provider && xodo.routine_model) {
+  // Rotinas e gatilhos rodam sem ninguém olhando: usam o modelo de rotinas, se houver.
+  if ((trigger === "routine" || trigger === "event") && xodo.routine_provider && xodo.routine_model) {
     list.unshift({ provider: xodo.routine_provider, model: xodo.routine_model, credentialId: xodo.routine_credential_id });
   }
   // O mesmo modelo com a mesma chave não é tentado duas vezes.

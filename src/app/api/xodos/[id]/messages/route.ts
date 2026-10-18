@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const [messages, pending, runs] = await Promise.all([
       sql.query(
         `select * from (select id, run_id, role, author_user, text, created_at::text from xodo_messages
-           where xodo_id = $1 and agency_id = $2 order by id desc limit 50) m order by id`,
+           where xodo_id = $1 and agency_id = $2 and conversation_id is null order by id desc limit 50) m order by id`,
         [xodoId, xodo.agency_id],
       ),
       sql.query(
