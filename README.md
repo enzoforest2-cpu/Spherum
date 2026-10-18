@@ -32,7 +32,13 @@ Os arquivos em `public/` são *bundles* (com fontes e scripts embutidos). Para e
 
 ## Backend
 
-Ainda não existe. Hoje tudo roda no navegador, com dados fictícios e `localStorage`. Pontos que vão precisar de backend:
+Banco: Supabase, projeto **spherum** (`fszbxwlxuncqefcwttru`, região São Paulo), na organização *enzoforest2-3275's projects*.
+
+- URL e publishable key em `.env.example`. Copie para `.env.local` para rodar localmente; na Vercel, as mesmas variáveis ficam em Settings → Environment Variables.
+- Cliente pronto em `src/lib/supabase.ts`.
+- Migrações SQL em `supabase/migrations/`.
+
+O front ainda não usa o banco: tudo roda no navegador, com dados fictícios e `localStorage`. Pontos que vão precisar de backend:
 
 - Autenticação (login, cadastro em 5 passos e os três tipos de acesso: agência, cliente e admin).
 - Formulário de contato e agendamento de demonstração (hoje usa uma agenda fictícia de Google Agenda).
