@@ -44,6 +44,16 @@ O front ainda não usa o banco: tudo roda no navegador, com dados fictícios e `
 - Formulário de contato e agendamento de demonstração (hoje usa uma agenda fictícia de Google Agenda).
 - Planos, add-ons e cobrança (Asaas, Stripe, Pagar.me ou Mercado Pago).
 - Integrações: Meta Ads, Google Ads, GA4, TikTok, RD Station e WhatsApp.
-- Xodós: execução por API usando a chave da própria agência (OpenAI, Anthropic, Google ou xAI), com limite diário de gasto e aprovações.
+- Xodós: o motor já existe no backend (veja abaixo). Falta ligar a tela do design a ele.
 
 Rotas de API podem ser criadas em `src/app/api/` sem afetar o front.
+
+### Motor dos Xodós
+
+Execução por API com a chave da própria agência (Anthropic, OpenAI, Google ou xAI): aprovações que a equipe decide, teto de gasto diário por xodó, chaves cifradas, memória, rotinas agendadas e as ferramentas do Faísca. Código em `src/lib/xodos/`, rotas em `src/app/api/xodos/` e `src/app/api/cron/xodos/`.
+
+Guia completo: [`docs/XODOS.md`](docs/XODOS.md).
+
+```bash
+npm test   # 54 testes com PGlite, sem precisar de banco
+```

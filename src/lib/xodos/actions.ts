@@ -1,0 +1,124 @@
+import { one } from "./db";
+import { canAlwaysAllow, type Category } from "./policy";
+import { loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
+
+/**
+ * Decisões da equipe sobre os pedidos dos xodós (modelo do OpenDots).
+ *
+ * A decisão é uma troca atômica de "pending" para "approved" ou "denied": só a primeira
+ * vale e pedidos vencidos não podem mais ser aprovados. Aprovado, o servidor executa o
+ * input guardado (não o que vier na requisição) e retoma a execução quando o passo fecha.
+ */
+
+export type DecideInput = {
+  actionId: string;
+  agencyId: string;
+  userId: string;
+  approve: boolean;
+  /** "always" também cria uma regra "sempre permitir" para esta ferramenta neste xodó. */
+  scope?: "once" | "always";
+  reason?: string;
+};
+
+type ActionRow = {
+  id: string;
+  run_id: string;
+  xodo_id: string;
+  tool_name: string;
+  category: string;
+  status: string;
+};
+
+export async function decideAction(deps: EngineDeps, input: DecideInput) {
+  const { sql } = deps;
+  const now = (deps.now ? deps.now() : new Date()).toISOString();
+  const wantsAlways = input.approve && input.scope === "always";
+
+  const action = await sql.transaction(async (tx) => {
+    const current = await one<ActionRow>(
+      tx,
+      `select id, run_id, xodo_id, tool_name, category, status from xodo_actions where id = $1 and agency_id = $2`,
+      [input.actionId, input.agencyId],
+    );
+    if (!current) throw new XodoError("Pedido não encontrado", 404);
+    const always = wantsAlways && canAlwaysAllow(current.category as Category);
+    const decided = await one<ActionRow>(
+      tx,
+      `update xodo_actions
+          set status = $3, decision = $4, decided_by = $5, decided_at = $6::timestamptz, reason = coalesce($7, reason)
+        where id = $1 and agency_id = $2 and status = 'pending' and (expires_at is null or expires_at > $6::timestamptz)
+        returning id, run_id, xodo_id, tool_name, category, status`,
+      [input.actionId, input.agencyId, input.approve ? "approved" : "denied", always ? "always" : "once",
+        input.userId, now, input.reason?.slice(0, 500) ?? null],
+    );
+    if (!decided) return null;
+    if (always) {
+      await tx.query(
+        `insert into approval_rules (agency_id, xodo_id, effect, match_kind, match_value, created_by)
+         values ($1, $2, 'always_allow', 'tool', $3, $4)`,
+        [input.agencyId, decided.xodo_id, decided.tool_name, input.userId],
+      );
+    }
+    return decided;
+  });
+
+  if (!action) {
+    // Não decidiu: ou venceu, ou outra pessoa decidiu primeiro (a linha lida antes pode estar velha).
+    const expired = await one(
+      sql,
+      `update xodo_actions set status = 'expired'
+        where id = $1 and agency_id = $2 and status = 'pending' and expires_at <= $3::timestamptz returning id`,
+      [input.actionId, input.agencyId, now],
+    );
+    const current = await one<{ status: string }>(sql, `select status from xodo_actions where id = $1`, [input.actionId]);
+    if (expired || current?.status === "expired") throw new XodoError("Este pedido expirou.", 410);
+    throw new XodoError("Este pedido já foi decidido.", 409);
+  }
+
+  if (action.status === "approved") {
+    const claimed = await one(
+      sql,
+      `update xodo_actions set status = 'executing' where id = $1 and status = 'approved' returning id`,
+      [action.id],
+    );
+    if (claimed) await runAction(deps, await loadXodo(sql, action.xodo_id, input.agencyId), action.id);
+  }
+  const final = await one<{ status: string; result: unknown }>(sql, `select status, result from xodo_actions where id = $1`, [action.id]);
+  return { actionId: action.id, runId: action.run_id, status: final!.status, alwaysRuleCreated: wantsAlways && canAlwaysAllow(action.category as Category) };
+}
+
+/**
+ * Faxina chamada pelo cron: vence pedidos sem resposta (e retoma as execuções, para o xodó
+ * avisar que nada foi feito) e marca como falha execuções travadas no meio.
+ */
+export async function sweep(deps: EngineDeps) {
+  const { sql } = deps;
+  const now = deps.now ? deps.now() : new Date();
+  const expired = await sql.query<{ run_id: string }>(
+    `update xodo_actions set status = 'expired'
+      where status = 'pending' and expires_at <= $1::timestamptz
+      returning run_id`,
+    [now.toISOString()],
+  );
+  // Retoma toda execução cujo passo já fechou (inclui pedidos vencidos ao tentar aprovar
+  // e retomadas que falharam depois de uma decisão).
+  const ready = await sql.query<{ id: string }>(
+    `select r.id from xodo_runs r
+      where r.status = 'waiting_approval'
+        and not exists (
+          select 1 from xodo_actions a
+           where a.run_id = r.id and a.step = r.steps and a.status in ('pending', 'approved', 'executing'))
+      order by r.started_at limit 20`,
+  );
+  const runs = ready.map((r) => r.id);
+  for (const runId of runs) await resumeRun(deps, runId);
+
+  const stale = await sql.query<{ id: string }>(
+    `update xodo_runs set status = 'failed', error = 'A execução parou no meio e foi encerrada.', finished_at = $1::timestamptz
+      where status = 'running' and heartbeat_at < $2::timestamptz
+        and not exists (select 1 from xodo_actions a where a.run_id = xodo_runs.id and a.status = 'executing')
+      returning id`,
+    [now.toISOString(), new Date(now.getTime() - 3 * STALE_RUN_MS).toISOString()],
+  );
+  return { expiredActions: expired.length, resumedRuns: runs.length, staleRuns: stale.length };
+}
