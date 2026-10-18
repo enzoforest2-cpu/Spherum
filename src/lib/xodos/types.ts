@@ -27,6 +27,10 @@ export type Xodo = {
   /** Teto do dia em reais; nulo quando só registramos o gasto. */
   daily_budget_brl: string | number | null;
   warn_at_percent: number;
+  /** Maior mudança de verba (em %) que o xodó faz sem perguntar; acima disso, sempre pede aprovação. */
+  campaign_max_change_pct: number;
+  /** Maior verba diária (R$) que o xodó define sem perguntar; nulo: sem teto absoluto. */
+  campaign_max_daily_brl: string | number | null;
   timezone: string;
   status: "active" | "paused";
   client_scope: "all" | "selected";

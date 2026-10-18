@@ -13,7 +13,7 @@ import { providerErrorMessage } from "./llm";
 import { loadMemory } from "./memory";
 import { buildSystemPrompt } from "./persona";
 import { decideApproval, loadRules } from "./policy";
-import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolDef } from "./tools";
+import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { RunStatus, ToolCall, ToolResult, Xodo } from "./types";
 
 /**
@@ -408,12 +408,25 @@ async function handleToolCalls(
       continue;
     }
     const decision = decideApproval({ toolName: tool.name, category: tool.category, rules, autonomy: xodo.autonomy });
-    if (decision.decision === "ask") {
+    let reason: string | null = decision.decision === "ask" ? decision.source : null;
+    if (!reason && tool.mustAsk) {
+      try {
+        const limit = await tool.mustAsk(toolContext(deps, xodo, runId), parsed.data);
+        if (limit) reason = `limite: ${limit}`;
+      } catch (error) {
+        const expected = error instanceof ToolError || error instanceof IntegrationError;
+        if (!expected) throw error;
+        await insertAction(sql, base, tool.category, parsed.data, "failed", { error: (error as Error).message });
+        continue;
+      }
+    }
+    if (reason) {
       await insertAction(sql, base, tool.category, parsed.data, "pending", null, {
-        reason: decision.source,
+        reason,
         expiresAt: new Date(now.getTime() + APPROVAL_TTL_MS),
       });
-      pending.push(tool.summarize(parsed.data));
+      const why = reason.startsWith("limite: ") ? ` (${reason.slice(8)})` : "";
+      pending.push(tool.summarize(parsed.data) + why);
       continue;
     }
     const actionId = await insertAction(sql, base, tool.category, parsed.data, "executing", null);
@@ -443,6 +456,11 @@ async function insertAction(
   );
   if (!row) throw new XodoError("O modelo repetiu o id de uma chamada de ferramenta.", 502);
   return row.id;
+}
+
+function toolContext(deps: EngineDeps, xodo: Xodo, runId: string): ToolContext {
+  const integrations = integrationDeps(deps);
+  return { sql: deps.sql, xodo, runId, now: nowOf(deps), apps: integrations ? appAccess(integrations, xodo) : null };
 }
 
 /** Hash canônico (chaves ordenadas) do input guardado. */
@@ -486,9 +504,7 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, 
     result = { error: "O pedido guardado foi alterado depois de criado; nada foi executado." };
   } else {
     try {
-      const integrations = integrationDeps(deps);
-      const ctx = { sql, xodo, runId: action.run_id, now: nowOf(deps), apps: integrations ? appAccess(integrations, xodo) : null };
-      const data = await tool.execute(ctx, tool.input.parse(input));
+      const data = await tool.execute(toolContext(deps, xodo, action.run_id), tool.input.parse(input));
       status = "executed";
       result = { data };
     } catch (error) {

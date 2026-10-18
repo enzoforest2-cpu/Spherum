@@ -193,18 +193,17 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 74 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 88 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
 - a troca para o modelo reserva no meio da tarefa;
 - o isolamento entre agências e a RLS;
-- o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas.
+- o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas;
+- as integrações (login, renovação de token, MCP, classificador) e os anúncios (contas, sincronização e limites de campanha), com as plataformas simuladas.
 
 ## O que falta
 
-- **Integrações de anúncios** para alimentar `metrics_daily` (Meta Ads, Google Ads, GA4, TikTok).
-- **Ferramentas de campanha** (pausar, remanejar verba) na categoria `campanha`, com limite por agência.
 - **Ferramentas dos apps:** a base das integrações (login próprio, conexões cifradas, apps por xodó, servidores MCP) existe; as ferramentas de cada app estão sendo construídas (veja `docs/INTEGRACOES.md`).
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
 - **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.

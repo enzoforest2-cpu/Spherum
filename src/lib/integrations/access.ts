@@ -12,7 +12,11 @@ import { access, type Access, type IntegrationDeps } from "./store";
 
 export type AppAccess = {
   use(app: AppId): Promise<Access & { http: Fetch }>;
+  /** Usa uma conexão específica (ex.: a que foi usada para ligar a conta de anúncio), se o app estiver liberado. */
+  useConnection(app: AppId, connectionId: string): Promise<Access & { http: Fetch }>;
   http: Fetch;
+  /** Dependências por trás do acesso (para sincronizações que gravam no banco). */
+  deps: IntegrationDeps;
 };
 
 export async function xodoApps(sql: Sql, xodo: Pick<Xodo, "id" | "agency_id">) {
@@ -45,6 +49,7 @@ export async function connectionFor(sql: Sql, xodo: Pick<Xodo, "id" | "agency_id
 export function appAccess(deps: IntegrationDeps, xodo: Pick<Xodo, "id" | "agency_id">): AppAccess {
   return {
     http: deps.fetch,
+    deps,
     async use(app) {
       const connectionId = await connectionFor(deps.sql, xodo, app);
       const result = await access(deps, xodo.agency_id, connectionId);
@@ -52,5 +57,18 @@ export function appAccess(deps: IntegrationDeps, xodo: Pick<Xodo, "id" | "agency
       if (missing.length) throw new IntegrationError(`Reconecte ${APPS[app].label} dando a permissão que falta.`, 409, true);
       return { ...result, http: deps.fetch };
     },
+    async useConnection(app, connectionId) {
+      await assertAppAllowed(deps.sql, xodo, app);
+      const result = await access(deps, xodo.agency_id, connectionId);
+      if (!APPS[app].providers.includes(result.connection.provider as never)) {
+        throw new IntegrationError(`A conexão não é de ${APPS[app].label}.`, 409);
+      }
+      return { ...result, http: deps.fetch };
+    },
   };
+}
+
+async function assertAppAllowed(sql: Sql, xodo: Pick<Xodo, "id" | "agency_id">, app: AppId) {
+  const ok = await one(sql, `select 1 from xodo_apps where xodo_id = $1 and agency_id = $2 and app = $3`, [xodo.id, xodo.agency_id, app]);
+  if (!ok) throw new IntegrationError(`${APPS[app].label} não está liberado para este xodó.`, 403);
 }

@@ -69,6 +69,8 @@ create table public.client_ad_accounts (
   name text,
   currency text,
   connection_id uuid references public.integration_connections(id) on delete set null,
+  -- Dados da plataforma (ex.: login-customer-id do Google Ads quando a conta é de uma MCC).
+  metadata jsonb not null default '{}'::jsonb,
   last_synced_at timestamptz,
   last_sync_error text,
   created_at timestamptz not null default now(),
@@ -78,6 +80,31 @@ create index client_ad_accounts_client on public.client_ad_accounts (client_id);
 create trigger client_ad_accounts_client_agency before insert or update on public.client_ad_accounts
   for each row execute function public.app_check_client_agency();
 
+-- Dados do Google Analytics 4 por dia e canal. Separado das métricas de mídia para sessões
+-- não se misturarem com cliques de anúncio.
+create table public.analytics_daily (
+  id bigint generated always as identity primary key,
+  agency_id uuid not null references public.agencies(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
+  property_id text not null,
+  day date not null,
+  channel text not null default '',
+  sessions bigint not null default 0,
+  users bigint not null default 0,
+  key_events numeric(14, 2) not null default 0,
+  revenue_cents bigint not null default 0,
+  unique (client_id, property_id, day, channel)
+);
+create index analytics_daily_agency_client_day on public.analytics_daily (agency_id, client_id, day);
+create trigger analytics_daily_client_agency before insert or update on public.analytics_daily
+  for each row execute function public.app_check_client_agency();
+
+-- Limites de campanha por xodó ("sozinha até o limite que você definir", no design).
+-- Dentro do limite, vale a autonomia; acima dele, a ação sempre pede aprovação.
+alter table public.xodos
+  add column campaign_max_change_pct integer not null default 20 check (campaign_max_change_pct between 1 and 1000),
+  add column campaign_max_daily_brl numeric(12, 2) check (campaign_max_daily_brl > 0);
+
 -- ---------------------------------------------------------------------------
 -- Acesso: pessoas logadas só leem, e só a própria agência
 -- ---------------------------------------------------------------------------
@@ -86,7 +113,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['integration_connections', 'oauth_states', 'xodo_apps', 'client_ad_accounts'] loop
+  foreach t in array array['integration_connections', 'oauth_states', 'xodo_apps', 'client_ad_accounts', 'analytics_daily'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
     execute format(
@@ -100,4 +127,4 @@ $$;
 grant select (id, agency_id, provider, label, external_account, scopes, status, token_expires_at, metadata,
   last_error, created_by, created_at, updated_at)
   on public.integration_connections to authenticated;
-grant select on public.xodo_apps, public.client_ad_accounts to authenticated;
+grant select on public.xodo_apps, public.client_ad_accounts, public.analytics_daily to authenticated;

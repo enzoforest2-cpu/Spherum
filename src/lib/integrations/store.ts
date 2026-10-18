@@ -181,3 +181,29 @@ export async function revokeConnection(deps: IntegrationDeps, agencyId: string, 
     [row.id, await sealSecret("{}", aad(row.agency_id, row.id), deps.masterKey)],
   );
 }
+
+/**
+ * A Meta não renova o token sozinha (dura cerca de 60 dias). Uma semana antes de vencer,
+ * avisa a agência uma vez para reconectar.
+ */
+export async function warnExpiringConnections(deps: IntegrationDeps) {
+  const now = deps.now ? deps.now() : new Date();
+  const rows = await deps.sql.query<{ id: string; agency_id: string; label: string; token_expires_at: Date | string }>(
+    `update integration_connections
+        set metadata = metadata || jsonb_build_object('expiry_warned_at', $1::text)
+      where provider = 'meta' and status = 'active' and token_expires_at is not null
+        and token_expires_at between $1::timestamptz and $2::timestamptz
+        and not (metadata ? 'expiry_warned_at')
+      returning id, agency_id, label, token_expires_at`,
+    [now.toISOString(), new Date(now.getTime() + 7 * 86_400_000).toISOString()],
+  );
+  for (const row of rows) {
+    const days = Math.max(1, Math.round((new Date(row.token_expires_at).getTime() - now.getTime()) / 86_400_000));
+    await deps.sql.query(
+      `insert into notifications (agency_id, kind, title, body, data) values ($1, 'integration_expiring', $2, $3, $4::jsonb)`,
+      [row.agency_id, `O login da Meta (${row.label}) vence em ${days} dia${days > 1 ? "s" : ""}`,
+        "Reconecte em Integrações para os xodós continuarem lendo e mexendo nos anúncios.", JSON.stringify({ connection_id: row.id })],
+    );
+  }
+  return rows.length;
+}

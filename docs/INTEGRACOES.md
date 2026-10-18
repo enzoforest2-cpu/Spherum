@@ -41,6 +41,33 @@ As ferramentas dos conectores nativos já vêm com a categoria certa. As de serv
 - criar uma mensagem conta como envio, mas criar um rascunho não;
 - o aviso de "só leitura" do servidor nunca alivia o que o nome diz, e na dúvida a ferramenta não é tratada como leitura.
 
+## Anúncios e GA4
+
+Os xodós leem e mexem em Meta Ads, Google Ads e TikTok Ads, e leem o GA4. Tudo passa pela ligação **conta ↔ cliente** (`client_ad_accounts`): o xodó só enxerga contas dos clientes ligados, e só se o app estiver em "Pode mexer em".
+
+**Ligar as contas.** Depois de conectar a plataforma, a agência abre `GET /api/integrations/ad-accounts?agency_id=…&platform=meta|google|tiktok|ga4`, que lista as contas que a conexão enxerga (e a qual cliente cada uma já está ligada), e escolhe em `POST /api/integrations/ad-accounts`. No Google Ads, contas de baixo de uma conta de administrador (MCC) vêm com o `login_customer_id` dela, que o Spherum manda em todas as chamadas. No TikTok, as contas vêm do próprio login.
+
+**Métricas.** O cron sincroniza cada conta a cada 6 horas: 30 dias na primeira vez e, depois, os últimos 3 dias (as plataformas corrigem números recentes). Mídia vai para `metrics_daily` e o GA4 para `analytics_daily` (sessões, usuários, eventos-chave e receita por canal). Contas em dólar são convertidas para reais pela cotação PTAX do dia; outras moedas ficam como estão, com um aviso na conta. Para forçar agora: `POST /api/integrations/ad-accounts/sync` ou a ferramenta `atualizar_metricas`.
+
+**Ferramentas dos xodós.**
+
+| Ferramenta | Categoria | O que faz |
+|---|---|---|
+| `listar_contas_de_anuncio` | leitura | Contas e propriedades ligadas ao cliente, com a última sincronização |
+| `listar_campanhas` | leitura | Campanhas ao vivo, com situação e verba diária em reais |
+| `consultar_metricas` / `consultar_analytics` | leitura | Números já sincronizados (mídia e GA4) |
+| `atualizar_metricas` | leitura | Sincroniza agora |
+| `pausar_campanha` / `ativar_campanha` | campanha | Muda a situação da campanha |
+| `ajustar_verba_diaria` | campanha | Muda a verba diária (valor em reais) |
+
+**Limites de campanha por xodó.** Além da autonomia (no nível do meio, toda ação de campanha pede aprovação), cada xodó tem dois limites que **sempre** pedem aprovação, mesmo no "age sozinho":
+- `campaign_max_change_pct` (padrão 20): mudança de verba maior que esse percentual;
+- `campaign_max_daily_brl` (opcional): verba diária acima desse valor.
+
+O motivo aparece no pedido de aprovação (por exemplo, "limite: mudança de 50%, acima do limite de 20%").
+
+**Versões das APIs:** Meta Graph `v23.0` (`META_GRAPH_VERSION`), Google Ads REST `v23` (`GOOGLE_ADS_API_VERSION`), TikTok Business API v1.3, GA4 Admin e Data `v1beta`. O Google aposenta versões do Ads cerca de um ano depois do lançamento; quando isso acontecer, basta trocar a variável e conferir as notas da versão.
+
 ## Servidores MCP
 
 A agência cadastra a URL e o token de qualquer servidor MCP (Streamable HTTP) em `POST /api/integrations` com `provider: "mcp"`. O Spherum confere na hora que o servidor responde e lista as ferramentas. Com o app "Servidor MCP" liberado no xodó, as ferramentas aparecem para ele com o nome `mcp_<servidor>_<ferramenta>`, e a aprovação segue o classificador. Endereços de rede interna são recusados (proteção contra SSRF).
@@ -51,7 +78,7 @@ Em todas, o endereço de retorno é `https://spherum.com.br/api/integrations/<pr
 
 | Plataforma | Onde criar | Variáveis | O que a plataforma exige antes de abrir para todos |
 |---|---|---|---|
-| **Google** (Gmail, Agenda, Drive, Ads, GA4) | Google Cloud Console → APIs e serviços → Credenciais (OAuth, tipo "Aplicativo da Web"). Ative Gmail API, Calendar API, Drive API, Google Ads API e Analytics Data API | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ADS_DEVELOPER_TOKEN` | **Verificação do app pelo Google.** Gmail (`gmail.modify`) e Drive (`drive.readonly`) são permissões restritas: exigem uma **avaliação de segurança anual feita por empresa credenciada (CASA)**, que é paga e leva semanas. A Agenda é sensível (só verificação). O Google Ads exige um developer token aprovado no Centro de API da conta de administrador |
+| **Google** (Gmail, Agenda, Drive, Ads, GA4) | Google Cloud Console → APIs e serviços → Credenciais (OAuth, tipo "Aplicativo da Web"). Ative Gmail API, Calendar API, Drive API, Google Ads API e Analytics Data API | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_API_VERSION` (opcional, padrão `v23`) | **Verificação do app pelo Google.** Gmail (`gmail.modify`) e Drive (`drive.readonly`) são permissões restritas: exigem uma **avaliação de segurança anual feita por empresa credenciada (CASA)**, que é paga e leva semanas. A Agenda é sensível (só verificação). O Google Ads exige um developer token aprovado no Centro de API da conta de administrador |
 | **Meta** (Meta Ads e WhatsApp oficial) | developers.facebook.com → Criar app (tipo Empresa), produtos "Login do Facebook para Empresas", "API de Marketing" e "WhatsApp" | `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_VERSION` (opcional, padrão `v23.0`) | **Verificação da empresa** e **Análise do app** para `ads_management`, `ads_read`, `business_management` e as permissões do WhatsApp. O token da Meta dura cerca de 60 dias e não tem renovação automática: perto de vencer, a agência reconecta |
 | **TikTok** | business-api.tiktok.com → My Apps | `TIKTOK_APP_ID`, `TIKTOK_APP_SECRET` | Aprovação do app pelo TikTok, com a permissão de relatórios e de gestão de anúncios |
 | **Slack** | api.slack.com/apps → Create New App | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET` | Ativar a "distribuição pública" do app para outros workspaces instalarem. Para entrar no diretório do Slack, há revisão |
@@ -69,6 +96,10 @@ Enquanto uma plataforma não é configurada, `GET /api/integrations` mostra `con
 | `GET /api/integrations/:provider/callback` | a plataforma | Volta do login; redireciona para o Spherum com `integracao=…&status=ok\|erro` |
 | `POST /api/integrations` | owner, admin | Conexão por chave: servidor MCP (`{ agency_id, provider: "mcp", label, url, token? }`) |
 | `DELETE /api/integrations/connections/:id?agency_id=` | owner, admin | Desconecta |
+| `GET /api/integrations/ad-accounts?agency_id=&platform=` | owner, admin | Contas de anúncio/propriedades do GA4 que a conexão enxerga |
+| `POST /api/integrations/ad-accounts` | owner, admin | Liga uma conta a um cliente (`{ agency_id, client_id, platform, external_id, connection_id, name?, currency?, metadata? }`) |
+| `DELETE /api/integrations/ad-accounts?agency_id=&id=` | owner, admin | Desliga a conta (as métricas já sincronizadas ficam) |
+| `POST /api/integrations/ad-accounts/sync` | owner, admin, member | Sincroniza uma conta agora (`{ agency_id, account_id }`) |
 
 Para escolher os apps de um xodó, use `apps` em `POST /api/xodos` ou `PATCH /api/xodos/:id`, por exemplo `[{ "app": "gmail" }, { "app": "calendar", "connection_id": "…" }]`.
 
@@ -77,4 +108,6 @@ Para escolher os apps de um xodó, use `apps` em `POST /api/xodos` ou `PATCH /ap
 - `integration_connections`: uma linha por conta conectada. Os tokens ficam em `ciphertext`, que nem quem está logado consegue ler.
 - `oauth_states`: logins em andamento (uso único, 10 minutos), inacessíveis ao navegador.
 - `xodo_apps`: apps liberados para cada xodó.
-- `client_ad_accounts`: contas de anúncio e propriedades do GA4 de cada cliente, para a sincronização de métricas.
+- `client_ad_accounts`: contas de anúncio e propriedades do GA4 de cada cliente, com a conexão usada, a última sincronização e o último aviso.
+- `analytics_daily`: números diários do GA4 por cliente, propriedade e canal.
+- Em `xodos`: `campaign_max_change_pct` e `campaign_max_daily_brl` (limites de campanha).

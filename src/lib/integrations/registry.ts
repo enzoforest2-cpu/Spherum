@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Xodo } from "../xodos/types";
 import { ToolError, type ToolDef } from "../xodos/tools";
 import { xodoApps } from "./access";
+import { ADS_TOOLS } from "./ads/tools";
 import { IntegrationError } from "./http";
 import { callMcpTool, listMcpTools } from "./mcp";
 import { readSecret, type ConnectionRow, type IntegrationDeps } from "./store";
@@ -12,20 +13,8 @@ import { readSecret, type ConnectionRow, type IntegrationDeps } from "./store";
  * servidores MCP da agência, montadas na hora a partir da lista do servidor.
  */
 
-const registered: ToolDef[] = [];
-
-/** Conectores nativos chamam isto ao serem carregados. */
-export function registerAppTools(tools: ToolDef[]) {
-  for (const tool of tools) {
-    if (!tool.app) throw new Error(`Ferramenta de app sem app: ${tool.name}`);
-    if (registered.some((t) => t.name === tool.name)) continue;
-    registered.push(tool);
-  }
-}
-
-export function registeredAppTools(): readonly ToolDef[] {
-  return registered;
-}
+/** Ferramentas dos conectores nativos. */
+export const NATIVE_APP_TOOLS: readonly ToolDef[] = [...ADS_TOOLS];
 
 /** Nome aceito por todos os provedores de modelo: letras, números, _ e -, até 64 caracteres. */
 function toolName(prefix: string, name: string): string {
@@ -82,7 +71,7 @@ export async function appToolsFor(deps: IntegrationDeps | null, xodo: Pick<Xodo,
   if (!deps) return [];
   const allowed = new Set((await xodoApps(deps.sql, xodo)).map((a) => a.app));
   if (!allowed.size) return [];
-  const tools = registered.filter((t) => t.app && allowed.has(t.app));
+  const tools = NATIVE_APP_TOOLS.filter((t) => [t.app ?? []].flat().some((app) => allowed.has(app)));
   if (allowed.has("mcp")) tools.push(...(await mcpTools(deps, xodo)));
   return tools;
 }

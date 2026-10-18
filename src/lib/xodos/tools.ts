@@ -26,14 +26,19 @@ export type ToolDef<I = unknown> = {
   name: string;
   description: string;
   category: Category;
-  /** App de onde a ferramenta vem; só aparece para xodós com o app em "Pode mexer em". */
-  app?: AppId;
+  /** App(s) de onde a ferramenta vem; só aparece para xodós com algum deles em "Pode mexer em". */
+  app?: AppId | AppId[];
   input: z.ZodType<I>;
   /** Esquema JSON pronto (ferramentas de servidores MCP); senão, sai do zod. */
   jsonSchema?: Record<string, unknown>;
   /** Frase curta mostrada no pedido de aprovação. */
   summarize(input: I): string;
   execute(ctx: ToolContext, input: I): Promise<unknown>;
+  /**
+   * Motivo para pedir aprovação mesmo quando a autonomia deixaria rodar (ex.: mudança de verba
+   * acima do limite do xodó). Nulo: segue a política normal.
+   */
+  mustAsk?(ctx: ToolContext, input: I): Promise<string | null>;
 };
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */
@@ -67,7 +72,7 @@ function tool<I>(def: ToolDef<I>): ToolDef {
   return def as unknown as ToolDef;
 }
 
-async function assertClient(ctx: ToolContext, id: string): Promise<{ id: string; name: string }> {
+export async function assertClient(ctx: ToolContext, id: string): Promise<{ id: string; name: string }> {
   const client = await one<{ id: string; name: string }>(
     ctx.sql,
     `select c.id, c.name from clients c
@@ -218,6 +223,42 @@ export const TOOLS: ToolDef[] = [
         variacao_pct[key] = a === null || b === null || b === 0 ? null : Number((((a - b) / b) * 100).toFixed(1));
       }
       return { cliente: client.name, atual: now, anterior: before, variacao_pct };
+    },
+  }),
+  tool({
+    name: "consultar_analytics",
+    description:
+      "Dados do Google Analytics 4 de um cliente num período: sessões, usuários, eventos principais e receita (R$), no total, por dia ou por canal.",
+    category: "leitura",
+    input: z.object({
+      client_id: clientId,
+      inicio: day.describe("AAAA-MM-DD"),
+      fim: day.describe("AAAA-MM-DD"),
+      agrupar_por: z.enum(["total", "dia", "canal"]).default("total"),
+    }),
+    summarize: (i) => `consultar o GA4 de ${i.inicio} a ${i.fim}`,
+    async execute(ctx, i) {
+      const client = await assertClient(ctx, i.client_id);
+      assertRange(i.inicio, i.fim);
+      const group = { total: ["", "", ""], dia: ["day::text as dia,", "group by day", "order by day"], canal: ["channel as canal,", "group by channel", "order by sum(sessions) desc"] }[i.agrupar_por];
+      const rows = await ctx.sql.query<Record<string, unknown>>(
+        `select ${group[0]} coalesce(sum(sessions), 0) as sessoes, coalesce(sum(users), 0) as usuarios,
+                coalesce(sum(key_events), 0) as eventos_principais, coalesce(sum(revenue_cents), 0) as receita_cents
+           from analytics_daily where agency_id = $1 and client_id = $2 and day between $3::date and $4::date
+           ${group[1]} ${group[2]} limit 400`,
+        [ctx.xodo.agency_id, client.id, i.inicio, i.fim],
+      );
+      return {
+        cliente: client.name,
+        periodo: { inicio: i.inicio, fim: i.fim },
+        linhas: rows.map(({ receita_cents, sessoes, usuarios, eventos_principais, ...keys }) => ({
+          ...keys,
+          sessoes: num(sessoes),
+          usuarios: num(usuarios),
+          eventos_principais: num(eventos_principais),
+          receita_brl: Number((num(receita_cents) / 100).toFixed(2)),
+        })),
+      };
     },
   }),
   tool({
