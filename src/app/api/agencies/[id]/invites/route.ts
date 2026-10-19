@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { inviteEmail, mailerFromEnv } from "@/lib/core/email";
 import { inviteLink } from "@/lib/core/http";
 import { inviteMember, listInvites } from "@/lib/core/team";
-import { serverSql } from "@/lib/xodos/db";
+import { one, serverSql } from "@/lib/xodos/db";
 import { CAN_MANAGE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -19,7 +20,7 @@ export async function GET(request: Request, { params }: Ctx) {
   }
 }
 
-/** POST /api/agencies/:id/invites  { email, role }  devolve o link do convite (vale 7 dias, uma vez). */
+/** POST /api/agencies/:id/invites  { email, role }  manda o convite por e-mail e devolve o link (vale 7 dias, uma vez). */
 export async function POST(request: Request, { params }: Ctx) {
   try {
     const userId = await requireUser(request);
@@ -27,7 +28,10 @@ export async function POST(request: Request, { params }: Ctx) {
     const sql = await serverSql();
     const role = await requireRole(sql, userId, agencyId, CAN_MANAGE);
     const { token, ...invite } = await inviteMember(sql, agencyId, { id: userId, role }, await request.json());
-    return NextResponse.json({ invite, link: inviteLink(token, request) }, { status: 201 });
+    const link = inviteLink(token, request);
+    const agency = await one<{ name: string }>(sql, `select name from agencies where id = $1`, [agencyId]);
+    const emailed = await mailerFromEnv()(inviteEmail({ to: invite.email, agency: agency?.name ?? "agência", link }));
+    return NextResponse.json({ invite, link, emailed }, { status: 201 });
   } catch (error) {
     return fail(error);
   }

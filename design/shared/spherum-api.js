@@ -29,7 +29,7 @@ const SP = {
   back(q) { return location.origin + '/' + (q || ''); },
   async login(email, password) { return SP.save(await SP.auth('token?grant_type=password', { email, password })); },
   // Com confirmação de e-mail ligada no Supabase, volta sem sessão: a pessoa confirma pelo link.
-  async signup(email, password, data) { const j = await SP.auth('signup?redirect_to=' + encodeURIComponent(SP.back('?confirmado=1')), { email, password, data }); return j.access_token ? SP.save(j) : null; },
+  async signup(email, password, data, q) { const j = await SP.auth('signup?redirect_to=' + encodeURIComponent(SP.back(q || '?confirmado=1')), { email, password, data }); return j.access_token ? SP.save(j) : null; },
   async recover(email) { await SP.auth('recover?redirect_to=' + encodeURIComponent(SP.back('?redefinir=1')), { email }); },
   async setPassword(password) { const t = await SP.token(); if (!t) throw new Error('O link venceu. Peça outro em "Esqueci minha senha".'); await SP.auth('user', { password }, t); },
   // Volta do link do e-mail (confirmação ou nova senha): a sessão vem no fragmento da URL.

@@ -68,7 +68,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 
-  const [me, clientRows, metricRows, campRows, dailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending] = await Promise.all([
+  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending] = await Promise.all([
     one<{ full_name: string | null; role: string; email: string | null }>(
       sql,
       `select p.full_name, m.role, u.email from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
@@ -108,6 +108,13 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
          from metrics_daily where agency_id = $1 and platform <> 'ga4' and day > $2::date - 365 and day <= $2::date
         group by day, platform order by day`,
       [agencyId, cur.to],
+    ),
+    sql.query<{ client_id: string; day: string; spend: number; results: number; revenue: number }>(
+      `select client_id, day::text, sum(spend_cents)::float8 / 100 as spend, sum(leads + conversions)::float8 as results,
+              sum(revenue_cents)::float8 / 100 as revenue
+         from metrics_daily where agency_id = $1 and platform <> 'ga4' and day between $2::date and $3::date
+        group by client_id, day order by day`,
+      [agencyId, prev.from, cur.to],
     ),
     sql.query<{ id: string; client_id: string; title: string; status: string; period_start: string; period_end: string; published_at: string | null; created_at: string; by_xodo: string | null }>(
       `select r.id, r.client_id, r.title, r.status, r.period_start::text, r.period_end::text, r.published_at::text, r.created_at::text, x.name as by_xodo
@@ -168,7 +175,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
       health: c.health_score,
       gt,
       goal: c.goal_value,
-      cur: c.goal_metric ? curValue : null,
+      cur: c.goal_metric && c.goal_value ? curValue : null,
       projects: 0,
       fin: "Em dia",
       last: relative(c.updated_at, now),
@@ -223,6 +230,9 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const plat = [...platMap.entries()]
     .sort((a, b) => b[1].spend - a[1].spend)
     .map(([p, t]) => [PLATFORM_LABEL[p] ?? p, Math.round(t.spend * 100) / 100, t.results, Math.round(t.revenue * 100) / 100]);
+  // Série diária por cliente (60 dias: janela atual e a anterior) para o gráfico da página do cliente.
+  const cdaily: Record<string, { day: string; spend: number; conv: number; rev: number }[]> = {};
+  for (const r of clientDailyRows) (cdaily[r.client_id] ??= []).push({ day: r.day, spend: num(r.spend), conv: num(r.results), rev: num(r.revenue) });
   const daily = [...dailyMap.entries()].map(([d, t]) => ({ day: d, spend: Math.round(t.spend * 100) / 100, conv: t.results, rev: Math.round(t.revenue * 100) / 100 }));
 
   const reports = reportRows.map((r) => ({
@@ -277,6 +287,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     camps,
     plat,
     daily,
+    cdaily,
     reports,
     team,
     invites: inviteRows,

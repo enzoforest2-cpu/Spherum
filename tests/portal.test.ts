@@ -85,6 +85,7 @@ test("portal da agência: clientes com meta, campanhas, plataformas, série diá
   assert.deepEqual(p.plat, [["Google", 1000, 30, 3000], ["Meta", 500, 10, 0]]);
   assert.deepEqual(p.daily.map((d) => d.day), ["2026-09-10", "2026-10-01", "2026-10-17", "2026-10-18"]);
 
+  assert.deepEqual(p.cdaily[sorriso.id].map((d) => d.day), ["2026-09-10", "2026-10-01", "2026-10-18"]);
   assert.deepEqual(p.kpis.spend, { cur: 1500, prev: 400 });
   assert.deepEqual(p.kpis.results, { cur: 40, prev: 25 });
   assert.equal(p.kpis.mrr, 5500);

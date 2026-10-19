@@ -32,3 +32,20 @@ export function mailerFromEnv(env: Record<string, string | undefined> = process.
     }
   };
 }
+
+/** E-mail do convite (equipe ou portal do cliente). O link vale 7 dias e uma vez. */
+export function inviteEmail(o: { to: string; agency: string; link: string; client?: string | null }): EmailMessage {
+  const where = o.client ? `o portal da ${o.client} na ${o.agency}` : `a equipe da ${o.agency}`;
+  return {
+    to: o.to,
+    subject: o.client ? `Acesso ao portal da ${o.client}` : `Convite para a equipe da ${o.agency} no Spherum`,
+    text: [
+      `Olá! Você foi convidado para ${where} no Spherum.`,
+      "",
+      `Para entrar, abra o link abaixo e crie sua senha com este e-mail (${o.to}):`,
+      o.link,
+      "",
+      "O link vale por 7 dias e só pode ser usado uma vez. Se não esperava este convite, ignore este e-mail.",
+    ].join("\n"),
+  };
+}
