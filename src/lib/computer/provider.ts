@@ -31,3 +31,17 @@ export interface SandboxProvider {
 export type ProviderFactory = (apiKey: string) => SandboxProvider;
 
 export class SandboxGone extends Error {}
+
+/**
+ * Armazenamento de arquivos fora da máquina (anexos, uploads e downloads da pessoa), num bucket
+ * privado. Nenhum arquivo passa pela função da Vercel (corpo máximo de 4,5 MB): a pessoa e a
+ * máquina falam direto com o Storage por URLs assinadas.
+ */
+export interface ComputerStorage {
+  upload(path: string, data: Uint8Array, contentType: string): Promise<void>;
+  /** URL assinada para baixar (expira em `seconds`). */
+  signedDownloadUrl(path: string, seconds: number): Promise<string>;
+  /** URL assinada para subir um arquivo (a máquina ou a pessoa usa com PUT). */
+  signedUploadUrl(path: string): Promise<string>;
+  remove(path: string): Promise<void>;
+}

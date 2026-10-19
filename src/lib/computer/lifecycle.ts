@@ -6,7 +6,7 @@ import { usdBrl } from "../xodos/fx";
 import { redactSecrets } from "../xodos/redact";
 import { credentialAad, openSecret } from "../xodos/vault";
 import { prepareMachine, RUNTIME_VERSION } from "./desktop";
-import type { ProviderFactory, ProviderId, SandboxProvider } from "./provider";
+import type { ComputerStorage, ProviderFactory, ProviderId, SandboxProvider } from "./provider";
 
 /**
  * Ciclo de vida da máquina de cada agência (ideia do Rakazo, com o estado no Postgres porque a
@@ -58,6 +58,8 @@ export type ComputerDeps = {
   providers: Partial<Record<ProviderId, ProviderFactory>>;
   /** Chave do Spherum por provedor, para quando a agência não tem a própria (add-on). */
   spherumKeys?: Partial<Record<ProviderId, string>>;
+  /** Bucket privado para anexos e arquivos da pessoa. */
+  storage?: ComputerStorage;
 };
 
 export type RunningComputer = { computer: ComputerRow; provider: SandboxProvider; ref: string };
