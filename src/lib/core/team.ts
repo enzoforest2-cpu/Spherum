@@ -11,7 +11,7 @@ import { audit } from "./audit";
  */
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const TEAM_ROLES = ["admin", "member", "viewer"] as const;
+const TEAM_ROLES = ["admin", "member", "viewer", "financeiro"] as const;
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const nowOf = (now?: () => Date) => (now ? now() : new Date());
@@ -23,7 +23,7 @@ export async function listMembers(sql: Sql, agencyId: string) {
        left join profiles p on p.id = m.user_id
        left join auth.users u on u.id = m.user_id
       where m.agency_id = $1
-      order by case m.role when 'owner' then 0 when 'admin' then 1 when 'member' then 2 else 3 end, m.created_at`,
+      order by case m.role when 'owner' then 0 when 'admin' then 1 when 'financeiro' then 2 when 'member' then 3 else 4 end, m.created_at`,
     [agencyId],
   );
 }
@@ -43,7 +43,7 @@ export async function updateMember(
   targetId: string,
   raw: unknown,
 ) {
-  const input = z.object({ role: z.enum(["owner", "admin", "member", "viewer"]), title: z.string().trim().max(80).nullable() }).partial().parse(raw);
+  const input = z.object({ role: z.enum(["owner", "admin", "member", "viewer", "financeiro"]), title: z.string().trim().max(80).nullable() }).partial().parse(raw);
   return sql.transaction(async (tx) => {
     const target = await one<{ role: Role }>(tx, `select role from agency_members where agency_id = $1 and user_id = $2 for update`, [agencyId, targetId]);
     if (!target) throw new XodoError("Pessoa não encontrada na equipe.", 404);

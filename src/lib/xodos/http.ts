@@ -10,10 +10,12 @@ import { XodoError } from "./runner";
  * agência pelo banco. Papéis seguem a base do backend (owner, admin, member, viewer).
  */
 
-export type Role = "owner" | "admin" | "member" | "viewer";
+export type Role = "owner" | "admin" | "member" | "viewer" | "financeiro";
 export const CAN_MANAGE: Role[] = ["owner", "admin"];
 export const CAN_USE: Role[] = ["owner", "admin", "member"];
-export const CAN_READ: Role[] = ["owner", "admin", "member", "viewer"];
+export const CAN_READ: Role[] = ["owner", "admin", "member", "viewer", "financeiro"];
+/** Cobra os clientes e conecta o meio de pagamento. */
+export const CAN_BILL: Role[] = ["owner", "admin", "financeiro"];
 
 export async function requireUser(request: Request): Promise<string> {
   return (await requireAuth(request)).id;

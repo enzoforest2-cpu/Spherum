@@ -54,7 +54,7 @@ export type ControlDeps = ComputerDeps & {
 };
 
 export type ControlReason = "done" | "skipped" | "expired";
-type Role = "owner" | "admin" | "member" | "viewer";
+type Role = "owner" | "admin" | "member" | "viewer" | "financeiro";
 
 const CAN_TAKE: Role[] = ["owner", "admin", "member"];
 const CAN_REVOKE: Role[] = ["owner", "admin"];
@@ -547,7 +547,7 @@ export type ScreenUrls = {
  */
 export async function screenUrls(deps: ControlDeps, agencyId: string, userId: string, role: Role): Promise<ScreenUrls> {
   const { sql } = deps;
-  if (!(["owner", "admin", "member", "viewer"] as Role[]).includes(role)) throw new XodoError("Não encontrado", 404);
+  if (!(["owner", "admin", "member", "viewer", "financeiro"] as Role[]).includes(role)) throw new XodoError("Não encontrado", 404);
   const row = await requireComputer(sql, agencyId);
   const now = nowOf(deps);
   if (!isLive(row, now)) {

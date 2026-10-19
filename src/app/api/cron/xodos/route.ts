@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { billingDepsFromEnv, billingSweep } from "@/lib/billing";
 import { ADAPTERS } from "@/lib/channels";
 import { cleanupChannels, flushOutbox } from "@/lib/channels/outbox";
 import { pollEmailTriggers } from "@/lib/channels/triggers";
@@ -17,7 +18,7 @@ export const maxDuration = 300;
 /**
  * GET /api/cron/xodos  com "Authorization: Bearer $CRON_SECRET".
  * Atualiza a cotação do dólar, sincroniza as métricas das contas de anúncio, avisa logins da
- * Meta perto de vencer, vence pedidos sem resposta, encerra execuções travadas, cuida do computador
+ * Meta perto de vencer, cuida das faturas (vencidas, mensalidades, conferência), vence pedidos sem resposta, encerra execuções travadas, cuida do computador
  * (controle vencido, máquinas pausadas, sessões longas), roda as rotinas,
  * confere os gatilhos de e-mail e entrega o que ficou na fila dos canais.
  * Chame a cada 15 minutos (ex.: pg_cron + pg_net no Supabase; veja o README).
@@ -42,6 +43,8 @@ export async function GET(request: Request) {
     const integrations = { sql: deps.sql, ...deps.integrations! };
     const ads = await syncDueAccounts(integrations);
     const expiring = await warnExpiringConnections(integrations);
+    // Cobrança: faturas vencidas, mensalidades do mês e conferência das cobranças sem aviso (Itaú).
+    const billing = await billingSweep({ ...billingDepsFromEnv(deps.sql, integrations.masterKey) }, { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // Computador antes das retomadas (é rápido e fecha sessões que estão contando custo): dá como
     // pausadas as máquinas vencidas e pausa sessões longas; depois vence o controle de quem passou
     // do prazo (a execução retoma com "expired", até o prazo do cron).
@@ -54,7 +57,7 @@ export async function GET(request: Request) {
     const email = await pollEmailTriggers(channelDeps);
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, cleanup, computers, routines, email, channels, delivered: { antes: queued, depois: delivered } });
+    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

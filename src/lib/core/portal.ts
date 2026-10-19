@@ -1,6 +1,7 @@
 import { num, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { listConnections } from "../integrations/store";
+import { listAccounts, listInvoices, listRecurrences } from "../billing";
 import { listDocuments } from "./documents";
 
 /**
@@ -12,7 +13,7 @@ import { listDocuments } from "./documents";
 
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const PLATFORM_LABEL: Record<string, string> = { meta: "Meta", google: "Google", tiktok: "TikTok", linkedin: "LinkedIn", ga4: "GA4", other: "Outra" };
-const ROLE_LABEL: Record<string, string> = { owner: "Proprietário", admin: "Admin", member: "Membro", viewer: "Leitor" };
+const ROLE_LABEL: Record<string, string> = { owner: "Proprietário", admin: "Admin", member: "Membro", viewer: "Leitor", financeiro: "Financeiro" };
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
@@ -69,7 +70,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 
-  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents] = await Promise.all([
+  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts] = await Promise.all([
     one<{ full_name: string | null; role: string; email: string | null }>(
       sql,
       `select p.full_name, m.role, u.email from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
@@ -143,6 +144,9 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     ),
     one<{ n: number }>(sql, `select count(*)::int as n from xodo_actions where agency_id = $1 and status = 'pending'`, [agencyId]),
     listDocuments(sql, agencyId),
+    listInvoices(sql, agencyId),
+    listRecurrences(sql, agencyId),
+    listAccounts(sql, agencyId),
   ]);
 
   const totals = new Map<string, { cur: Totals; prev: Totals }>();
@@ -157,6 +161,12 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const accountsByClient = new Map<string, typeof accounts>();
   for (const a of accounts) accountsByClient.set(a.client_id, [...(accountsByClient.get(a.client_id) ?? []), a]);
 
+  // Situação financeira de cada cliente pelas faturas: vencida pesa mais que pendente.
+  const fin = new Map<string, string>();
+  for (const i of invoices) {
+    if (i.status === "vencido") fin.set(i.client_id, "Vencida");
+    else if (i.status === "pendente" && fin.get(i.client_id) !== "Vencida") fin.set(i.client_id, "Pendente");
+  }
   const clients = clientRows.map((c) => {
     const t = totals.get(c.id) ?? { cur: zero(), prev: zero() };
     const gt = c.goal_metric ?? "CPL";
@@ -179,7 +189,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
       goal: c.goal_value,
       cur: c.goal_metric && c.goal_value ? curValue : null,
       projects: 0,
-      fin: "Em dia",
+      fin: fin.get(c.id) ?? "Em dia",
       last: relative(c.updated_at, now),
       since: monthYear(c.started_on ?? c.created_at),
       renew: "—",
@@ -299,5 +309,8 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     accounts,
     pendingApprovals: pending?.n ?? 0,
     documents,
+    invoices,
+    recurrences,
+    paymentAccounts,
   };
 }
