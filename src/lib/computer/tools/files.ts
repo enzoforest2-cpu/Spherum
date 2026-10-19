@@ -59,7 +59,12 @@ async function checkZone(ctx: ToolContext, segs: string[], intent: Intent): Prom
   }
   const [top, second] = segs;
   if (!TOP.includes(top)) throw new ToolError(ONLY_FOLDERS);
-  if (top === ".lixeira" && intent !== "ler") throw new ToolError("A lixeira é só para consulta: o que está lá some sozinho em 7 dias.");
+  if (top === ".lixeira") {
+    if (intent !== "ler") throw new ToolError("A lixeira é só para consulta: o que está lá some sozinho em 7 dias.");
+    // .lixeira/<lote>/<caminho original>: o original passa pelas mesmas regras (cliente, xodó).
+    if (segs.length > 2) await checkZone(ctx, segs.slice(2), "ler");
+    return;
+  }
   if (top === "clientes") {
     if (!second) {
       if (intent === "ler") return;
@@ -75,8 +80,12 @@ async function checkZone(ctx: ToolContext, segs: string[], intent: Intent): Prom
     }
     if (second !== ctx.xodo.id) throw new ToolError("Essa pasta é de outro xodó; use a sua.");
   }
-  if (intent === "apagar" && (segs.length === 1 || ((top === "clientes" || top === "xodos") && segs.length === 2))) {
-    throw new ToolError("Essa pasta faz parte da estrutura do computador e não pode ser apagada.");
+  if (intent !== "ler" && (segs.length === 1 || ((top === "clientes" || top === "xodos") && segs.length === 2))) {
+    throw new ToolError(
+      intent === "apagar"
+        ? "Essa pasta faz parte da estrutura do computador e não pode ser apagada."
+        : "Essa pasta faz parte da estrutura do computador; grave um arquivo dentro dela.",
+    );
   }
 }
 
@@ -119,6 +128,8 @@ export async function resolvePath(c: ComputerCall, raw: string, intent: Intent, 
   if (!["f", "d", "l", "o", "n"].includes(type) || !/^\d+$/.test(size) || !home.startsWith("/") || hasControl(real)) {
     throw new ToolError("Não consegui conferir esse caminho no computador.");
   }
+  // A pasta do computador trocada por um link (pelo terminal) também é recusada.
+  if (home !== HOME) throw new ToolError(OUTSIDE);
   if (real !== home && !real.startsWith(`${home}/`)) throw new ToolError(OUTSIDE);
   const realSegs = real === home ? [] : real.slice(home.length + 1).split("/");
   if (realSegs.join("/") !== segs.join("/")) {
@@ -209,14 +220,20 @@ export function mimeOf(name: string): string {
   return MIME[ext] ?? "application/octet-stream";
 }
 
-/** Na conversa de um canal compartilhado com outra empresa, o anexo chega a gente de fora. */
+/**
+ * Equipe no app e no Slack interno. Em WhatsApp, Telegram ou canal do Slack compartilhado com
+ * outra empresa, o anexo chega a gente de fora: envio.
+ */
 async function attachCategory(ctx: ToolContext): Promise<Category> {
-  const row = await one<{ metadata: unknown }>(
+  const row = await one<{ channel: string | null; metadata: unknown }>(
     ctx.sql,
-    `select c.metadata from xodo_runs r join xodo_conversations c on c.id = r.conversation_id where r.id = $1 and r.agency_id = $2`,
+    `select c.channel, c.metadata from xodo_runs r left join xodo_conversations c on c.id = r.conversation_id
+      where r.id = $1 and r.agency_id = $2`,
     [ctx.runId, ctx.xodo.agency_id],
   );
-  return row && sharedWithOtherCompany(parseJson<Record<string, unknown> | null>(row.metadata)) ? "envio" : "equipe";
+  if (!row || row.channel === null) return "equipe";
+  if (row.channel !== "slack") return "envio";
+  return sharedWithOtherCompany(parseJson<Record<string, unknown> | null>(row.metadata)) ? "envio" : "equipe";
 }
 
 const nome = z
@@ -248,11 +265,14 @@ export const FILES_TOOLS: ToolDef[] = [
       const dir = await resolvePath(c, i.caminho ?? "", "ler");
       if (dir.type !== "d") notFound(dir, "pasta");
       const segs = segmentsOf(dir.rel);
+      // Dentro de um lote da lixeira valem as mesmas regras da raiz (.lixeira/<lote>/clientes etc.).
+      const inBin = segs[0] === ".lixeira" && segs.length >= 2;
+      const zone = inBin ? segs.slice(2) : segs;
       // Na raiz e nas pastas de clientes e de xodós, só aparece o que está ao alcance.
       let allow: ((name: string) => boolean) | null = null;
-      if (segs.length === 0) allow = (n) => TOP.includes(n);
-      else if (segs.length === 1 && segs[0] === "xodos") allow = (n) => n === c.ctx.xodo.id;
-      else if (segs.length === 1 && segs[0] === "clientes" && c.ctx.xodo.client_scope !== "all") {
+      if (zone.length === 0) allow = inBin ? (n) => TOP.includes(n) && n !== ".lixeira" : (n) => TOP.includes(n);
+      else if (zone.length === 1 && zone[0] === "xodos") allow = (n) => n === c.ctx.xodo.id;
+      else if (zone.length === 1 && zone[0] === "clientes" && c.ctx.xodo.client_scope !== "all") {
         const rows = await c.ctx.sql.query<{ client_id: string }>(
           `select xc.client_id from xodo_clients xc join clients cl on cl.id = xc.client_id
             where xc.xodo_id = $1 and cl.agency_id = $2`,
@@ -324,8 +344,9 @@ export const FILES_TOOLS: ToolDef[] = [
       const file = await resolvePath(c, i.caminho, "ler");
       if (file.type !== "f") notFound(file);
       if (i.offset > file.size) throw new ToolError(`O arquivo tem ${file.size} bytes; o offset passou do fim.`);
-      // Mais de 4 bytes por caractere nunca cabe no trecho devolvido.
-      const want = Math.min(i.limite, READ_CHARS * 4, file.size - i.offset);
+      // Mais de 4 bytes por caractere nunca cabe no trecho devolvido; menos de 4 pode não ter
+      // nenhum caractere inteiro (e o proximo_offset não andaria).
+      const want = Math.min(Math.max(i.limite, 4), READ_CHARS * 4, file.size - i.offset);
       let bytes = new Uint8Array(0);
       if (want > 0) {
         if (!Number.isSafeInteger(i.offset) || !Number.isSafeInteger(want)) throw new ToolError("Trecho inválido.");
@@ -446,7 +467,8 @@ export const FILES_TOOLS: ToolDef[] = [
     name: "arquivo_anexar",
     description:
       "Anexa um arquivo do computador (até 25 MB) para a equipe baixar: ele vai para o armazenamento do Spherum e você recebe o anexo para citar na conversa. Use para PDFs, planilhas, imagens e relatórios prontos.",
-    category: "equipe",
+    // Se não der para ver a conversa, fica a mais cautelosa (como o envio do Slack).
+    category: "envio",
     part: "files",
     input: z.object({
       caminho: caminho.min(1).describe("Arquivo relativo, ex.: downloads/relatorio.pdf"),
@@ -460,7 +482,14 @@ export const FILES_TOOLS: ToolDef[] = [
       const file = await resolvePath(c, i.caminho, "ler");
       if (file.type !== "f") notFound(file);
       if (file.size > MAX_ATTACH_BYTES) throw new ToolError("O arquivo passa de 25 MB; não dá para anexar.");
-      const data = await c.machine.provider.read(c.machine.ref, file.abs, MAX_ATTACH_BYTES + 1);
+      // Lê como o usuário xodo (não pelo provider.read, que pode ler como root): se um link for
+      // trocado depois do realpath, a leitura não alcança arquivos do sistema.
+      const limit = MAX_ATTACH_BYTES + 1;
+      if (!Number.isSafeInteger(limit)) throw new ToolError("Limite inválido.");
+      const script = ["# spherum:baixar", `p=${shellQuote(file.abs)}`, `n=${limit}`, `head -c "$n" -- "$p" | base64 -w 0`].join("\n");
+      const r = await runAsXodo(c.machine.provider, c.machine.ref, script, { timeoutMs: 120_000 });
+      if (r.code !== 0) throw new ToolError("Não consegui ler esse arquivo.");
+      const data = new Uint8Array(Buffer.from(r.stdout.trim(), "base64"));
       if (data.length > MAX_ATTACH_BYTES) throw new ToolError("O arquivo passa de 25 MB; não dá para anexar.");
       const fileName = i.nome ?? file.rel.slice(file.rel.lastIndexOf("/") + 1);
       const tipo = mimeOf(fileName);

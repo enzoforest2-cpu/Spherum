@@ -1,0 +1,155 @@
+<!doctype html>
+<!-- Adaptado de apps/web/src/components/computer/TerminalApp.tsx e do protocolo de terminal do Rakazo (Apache-2.0); xterm.js (MIT) por CDN fixo com integridade. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src https://cdn.jsdelivr.net 'unsafe-inline'; style-src https://cdn.jsdelivr.net 'unsafe-inline'; connect-src 'self'; font-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Terminal do computador</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"
+      integrity="sha384-8Xk9wy/gzEDUKrXtrmCFa2bBuK3BpjpDuL/p0SeKQX19Khl/M+lHOgD/CyYf7efP"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"
+      integrity="sha384-M169f14mRZOXm3hD/v2Ti0ThIT/RnAQagXA9nlE15yHAtrW19gdePJh/HaTzUOe/"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"
+      integrity="sha384-iF+jqbuti4XlB64clWgFWYEscb+UnSRv3VgVikGYZu+otNFnSHr7y7NcKfBnGizn"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #111113;
+      }
+      #terminal {
+        position: absolute;
+        inset: 6px 8px;
+      }
+      #aviso {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 8px 12px;
+        color: #e8e8ea;
+        background: #2a1b1b;
+        font: 500 13px/1.4 system-ui, sans-serif;
+      }
+      #aviso[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="terminal"></div>
+    <div id="aviso" role="status" aria-live="polite" hidden></div>
+    <script>
+      (() => {
+        const aviso = document.getElementById("aviso");
+        const mostrar = (texto) => {
+          aviso.textContent = texto;
+          aviso.hidden = !texto;
+        };
+
+        // Token no fragmento (#t=t-...): não vai ao servidor por cabeçalho; some da barra logo.
+        const token = new URLSearchParams(window.location.hash.slice(1)).get("t") || "";
+        history.replaceState(null, "", window.location.pathname);
+        if (!/^t-[A-Za-z0-9_-]{16,128}$/.test(token)) {
+          mostrar("Link do terminal inválido ou incompleto. Peça um novo no Spherum.");
+          return;
+        }
+        if (!window.Terminal || !window.FitAddon) {
+          mostrar("Não consegui carregar o terminal. Confira a conexão e recarregue.");
+          return;
+        }
+
+        const term = new window.Terminal({
+          cursorBlink: true,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: 13,
+          scrollback: 5000,
+          theme: { background: "#111113", foreground: "#e8e8ea", cursor: "#e8e8ea" },
+        });
+        const fit = new window.FitAddon.FitAddon();
+        term.loadAddon(fit);
+        term.open(document.getElementById("terminal"));
+        fit.fit();
+        new ResizeObserver(() => fit.fit()).observe(document.body);
+
+        // Quadros de entrada: [tipo:u8][tamanho:u32be][dados]; tipo 0 é texto, tipo 1 é colunas e linhas (u16be).
+        const encoder = new TextEncoder();
+        const quadro = (tipo, dados) => {
+          const out = new Uint8Array(5 + dados.length);
+          const view = new DataView(out.buffer);
+          view.setUint8(0, tipo);
+          view.setUint32(1, dados.length);
+          out.set(dados, 5);
+          return out;
+        };
+        const tamanho = (cols, rows) => {
+          const dados = new Uint8Array(4);
+          const view = new DataView(dados.buffer);
+          view.setUint16(0, cols);
+          view.setUint16(2, rows);
+          return quadro(1, dados);
+        };
+
+        const protocolo = window.location.protocol === "https:" ? "wss" : "ws";
+        const url = `${protocolo}://${window.location.host}/websockify?token=${encodeURIComponent(token)}`;
+        let socket = null;
+        let quedas = 0;
+        const enviar = (dados) => {
+          if (socket && socket.readyState === WebSocket.OPEN) socket.send(dados);
+        };
+        term.onData((texto) => enviar(quadro(0, encoder.encode(texto))));
+        term.onResize(({ cols, rows }) => enviar(tamanho(cols, rows)));
+
+        const conectar = () => {
+          const atual = new WebSocket(url, ["binary"]);
+          socket = atual;
+          atual.binaryType = "arraybuffer";
+          let abriuEm = 0;
+          atual.onopen = () => {
+            abriuEm = Date.now();
+            mostrar("");
+            enviar(tamanho(term.cols, term.rows));
+            term.focus();
+          };
+          atual.onmessage = (msg) => {
+            term.write(typeof msg.data === "string" ? msg.data : new Uint8Array(msg.data));
+          };
+          atual.onclose = () => {
+            if (socket !== atual) return;
+            term.write("\r\n\x1b[2m[conexão encerrada]\x1b[0m\r\n");
+            // Uma sessão que ficou de pé um tempo zera a conta; sem controle, o gateway recusa e para aqui.
+            quedas = abriuEm && Date.now() - abriuEm > 30_000 ? 1 : quedas + 1;
+            if (quedas <= 3) {
+              mostrar("A conexão caiu. Tentando de novo…");
+              setTimeout(conectar, 1500 * quedas);
+            } else {
+              mostrar("O controle acabou ou foi devolvido; o terminal fechou.");
+            }
+          };
+        };
+        conectar();
+      })();
+    </script>
+  </body>
+</html>

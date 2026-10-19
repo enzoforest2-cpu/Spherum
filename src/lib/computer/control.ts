@@ -84,7 +84,18 @@ async function requireComputer(sql: Sql, agencyId: string): Promise<ComputerRow>
 
 // ---------------------------------------------------------------------------
 // Comandos da máquina (rodam como root; o token só chega em base64)
+//
+// Trava e fence na máquina: todo comando de controle roda com flock e confere o marcador
+// /run/spherum/control.fence ("<fence> <lease>"). Assim um comando atrasado de um lease antigo
+// (troca de token de quem foi revogado, assumir que perdeu a corrida) nunca sobrescreve o
+// controle de um lease mais novo. Os scripts de start e stop rodam com a trava fechada (7>&-),
+// senão o x11vnc e o PTY em segundo plano herdariam a trava para sempre.
 // ---------------------------------------------------------------------------
+
+const CONTROL_LOCK = "/run/spherum/control.lock";
+const CONTROL_FENCE_FILE = "/run/spherum/control.fence";
+/** Saída de um comando de controle que perdeu para um lease mais novo. */
+export const STALE_EXIT = 75;
 
 function epochSeconds(ms: number): number {
   const s = Math.floor(ms / 1000);
@@ -92,14 +103,37 @@ function epochSeconds(ms: number): number {
   return s;
 }
 
+function fenceArg(fence: number): number {
+  if (!Number.isSafeInteger(fence) || fence < 0) throw new Error("fence inválido");
+  return fence;
+}
+
+function leaseArg(leaseId: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(leaseId)) throw new Error("lease inválido");
+  return leaseId;
+}
+
+/** Abre a trava e lê o marcador: $cur_fence (0 sem marcador) e $cur_lease. */
+const LOCK_PRELUDE = [
+  "set -eu",
+  "umask 077",
+  "mkdir -p /run/spherum",
+  `exec 7>${CONTROL_LOCK}`,
+  "flock -w 20 7",
+  `cur=$(head -c 100 ${CONTROL_FENCE_FILE} 2>/dev/null || true)`,
+  `cur_fence=\${cur%% *}`,
+  `cur_lease=\${cur#* }`,
+  `case "$cur_fence" in ''|*[!0-9]*) cur_fence=0;; esac`,
+];
+
+const stale = (why: string) => `echo ${shellQuote(why)} >&2; exit ${STALE_EXIT}`;
+
 /** Grava um arquivo do TokenFile (troca atômica com mv) e o vencimento dele. */
-function tokenFileScript(name: string, token: string, lines: { prefix: string; socket: string }[], expiresMs: number): string {
+function tokenFileLines(name: string, token: string, lines: { prefix: string; socket: string }[], expiresMs: number): string[] {
   if (!/^[a-z0-9-]{1,40}$/.test(name)) throw new Error("nome de arquivo de token inválido");
   const epoch = epochSeconds(expiresMs);
   const body = lines.map((l) => `printf '%s-%s: unix_socket:%s\\n' ${shellQuote(l.prefix)} "$tok" ${shellQuote(l.socket)}`).join("\n  ");
   return [
-    "set -eu",
-    "umask 077",
     `mkdir -p ${TOKEN_DIR} ${EXPIRY_DIR} ${STAGING_DIR}`,
     `chmod 700 ${TOKEN_DIR} ${EXPIRY_DIR} ${STAGING_DIR}`,
     `tok=$(printf '%s' ${shellQuote(b64(token))} | base64 -d)`,
@@ -108,9 +142,10 @@ function tokenFileScript(name: string, token: string, lines: { prefix: string; s
     "{",
     `  ${body}`,
     `} > ${STAGING_DIR}/${name}`,
+    // O vencimento vai antes: o vigia apaga token sem vencimento.
     `printf '%s\\n' ${epoch} > ${EXPIRY_DIR}/${name}`,
     `mv -f ${STAGING_DIR}/${name} ${TOKEN_DIR}/${name}`,
-  ].join("\n");
+  ];
 }
 
 const CONTROL_LINES = [
@@ -118,43 +153,72 @@ const CONTROL_LINES = [
   { prefix: "t", socket: PTY_SOCKET },
 ];
 
-/** Grava os tokens de controle (c-) e terminal (t-) e sobe de novo o VNC de controle e o PTY. */
-export function startControlScript(token: string, expiresMs: number): string {
+const markFence = (fence: number, lease: string) => `printf '%s %s\\n' ${fenceArg(fence)} ${shellQuote(lease)} > ${CONTROL_FENCE_FILE}`;
+const killControl = [`rm -f ${TOKEN_DIR}/control ${EXPIRY_DIR}/control ${STAGING_DIR}/control`, `${CONTROL_VNC_STOP} 7>&- || true`, `${PTY_STOP} 7>&- || true`];
+
+/**
+ * Grava os tokens de controle (c-) e terminal (t-) e sobe de novo o VNC de controle e o PTY.
+ * Só vale se o fence deste lease for maior que o da máquina.
+ */
+export function startControlScript(token: string, expiresMs: number, fence: number, leaseId: string): string {
+  const f = fenceArg(fence);
   return [
-    tokenFileScript("control", token, CONTROL_LINES, expiresMs),
+    ...LOCK_PRELUDE,
+    `if [ "$cur_fence" -ge ${f} ]; then ${stale("já existe um controle mais novo na máquina")}; fi`,
+    ...tokenFileLines("control", token, CONTROL_LINES, expiresMs),
+    markFence(f, leaseArg(leaseId)),
     // Reinicia: quem estava conectado antes (outra pessoa, revogada) cai na hora.
-    `${CONTROL_VNC_STOP} || true`,
-    `${PTY_STOP} || true`,
-    CONTROL_VNC_START,
-    PTY_START,
+    `${CONTROL_VNC_STOP} 7>&- || true`,
+    `${PTY_STOP} 7>&- || true`,
+    `${CONTROL_VNC_START} 7>&-`,
+    `${PTY_START} 7>&-`,
   ].join("\n");
 }
 
-/** Troca só o token de controle (a conexão aberta continua). */
-export function rotateControlScript(token: string, expiresMs: number): string {
-  return tokenFileScript("control", token, CONTROL_LINES, expiresMs);
+/** Troca só o token de controle (a conexão aberta continua); só se o lease ainda for o da máquina. */
+export function rotateControlScript(token: string, expiresMs: number, fence: number, leaseId: string): string {
+  const f = fenceArg(fence);
+  const lease = leaseArg(leaseId);
+  return [
+    ...LOCK_PRELUDE,
+    `if [ "$cur_lease" != ${shellQuote(lease)} ] || [ "$cur_fence" -ge ${f} ]; then ${stale("o controle na máquina é de outro lease")}; fi`,
+    ...tokenFileLines("control", token, CONTROL_LINES, expiresMs),
+    markFence(f, lease),
+  ].join("\n");
 }
 
-/** Apaga os tokens de controle e mata o VNC de controle e o PTY: a conexão cai na hora. */
-export function stopControlScript(): string {
-  return [`rm -f ${TOKEN_DIR}/control ${EXPIRY_DIR}/control ${STAGING_DIR}/control`, `${CONTROL_VNC_STOP} || true`, `${PTY_STOP} || true`].join("\n");
+/**
+ * Apaga os tokens de controle e mata o VNC de controle e o PTY: a conexão cai na hora. Com fence,
+ * não mexe se a máquina já tem um controle mais novo; sem fence (máquina que voltou sem ninguém
+ * no controle no banco), apaga sempre.
+ */
+export function stopControlScript(fence?: number): string {
+  if (fence === undefined) return [...LOCK_PRELUDE, ...killControl].join("\n");
+  const f = fenceArg(fence);
+  return [...LOCK_PRELUDE, `if [ "$cur_fence" -ge ${f} ]; then exit 0; fi`, ...killControl, markFence(f, "-")].join("\n");
 }
 
-/** Adia o vencimento do controle na máquina (heartbeat). */
-export function extendControlScript(expiresMs: number): string {
+/** Adia o vencimento do controle na máquina (heartbeat), só se o lease ainda for o da máquina. */
+export function extendControlScript(expiresMs: number, leaseId: string): string {
   const epoch = epochSeconds(expiresMs);
-  return [`set -eu`, `test -f ${TOKEN_DIR}/control`, `printf '%s\\n' ${epoch} > ${EXPIRY_DIR}/control`].join("\n");
+  return [
+    ...LOCK_PRELUDE,
+    `if [ "$cur_lease" != ${shellQuote(leaseArg(leaseId))} ] || [ ! -f ${TOKEN_DIR}/control ]; then ${stale("o controle na máquina é de outro lease")}; fi`,
+    `printf '%s\\n' ${epoch} > ${EXPIRY_DIR}/control`,
+  ].join("\n");
 }
 
 /** Token de assistir (só leitura, no VNC -viewonly que fica sempre ligado). */
 export function viewTokenScript(id: string, token: string, expiresMs: number): string {
   if (!/^[a-f0-9]{16}$/.test(id)) throw new Error("id de token inválido");
-  return tokenFileScript(`view-${id}`, token, [{ prefix: "v", socket: VIEW_SOCKET }], expiresMs);
+  return ["set -eu", "umask 077", ...tokenFileLines(`view-${id}`, token, [{ prefix: "v", socket: VIEW_SOCKET }], expiresMs)].join("\n");
 }
 
-async function rootRun(machine: RunningComputer, script: string) {
+/** Roda como root; devolve o código de saída (STALE_EXIT quando um lease mais novo venceu). */
+async function rootRun(machine: RunningComputer, script: string, opts: { allowStale?: boolean } = {}): Promise<number> {
   const r = await machine.provider.run(machine.ref, { script, user: "root", timeoutMs: 30_000 });
-  if (r.code !== 0) throw new Error(`comando de controle saiu com ${r.code}`);
+  if (r.code === 0 || (opts.allowStale && r.code === STALE_EXIT)) return r.code;
+  throw new Error(`comando de controle saiu com ${r.code}`);
 }
 
 /** Endereço do gateway da tela, sempre em https. */
@@ -260,15 +324,18 @@ export async function takeControl(deps: ControlDeps, agencyId: string, userId: s
   if (!claimed) throw new XodoError("O controle do computador mudou agora. Tente de novo.", 409);
 
   try {
-    await rootRun(machine, startControlScript(token, expiresMs));
+    await rootRun(machine, startControlScript(token, expiresMs, Number(claimed.control_fence), leaseId));
   } catch (error) {
     // Desfaz o lease (só se ainda for este) para os xodós não ficarem parados à toa.
-    await sql.query(
+    const undone = await one<{ control_fence: number | string }>(
+      sql,
       `update computers set control_user_id = null, control_lease_id = null, control_token_hash = null, control_started_at = null,
               control_expires_at = null, control_fence = control_fence + 1
-        where id = $1 and control_lease_id = $2`,
+        where id = $1 and control_lease_id = $2 returning control_fence`,
       [row.id, leaseId],
     );
+    // O script pode ter gravado o token antes de falhar: apaga (se nada mais novo chegou à máquina).
+    if (undone) await rootRun(machine, stopControlScript(Number(undone.control_fence))).catch(() => undefined);
     await logEvent(sql, { agencyId, computerId: row.id, kind: "assumir_controle", status: "failed", summary: safeError(error), userId });
     throw new XodoError("Não consegui abrir o controle do computador. Tente de novo em instantes.", 502);
   }
@@ -305,14 +372,14 @@ export async function heartbeat(deps: ControlDeps, agencyId: string, userId: str
   const renewed = await one(
     sql,
     `update computers set control_expires_at = $4::timestamptz, updated_at = now()
-      where id = $1 and control_lease_id = $2 and control_fence = $3 returning id`,
-    [row.id, leaseId, row.control_fence, iso(expiresMs)],
+      where id = $1 and control_lease_id = $2 and control_user_id = $3 returning id`,
+    [row.id, leaseId, userId, iso(expiresMs)],
   );
   if (!renewed) throw new XodoError("Você não está mais no controle do computador.", 409);
   // A pessoa ativa conta como atividade: adia a pausa por ociosidade e o vencimento na máquina.
   const machine = await ensureRunning(deps, agencyId);
   try {
-    await rootRun(machine, extendControlScript(expiresMs));
+    await rootRun(machine, extendControlScript(expiresMs, leaseId));
   } catch (error) {
     await logEvent(sql, { agencyId, computerId: row.id, kind: "renovar_controle", status: "failed", summary: safeError(error), userId });
     throw new XodoError("Não consegui renovar o controle na máquina. Assuma de novo.", 502);
@@ -349,11 +416,11 @@ async function endLease(
   actor: { userId: string | null; kind: string },
 ): Promise<ReleaseResult> {
   const { sql } = deps;
-  const cleared = await one<{ id: string }>(
+  const cleared = await one<{ control_fence: number | string }>(
     sql,
     `update computers set control_user_id = null, control_lease_id = null, control_token_hash = null, control_started_at = null,
             control_expires_at = null, control_run_id = null, control_fence = control_fence + 1, updated_at = now()
-      where id = $1 and control_lease_id = $2 returning id`,
+      where id = $1 and control_lease_id = $2 returning control_fence`,
     [row.id, row.control_lease_id],
   );
   if (!cleared) throw new XodoError("O controle do computador mudou agora. Tente de novo.", 409);
@@ -361,7 +428,7 @@ async function endLease(
   if (isLive(row, nowOf(deps))) {
     try {
       const machine = await ensureRunning(deps, row.agency_id);
-      await rootRun(machine, stopControlScript());
+      await rootRun(machine, stopControlScript(Number(cleared.control_fence)));
     } catch (error) {
       await logEvent(sql, { agencyId: row.agency_id, computerId: row.id, kind: "derrubar_controle", status: "failed", summary: safeError(error) });
     }
@@ -488,16 +555,21 @@ export async function screenUrls(deps: ControlDeps, agencyId: string, userId: st
   if (heldBy(fresh, now) === userId && fresh.control_lease_id) {
     const token = newToken();
     const expiresMs = time(fresh.control_expires_at);
-    const rotated = await one(
+    const rotated = await one<{ control_fence: number | string }>(
       sql,
       `update computers set control_token_hash = $3, control_fence = control_fence + 1, updated_at = now()
-        where id = $1 and control_lease_id = $2 and control_fence = $4 returning id`,
+        where id = $1 and control_lease_id = $2 and control_fence = $4 returning control_fence`,
       [fresh.id, fresh.control_lease_id, hashToken(token), fresh.control_fence],
     );
-    if (rotated) {
-      await rootRun(machine, rotateControlScript(token, expiresMs)).catch((error) => {
-        throw new XodoError(`Não consegui abrir o controle agora (${safeError(error)}).`, 502);
-      });
+    const code = rotated
+      ? await rootRun(machine, rotateControlScript(token, expiresMs, Number(rotated.control_fence), fresh.control_lease_id), { allowStale: true }).catch(
+          (error) => {
+            throw new XodoError(`Não consegui abrir o controle agora (${safeError(error)}).`, 502);
+          },
+        )
+      : STALE_EXIT;
+    // STALE_EXIT: outra pessoa assumiu (ou a pessoa devolveu) no meio do caminho; só a tela de assistir.
+    if (code === 0) {
       control = {
         leaseId: fresh.control_lease_id,
         viewUrl: pageUrl(base, "view.html", `c-${token}`),

@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- Adaptado de infra/sandboxes/computer/embed.html do Rakazo (Apache-2.0): tela por noVNC atrás do websockify. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; base-uri 'none'; form-action 'none'"
+    />
+    <title>Computador do xodó</title>
+    <style>
+      html,
+      body,
+      #tela {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0e0e10;
+      }
+      #aviso {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        color: #e8e8ea;
+        font: 500 14px/1.4 system-ui, sans-serif;
+        text-align: center;
+        pointer-events: none;
+      }
+      #aviso[hidden] {
+        display: none;
+      }
+    </style>
+    <script type="module">
+      import RFB from "./core/rfb.js";
+
+      const aviso = document.getElementById("aviso");
+      const mostrar = (texto) => {
+        aviso.textContent = texto;
+        aviso.hidden = !texto;
+      };
+
+      // O token vem no fragmento (#t=...), que não vai ao servidor nem a cabeçalhos; some da barra logo.
+      const fragmento = new URLSearchParams(window.location.hash.slice(1));
+      const token = fragmento.get("t") || "";
+      history.replaceState(null, "", window.location.pathname);
+
+      // v- só assiste; c- é a pessoa no controle.
+      if (!/^[vc]-[A-Za-z0-9_-]{16,128}$/.test(token)) {
+        mostrar("Link da tela inválido ou incompleto. Peça um novo no Spherum.");
+      } else {
+        const protocolo = window.location.protocol === "https:" ? "wss" : "ws";
+        const url = `${protocolo}://${window.location.host}/websockify?token=${encodeURIComponent(token)}`;
+        const soAssistir = token.startsWith("v-");
+        let tentativas = 0;
+
+        const conectar = () => {
+          mostrar("Conectando ao computador…");
+          const rfb = new RFB(document.getElementById("tela"), url);
+          rfb.viewOnly = soAssistir;
+          rfb.scaleViewport = true;
+          rfb.clipViewport = false;
+          rfb.resizeSession = false;
+          rfb.focusOnClick = !soAssistir;
+          rfb.addEventListener("connect", () => {
+            tentativas = 0;
+            mostrar("");
+          });
+          rfb.addEventListener("disconnect", () => {
+            // Token vencido ou revogado: o gateway recusa e a tela não volta. Queda de rede: tenta de novo, pouco.
+            tentativas += 1;
+            if (tentativas <= 3) {
+              mostrar("A conexão caiu. Tentando de novo…");
+              setTimeout(conectar, 1500 * tentativas);
+            } else {
+              mostrar(soAssistir ? "A tela foi fechada. Abra de novo pelo Spherum." : "O controle acabou ou foi devolvido.");
+            }
+          });
+        };
+        conectar();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="tela"></div>
+    <div id="aviso" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

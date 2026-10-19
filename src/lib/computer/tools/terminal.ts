@@ -1,11 +1,12 @@
 // Resultado só com código e saídas, sem o comando (como o exec do src/server/computer-service.ts do OpenDots, MIT);
 // texto da nunca-lista traduzido do server/safety-floor-gate.ts do OpenMausBot, Apache-2.0.
 import { z } from "zod";
+import { redactSecrets } from "../../xodos/redact";
 import { ToolError, type ToolDef } from "../../xodos/tools";
 import { HOME, runAsXodo } from "../desktop";
 import { computerTool } from "../gateway";
 import { shellQuote, tailText } from "../output";
-import { classifyCommand, type CommandVerdict } from "../safety-floor";
+import { classifyCommand, DENY_MESSAGE, type CommandVerdict } from "../safety-floor";
 import { caminho, resolvePath } from "./files";
 
 /**
@@ -17,12 +18,14 @@ import { caminho, resolvePath } from "./files";
  * Só aparece para xodós que atendem todos os clientes (o terminal enxerga a máquina inteira).
  */
 
-export const NEVER_LIST =
-  "Este comando nunca é aprovado automaticamente, em nenhum nível de autonomia. Não tente de novo nem procure outro jeito; diga à pessoa o que você queria fazer.";
+export const NEVER_LIST = DENY_MESSAGE;
 
 export const MAX_COMMAND_CHARS = 8000;
 const STDOUT_CHARS = 8000;
 const STDERR_CHARS = 2000;
+/** O que a máquina devolve no máximo (bytes do fim): um `yes` de 2 minutos não enche a memória da função. */
+const STDOUT_BYTES = 64 * 1024;
+const STDERR_BYTES = 16 * 1024;
 
 /** O motivo do classificador já pode trazer o texto da nunca-lista; senão, ele vai junto. */
 const neverMessage = (v: CommandVerdict) =>
@@ -52,7 +55,8 @@ export function terminalTools(classify: (command: string) => CommandVerdict = cl
       part: "terminal",
       taints: true,
       input,
-      summarize: (i) => `rodar no terminal: ${clip(i.comando, 160)}`,
+      // Limpa antes de cortar (vai para o pedido de aprovação e para a linha do tempo).
+      summarize: (i) => `rodar no terminal: ${clip(redactSecrets(i.comando).text, 160)}`,
       categoryFor: async (_ctx, i) => classify(i.comando).category,
       // Nunca-lista: o erro aqui vira ação "failed" sem pedido de aprovação.
       async mustAsk(_ctx, i) {
@@ -71,8 +75,13 @@ export function terminalTools(classify: (command: string) => CommandVerdict = cl
         if (dir && dir.type !== "d") throw new ToolError("A pasta do comando não existe (ou não é uma pasta).");
         const seconds = i.tempo_max_s;
         if (!Number.isInteger(seconds) || seconds < 1 || seconds > 120) throw new ToolError("tempo_max_s vai de 1 a 120.");
-        // timeout mata o grupo de processos na máquina; o prazo do provedor fica de reserva.
-        const script = ["# spherum:terminal", `timeout -k 5 ${seconds} bash -c ${shellQuote(i.comando)} < /dev/null`].join("\n");
+        // timeout mata o grupo de processos na máquina; o prazo do provedor fica de reserva. Só o fim
+        // de cada saída sai da máquina (tail), e o código de saída é o do comando (pipefail).
+        const script = [
+          "# spherum:terminal",
+          "set -o pipefail",
+          `{ timeout -k 5 ${seconds} bash -c ${shellQuote(i.comando)} < /dev/null 2>&1 1>&3 3>&- | tail -c ${STDERR_BYTES} 1>&2; exit "\${PIPESTATUS[0]}"; } 3>&1 | tail -c ${STDOUT_BYTES}`,
+        ].join("\n");
         const r = await runAsXodo(c.machine.provider, c.machine.ref, script, {
           cwd: dir?.abs ?? HOME,
           timeoutMs: (seconds + 15) * 1000,

@@ -149,6 +149,10 @@ class FakeShell {
         const records = names.slice(0, Number(v.n)).map((n) => `${n}\t${kids.get(n)!.y}\t${kids.get(n)!.size}\t1760875200.0000000000\0`);
         return ok(`${names.length}\n${records.join("")}`);
       }
+      case "baixar": {
+        const data = this.files.get(v.p)!;
+        return ok(Buffer.from(data.subarray(0, Number(v.n))).toString("base64"));
+      }
       case "ler": {
         const data = this.files.get(v.p)!;
         const start = Number(v.o) - 1;
@@ -167,8 +171,9 @@ class FakeShell {
         return ok();
       }
       case "terminal": {
-        const m = /^timeout -k 5 (\d+) bash -c '((?:[^']|'\\'')*)' < \/dev\/null$/m.exec(inner);
-        assert.ok(m, "o comando roda com timeout e entre aspas");
+        assert.match(inner, /^set -o pipefail$/m, "o código de saída é o do comando");
+        const m = /^\{ timeout -k 5 (\d+) bash -c '((?:[^']|'\\'')*)' < \/dev\/null 2>&1 1>&3 3>&- \| tail -c 16384 1>&2; exit "\$\{PIPESTATUS\[0\]\}"; \} 3>&1 \| tail -c 65536$/m.exec(inner);
+        assert.ok(m, "o comando roda com timeout, entre aspas, e só o fim das saídas sai da máquina");
         return this.terminal(unquote(m[2]), { cwd: o.cwd, seconds: Number(m[1]) });
       }
       default:
@@ -291,6 +296,47 @@ test("pasta de cliente exige o alcance do xodó; pasta de outro xodó é só del
   assert.equal(clients.total, 1);
   const xodos = await exec(listar, s.ctx(), { caminho: "xodos/" });
   assert.deepEqual((xodos.itens as { nome: string; tipo: string }[]).map((i) => [i.nome, i.tipo]), [[s.xodo.id, "pasta"]]);
+
+  // A estrutura não vira arquivo: nem a pasta de um cliente nem a do próprio xodó.
+  for (const structure of [`clientes/${mine}`, `xodos/${s.xodo.id}`, "agencia"]) {
+    await assert.rejects(exec(escrever, s.ctx(), { caminho: structure, conteudo: "x", modo: "criar" }), toolError(/estrutura/));
+  }
+});
+
+test("a lixeira segue o alcance: o que era de outro cliente ou de outro xodó continua fora", async () => {
+  const s = await setup({ xodo: { client_scope: "selected" } });
+  const mine = await seedClient(sql, s.agencyId, "Verano");
+  const other = await seedClient(sql, s.agencyId, "Outro");
+  const otherXodo = randomUUID();
+  await sql.query(`insert into xodo_clients (xodo_id, client_id, agency_id) values ($1, $2, $3)`, [s.xodo.id, mine, s.agencyId]);
+  const bin = ".lixeira/2026-10-18T10-00-00Z-abcd";
+  s.shell.put(`${bin}/clientes/${other}/contrato.txt`, "do outro cliente");
+  s.shell.put(`${bin}/clientes/${mine}/notas.txt`, "meu");
+  s.shell.put(`${bin}/xodos/${otherXodo}/rascunho.txt`, "do outro xodó");
+  s.shell.put(`${bin}/agencia/velho.txt`, "da agência");
+  const ler = files("arquivo_ler");
+  await assert.rejects(exec(ler, s.ctx(), { caminho: `${bin}/clientes/${other}/contrato.txt` }), toolError(/fora do alcance/));
+  await assert.rejects(exec(ler, s.ctx(), { caminho: `${bin}/xodos/${otherXodo}/rascunho.txt` }), toolError(/outro xodó/));
+  await assert.rejects(exec(files("arquivo_anexar"), s.ctx(), { caminho: `${bin}/clientes/${other}/contrato.txt` }), toolError(/fora do alcance/));
+  assert.equal((await exec(ler, s.ctx(), { caminho: `${bin}/clientes/${mine}/notas.txt` })).conteudo, "meu");
+  assert.equal((await exec(ler, s.ctx(), { caminho: `${bin}/agencia/velho.txt` })).conteudo, "da agência");
+  // Link para a lixeira de outro cliente também cai na regra.
+  s.shell.links.set(`${HOME}/agencia/atalho`, `${HOME}/${bin}/clientes/${other}`);
+  await assert.rejects(exec(ler, s.ctx(), { caminho: "agencia/atalho/contrato.txt" }), toolError(/para fora da pasta/));
+  assert.ok(!s.shell.ops.some((o) => o.op === "ler" && o.vars.p.includes(other)), "nunca leu o arquivo do outro cliente");
+
+  const listar = files("arquivos_listar");
+  const clients = await exec(listar, s.ctx(), { caminho: `${bin}/clientes` });
+  assert.deepEqual((clients.itens as { nome: string }[]).map((i) => i.nome), [mine]);
+  const xodos = await exec(listar, s.ctx(), { caminho: `${bin}/xodos` });
+  assert.deepEqual(xodos.itens, []);
+});
+
+test("a pasta do computador trocada por um link é recusada", async () => {
+  const s = await setup();
+  s.shell.put("agencia/a.txt", "a");
+  s.shell.links.set(HOME, "/opt/outra");
+  await assert.rejects(exec(files("arquivo_ler"), s.ctx(), { caminho: "agencia/a.txt" }), toolError(/para fora da pasta/));
 });
 
 // ---------------------------------------------------------------------------
@@ -318,7 +364,9 @@ test("criar é rascunho e substituir é alteração; criar falha se já existe; 
   await exec(escrever, ctx, { caminho: tricky, conteudo: "novo", modo: "substituir" });
   assert.equal(s.shell.text(tricky), "novo");
   await assert.rejects(exec(escrever, ctx, { caminho: "agencia/nao-existe.md", conteudo: "x", modo: "substituir" }), toolError(/use modo "criar"/));
-  await assert.rejects(exec(escrever, ctx, { caminho: "agencia", conteudo: "x", modo: "substituir" }), toolError(/é uma pasta/));
+  await assert.rejects(exec(escrever, ctx, { caminho: "agencia", conteudo: "x", modo: "substituir" }), toolError(/estrutura/));
+  s.shell.dirs.add(`${HOME}/agencia/sub`);
+  await assert.rejects(exec(escrever, ctx, { caminho: "agencia/sub", conteudo: "x", modo: "substituir" }), toolError(/é uma pasta/));
   assert.equal(escrever.input.safeParse({ caminho: "agencia/x", conteudo: "x".repeat(100_001), modo: "criar" }).success, false);
 });
 
@@ -412,6 +460,8 @@ test("anexar sobe para o armazenamento e devolve o anexo; equipe, ou envio em ca
   const stored = s.storage.objects.get(out.anexo.path)!;
   assert.deepEqual([...stored.data], [...pdf]);
   assert.equal(stored.contentType, "application/pdf");
+  assert.ok(!s.world.calls.some((c) => c.op === "read"), "lê como o usuário xodo, não pelo provider.read");
+  assert.equal(anexar.category, "envio", "sem ver a conversa, fica a mais cautelosa");
   const event = await one<{ kind: string; status: string; summary: string }>(
     sql,
     `select kind, status, summary from computer_events where agency_id = $1 and kind = 'arquivo_anexar'`,
@@ -436,6 +486,23 @@ test("anexar sobe para o armazenamento e devolve o anexo; equipe, ou envio em ca
     [runId, s.xodo.id, s.agencyId, conversation!.id],
   );
   assert.equal(await anexar.categoryFor!(s.ctx(runId), { caminho: "downloads/relatorio.pdf" }), "envio");
+  // Slack interno: equipe. WhatsApp (gente de fora): envio.
+  for (const [channel, metadata, expected] of [
+    ["slack", "{}", "equipe"],
+    ["whatsapp", "{}", "envio"],
+  ] as const) {
+    const conv = await one<{ id: string }>(
+      sql,
+      `insert into xodo_conversations (agency_id, xodo_id, channel, external_key, metadata) values ($1, $2, $3, $4, $5::jsonb) returning id`,
+      [s.agencyId, s.xodo.id, channel, randomUUID(), metadata],
+    );
+    const run = randomUUID();
+    await sql.query(
+      `insert into xodo_runs (id, xodo_id, agency_id, trigger, provider, model, conversation_id, status) values ($1, $2, $3, 'channel', 'faux', 'faux-1', $4, 'completed')`,
+      [run, s.xodo.id, s.agencyId, conv!.id],
+    );
+    assert.equal(await anexar.categoryFor!(s.ctx(run), { caminho: "downloads/relatorio.pdf" }), expected, channel);
+  }
 
   const none = await setup({ storage: false });
   none.shell.put("downloads/a.txt", "a");
@@ -470,6 +537,9 @@ test("terminal: categoria e pergunta vêm do classificador; a nunca-lista não r
   await assert.rejects(exec(terminal, ctx, { comando: "rm -rf /" }), (e: unknown) => e instanceof ToolError && e.message.endsWith(NEVER_LIST));
   assert.ok(!s.shell.ops.some((o) => o.op === "terminal"), "o comando recusado nunca chegou à máquina");
   assert.deepEqual(terminal.floor, ["cliente", "pagamento", "exclusao"], "apagar de vez sempre pergunta");
+  // O resumo (pedido de aprovação e linha do tempo) é limpo antes do corte.
+  const summary = terminal.summarize(parse(`curl -H "Authorization: token ${FAKE_TOKEN}" ${"x".repeat(150)}`));
+  assert.ok(!summary.includes(FAKE_TOKEN.slice(0, 12)), summary);
 
   // Com o classificador de verdade, a categoria é a dele.
   const real = byName(TERMINAL_TOOLS, "terminal");
