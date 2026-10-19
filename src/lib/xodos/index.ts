@@ -22,6 +22,27 @@ export async function productionDeps(sql?: Sql): Promise<EngineDeps> {
     secretFor: (agencyId, credentialId) => loadCredentialSecret(db, agencyId, credentialId, masterKey),
     integrations: serverIntegrations(),
     computer: engineComputer(db),
+    chainSlice: sliceChainer(),
+  };
+}
+
+/**
+ * Próxima fatia de uma execução longa: chama a própria API (POST /api/xodos/runs/continue), que
+ * responde na hora e continua em segundo plano numa função nova. Sem APP_URL ou CRON_SECRET, o
+ * cron continua as fatias.
+ */
+function sliceChainer(): EngineDeps["chainSlice"] {
+  const base = process.env.APP_URL?.trim();
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!base || !secret) return undefined;
+  return async (runId) => {
+    const response = await fetch(new URL("/api/xodos/runs/continue", base), {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ run_id: runId }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`continuação respondeu ${response.status}`);
   };
 }
 

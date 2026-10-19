@@ -29,7 +29,7 @@ create table public.computers (
   -- Quando o provedor pausa sozinho por ociosidade (última atividade + idle_ms).
   expires_at timestamptz,
   session_started_at timestamptz,
-  idle_ms integer not null default 600000 check (idle_ms between 120000 and 3600000),
+  idle_ms integer not null default 600000 check (idle_ms between 300000 and 3600000),
   daily_hours_cap numeric(5, 2) not null default 4 check (daily_hours_cap between 0.25 and 24),
   egress_mode text not null default 'aberto' check (egress_mode in ('aberto', 'restrito')),
   -- Tela: uma execução por vez (lease renovado a cada ação).

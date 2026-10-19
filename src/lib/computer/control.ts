@@ -49,6 +49,8 @@ export type ControlDeps = ComputerDeps & {
   engine?: EngineDeps;
   /** Adia a retomada para depois da resposta (after() nas rotas); sem isto, retoma na hora. */
   defer?: (runId: string, task: () => Promise<unknown>) => void;
+  /** Prazo da retomada (o cron passa o dele; sem isto, a fatia padrão do motor). */
+  deadline?: number;
 };
 
 export type ControlReason = "done" | "skipped" | "expired";
@@ -333,7 +335,7 @@ export async function takeControl(deps: ControlDeps, agencyId: string, userId: s
     const undone = await one<{ control_fence: number | string }>(
       sql,
       `update computers set control_user_id = null, control_lease_id = null, control_token_hash = null, control_started_at = null,
-              control_expires_at = null, control_fence = control_fence + 1
+              control_expires_at = null, control_run_id = null, control_fence = control_fence + 1
         where id = $1 and control_lease_id = $2 returning control_fence`,
       [row.id, leaseId],
     );
@@ -403,7 +405,7 @@ async function resume(
   const waiting = await one(deps.sql, `select 1 from xodo_runs where id = $1 and status = 'waiting_takeover'`, [runId]);
   if (!waiting) return null;
   const engine = deps.engine;
-  const task = () => resumeTakeover(engine, runId, reason, message);
+  const task = () => resumeTakeover(engine, runId, reason, message, { deadline: deps.deadline });
   if (deps.defer) {
     deps.defer(runId, task);
     return "deferred";

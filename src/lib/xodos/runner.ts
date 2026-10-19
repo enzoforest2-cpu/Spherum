@@ -35,6 +35,12 @@ import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
 export const MAX_STEPS = 12;
 /** Com o computador, uma tarefa costuma ter mais passos (abrir, ler, clicar, conferir). */
 export const MAX_STEPS_COMPUTER = 40;
+/**
+ * Fatia padrão de uma execução: a função da Vercel corta em 300 s e um passo (modelo + ferramenta)
+ * pode levar alguns minutos, então nenhum passo começa depois disto. A próxima fatia vem por
+ * deps.chainSlice (produção) ou pelo cron.
+ */
+export const SLICE_MS = 120_000;
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 /** Uma execução "running" parada há mais que isso é tratada como travada. */
 export const STALE_RUN_MS = 10 * 60 * 1000;
@@ -47,6 +53,8 @@ export type EngineDeps = BrainDeps & {
   integrations?: Omit<IntegrationDeps, "sql" | "now">;
   /** Computador na nuvem (provedores e chave do cofre). Sem isto, as ferramentas do computador recusam. */
   computer?: Omit<ComputerDeps, "sql" | "now">;
+  /** Pede a próxima fatia de uma execução que parou no prazo (em produção, uma chamada à própria API). */
+  chainSlice?: (runId: string) => Promise<void>;
 };
 
 function integrationDeps(deps: EngineDeps): IntegrationDeps | null {
@@ -309,6 +317,7 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
  */
 export async function continueRun(deps: EngineDeps, runId: string, opts: { deadline?: number } = {}): Promise<RunStatus> {
   const { sql } = deps;
+  const deadline = opts.deadline ?? Date.now() + SLICE_MS;
   const run = await loadRun(sql, runId);
   if (run.status !== "running") return run.status;
   const cap = await eventCap(sql, run);
@@ -326,11 +335,13 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
 
     const maxSteps = xodo.computer_mode === "cloud" ? MAX_STEPS_COMPUTER : MAX_STEPS;
     while (true) {
-      if (opts.deadline && Date.now() > opts.deadline) {
+      if (Date.now() > deadline) {
         await sql.query(`update xodo_runs set slice_due_at = $2::timestamptz, heartbeat_at = $2::timestamptz where id = $1`, [
           runId,
           nowOf(deps).toISOString(),
         ]);
+        // Sem a chamada encadeada (ou se ela falhar), o cron continua depois de 1 minuto.
+        await deps.chainSlice?.(runId).catch((error) => console.error("[xodos] fatia não encadeada", runId, error));
         return "running";
       }
       if (steps >= maxSteps) {
@@ -413,20 +424,7 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
         return "waiting_approval";
       }
       const takeover = await takeoverRequested(sql, runId, steps, tools);
-      if (takeover !== null) {
-        await sql.query(`update xodo_runs set status = 'waiting_takeover', heartbeat_at = $2::timestamptz where id = $1`, [
-          runId,
-          nowOf(deps).toISOString(),
-        ]);
-        await addMessage(sql, xodo, runId, "note", `Preciso de você no computador: ${takeover}`, null);
-        await notify(sql, xodo.agency_id, {
-          kind: "takeover_requested",
-          title: `${xodo.name} precisa de você no computador`,
-          body: takeover,
-          data: { xodo_id: xodo.id, run_id: runId },
-        });
-        return "waiting_takeover";
-      }
+      if (takeover !== null) return parkForTakeover(deps, xodo, runId, takeover);
       messages = [...messages, ...toolResultMessages(await stepResults(sql, runId, steps), nowOf(deps).getTime())];
       await sql.query(`update xodo_runs set transcript = $2::jsonb, heartbeat_at = $3::timestamptz where id = $1`, [
         runId,
@@ -694,7 +692,7 @@ function truncate(text: string): string {
  * Retoma uma execução que esperava aprovação, se todas as ações do passo já foram
  * decididas. A troca de status é atômica: duas decisões simultâneas retomam uma vez só.
  */
-export async function resumeRun(deps: EngineDeps, runId: string): Promise<RunStatus | null> {
+export async function resumeRun(deps: EngineDeps, runId: string, opts: { deadline?: number } = {}): Promise<RunStatus | null> {
   const { sql } = deps;
   const claimed = await one<RunRow>(
     sql,
@@ -707,12 +705,16 @@ export async function resumeRun(deps: EngineDeps, runId: string): Promise<RunSta
     [runId, nowOf(deps).toISOString()],
   );
   if (!claimed) return null;
+  // O pedido de controle aprovado (ou junto de outro pedido) também espera a pessoa. Os
+  // resultados do passo entram na conversa na retomada (resumeTakeover), não aqui.
+  const takeover = await takeoverRequested(sql, runId, claimed.steps, [...COMPUTER_TOOLS]);
+  if (takeover !== null) return parkForTakeover(deps, await loadXodo(sql, claimed.xodo_id, claimed.agency_id), runId, takeover);
   const messages = [
     ...parseJson<Message[]>(claimed.transcript),
     ...toolResultMessages(await stepResults(sql, runId, claimed.steps), nowOf(deps).getTime()),
   ];
   await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(messages)]);
-  return continueRun(deps, runId);
+  return continueRun(deps, runId, opts);
 }
 
 // ---------------------------------------------------------------------------
@@ -818,6 +820,23 @@ function stricter(a: Autonomy | null, b: Autonomy | null): Autonomy | null {
 }
 
 /** Motivo do pedido de controle, se uma ferramenta do passo encerrou o turno esperando a pessoa. */
+/** Para a execução até a pessoa assumir o computador e avisa a equipe. */
+async function parkForTakeover(deps: EngineDeps, xodo: Xodo, runId: string, motivo: string): Promise<RunStatus> {
+  const { sql } = deps;
+  await sql.query(`update xodo_runs set status = 'waiting_takeover', heartbeat_at = $2::timestamptz where id = $1`, [
+    runId,
+    nowOf(deps).toISOString(),
+  ]);
+  await addMessage(sql, xodo, runId, "note", `Preciso de você no computador: ${motivo}`, null);
+  await notify(sql, xodo.agency_id, {
+    kind: "takeover_requested",
+    title: `${xodo.name} precisa de você no computador`,
+    body: motivo,
+    data: { xodo_id: xodo.id, run_id: runId },
+  });
+  return "waiting_takeover";
+}
+
 async function takeoverRequested(sql: Sql, runId: string, step: number, tools: ToolDef[]): Promise<string | null> {
   const names = tools.filter((t) => t.endsTurn === "takeover").map((t) => t.name);
   if (!names.length) return null;
@@ -840,6 +859,7 @@ export async function resumeTakeover(
   runId: string,
   outcome: keyof typeof TAKEOVER_NOTES,
   message?: { text: string; userId: string },
+  opts: { deadline?: number } = {},
 ): Promise<RunStatus | null> {
   const { sql } = deps;
   const claimed = await one<RunRow>(
@@ -859,7 +879,7 @@ export async function resumeTakeover(
     { role: "user", content: message ? `${note}\n\nMensagem da pessoa: ${message.text}` : note, timestamp: at },
   ];
   await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(messages)]);
-  return continueRun(deps, runId);
+  return continueRun(deps, runId, opts);
 }
 
 /** Continua uma execução fatiada (uma chamada por fatia: a primeira que pegar leva). */

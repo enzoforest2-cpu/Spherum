@@ -72,13 +72,14 @@ type RoutineRow = {
   continuity: boolean;
 };
 
-export async function runDueRoutines(deps: EngineDeps, limit = 5) {
+export async function runDueRoutines(deps: EngineDeps, limit = 5, opts: { deadline?: number } = {}) {
   const { sql } = deps;
   const now = deps.now ? deps.now() : new Date();
   const due = await sql.query<RoutineRow>(`select * from xodo_claim_due_routines($1::timestamptz, $2)`, [now.toISOString(), limit]);
   const results: { routineId: string; runId: string | null; status: string }[] = [];
 
   for (const routine of due) {
+    // Passado o prazo do cron, a rotina já reivindicada começa e segue em fatias.
     let runId: string | null = null;
     let status = "failed";
     let summary: string | null = null;
@@ -90,7 +91,7 @@ export async function runDueRoutines(deps: EngineDeps, limit = 5) {
         text: routine.prompt,
         routineId: routine.id,
       });
-      status = await continueRun(deps, runId);
+      status = await continueRun(deps, runId, { deadline: opts.deadline });
       const run = await one<{ final_text: string | null }>(sql, `select final_text from xodo_runs where id = $1`, [runId]);
       summary = run?.final_text?.slice(0, SUMMARY_MAX_CHARS) ?? null;
     } catch (error) {

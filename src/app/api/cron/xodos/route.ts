@@ -42,13 +42,15 @@ export async function GET(request: Request) {
     const integrations = { sql: deps.sql, ...deps.integrations! };
     const ads = await syncDueAccounts(integrations);
     const expiring = await warnExpiringConnections(integrations);
-    const cleanup = await sweep(deps);
-    // Computador: primeiro vence o controle de quem passou do prazo (a execução retoma com
-    // "expired"), depois dá como pausadas as máquinas vencidas e pausa sessões longas.
-    const machines = withEngine(computerDeps(deps.sql), deps);
-    const controls = await expireControls(machines);
-    const computers = { controls, ...(await sweepComputers(machines)) };
-    const routines = await runDueRoutines(deps);
+    // Computador antes das retomadas (é rápido e fecha sessões que estão contando custo): dá como
+    // pausadas as máquinas vencidas e pausa sessões longas; depois vence o controle de quem passou
+    // do prazo (a execução retoma com "expired", até o prazo do cron).
+    const machines = { ...withEngine(computerDeps(deps.sql), deps), deadline };
+    const swept = await sweepComputers(machines);
+    const computers = { controls: await expireControls(machines), ...swept };
+    // Retomadas, fatias e rotinas param de começar perto do prazo; o resto fica para o próximo ciclo.
+    const cleanup = await sweep(deps, { deadline });
+    const routines = Date.now() < deadline - 30_000 ? await runDueRoutines(deps, 5, { deadline }) : [];
     const email = await pollEmailTriggers(channelDeps);
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });

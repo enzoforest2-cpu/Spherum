@@ -1,3 +1,4 @@
+import { takeoverDoneByMessage, withEngine } from "../computer/control";
 import { access } from "../integrations/store";
 import { decideAction } from "../xodos/actions";
 import { dayIn } from "../xodos/budget";
@@ -133,6 +134,20 @@ export async function receiveMessage(deps: ChannelDeps, adapters: Adapters, msg:
      returning id`,
     [msg.agencyId, xodo.id, channel, msg.connectionId, msg.conversationKey, msg.displayName ?? null, JSON.stringify(msg.reply)],
   );
+  // O xodó esperava a pessoa no computador nesta conversa: a mensagem vale como "terminei".
+  const waiting = await one<{ id: string }>(
+    sql,
+    `select id from xodo_runs where conversation_id = $1 and status = 'waiting_takeover' order by started_at desc limit 1`,
+    [conversation!.id],
+  );
+  if (waiting && identity.userId && deps.computer) {
+    const machines = withEngine({ sql, ...deps.computer }, deps);
+    try {
+      if (await takeoverDoneByMessage(machines, waiting.id, identity.userId, text)) return { status: "started", runId: waiting.id };
+    } finally {
+      await flushOutbox(deps, adapters, { conversationId: conversation!.id });
+    }
+  }
   const who = identity.displayName ?? msg.displayName ?? "Alguém da equipe";
   let runId: string;
   try {

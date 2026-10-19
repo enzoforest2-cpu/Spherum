@@ -1,4 +1,4 @@
-import { one, parseJson } from "./db";
+import { json, one, parseJson } from "./db";
 import { canAlwaysAllow, type Category } from "./policy";
 import { addMessage, continueSlice, loadXodo, resumeRun, resumeTakeover, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
 
@@ -99,17 +99,31 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
  * Faxina chamada pelo cron: vence pedidos sem resposta (e retoma as execuções, para o xodó
  * avisar que nada foi feito) e marca como falha execuções travadas no meio.
  */
+/** Ação "executando" há mais tempo que isto morreu no meio. */
+export const STUCK_ACTION_MS = 15 * 60 * 1000;
 /** Quanto uma execução espera alguém assumir o computador antes de seguir sem isso. */
 export const TAKEOVER_WAIT_MS = 24 * 60 * 60 * 1000;
 
-export async function sweep(deps: EngineDeps) {
+export async function sweep(deps: EngineDeps, opts: { deadline?: number } = {}) {
   const { sql } = deps;
+  // Cada retomada roda até o prazo do cron; passado dele, o resto fica para a próxima vez.
+  const deadline = opts.deadline;
+  const timeLeft = () => !deadline || Date.now() < deadline - 30_000;
   const now = deps.now ? deps.now() : new Date();
   const expired = await sql.query<{ run_id: string }>(
     `update xodo_actions set status = 'expired'
       where status = 'pending' and expires_at <= $1::timestamptz
       returning run_id`,
     [now.toISOString()],
+  );
+  // Ação que ficou "executando" (a função morreu no meio): vira falha, para a execução não
+  // ficar presa. Nenhuma ferramenta passa de alguns minutos (o preparo da máquina é o mais longo).
+  const stuckActions = await sql.query<{ run_id: string }>(
+    `update xodo_actions set status = 'failed', result = $2::jsonb, executed_at = $1::timestamptz
+      where status = 'executing' and coalesce(decided_at, created_at) < $3::timestamptz
+      returning run_id`,
+    [now.toISOString(), json({ error: "A ação parou no meio e não se sabe se terminou; confira antes de tentar de novo." }),
+      new Date(now.getTime() - STUCK_ACTION_MS).toISOString()],
   );
   // Retoma toda execução cujo passo já fechou (inclui pedidos vencidos ao tentar aprovar
   // e retomadas que falharam depois de uma decisão).
@@ -122,7 +136,7 @@ export async function sweep(deps: EngineDeps) {
       order by r.started_at limit 20`,
   );
   const runs = ready.map((r) => r.id);
-  for (const runId of runs) await resumeRun(deps, runId);
+  for (const runId of runs) if (timeLeft()) await resumeRun(deps, runId, { deadline });
 
   const stale = await sql.query<{ id: string; xodo_id: string; agency_id: string }>(
     `update xodo_runs set status = 'failed', error = 'A execução parou no meio e foi encerrada.', finished_at = $1::timestamptz
@@ -140,7 +154,7 @@ export async function sweep(deps: EngineDeps) {
     `select id from xodo_runs where status = 'running' and slice_due_at <= $1::timestamptz order by slice_due_at limit 10`,
     [new Date(now.getTime() - 60_000).toISOString()],
   );
-  for (const run of slices) await continueSlice(deps, run.id, { deadline: Date.now() + 120_000 });
+  for (const run of slices) if (timeLeft()) await continueSlice(deps, run.id, { deadline });
   // Pediu o computador e ninguém assumiu em um dia: o xodó segue sem contar com isso. Quem está
   // no controle tem o próprio prazo (o cron do computador vence o lease e retoma).
   const forgotten = await sql.query<{ id: string }>(
@@ -150,12 +164,16 @@ export async function sweep(deps: EngineDeps) {
       order by r.heartbeat_at limit 10`,
     [new Date(now.getTime() - TAKEOVER_WAIT_MS).toISOString()],
   );
-  for (const run of forgotten) await resumeTakeover(deps, run.id, "expired").catch((error) => console.error("[xodos] retomada falhou", run.id, error));
+  for (const run of forgotten) {
+    if (!timeLeft()) break;
+    await resumeTakeover(deps, run.id, "expired", undefined, { deadline }).catch((error) => console.error("[xodos] retomada falhou", run.id, error));
+  }
   return {
     expiredActions: expired.length,
     resumedRuns: runs.length,
     staleRuns: stale.length,
     continuedSlices: slices.length,
     expiredTakeovers: forgotten.length,
+    stuckActions: stuckActions.length,
   };
 }

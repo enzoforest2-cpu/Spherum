@@ -158,3 +158,24 @@ test("mensagem no chat enquanto o xodó espera retoma com o texto; esquecida por
   assert.equal(after!.status, "completed");
   assert.match(String(model.requests.at(-1)!.messages.at(-1)!.content), /Ninguém assumiu o computador a tempo/);
 });
+
+test("pedido de controle que passou por aprovação também espera a pessoa", async () => {
+  const w = await world({ computer_mode: "cloud", computer_files: true, autonomy: "sempre_pergunta" });
+  const model = new FakeModel([
+    { toolCalls: [{ id: "c1", name: "pedir_controle", input: { motivo: "Faça o login" } }] },
+    { text: "Entrei, obrigado." },
+  ]);
+  const deps = w.deps(model);
+  const runId = await startRun(deps, { xodoId: w.xodo.id, agencyId: w.agencyId, trigger: "user", text: "Entra no painel", userId: w.ownerId });
+  assert.equal(await continueRun(deps, runId), "waiting_approval");
+  const action = await one<{ id: string }>(sql, `select id from xodo_actions where run_id = $1 and status = 'pending'`, [runId]);
+  await decideAction(deps, { actionId: action!.id, agencyId: w.agencyId, userId: w.ownerId, approve: true });
+  const { resumeRun } = await import("../src/lib/xodos/runner");
+  await resumeRun(deps, runId);
+  const run = await one<{ status: string }>(sql, `select status from xodo_runs where id = $1`, [runId]);
+  assert.equal(run!.status, "waiting_takeover");
+  assert.equal(model.requests.length, 1, "o modelo não seguiu sem a pessoa");
+  assert.equal(await resumeTakeover(deps, runId, "done"), "completed");
+  const results = model.requests.at(-1)!.messages.filter((m) => m.role === "toolResult");
+  assert.equal(results.length, 1, "o resultado do pedido entra uma vez só");
+});

@@ -5,7 +5,7 @@ import { XodoError } from "../xodos/errors";
 import { usdBrl } from "../xodos/fx";
 import { redactSecrets } from "../xodos/redact";
 import { credentialAad, openSecret } from "../xodos/vault";
-import { prepareMachine, RUNTIME_VERSION } from "./desktop";
+import { PREPARE_TIMEOUT_MS, prepareMachine, RUNTIME_VERSION } from "./desktop";
 import type { ComputerStorage, ProviderFactory, ProviderId, SandboxProvider } from "./provider";
 
 /**
@@ -129,7 +129,8 @@ export async function finishEvent(sql: Sql, id: string, status: "succeeded" | "f
 export const computerInput = z.object({
   provider: z.enum(["e2b", "daytona"]),
   credential_id: z.uuid().nullable().optional(),
-  idle_minutes: z.number().int().min(2).max(60).optional(),
+  // Mínimo de 5 minutos: um comando ou a leitura de um arquivo grande cabe antes da pausa.
+  idle_minutes: z.number().int().min(5).max(60).optional(),
   daily_hours_cap: z.number().min(0.25).max(24).optional(),
   egress_mode: z.enum(["aberto", "restrito"]).optional(),
 });
@@ -278,8 +279,7 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
         await provider.extend(row.provider_ref, row.idle_ms);
       } catch (error) {
         if (!provider.isGone(error)) throw error;
-        await transition(sql, row, "none", now, { provider_ref: null });
-        await closeSession(sql, row, now);
+        if (await transition(sql, row, "none", now, { provider_ref: null })) await closeSession(sql, row, now);
         continue;
       }
       const touched = await one<ComputerRow>(
@@ -296,7 +296,13 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
     const pausedNow = (row.state === "running" && time(row.expires_at) <= now.getTime()) || row.state === "paused";
     const retakeResume = row.state === "resuming" && stale;
     if ((pausedNow || retakeResume) && row.provider_ref) {
-      if (row.state === "running") await closeSession(sql, row, new Date(time(row.expires_at)));
+      // A sessão que passou do prazo fecha antes de conferir o teto (senão conta o tempo parada).
+      if (row.state === "running") {
+        const settled = await transition(sql, row, "paused", now, { screen_run_id: null, screen_expires_at: null });
+        if (!settled) continue;
+        await closeSession(sql, row, new Date(time(row.expires_at)));
+        continue;
+      }
       await assertHoursLeft(sql, row, now);
       const claimed = await transition(sql, row, "resuming", now);
       if (!claimed) continue;
@@ -304,7 +310,8 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
         await provider.resume(row.provider_ref, row.idle_ms);
       } catch (error) {
         if (!provider.isGone(error)) {
-          await transition(sql, claimed, "error", nowOf(deps), { error: safeError(error) });
+          // Falha passageira: continua pausada com a mesma máquina (nada de recriar e perder os arquivos).
+          await transition(sql, claimed, "paused", nowOf(deps), { error: safeError(error) });
           throw new XodoError("Não consegui retomar o computador. Tente de novo em instantes.", 502);
         }
         // Sumiu: recria do zero.
@@ -320,6 +327,14 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
       if (!running) continue;
       await openSession(sql, running, now);
       await logEvent(sql, { agencyId, computerId: row.id, kind: "retomar" });
+      // O preparo mudou desde a última vez (scripts novos no deploy): prepara de novo.
+      if (running.runtime_version !== RUNTIME_VERSION) {
+        await provider.extend(row.provider_ref, Math.max(row.idle_ms, PREPARE_TIMEOUT_MS + 60_000));
+        await prepareMachine(provider, row.provider_ref, { egressMode: row.egress_mode });
+        await provider.extend(row.provider_ref, row.idle_ms);
+        await sql.query(`update computers set runtime_version = $2 where id = $1`, [row.id, RUNTIME_VERSION]);
+        running.runtime_version = RUNTIME_VERSION;
+      }
       return { computer: running, provider, ref: row.provider_ref };
     }
 
@@ -331,12 +346,17 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
       await assertHoursLeft(sql, row, now);
       const claimed = await transition(sql, row, "provisioning", now, { generation: row.generation + 1, error: null });
       if (!claimed) continue;
+      // Máquina de uma criação que falhou (ou ficou presa no meio): não tem nada da agência, sai.
+      if (row.provider_ref) await provider.destroy(row.provider_ref).catch(() => undefined);
       let ref: string;
       try {
-        ({ ref } = await provider.create({ agencyId, computerId: row.id, generation: claimed.generation, idleMs: row.idle_ms }));
-        // Guarda o id já: se a função morrer no preparo, o cron acha e destrói a máquina.
+        // Prazo do provedor cobre o preparo (a primeira vez instala pacotes); depois volta ao da agência.
+        const idleMs = Math.max(row.idle_ms, PREPARE_TIMEOUT_MS + 60_000);
+        ({ ref } = await provider.create({ agencyId, computerId: row.id, generation: claimed.generation, idleMs }));
+        // Guarda o id já: se a função morrer no preparo, a próxima chamada destrói a máquina.
         await sql.query(`update computers set provider_ref = $2 where id = $1 and fence = $3`, [row.id, ref, claimed.fence]);
         await prepareMachine(provider, ref, { egressMode: row.egress_mode });
+        await provider.extend(ref, row.idle_ms);
       } catch (error) {
         await transition(sql, claimed, "error", nowOf(deps), { error: safeError(error) });
         await logEvent(sql, { agencyId, computerId: row.id, kind: "criar", status: "failed", summary: safeError(error) });
@@ -357,13 +377,33 @@ export async function ensureRunning(deps: ComputerDeps, agencyId: string): Promi
     }
 
     if (["pausing", "destroying"].includes(row.state) && stale) {
-      // Transição presa: dá como concluída (o provedor já pausou ou a máquina sumiu).
-      await transition(sql, row, row.state === "pausing" ? "paused" : "destroyed", now);
+      await settleStuck(deps, row, provider);
       continue;
     }
     throw new XodoError(row.state === "destroying" ? "O computador está sendo desligado de vez." : STARTING, 409);
   }
   throw new XodoError(STARTING, 409);
+}
+
+/**
+ * Transição presa (a função morreu no meio de pausar ou apagar): tenta de novo no provedor e
+ * fecha a sessão. Se o provedor falhar, fica como está e a próxima chamada (ou o cron) tenta.
+ */
+async function settleStuck(deps: ComputerDeps, row: ComputerRow, provider: SandboxProvider) {
+  const { sql } = deps;
+  const now = nowOf(deps);
+  if (row.provider_ref) {
+    try {
+      await (row.state === "pausing" ? provider.pause(row.provider_ref) : provider.destroy(row.provider_ref));
+    } catch (error) {
+      if (!provider.isGone(error)) return;
+    }
+  }
+  const settled =
+    row.state === "pausing"
+      ? await transition(sql, row, "paused", now, { screen_run_id: null, screen_expires_at: null })
+      : await transition(sql, row, "destroyed", now, { provider_ref: null, screen_run_id: null, screen_expires_at: null });
+  if (settled) await closeSession(sql, row, new Date(time(row.transition_at) || now.getTime()));
 }
 
 /** Pausa a máquina (o disco e, no E2B, a memória ficam guardados). */
@@ -372,13 +412,17 @@ export async function pauseComputer(deps: ComputerDeps, agencyId: string, reason
   const now = nowOf(deps);
   const row = await loadComputer(sql, agencyId);
   if (!row || row.state !== "running" || !row.provider_ref) return row;
+  const provider = await providerFor(deps, row);
   const claimed = await transition(sql, row, "pausing", now);
   if (!claimed) return loadComputer(sql, agencyId);
-  const provider = await providerFor(deps, row);
   try {
     await provider.pause(row.provider_ref);
   } catch (error) {
-    if (!provider.isGone(error)) throw error;
+    if (!provider.isGone(error)) {
+      // Não pausou: continua ligada (e contando), e a próxima pausa tenta de novo.
+      await transition(sql, claimed, "running", nowOf(deps), { error: safeError(error) });
+      throw error;
+    }
   }
   const paused = await transition(sql, claimed, "paused", nowOf(deps), { screen_run_id: null, screen_expires_at: null });
   await closeSession(sql, row, now);
@@ -392,14 +436,17 @@ export async function destroyComputer(deps: ComputerDeps, agencyId: string, user
   const now = nowOf(deps);
   const row = await loadComputer(sql, agencyId);
   if (!row || row.state === "destroyed" || row.state === "none") return;
+  const provider = row.provider_ref ? await providerFor(deps, row) : null;
   const claimed = await transition(sql, row, "destroying", now);
   if (!claimed) throw new XodoError("O computador mudou de estado agora. Tente de novo.", 409);
-  if (row.provider_ref) {
-    const provider = await providerFor(deps, row);
+  if (row.provider_ref && provider) {
     try {
       await provider.destroy(row.provider_ref);
     } catch (error) {
-      if (!provider.isGone(error)) throw error;
+      if (!provider.isGone(error)) {
+        await transition(sql, claimed, row.state, nowOf(deps), { error: safeError(error) });
+        throw new XodoError("Não consegui apagar a máquina no provedor. Tente de novo em instantes.", 502);
+      }
     }
   }
   await transition(sql, claimed, "destroyed", nowOf(deps), {
@@ -418,7 +465,8 @@ export async function destroyComputer(deps: ComputerDeps, agencyId: string, user
 
 /**
  * Cron: dá como pausadas as máquinas que passaram do prazo (o provedor já pausou), pausa sessões
- * longas demais sem ninguém no controle, vence leases e limpa fotos de página e eventos antigos.
+ * longas demais sem ninguém no controle, termina pausas e exclusões presas e limpa fotos de página
+ * e eventos antigos.
  */
 export async function sweepComputers(deps: ComputerDeps) {
   const { sql } = deps;
@@ -437,19 +485,22 @@ export async function sweepComputers(deps: ComputerDeps) {
     [new Date(now.getTime() - MAX_SESSION_MS).toISOString(), now.toISOString()],
   );
   for (const row of long) await pauseComputer(deps, row.agency_id, "pausar_sessao_longa").catch(() => undefined);
-  const leases = await sql.query(
-    `update computers set control_user_id = null, control_lease_id = null, control_token_hash = null, control_expires_at = null,
-            control_run_id = null, control_fence = control_fence + 1
-      where control_expires_at is not null and control_expires_at <= $1::timestamptz returning id`,
-    [now.toISOString()],
+  // Pausar ou apagar que ficou no meio. (O controle vencido é do expireControls, que retoma a execução.)
+  const stuck = await sql.query<ComputerRow>(
+    `select * from computers where state in ('pausing', 'destroying') and transition_at <= $1::timestamptz`,
+    [new Date(now.getTime() - TRANSITION_STALE_MS).toISOString()],
   );
+  for (const row of stuck.map(normalize)) {
+    const provider = await providerFor(deps, row).catch(() => null);
+    if (provider) await settleStuck(deps, row, provider);
+  }
   await sql.query(
     `update computers set screen_run_id = null, screen_expires_at = null where screen_expires_at is not null and screen_expires_at <= $1::timestamptz`,
     [now.toISOString()],
   );
   await sql.query(`delete from computer_snapshots where created_at < $1::timestamptz`, [new Date(now.getTime() - 3_600_000).toISOString()]);
   await sql.query(`delete from computer_events where created_at < $1::timestamptz`, [new Date(now.getTime() - 90 * 86_400_000).toISOString()]);
-  return { paused: expired.length, longSessions: long.length, expiredControls: leases.length };
+  return { paused: expired.length, longSessions: long.length, stuck: stuck.length };
 }
 
 /** Mensagem de erro do provedor sem detalhes que possam carregar chaves (fica no banco e nos logs). */

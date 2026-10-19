@@ -36,6 +36,8 @@ async function setup(opts: { cap?: number } = {}) {
   const world = fakeWorld();
   const keys: string[] = [];
   const clock = new Clock(new Date("2026-10-19T12:00:00Z"));
+  // Falhas do provedor de mentira (erro passageiro, não "sumiu").
+  const faults: { pause?: Error; resume?: Error } = {};
   const deps: ComputerDeps = {
     sql,
     now: clock.now,
@@ -43,13 +45,19 @@ async function setup(opts: { cap?: number } = {}) {
     providers: {
       e2b: (key) => {
         keys.push(key);
-        return fakeProvider(world)(key);
+        const p = fakeProvider(world)(key);
+        return {
+          ...p,
+          id: p.id,
+          pause: (ref) => (faults.pause ? Promise.reject(faults.pause) : p.pause(ref)),
+          resume: (ref, idle) => (faults.resume ? Promise.reject(faults.resume) : p.resume(ref, idle)),
+        };
       },
     },
   };
   const credential = await sandboxKey(agencyId);
   await configureComputer(deps, agencyId, { provider: "e2b", credential_id: credential, daily_hours_cap: opts.cap });
-  return { agencyId, world, deps, clock, keys, credential };
+  return { agencyId, world, deps, clock, keys, credential, faults };
 }
 
 const ops = (world: ReturnType<typeof fakeWorld>) => world.calls.map((c) => c.op);
@@ -82,7 +90,8 @@ test("ligar cria e prepara uma vez; depois só estende; passado o prazo, retoma;
   assert.deepEqual(s.keys, ["e2b_chave_da_agencia"], "usa a chave da agência, decifrada só no servidor");
   const again = await ensureRunning(s.deps, s.agencyId);
   assert.equal(again.ref, first.ref);
-  assert.deepEqual(ops(s.world), ["create", "extend"]);
+  // Cria com prazo que cobre o preparo, volta ao prazo da agência e, na segunda chamada, só estende.
+  assert.deepEqual(ops(s.world), ["create", "extend", "extend"]);
 
   // 11 minutos sem atividade: o provedor pausou sozinho; a próxima ferramenta retoma.
   s.clock.advance(11 * 60_000);
@@ -128,7 +137,7 @@ test("teto de horas do dia recusa ligar; pausar fecha a sessão com tempo e cust
   await assert.rejects(ensureRunning(s.deps, s.agencyId), /já usou as 0.25 horas/);
 });
 
-test("cron: dá como pausada a máquina vencida, pausa sessão longa e vence controle e tela", async () => {
+test("cron: dá como pausada a máquina vencida, pausa sessão longa e vence a tela (o controle é do expireControls)", async () => {
   const s = await setup();
   const running = await ensureRunning(s.deps, s.agencyId);
   await sql.query(
@@ -138,9 +147,11 @@ test("cron: dá como pausada a máquina vencida, pausa sessão longa e vence con
   s.clock.advance(11 * 60_000);
   // A base é compartilhada entre os testes: confere a máquina desta agência.
   const result = await sweepComputers(s.deps);
-  assert.ok(result.paused >= 1 && result.expiredControls >= 1);
+  assert.ok(result.paused >= 1);
   const row = await loadComputer(sql, s.agencyId);
-  assert.deepEqual([row!.state, row!.control_user_id, row!.screen_run_id], ["paused", null, null]);
+  assert.deepEqual([row!.state, row!.screen_run_id], ["paused", null]);
+  assert.ok(row!.control_user_id, "o controle vencido fica para o expireControls, que retoma a execução");
+  await sql.query(`update computers set control_user_id = null, control_expires_at = null where id = $1`, [running.computer.id]);
 
   // Sessão contínua de mais de 2 h sem ninguém no controle é pausada.
   await ensureRunning(s.deps, s.agencyId);
@@ -169,4 +180,32 @@ test("destruir apaga a máquina no provedor e limpa o controle; transição pres
   await assert.rejects(ensureRunning(s.deps, s.agencyId), /ligando/);
   s.clock.advance(3 * 60_000);
   assert.equal((await ensureRunning(s.deps, s.agencyId)).computer.state, "running");
+});
+
+test("pausa que falha volta a ligada; pausa presa termina no cron e fecha a sessão; retomada que falha não recria", async () => {
+  const s = await setup();
+  const running = await ensureRunning(s.deps, s.agencyId);
+  const machine = s.world.machines.get(running.ref)!;
+  s.faults.pause = new Error("provedor fora do ar (503)");
+  await assert.rejects(pauseComputer(s.deps, s.agencyId), /503/);
+  assert.equal((await loadComputer(sql, s.agencyId))!.state, "running", "não fica presa em pausando");
+
+  // A função morreu no meio da pausa: o cron termina depois de 2 minutos e fecha a sessão.
+  delete s.faults.pause;
+  await sql.query(`update computers set state = 'pausing', transition_at = $2::timestamptz where id = $1`, [running.computer.id, s.clock.now().toISOString()]);
+  s.clock.advance(3 * 60_000);
+  assert.ok((await sweepComputers(s.deps)).stuck >= 1);
+  assert.equal((await loadComputer(sql, s.agencyId))!.state, "paused");
+  assert.equal(machine.state, "paused");
+  const open = await one(sql, `select 1 from computer_sessions where computer_id = $1 and ended_at is null`, [running.computer.id]);
+  assert.equal(open, null, "a sessão fecha");
+
+  // Retomada com erro passageiro: continua pausada com a mesma máquina, sem recriar.
+  s.faults.resume = new Error("erro 502");
+  await assert.rejects(ensureRunning(s.deps, s.agencyId), /retomar/);
+  const after = await loadComputer(sql, s.agencyId);
+  assert.deepEqual([after!.state, after!.provider_ref], ["paused", running.ref]);
+  delete s.faults.resume;
+  assert.equal((await ensureRunning(s.deps, s.agencyId)).ref, running.ref);
+  assert.equal(s.world.calls.filter((c) => c.op === "create").length, 1);
 });
