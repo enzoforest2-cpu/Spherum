@@ -5,6 +5,7 @@ import { appAccess } from "../integrations/access";
 import { IntegrationError } from "../integrations/http";
 import { appToolsFor } from "../integrations/registry";
 import type { IntegrationDeps } from "../integrations/store";
+import type { ComputerDeps } from "../computer/lifecycle";
 import { callWithFallback, loadCandidates, prepare, type BrainDeps } from "./brain";
 import { dayIn, notify } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
@@ -40,6 +41,8 @@ export type EngineDeps = BrainDeps & {
   now?: () => Date;
   /** Conexões com apps (chave do cofre, fetch, endereço do Spherum). Sem isto, só as ferramentas internas. */
   integrations?: Omit<IntegrationDeps, "sql" | "now">;
+  /** Computador na nuvem (provedores e chave do cofre). Sem isto, as ferramentas do computador recusam. */
+  computer?: Omit<ComputerDeps, "sql" | "now">;
 };
 
 function integrationDeps(deps: EngineDeps): IntegrationDeps | null {
@@ -512,7 +515,15 @@ async function insertAction(
 
 function toolContext(deps: EngineDeps, xodo: Xodo, runId: string, trigger?: string): ToolContext {
   const integrations = integrationDeps(deps);
-  return { sql: deps.sql, xodo, runId, now: nowOf(deps), trigger, apps: integrations ? appAccess(integrations, xodo) : null };
+  return {
+    sql: deps.sql,
+    xodo,
+    runId,
+    now: nowOf(deps),
+    trigger,
+    apps: integrations ? appAccess(integrations, xodo) : null,
+    computer: deps.computer ? { ...deps.computer, sql: deps.sql, now: deps.now } : null,
+  };
 }
 
 /** Passa os argumentos das chamadas pelo scrub da ferramenta (o transcript guarda a versão limpa). */

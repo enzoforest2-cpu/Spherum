@@ -46,6 +46,11 @@ export type Xodo = {
   memory_tidied_on: string | null;
   memory_topic_cursor: string | null;
   memory_upkeep_until: Date | string | null;
+  /** Computador na nuvem: off, cloud (local fica reservado para "Este computador"). */
+  computer_mode: "off" | "cloud" | "local";
+  computer_browser: boolean;
+  computer_files: boolean;
+  computer_terminal: boolean;
 };
 
 export type RunStatus =

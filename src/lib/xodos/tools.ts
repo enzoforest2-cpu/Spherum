@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ComputerDeps } from "../computer/lifecycle";
 import type { AppAccess } from "../integrations/access";
 import type { AppId } from "../integrations/apps";
 import { IntegrationError } from "../integrations/http";
@@ -19,6 +20,8 @@ export type ToolContext = {
   now: Date;
   /** O que disparou a execução (user, channel, routine, event), quando conhecido. */
   trigger?: string;
+  /** Máquina da agência (computador na nuvem); nula quando o motor roda sem ela. */
+  computer?: ComputerDeps | null;
   /** Acesso às conexões da agência; nulo quando o motor roda sem integrações. */
   apps: AppAccess | null;
 };
@@ -49,6 +52,12 @@ export type ToolDef<I = unknown> = {
   scrub?(input: I): I;
   /** Ferramenta de memória: some quando a memória do xodó está desligada. */
   memory?: boolean;
+  /** Categorias que sempre perguntam nesta ferramenta, qualquer que seja a autonomia (piso). */
+  floor?: Category[];
+  /** Lê conteúdo de fora (página, arquivo baixado): depois dela, a execução segue mais cautelosa. */
+  taints?: boolean;
+  /** Encerra o turno do xodó esperando uma pessoa (ex.: pedir o controle do computador). */
+  endsTurn?: "takeover";
 };
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */
