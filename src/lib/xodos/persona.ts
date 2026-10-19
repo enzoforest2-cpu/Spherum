@@ -75,9 +75,8 @@ export function buildSystemPrompt(xodo: Xodo, ctx: PromptContext): string {
   if (xodo.instructions.trim()) {
     parts.push(`<instrucoes_da_agencia>\n${xodo.instructions.trim()}\n</instrucoes_da_agencia>`);
   }
-  parts.push(
-    `<memoria>\n${ctx.memory.trim() || "(vazia: use atualizar_memoria para guardar o que for útil nas próximas conversas)"}\n</memoria>`,
-  );
+  // Bloco já montado (núcleo e índice de tópicos); vazio quando a memória está desligada.
+  if (ctx.memory.trim()) parts.push(ctx.memory.trim());
   if (ctx.clients.length) {
     const list = ctx.clients.map((c) => `- ${c.name} (id ${c.id})`).join("\n");
     parts.push(`<clientes>\n${list}\n</clientes>`);

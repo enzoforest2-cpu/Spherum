@@ -10,8 +10,12 @@ import { dayIn, notify } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
 import { usdBrl } from "./fx";
 import { providerErrorMessage } from "./llm";
-import { loadMemory } from "./memory";
+import { enqueueCapture } from "./memory/capture";
+import { memoryPrompt, recallFor } from "./memory/recall";
+import { MEMORY_TOOLS } from "./memory/tools";
+import { redactDeep } from "./redact";
 import { buildSystemPrompt, type PromptContext } from "./persona";
+import { XodoError } from "./errors";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
@@ -42,14 +46,7 @@ function integrationDeps(deps: EngineDeps): IntegrationDeps | null {
   return deps.integrations ? { ...deps.integrations, sql: deps.sql, now: deps.now } : null;
 }
 
-export class XodoError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
-    super(message);
-  }
-}
+export { XodoError };
 
 const nowOf = (deps: EngineDeps) => (deps.now ? deps.now() : new Date());
 
@@ -102,14 +99,14 @@ async function disabledTools(sql: Sql, xodo: Xodo): Promise<Set<string>> {
 /** Ferramentas internas, menos as que a agência desligou para este xodó. */
 export async function enabledTools(sql: Sql, xodo: Xodo): Promise<ToolDef[]> {
   const disabled = await disabledTools(sql, xodo);
-  return TOOLS.filter((t) => !disabled.has(t.name));
+  return [...TOOLS, ...MEMORY_TOOLS].filter((t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory));
 }
 
 /** Tudo que o xodó pode usar: ferramentas internas e as dos apps liberados para ele. */
 export async function toolsFor(deps: EngineDeps, xodo: Xodo): Promise<ToolDef[]> {
   const disabled = await disabledTools(deps.sql, xodo);
   const apps = await appToolsFor(integrationDeps(deps), xodo);
-  return [...TOOLS, ...apps].filter((t) => !disabled.has(t.name));
+  return [...TOOLS, ...MEMORY_TOOLS, ...apps].filter((t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory));
 }
 
 async function clientsInScope(sql: Sql, xodo: Xodo) {
@@ -271,6 +268,12 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
         );
   const turns = recent.map((m) => ({ role: m.role, text: m.text }));
   if (!spoken) turns.push({ role: "user", text });
+  // Lembranças da memória para esta mensagem: só no transcript (não aparecem na conversa).
+  if (xodo.memory_enabled && turns.length) {
+    const recall = await recallFor(sql, xodo, text, { trigger: input.trigger });
+    const last = turns[turns.length - 1];
+    if (recall && last.role === "user") last.text = `${recall}\n\n${last.text}`;
+  }
 
   await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(historyMessages(turns))]);
   return runId;
@@ -299,7 +302,7 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
 
     while (true) {
       if (steps >= MAX_STEPS) {
-        return finish(sql, xodo, runId, "completed", {
+        return finish(deps, xodo, runId, "completed", {
           text: "Parei aqui porque cheguei no limite de passos desta tarefa. Me diga se devo continuar.",
         });
       }
@@ -307,7 +310,7 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       const day = dayIn(xodo.timezone, nowOf(deps));
       const rate = await usdBrl(sql, day);
       if (xodo.daily_budget_brl !== null && rate === null) {
-        return finish(sql, xodo, runId, "failed", {
+        return finish(deps, xodo, runId, "failed", {
           error: "Ainda não há cotação do dólar para garantir o teto em reais. Tente de novo em alguns minutos.",
         });
       }
@@ -324,20 +327,21 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       });
       if (!result.ok && result.reason === "budget") {
         const cap = num(result.cap).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-        return finish(sql, xodo, runId, "paused_budget", {
+        return finish(deps, xodo, runId, "paused_budget", {
           note: `Pausei: o teto de hoje (${cap}) não comporta o próximo passo. Volto amanhã ou quando o teto for aumentado.`,
         });
       }
       if (!result.ok && result.reason === "refused") {
-        return finish(sql, xodo, runId, "refused", { text: "Não posso ajudar com esse pedido." });
+        return finish(deps, xodo, runId, "refused", { text: "Não posso ajudar com esse pedido." });
       }
       if (!result.ok) {
         const reason = result.detail ? providerErrorMessage(result.detail) : `nenhum modelo pôde ser usado (${result.problems.join("; ")})`;
-        return finish(sql, xodo, runId, "failed", { error: reason });
+        return finish(deps, xodo, runId, "failed", { error: reason });
       }
 
       active = result.index;
-      const message = result.message;
+      // Dados sensíveis passados a ferramentas que limpam a entrada também saem do transcript.
+      const message = scrubToolCalls(result.message, tools);
       const calls = toolCallsOf(message);
       steps += 1;
       messages = [...messages, message];
@@ -350,12 +354,12 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       const text = textOf(message).trim();
       if (!calls.length) {
         const cut = message.stopReason === "length" ? "\n\n(Minha resposta foi cortada por tamanho.)" : "";
-        return finish(sql, xodo, runId, "completed", { text: (text || "(sem resposta)") + cut });
+        return finish(deps, xodo, runId, "completed", { text: (text || "(sem resposta)") + cut });
       }
 
       if (text) await addMessage(sql, xodo, runId, "assistant", text, null);
 
-      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools, cap);
+      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools, cap, run.trigger);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
         const numbers = await numberChannelActions(sql, runId, pending.map((p) => p.actionId));
@@ -380,8 +384,8 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
       ]);
     }
   } catch (error) {
-    if (error instanceof XodoError) return finish(sql, xodo, runId, "failed", { error: error.message });
-    await finish(sql, xodo, runId, "failed", { error: "Erro interno no motor dos Xodós." });
+    if (error instanceof XodoError) return finish(deps, xodo, runId, "failed", { error: error.message });
+    await finish(deps, xodo, runId, "failed", { error: "Erro interno no motor dos Xodós." });
     throw error;
   }
 }
@@ -401,7 +405,7 @@ async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date) {
   return buildSystemPrompt(xodo, {
     agencyName: agency?.name ?? "",
     today: dayIn(xodo.timezone, now),
-    memory: await loadMemory(sql, xodo.agency_id, xodo.id),
+    memory: await memoryPrompt(sql, xodo),
     clients: await clientsInScope(sql, xodo),
     routine: routine ? { name: routine.name, lastSummary: routine.last_summary } : undefined,
     channel: conversation?.channel as PromptContext["channel"],
@@ -422,6 +426,7 @@ async function handleToolCalls(
   calls: ToolCall[],
   tools: ToolDef[],
   cap: Autonomy | null = null,
+  trigger?: string,
 ): Promise<{ actionId: string; summary: string }[]> {
   const { sql } = deps;
   const byName = new Map(tools.map((t) => [t.name, t]));
@@ -438,15 +443,17 @@ async function handleToolCalls(
     }
     const parsed = tool.input.safeParse(call.input);
     if (!parsed.success) {
-      await insertAction(sql, base, tool.category, call.input, "failed", {
+      await insertAction(sql, base, tool.category, tool.scrub ? redactDeep(call.input).value : call.input, "failed", {
         error: `Entrada inválida: ${z.prettifyError(parsed.error)}`,
       });
       continue;
     }
+    // O que fica guardado (e o que roda depois da aprovação) é a entrada já limpa.
+    if (tool.scrub) parsed.data = tool.scrub(parsed.data);
     let category = tool.category;
     if (tool.categoryFor) {
       try {
-        category = await tool.categoryFor(toolContext(deps, xodo, runId), parsed.data);
+        category = await tool.categoryFor(toolContext(deps, xodo, runId, trigger), parsed.data);
       } catch (error) {
         // Sem conseguir ver o destino, fica a categoria declarada (a mais cautelosa).
         console.warn("[xodós] categoria dinâmica falhou", tool.name, error instanceof Error ? error.message : error);
@@ -456,10 +463,10 @@ async function handleToolCalls(
     let reason: string | null = decision.decision === "ask" ? decision.source : null;
     if (!reason && tool.mustAsk) {
       try {
-        const limit = await tool.mustAsk(toolContext(deps, xodo, runId), parsed.data);
+        const limit = await tool.mustAsk(toolContext(deps, xodo, runId, trigger), parsed.data);
         if (limit) reason = `limite: ${limit}`;
       } catch (error) {
-        const expected = error instanceof ToolError || error instanceof IntegrationError;
+        const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;
         if (!expected) throw error;
         await insertAction(sql, base, category, parsed.data, "failed", { error: (error as Error).message });
         continue;
@@ -503,9 +510,21 @@ async function insertAction(
   return row.id;
 }
 
-function toolContext(deps: EngineDeps, xodo: Xodo, runId: string): ToolContext {
+function toolContext(deps: EngineDeps, xodo: Xodo, runId: string, trigger?: string): ToolContext {
   const integrations = integrationDeps(deps);
-  return { sql: deps.sql, xodo, runId, now: nowOf(deps), apps: integrations ? appAccess(integrations, xodo) : null };
+  return { sql: deps.sql, xodo, runId, now: nowOf(deps), trigger, apps: integrations ? appAccess(integrations, xodo) : null };
+}
+
+/** Passa os argumentos das chamadas pelo scrub da ferramenta (o transcript guarda a versão limpa). */
+function scrubToolCalls(message: AssistantMessage, tools: ToolDef[]): AssistantMessage {
+  const byName = new Map(tools.map((t) => [t.name, t]));
+  if (!message.content.some((b) => b.type === "toolCall" && byName.get(b.name)?.scrub)) return message;
+  return {
+    ...message,
+    content: message.content.map((b) =>
+      b.type === "toolCall" && byName.get(b.name)?.scrub ? { ...b, arguments: redactDeep(b.arguments).value } : b,
+    ),
+  };
 }
 
 /** Hash canônico (chaves ordenadas) do input guardado. */
@@ -553,7 +572,7 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, 
       status = "executed";
       result = { data };
     } catch (error) {
-      const expected = error instanceof ToolError || error instanceof IntegrationError;
+      const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;
       if (!expected) console.error("[xodos] erro na ferramenta", action.tool_name, error);
       result = { error: expected ? (error as Error).message : "Erro interno ao executar a ferramenta." };
     }
@@ -627,12 +646,13 @@ export async function resumeRun(deps: EngineDeps, runId: string): Promise<RunSta
 // ---------------------------------------------------------------------------
 
 async function finish(
-  sql: Sql,
+  deps: EngineDeps,
   xodo: Xodo,
   runId: string,
   status: RunStatus,
   out: { text?: string; note?: string; error?: string },
 ): Promise<RunStatus> {
+  const { sql } = deps;
   await sql.query(
     `update xodo_runs set status = $2, final_text = coalesce($3, final_text), error = $4, finished_at = now() where id = $1`,
     [runId, status, out.text ?? out.note ?? null, out.error ?? null],
@@ -640,6 +660,15 @@ async function finish(
   if (out.text) await addMessage(sql, xodo, runId, "assistant", out.text, null);
   if (out.note) await addMessage(sql, xodo, runId, "note", out.note, null);
   if (out.error) await addMessage(sql, xodo, runId, "note", `Não consegui terminar: ${out.error}`, null);
+  if (status === "completed") {
+    // A captura da memória roda depois, fora da execução; falha aqui não muda o resultado.
+    const run = await one<{ id: string; xodo_id: string; agency_id: string; trigger: string; status: string; conversation_id: string | null }>(
+      sql,
+      `select id, xodo_id, agency_id, trigger, status, conversation_id from xodo_runs where id = $1`,
+      [runId],
+    );
+    if (run) await enqueueCapture(sql, run, nowOf(deps)).catch((error) => console.warn("[memória] captura não agendada", runId, error));
+  }
   return status;
 }
 

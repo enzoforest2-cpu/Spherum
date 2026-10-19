@@ -34,6 +34,18 @@ export type Xodo = {
   timezone: string;
   status: "active" | "paused";
   client_scope: "all" | "selected";
+  /** Memória ligada (bloco no prompt e ferramentas de memória). */
+  memory_enabled: boolean;
+  /** Captura automática depois das conversas do app (e dos canais, se memory_capture_channels). */
+  memory_capture: boolean;
+  memory_capture_channels: boolean;
+  /** Arrumação noturna com o modelo (organizar e resolver contradições). */
+  memory_tidy: boolean;
+  /** Tamanho do núcleo no prompt, em caracteres. */
+  memory_core_chars: number | string;
+  memory_tidied_on: string | null;
+  memory_topic_cursor: string | null;
+  memory_upkeep_until: Date | string | null;
 };
 
 export type RunStatus =

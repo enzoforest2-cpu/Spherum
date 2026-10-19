@@ -81,8 +81,15 @@ function costOf(model: Model<Api>, message: AssistantMessage): number {
 
 export type CallInput = {
   xodo: Xodo;
-  runId: string;
+  /** Execução da chamada; nula na captura e na arrumação da memória, que rodam fora de uma execução. */
+  runId: string | null;
   step: number;
+  /** Prefixo único da chamada em ai_usage (padrão: a execução e o passo). */
+  callKey?: string;
+  /** Para o que foi o gasto: execução (padrão), captura ou arrumação da memória. */
+  purpose?: "execucao" | "captura" | "arrumacao";
+  /** Limite de tokens da resposta, abaixo do padrão do passo. */
+  maxTokens?: number;
   day: string;
   /** Cotação do dólar do dia; nula se ainda não há nenhuma. */
   usdBrl: number | null;
@@ -113,7 +120,7 @@ export async function callWithFallback(deps: BrainDeps, input: CallInput): Promi
       problems.push(`${candidate.provider}/${candidate.model}: ${ready.problem}`);
       continue;
     }
-    const maxTokens = Math.min(MAX_TOKENS_PER_STEP, ready.model.maxTokens || MAX_TOKENS_PER_STEP);
+    const maxTokens = Math.min(input.maxTokens ?? MAX_TOKENS_PER_STEP, ready.model.maxTokens || MAX_TOKENS_PER_STEP);
 
     // Teto opcional: reserva o pior caso em reais antes da chamada.
     let estimateBrl = 0;
@@ -135,14 +142,14 @@ export async function callWithFallback(deps: BrainDeps, input: CallInput): Promi
     const known = hasKnownPrice(ready.model) && !isSelfHosted(candidate.provider);
     await sql.query(
       `insert into ai_usage (agency_id, xodo_id, run_id, provider, model, input_tokens, output_tokens,
-         cache_read_tokens, cache_write_tokens, cost_usd, cost_source, usd_brl, cost_brl, attempt, error, call_id, day)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::date)
+         cache_read_tokens, cache_write_tokens, cost_usd, cost_source, usd_brl, cost_brl, attempt, error, call_id, day, purpose)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::date, $18)
        on conflict (call_id) do nothing`,
       [xodo.agency_id, xodo.id, input.runId, candidate.provider, message.responseModel ?? ready.model.id,
         message.usage?.input ?? 0, message.usage?.output ?? 0, message.usage?.cacheRead ?? 0, message.usage?.cacheWrite ?? 0,
         costUsd, known ? "catalog" : "unknown", input.usdBrl, costBrl, candidate.attempt,
         failed ? (message.errorMessage ?? message.stopReason).slice(0, 500) : null,
-        `${input.runId}:${input.step}:${candidate.attempt}:${calls}`, input.day],
+        `${input.callKey ?? `${input.runId}:${input.step}`}:${candidate.attempt}:${calls}`, input.day, input.purpose ?? "execucao"],
     );
     await settleBudget(sql, xodo, input.day, estimateBrl, costBrl ?? 0);
 

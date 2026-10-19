@@ -5,6 +5,7 @@ import type { LlmClient } from "../src/lib/xodos/llm";
 import { createCredential, createXodo, listCredentials, loadCredentialSecret, revokeCredential, updateXodo } from "../src/lib/xodos/manage";
 import type { Resolver } from "../src/lib/xodos/net";
 import { enabledTools } from "../src/lib/xodos/runner";
+import { MEMORY_TOOLS } from "../src/lib/xodos/memory/tools";
 import { TOOLS } from "../src/lib/xodos/tools";
 import { createTestDb, FakeModel, seedAgency, seedClient } from "./helpers";
 
@@ -120,7 +121,7 @@ test("cria o xodó com o que a pessoa escolheu, reservas em ordem e a saudação
   const backups = await sql.query(`select position, provider, model from xodo_models where xodo_id = $1`, [xodo.id]);
   assert.deepEqual(backups, [{ position: 1, provider: "faux", model: "faux-2" }]);
   // Sem função fixa: todas as ferramentas vêm ligadas.
-  assert.deepEqual((await enabledTools(sql, xodo)).map((t) => t.name), TOOLS.map((t) => t.name));
+  assert.deepEqual((await enabledTools(sql, xodo)).map((t) => t.name), [...TOOLS, ...MEMORY_TOOLS].map((t) => t.name));
   const greeting = await one<{ text: string }>(sql, `select text from xodo_messages where xodo_id = $1`, [xodo.id]);
   assert.equal(greeting!.text, "Olá, sou Caju. Sem pressa — por onde começamos?");
   await assert.rejects(createXodo(sql, llm, agencyId, escolhas(credentialId), ownerId), /Já existe/);

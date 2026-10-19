@@ -221,12 +221,12 @@ async function expiryScenario() {
 test("aprovar sempre cria a regra, menos para o que vai ao cliente", async () => {
   const { xodo, ownerId, agencyId, clientId } = await setup();
   await sql.query(
-    `insert into approval_rules (agency_id, xodo_id, effect, match_kind, match_value) values ($1, $2, 'require_approval', 'tool', 'atualizar_memoria')`,
+    `insert into approval_rules (agency_id, xodo_id, effect, match_kind, match_value) values ($1, $2, 'require_approval', 'tool', 'lembrar')`,
     [agencyId, xodo.id],
   );
   // A regra de exigir vence a de permitir que o "sempre" vai criar.
   const model = new FakeModel([
-    { toolCalls: [{ id: "t1", name: "atualizar_memoria", input: { conteudo: "nota", motivo: "teste" } }] },
+    { toolCalls: [{ id: "t1", name: "lembrar", input: { texto: "A Loja Verano prefere relatório às segundas.", motivo: "teste" } }] },
     { text: "ok" },
   ]);
   const deps = testDeps(sql, model);
@@ -252,8 +252,8 @@ test("aprovar sempre cria a regra, menos para o que vai ao cliente", async () =>
     [xodo.id],
   );
   assert.deepEqual(rules.map((r) => [r.match_value, r.effect]), [
-    ["atualizar_memoria", "require_approval"],
-    ["atualizar_memoria", "always_allow"],
+    ["lembrar", "require_approval"],
+    ["lembrar", "always_allow"],
   ]);
 });
 

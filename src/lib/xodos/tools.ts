@@ -4,7 +4,6 @@ import type { AppId } from "../integrations/apps";
 import { IntegrationError } from "../integrations/http";
 import { notify } from "./budget";
 import { num, one, type Sql } from "./db";
-import { saveMemory } from "./memory";
 import type { Category } from "./policy";
 import type { Xodo } from "./types";
 
@@ -18,6 +17,8 @@ export type ToolContext = {
   xodo: Xodo;
   runId: string;
   now: Date;
+  /** O que disparou a execução (user, channel, routine, event), quando conhecido. */
+  trigger?: string;
   /** Acesso às conexões da agência; nulo quando o motor roda sem integrações. */
   apps: AppAccess | null;
 };
@@ -44,6 +45,10 @@ export type ToolDef<I = unknown> = {
    * canal compartilhado com outra empresa, "envio"). Se falhar, vale `category`.
    */
   categoryFor?(ctx: ToolContext, input: I): Promise<Category>;
+  /** Limpa a entrada antes de ser guardada e executada (ex.: dados sensíveis numa nota de memória). */
+  scrub?(input: I): I;
+  /** Ferramenta de memória: some quando a memória do xodó está desligada. */
+  memory?: boolean;
 };
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */
@@ -355,18 +360,6 @@ export const TOOLS: ToolDef[] = [
         data: { xodo_id: ctx.xodo.id, run_id: ctx.runId },
       });
       return { enviado: true };
-    },
-  }),
-  tool({
-    name: "atualizar_memoria",
-    description:
-      "Reescreve sua memória (o texto que você recebe em toda conversa). Envie a memória inteira, já atualizada e resumida. Nunca guarde senhas ou chaves.",
-    category: "memoria",
-    input: z.object({ conteudo: z.string().max(24_000), motivo: z.string().min(1).max(200) }),
-    summarize: (i) => `atualizar a memória (${i.motivo})`,
-    async execute(ctx, i) {
-      const saved = await saveMemory(ctx.sql, ctx.xodo.agency_id, ctx.xodo.id, i.conteudo, i.motivo);
-      return { salvo: true, caracteres: saved.content.length, segredos_removidos: saved.redacted };
     },
   }),
 ];
