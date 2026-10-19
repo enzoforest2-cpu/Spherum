@@ -55,5 +55,5 @@ Execução por API com a chave da própria agência, em qualquer um dos mais de 
 Guias: [`docs/XODOS.md`](docs/XODOS.md), [`docs/INTEGRACOES.md`](docs/INTEGRACOES.md), [`docs/CANAIS.md`](docs/CANAIS.md) e [`docs/COMPUTADOR.md`](docs/COMPUTADOR.md).
 
 ```bash
-npm test   # 377 testes com PGlite, sem precisar de banco
+npm test   # 392 testes com PGlite, sem precisar de banco
 ```
