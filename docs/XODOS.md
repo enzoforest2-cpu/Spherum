@@ -35,7 +35,7 @@ O jeito escolhido define o tom das respostas e a saudação, com os mesmos texto
 | Repositório | O que aproveitamos |
 |---|---|
 | **Rakazo** | A biblioteca de modelos pi-ai (catálogo amplo, conversa que passa de um provedor a outro), a lista de modelos reserva, o motor de regras de aprovação, o livro de gastos por chamada (reserva antes, acerto depois), o cofre AES-256-GCM com sal por registro e AAD, as rotinas com continuidade |
-| **OpenMausBot** | Piso de segurança (o que sai para fora sempre pergunta), memória curta carregada em toda conversa, aviso de gasto em 80% |
+| **OpenMausBot** | Piso de segurança (o que sai para fora sempre pergunta), memória em notas (núcleo, tópicos, captura, arrumação e desfazer), aviso de gasto em 80% |
 | **OpenDots** | O servidor executa só o pedido guardado, uma única vez e com prazo; leitura roda sem perguntar; revisar antes de salvar; a guarda contra endereços internos (SSRF) |
 
 Uma mudança em relação ao Rakazo: lá a regra mais específica vence. Aqui **"exigir aprovação" sempre vence "sempre permitir"**, para que uma regra larga da agência nunca seja furada por uma regra estreita de um xodó.
@@ -104,7 +104,19 @@ A agência cadastra a própria chave (`POST /api/xodos/credentials` com `provide
 
 ## Memória
 
-Cada xodó tem um texto de até 24 mil caracteres que entra em toda conversa. Ele mesmo atualiza pela ferramenta `atualizar_memoria`. Antes de salvar, o motor apaga chaves de API, tokens, CPF, cartões e senhas rotuladas, e toda versão anterior vai para `xodo_memory_revisions` (dá para desfazer com `restoreMemory`).
+Modelo do OpenMausBot, em notas com número (`#n`) no Postgres (`supabase/migrations/20261018150000_xodo_memory.sql`, código em `src/lib/xodos/memory/`):
+
+- **Núcleo:** notas sem tópico e sem cliente entram em toda conversa, até `memory_core_chars` (padrão 8.000 caracteres, ajustável de 2.000 a 16.000). Fixadas, regras de saúde, restrição e compliance e notas da equipe vêm primeiro. Quando o núcleo enche, as notas mais antigas vão para o arquivo (nunca as fixadas, as da equipe nem as de saúde e compliance).
+- **Tópicos e clientes:** entram só quando a conversa pede. O prompt traz o índice dos tópicos e, a cada mensagem, um bloco de lembranças (recall) com notas do cliente citado, tópicos que casam por título ou apelido e busca em português nas outras notas, até 4.000 caracteres, preso ao último turno da pessoa.
+- **Memória é dado, não ordem:** cada linha leva número, data e origem, e o bloco diz isso ao modelo.
+- **Ferramentas:** `buscar_memoria`, `ler_topico` (leitura), `lembrar`, `corrigir_memoria`, `esquecer` (memoria). Mexer em nota da equipe ou gravar numa execução por gatilho sempre pede aprovação.
+- **Captura automática:** depois das conversas do app (e dos canais, se `memory_capture_channels`), o cron chama o modelo de rotinas com a janela da conversa e grava preferências, fatos e decisões num lote único. Com autonomia "sempre pergunta", as notas nascem propostas e a equipe aceita. Conversa com outra empresa (Slack Connect) nunca é capturada.
+- **Arrumação noturna** (a partir das 3h no fuso do xodó): vence notas com prazo, junta repetidas e, com o modelo, move notas do núcleo para tópicos e resolve contradições (no máximo 20% das notas por noite; nota da equipe nunca perde).
+- **Desfazer:** toda mudança fica no diário com a foto de antes e depois, em lotes; desfazer um lote também pode ser desfeito. Exclusão definitiva (LGPD) apaga a nota e o texto dela no diário.
+- **Dados sensíveis** (`src/lib/xodos/redact.ts`): chaves de provedores, tokens de agência (Meta, Google, Mercado Pago, Stripe, Telegram…), webhooks, senhas rotuladas ou em prosa, cartões (Luhn), CPF, RG, CNH, PIX, IBAN e conta bancária saem antes de gravar. Telefone, e-mail, CNPJ, endereço, R$ e IDs de campanha ficam.
+- **Gasto:** captura e arrumação usam as chaves da agência e entram no teto diário do xodó, registradas em `ai_usage.purpose`.
+
+Rotas da equipe em `/api/xodos/:id/memory` (listar com medidor, criar, editar com versão, apagar, excluir de vez, diário, desfazer lote, tópicos, arrumar agora, capturas e exportar em Markdown). Agende também `GET /api/cron/xodos/memoria` a cada 15 minutos, com o mesmo `CRON_SECRET`.
 
 ## Ferramentas
 
@@ -118,7 +130,8 @@ Cada xodó tem um texto de até 24 mil caracteres que entra em toda conversa. El
 | `criar_rascunho_relatorio` | rascunho | Salva um relatório como rascunho para revisão |
 | `publicar_relatorio` | cliente | Publica no portal do cliente (sempre pede aprovação) |
 | `avisar_equipe` | equipe | Manda uma notificação para a equipe |
-| `atualizar_memoria` | memoria | Reescreve a memória do xodó |
+| `buscar_memoria`, `ler_topico` | leitura | Busca e lê as notas da memória |
+| `lembrar`, `corrigir_memoria`, `esquecer` | memoria | Grava, corrige e esquece notas |
 
 Todo xodó nasce com todas as ferramentas ligadas. Quem decide o que roda sem perguntar é a autonomia. A agência pode desligar uma ferramenta para um xodó com uma linha em `xodo_tools`.
 

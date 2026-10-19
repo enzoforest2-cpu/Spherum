@@ -289,7 +289,7 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   if (!spoken) turns.push({ role: "user", text });
   // Lembranças da memória para esta mensagem: só no transcript (não aparecem na conversa).
   if (xodo.memory_enabled && turns.length) {
-    const recall = await recallFor(sql, xodo, text, { trigger: input.trigger });
+    const recall = await recallFor(sql, xodo, text, { trigger: input.trigger, now: nowOf(deps) });
     const last = turns[turns.length - 1];
     if (recall && last.role === "user") last.text = `${recall}\n\n${last.text}`;
   }

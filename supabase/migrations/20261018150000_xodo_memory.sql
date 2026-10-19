@@ -133,6 +133,11 @@ create table public.xodo_memory_captures (
 create unique index xodo_memory_captures_pending on public.xodo_memory_captures
   (xodo_id, coalesce(conversation_id, '00000000-0000-0000-0000-000000000000')) where status = 'pendente';
 create index xodo_memory_captures_due on public.xodo_memory_captures (due_at) where status in ('pendente', 'rodando');
+create index xodo_memory_captures_window on public.xodo_memory_captures
+  (xodo_id, coalesce(conversation_id, '00000000-0000-0000-0000-000000000000'), until_message_id desc);
+-- Retenção (cron): notas apagadas e diário antigo sem varrer as tabelas.
+create index xodo_memory_items_deleted on public.xodo_memory_items (updated_at) where status = 'apagado';
+create index xodo_memory_changes_created on public.xodo_memory_changes (created_at);
 
 -- ---------------------------------------------------------------------------
 -- O texto antigo vira notas do núcleo (uma por linha; linhas longas em pedaços)

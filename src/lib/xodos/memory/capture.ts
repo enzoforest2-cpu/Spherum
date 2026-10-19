@@ -60,6 +60,9 @@ const LOCK_MS = 10 * 60 * 1000;
 const CALL_MARGIN_MS = 60 * 1000;
 const INDEX_MAX_TOPICS = 40;
 const INDEX_MAX_CHARS = 2000;
+const PROMPT_MAX_CLIENTS = 50;
+/** Clientes do escopo lidos para achar os citados na conversa. */
+const SCOPE_SCAN_CLIENTS = 1000;
 const NIL = "00000000-0000-0000-0000-000000000000";
 
 const UTF8 = new TextEncoder();
@@ -111,14 +114,15 @@ export async function enqueueCapture(sql: Sql, run: CaptureRun, now: Date): Prom
     if (!conversation || sharedWithOtherCompany(parseJson<ConversationMeta>(conversation.metadata))) return null;
   }
 
-  const span = await one<{ first: string | null; last: string | null }>(
+  // xodo_messages não tem índice por run_id: a última fala da execução (que acabou de terminar)
+  // sai do fim do índice (xodo_id, id) sem varrer o histórico do xodó.
+  const span = await one<{ last: string | null }>(
     sql,
-    `select min(id)::text as first, max(id)::text as last from xodo_messages
-      where run_id = $1 and xodo_id = $2 and role in ('user', 'assistant')`,
+    `select id::text as last from xodo_messages
+      where xodo_id = $2 and run_id = $1 and role in ('user', 'assistant') order by id desc limit 1`,
     [run.id, run.xodo_id],
   );
   if (!span?.last) return null;
-  const first = Number(span.first);
   const last = Number(span.last);
 
   return sql.transaction(async (tx) => {
@@ -151,7 +155,16 @@ export async function enqueueCapture(sql: Sql, run: CaptureRun, now: Date): Prom
         where xodo_id = $1 and coalesce(conversation_id, '${NIL}') = coalesce($2::uuid, '${NIL}')`,
       [run.xodo_id, conversationId],
     );
-    const after = Math.max(seen?.until ? Number(seen.until) : 0, first - 1);
+    const seenUntil = seen?.until ? Number(seen.until) : 0;
+    // O começo desta execução, procurado só depois da última janela (e não no histórico todo).
+    const start = await one<{ first: string | null }>(
+      tx,
+      `select min(id)::text as first from xodo_messages
+        where xodo_id = $2 and run_id = $1 and role in ('user', 'assistant') and id > $3::bigint and id <= $4::bigint`,
+      [run.id, run.xodo_id, seenUntil, last],
+    );
+    if (!start?.first) return null;
+    const after = Math.max(seenUntil, Number(start.first) - 1);
     if (after >= last) return null;
     const row = await one<{ id: string }>(
       tx,
@@ -175,9 +188,15 @@ export type TopicInfo = { slug: string; title: string; aliases: string[] };
 const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 const weekday = (day: string) => WEEKDAYS[new Date(`${day}T12:00:00Z`).getUTCDay()] ?? "";
 
+/**
+ * Marcações deste prompt, abertas ou fechadas, mesmo sem o ">" e em largura total (como o
+ * clean faz com as do system prompt): "</conversa" sozinho também parece fechar o bloco.
+ */
+const CAPTURE_FENCE = /[<＜﹤](\s*(?:[/／]\s*)?(?:conversa|notas_atuais|topicos|clientes)\b)/gi;
+
 /** Texto que vai entre as marcações do prompt: sem quebras, sem crases e sem fechar os blocos. */
 function fence(text: string): string {
-  return clean(text).replace(/<\s*\/?\s*(conversa|notas_atuais|topicos|clientes)\b[^>]*>/gi, (m) => m.replace(/</g, "‹").replace(/>/g, "›"));
+  return clean(text).replace(CAPTURE_FENCE, "‹$1");
 }
 
 export const CAPTURE_MARKER = "Você é a etapa de CAPTURA da memória";
@@ -255,21 +274,36 @@ export type Candidate = {
 
 export type Discarded = { texto: string; motivo: string };
 
-/** JSON da resposta, mesmo cercado por crases ou com texto em volta. */
+const tryJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * JSON da resposta, mesmo cercado por crases ou com texto em volta ("Notas [nenhuma nova]: []"
+ * acha o "[]"). Tenta cada "[" ou "{" até o último fechamento do mesmo tipo, no máximo 20 vezes.
+ */
 function jsonPayload(text: string): unknown {
   const trimmed = text.trim();
   const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed);
   const candidate = (fenced ? fenced[1] : trimmed).trim();
-  const starts = ["[", "{"].map((c) => candidate.indexOf(c)).filter((i) => i >= 0);
-  if (!starts.length) return undefined;
-  const start = Math.min(...starts);
-  const end = Math.max(candidate.lastIndexOf("]"), candidate.lastIndexOf("}"));
-  if (end <= start) return undefined;
-  try {
-    return JSON.parse(candidate.slice(start, end + 1));
-  } catch {
-    return undefined;
+  const whole = tryJson(candidate);
+  if (whole !== undefined) return whole;
+  const lastClose = { "[": candidate.lastIndexOf("]"), "{": candidate.lastIndexOf("}") };
+  let tries = 0;
+  for (let i = 0; i < candidate.length && tries < 20; i++) {
+    const c = candidate[i];
+    if (c !== "[" && c !== "{") continue;
+    const end = lastClose[c];
+    if (end <= i) continue;
+    tries += 1;
+    const parsed = tryJson(candidate.slice(i, end + 1));
+    if (parsed !== undefined) return parsed;
   }
+  return undefined;
 }
 
 const absent = (value: unknown) => value === undefined || value === null || (typeof value === "string" && (!value.trim() || value.trim() === "null"));
@@ -504,6 +538,12 @@ export function nextMidnight(timezone: string, now: Date): Date {
   return new Date(now.getTime() + 24 * 60 * 60 * 1000);
 }
 
+/** Nome de quem falou (vem do canal): sem dado sensível e curto. */
+function authorOf(label: string | null): string {
+  const name = label ? redactSecrets(label).text.replace(/\s+/g, " ").trim().slice(0, 60) : "";
+  return name ? `${name} (equipe)` : "Equipe";
+}
+
 /** As falas da janela (no máximo 12, 1500 caracteres cada, 24 KB no total), já sem dados sensíveis. */
 async function readWindow(sql: Sql, row: CaptureRow, xodo: Xodo): Promise<CaptureLine[]> {
   const rows = await sql.query<{ role: "user" | "assistant"; text: string; author_label: string | null }>(
@@ -517,7 +557,7 @@ async function readWindow(sql: Sql, row: CaptureRow, xodo: Xodo): Promise<Captur
   const lines = rows.reverse().map((m): CaptureLine => {
     const text = redactSecrets(m.text).text.replace(/\s+/g, " ").trim().slice(0, CAPTURE_LINE_CHARS);
     return m.role === "user"
-      ? { by: "equipe", label: m.author_label?.trim() ? `${m.author_label.trim().slice(0, 60)} (equipe)` : "Equipe", text }
+      ? { by: "equipe", label: authorOf(m.author_label), text }
       : { by: "xodo", label: `${xodo.name} (xodó)`, text };
   });
   // Acima de 24 KB, saem as falas mais antigas.
@@ -559,12 +599,13 @@ async function captureContext(sql: Sql, xodo: Xodo, lines: CaptureLine[], today:
     used += l.length + 1;
   }
 
-  const clients = await sql.query<{ id: string; name: string }>(
+  // Todos os clientes do escopo servem para achar os citados; no prompt vão os citados primeiro.
+  const scoped = await sql.query<{ id: string; name: string }>(
     `select c.id, c.name from clients c
       where c.agency_id = $1
         and ($2 = 'all' or exists (select 1 from xodo_clients xc where xc.xodo_id = $3 and xc.client_id = c.id))
-      order by c.name limit 50`,
-    [xodo.agency_id, xodo.client_scope, xodo.id],
+      order by c.name limit $4`,
+    [xodo.agency_id, xodo.client_scope, xodo.id, SCOPE_SCAN_CLIENTS],
   );
   const topics = await sql.query<TopicInfo & { notes: number }>(
     `select t.slug, t.title, t.aliases, count(i.id)::int as notes
@@ -586,16 +627,20 @@ async function captureContext(sql: Sql, xodo: Xodo, lines: CaptureLine[], today:
     .filter((t) => t.hits > 0)
     .sort((a, b) => b.hits - a.hits)
     .map((t) => t.slug);
-  const citedClients = clients.filter((c) => {
+  const citedClients = scoped.filter((c) => {
     const key = wordsOf(c.name);
     return key.length >= 2 && said.includes(` ${key} `);
   });
+  const cited = new Set(citedClients.map((c) => c.id));
+  const clients = [...citedClients, ...scoped.filter((c) => !cited.has(c.id))].slice(0, PROMPT_MAX_CLIENTS);
   if (citedTopics.length || citedClients.length) {
     const rows = await sql.query<NoteRow>(
       `select ${NOTE} from xodo_memory_items i left join clients c on c.id = i.client_id
         where ${live} and (i.topic = any($4::text[]) or i.client_id = any($5::uuid[]))
+          and (i.client_id is null or $6 = 'all'
+               or exists (select 1 from xodo_clients xc where xc.xodo_id = i.xodo_id and xc.client_id = i.client_id))
         order by i.pinned desc, (i.source = 'equipe') desc, i.updated_at desc, i.n desc limit 200`,
-      [...base, citedTopics, citedClients.map((c) => c.id)],
+      [...base, citedTopics, citedClients.map((c) => c.id), xodo.client_scope],
     );
     let spent = 0;
     for (const r of rows) {
@@ -681,6 +726,7 @@ async function processOne(deps: EngineDeps, row: CaptureRow, now: Date): Promise
     callKey: `captura:${row.id}:${row.attempts}`,
     purpose: "captura",
     maxTokens: CAPTURE_MAX_TOKENS,
+    timeoutMs: 60_000,
     day: today,
     usdBrl: rate,
     context: { systemPrompt: prompt.system, messages: [{ role: "user", content: prompt.user, timestamp: now.getTime() }], tools: [] },

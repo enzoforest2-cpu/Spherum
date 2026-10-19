@@ -140,11 +140,22 @@ export const xodoInput = z.object({
   timezone: xodoFields.timezone.default("America/Sao_Paulo"),
 });
 
+/** Ajustes da memória (aba "Memória"); na criação valem os padrões do banco. */
+const memoryFields = {
+  memory_enabled: z.boolean(),
+  memory_capture: z.boolean(),
+  /** Captura também nas conversas por Slack, WhatsApp e Telegram. */
+  memory_capture_channels: z.boolean(),
+  memory_tidy: z.boolean(),
+  /** Tamanho do núcleo no prompt, em caracteres. */
+  memory_core_chars: z.number().int().min(2000).max(16000),
+};
+
 /** Só os campos enviados mudam: sem valores padrão aqui, senão um PATCH parcial apagaria o resto. */
 export const xodoPatch = z
   .object(xodoFields)
   .omit({ timezone: true, client_ids: true })
-  .extend({ status: z.enum(["active", "paused"]) })
+  .extend({ status: z.enum(["active", "paused"]), ...memoryFields })
   .partial();
 
 /** A chave precisa ser desta agência, do mesmo provedor, e o modelo precisa existir no catálogo. */
@@ -264,11 +275,13 @@ export async function updateXodo(sql: Sql, llm: LlmClient, agencyId: string, xod
       tx,
       `update xodos set name = $3, species = $4, color = $5, personality = $6, role = $7, instructions = $8, autonomy = $9,
               provider = $10, model = $11, credential_id = $12, daily_budget_brl = $13, warn_at_percent = $14, status = $15,
-              routine_provider = $16, routine_model = $17, routine_credential_id = $18, updated_at = now()
+              routine_provider = $16, routine_model = $17, routine_credential_id = $18, memory_enabled = $19, memory_capture = $20,
+              memory_capture_channels = $21, memory_tidy = $22, memory_core_chars = $23, updated_at = now()
         where id = $1 and agency_id = $2 returning *`,
       [xodoId, agencyId, next.name, next.species, next.color, next.personality, next.role, next.instructions, next.autonomy,
         next.provider, next.model, next.credential_id, next.daily_budget_brl, next.warn_at_percent, next.status,
-        routine.provider, routine.model, routine.credential_id],
+        routine.provider, routine.model, routine.credential_id, next.memory_enabled, next.memory_capture,
+        next.memory_capture_channels, next.memory_tidy, next.memory_core_chars],
     );
     if (patch.backup_models) await saveBackups(tx, agencyId, xodoId, patch.backup_models);
     if (patch.apps) await saveApps(tx, agencyId, xodoId, patch.apps);

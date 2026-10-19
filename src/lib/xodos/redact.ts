@@ -58,7 +58,7 @@ const DISCORD_WEBHOOK = /(?:https?:\/\/)?(?:(?:canary|ptb)\.)?discord(?:app)?\.c
 /** `scheme://usuario:SENHA@host`: só a senha. */
 const URL_USERINFO = /(\b[a-z][a-z0-9+.-]{0,30}:\/\/[^\s/:@'"]{1,256}:)(?!\[removido\]@)([^\s/?#'"]{1,512})(@)/gi;
 const URL_PARAM =
-  /([?&#;](?:access_token|refresh_token|id_token|token|key|api_key|apikey|sig|signature|x-amz-signature|x-amz-security-token|x-goog-signature|code|client_secret|secret|password|senha)=)(?!\[removido\])([^&#\s"'<>`…]{3,})/gi;
+  /([?&#;](?:access_token|refresh_token|id_token|token|key|api_key|apikey|sig|signature|x-amz-signature|x-amz-security-token|x-goog-signature|code|client_secret|secret|password|senha|pwd|passcode|auth|auth_token|access_key|secret_key|private_key)=)(?!\[removido\](?!\w))([^&#\s"'<>`…]{3,})/gi;
 /** Token depois de "Bearer" sempre tem dígito ou símbolo; "bearer authorization" fica. */
 const BEARER = /(\b[Bb]earer[ \t]+)(?=[A-Za-z]*[0-9._~+/=-])([A-Za-z0-9._~+/=-]{12,})/g;
 const BASIC = /(\bauthorization["']?[ \t]*[:=][ \t]*["']?basic[ \t]+)([A-Za-z0-9+/]{8,}={0,2})/gi;
@@ -90,11 +90,20 @@ const STOP = [
   "recebida", "recebido", "agendada", "agendado", "muito", "bem", "sempre", "nunca", "aqui", "abaixo", "acima",
   "anexo", "anexa", "segue", "seguem", "sua", "seu", "minha", "meu", "dele", "dela", "nossa", "nosso", "the",
   "same", "see", "ask", "none", "null", "nil", "undefined", "true", "false", "await", "new", "n/a", "tbd",
-  "bearer", "basic", "random", "redacted", "hidden", "required", "optional", "empty", "blank",
+  "bearer", "basic", "random", "redacted", "hidden", "required", "optional", "empty", "blank", "troca", "pedido",
+  "pedida", "definida", "definido", "definir", "criar", "criada", "criado", "gerar", "gerada", "gerado", "todos",
+  "todas", "cada", "outra", "outro", "qualquer", "somente", "apenas", "favor", "falar", "ligar", "combinar",
+  "combinado", "combinada", "conforme", "pelo", "pela", "via",
 ];
-const NOT_STOP = String.raw`(?!(?:${STOP.map(esc).join("|")})[.,;:!?)]*(?:\s|$))`;
+// Palavra minúscula com acento ("mínimo", "está") é português, não senha. O trecho antes do
+// primeiro acento não tem acento: sem isso a regex fica quadrática numa palavra longa.
+const NOT_STOP = String.raw`(?!(?:${STOP.map(esc).join("|")}|[a-z]*[à-öø-ÿ][a-zà-öø-ÿ]*)[.,;:!?)]*(?:\s|$))`;
 const NOT_CODE = String.raw`(?!process\.env|os\.environ|getenv|env\(|\$[{(]|\$[A-Z][A-Z0-9_]+\b|\{\{|[(<])`;
-const NOT_DONE = String.raw`(?!["']?\[removido\])`;
+/** Já limpo: o marcador sozinho, não "[removido]abc" (que esconderia o resto). */
+const NOT_DONE = String.raw`(?!["']?\[removido\](?!\w))`;
+/** Valor que mistura dígito ou símbolo de senha ("Abc@123"); "**Connections**" e "MAC_CERT_PASSWORD" não. */
+const SYMBOL_AHEAD = String.raw`[^\s]{0,63}[0-9!@#$%&]`;
+const HAS_SYMBOL = `(?=${SYMBOL_AHEAD})`;
 /** Palavra terminada em ":" é outro rótulo ("Senha do insta: senha: X"), não o valor. */
 const NOT_LABEL = String.raw`(?![^\s:]+:(?:\s|$))`;
 
@@ -116,13 +125,41 @@ const SECRET_LABELS = [
  */
 const QUALIFIER = String.raw`(?:[ \t]+(?!(?:e|ou|and|or)[ \t])(?:[^\s:=,;(){}\x60]{1,25}|\([^\s:=,;(){}\x60]{1,23}\))){0,4}`;
 const SEP = String.raw`[ \t]*["']?[ \t]*[:=][ \t]*(?:\r?\n[ \t]*)?`;
+const VALUE = String.raw`("[^"\n]{1,200}"|'[^'\n]{1,200}'|\S{3,})`;
 const LABELLED = new RegExp(
-  String.raw`\b(${SECRET_LABELS})\b(${QUALIFIER}${SEP})${NOT_DONE}${NOT_STOP}${NOT_CODE}${NOT_LABEL}("[^"\n]{1,200}"|'[^'\n]{1,200}'|\S{3,})`,
+  String.raw`\b(${SECRET_LABELS})\b(${QUALIFIER}${SEP})${NOT_DONE}${NOT_STOP}${NOT_CODE}${NOT_LABEL}${VALUE}`,
+  "gi",
+);
+/** "Senha - Abc@123", "senha → Abc@123": com traço ou seta, o valor precisa de dígito ou símbolo ("o token - que vence" fica). */
+const DASHED = new RegExp(
+  String.raw`\b(${SECRET_LABELS})\b(${QUALIFIER}[ \t]+(?:->|[-–—→])[ \t]+)${NOT_DONE}${NOT_STOP}${NOT_CODE}${NOT_LABEL}${HAS_SYMBOL}${VALUE}`,
+  "gi",
+);
+/**
+ * `DB_PASSWORD=Abc@123!`, `"smtp_pass": "p@ss w0rd"`: nome de variável com segredo, valor com símbolos.
+ * Sem aspas, o valor precisa de 8+ caracteres ou dígito/símbolo ("STATS_TOKEN: fleet totals" fica)
+ * e não pode ser número de código ("PER_PASS = 200;").
+ */
+const ENV_SECRET = new RegExp(
+  String.raw`\b([A-Za-z][A-Za-z0-9]{0,30}(?:[_-][A-Za-z0-9]{1,30}){0,4}_(?:password|passwd|pass|pwd|secret|token|senha|segredo|api[_-]?key|access[_-]?key|private[_-]?key))(["']?[ \t]*[=:][ \t]*)${NOT_DONE}${NOT_STOP}${NOT_CODE}(?!["'](?:\$[{(]|\{\{|<)|\/\^)("[^"\n]{3,200}"|'[^'\n]{3,200}'|(?!["'\x60]|\d[\d_.]*[;,](?:\s|$))(?=\S{8}|${SYMBOL_AHEAD})\S{3,})`,
+  "gi",
+);
+/**
+ * "user: admin pass: hunter2", "pwd=abc": sem palavras no meio ("pass rate in Q3: 95%" fica) e sem
+ * cara de código ("pass: page?.inner[0] === 1280").
+ */
+const SHORT_LABEL = new RegExp(
+  String.raw`\b(pass|pwd)\b([ \t]*[:=][ \t]*)${NOT_DONE}${NOT_STOP}${NOT_CODE}${NOT_LABEL}${HAS_SYMBOL}(?![^\s]{0,63}[?([{])${VALUE}`,
+  "gi",
+);
+/** "usuário admin senha admin123": sem separador, o valor precisa misturar letra com dígito ou símbolo. */
+const BARE = new RegExp(
+  String.raw`\b(senha|password)([ \t]+)${NOT_DONE}${NOT_STOP}${NOT_CODE}${NOT_LABEL}${HAS_SYMBOL}(?=[^\s]{0,63}[A-Za-z])([^\s"'.,;:()]{6,64})(?=[.,;:)!?]?(?:\s|$))`,
   "gi",
 );
 /** "a senha do insta da Acme é Abc@123". */
 const PROSE = new RegExp(
-  String.raw`\b(senha|password)\b([^.,;:\n\[]{0,40}?[ \t](?:é|eh|era|ficou|virou|será)(?:[ \t]*:)?[ \t]+)${NOT_DONE}${NOT_STOP}${NOT_LABEL}(\S{4,})`,
+  String.raw`\b(senha|password)\b([^.,;:\n\[]{0,40}?[ \t](?:é|eh|era|ficou|virou|será)(?:[ \t]*:)?[ \t]+)${NOT_DONE}${NOT_STOP}${NOT_LABEL}("[^"\n]{1,200}"|'[^'\n]{1,200}'|\S{4,})`,
   "gi",
 );
 const PREPOSITIONS = String.raw`(?:[ \t]+(?:d[aoe]s?|para|pra|pro)[ \t]+[^\s:=,;]{1,25}){0,2}`;
@@ -142,7 +179,7 @@ const NUMERIC_CODE = /^(?:pin|cvv2?|cvc2?|c[oó]digo[ \t]+(?:de[ \t]+)?seguran[c
 
 const CARD_TAIL = String.raw`(?:[ \t]{0,2}[,;|/-]?[ \t]{0,2}(?:0[1-9]|1[0-2])\/(?:\d{4}|\d{2})(?:[ \t]{0,2}[,;|-]?[ \t]{0,2}\d{3,4})?)?`;
 const CARD_GROUPED = new RegExp(
-  String.raw`(?<![\w.,/-]|\d[ -])(\d{4}([ -])\d{4}\2\d{4}\2\d{4}|\d{4}([ -])\d{6}\3\d{4,5})(${CARD_TAIL})(?![\d/]|[ -]\d{4}(?!\d))`,
+  String.raw`(?<![\w.,/-]|\d[ .-])(\d{4}([ .-])\d{4}\2\d{4}\2\d{4}|\d{4}([ -])\d{6}\3\d{4,5})(${CARD_TAIL})(?![\d/]|[ .-]\d{4}(?!\d))`,
   "g",
 );
 const CARD_CONTIGUOUS = new RegExp(String.raw`(?<![\w.,/=#+-])(\d{15,16})(${CARD_TAIL})(?![\w/=-]|[.,]\d)`, "g");
@@ -165,7 +202,7 @@ const RG = new RegExp(
   "gi",
 );
 const CNH = new RegExp(
-  String.raw`\b(cnh|carteira[ \t]+de[ \t]+motorista|habilita[cç][aã]o)(${DOC_SEP})(\d{9,11}|\d{3}\.\d{3}\.\d{3}-?\d{2})(?![\w.-])`,
+  String.raw`\b(cnh|carteira[ \t]+de[ \t]+motorista|habilita[cç][aã]o)\b(${DOC_SEP})(\d{9,11}|\d{3}\.\d{3}\.\d{3}-?\d{2})(?![\w.-])`,
   "gi",
 );
 const PIX_VALUE = String.raw`(\+?(?:55[ \t]?)?\(?\d{2}\)?[ \t]?9?\d{4}[ \t-]?\d{4}(?!\d)|[^\s,;]{4,})`;
@@ -189,6 +226,11 @@ const BANK_NUMBER = String.raw`[ \t]*(?:n[º°o]\.?[ \t]*)?[:=]?[ \t]*`;
 /** "agência 1234 conta 56789-0": os dois números, só quando aparecem juntos. */
 const AGENCY_ACCOUNT = new RegExp(
   String.raw`\b(ag(?:[eê]ncia)?\.?)(${BANK_NUMBER})(\d{3,5}(?:-?[\dXx])?)(?!\d)([^\n\d]{0,25}?)\b(c\/c|conta(?:[ \t]+(?:corrente|poupan[cç]a|pagamento))?|cc|cp|c)(\.?${BANK_NUMBER})(\d{3,13}(?:-?[\dXx])?)(?!\d)`,
+  "gi",
+);
+/** Ordem trocada: "conta 98765-4 agência 1234". */
+const ACCOUNT_AGENCY = new RegExp(
+  String.raw`\b(c\/c|conta(?:[ \t]+(?:corrente|poupan[cç]a|pagamento))?)(${BANK_NUMBER})(\d{3,13}(?:-?[\dXx])?)(?!\d)([^\n\d]{0,25}?)\b(ag(?:[eê]ncia)?\.?)(${BANK_NUMBER})(\d{3,5}(?:-?[\dXx])?)(?!\d)`,
   "gi",
 );
 const ACCOUNT = new RegExp(
@@ -262,9 +304,11 @@ const card =
     if (!luhn(digits)) return g[0];
     if (contiguous) {
       if (!CARD_BRAND.test(digits)) return g[0];
-      // "Pixel 4567…", "act 5123…": número de anúncio que por acaso passa no Luhn.
+      // "Pixel 4567…", "act 5123…": número de anúncio que por acaso passa no Luhn. Palavra de
+      // cartão antes ou logo depois ("pedido 4111… no cartão") desfaz a dúvida.
       const before = input.slice(Math.max(0, at - 40), at);
-      if (AD_ID_WORDS.test(before) && !CARD_WORDS.test(before)) return g[0];
+      const after = input.slice(at + g[0].length, at + g[0].length + 40);
+      if (AD_ID_WORDS.test(before) && !CARD_WORDS.test(before) && !CARD_WORDS.test(after)) return g[0];
     }
     return hide();
   };
@@ -315,10 +359,14 @@ const RULES: readonly Rule[] = [
   [BASIC, (g, hide) => `${g[1]}${hide()}`],
   [KEY_VALUE, keyValue],
   [KEY_SUFFIX_ASSIGNMENT, keyValue],
+  [ENV_SECRET, trimmed],
   [SECRET_FLAG, (g, hide) => `${g[1]}${g[2]}${hide()}${g[2]}`],
   [LABELLED, trimmed],
+  [DASHED, trimmed],
+  [SHORT_LABEL, trimmed],
   [CODE, code],
   [PROSE, trimmed],
+  [BARE, labelled],
   [CARD_GROUPED, card(false)],
   [CARD_CONTIGUOUS, card(true)],
   [CARD_EXPIRY, expiry],
@@ -330,6 +378,7 @@ const RULES: readonly Rule[] = [
   [PIX_BARE, pix],
   [IBAN, iban],
   [AGENCY_ACCOUNT, agencyAccount],
+  [ACCOUNT_AGENCY, agencyAccount],
   [ACCOUNT, labelled],
 ];
 
@@ -340,7 +389,9 @@ const RULES: readonly Rule[] = [
 const PEM_BEGIN = /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g;
 const PEM_END = /-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g;
 const PEM_LOOSE_BODY =
-  /[A-Za-z0-9+/=\\]*(?:\r?\n(?:[A-Za-z0-9+/=\\]{4,}|(?:Proc-Type|DEK-Info|Comment|Version):[^\r\n]*|[ \t]*(?=\r?\n[A-Za-z0-9+/=\\]{4,}(?:\r?\n|$)))(?=\r?\n|$))*/y;
+  /[ \t]*[A-Za-z0-9+/=\\]*[ \t]*(?:\r?\n[ \t]*(?:[A-Za-z0-9+/=\\]{4,}[ \t]*|(?:Proc-Type|DEK-Info|Comment|Version):[^\r\n]*|(?=\r?\n[ \t]*[A-Za-z0-9+/=\\]{4,}[ \t]*(?:\r?\n|$)))(?=\r?\n|$))*/y;
+/** Quebras de linha viradas em espaço (a captura junta tudo numa linha): pedaços longos de base64. */
+const PEM_SPACED_BODY = /(?:[ \t]+[A-Za-z0-9+/=\\]{16,})+(?:[ \t]+[A-Za-z0-9+/]{1,15}={0,2}(?=[ \t]*$|[ \t]+-----))?/y;
 
 function redactPem(text: string, hide: Hide): string {
   if (!text.includes("PRIVATE KEY")) return text;
@@ -361,8 +412,9 @@ function redactPem(text: string, hide: Hide): string {
       stop = end.index;
     } else {
       PEM_LOOSE_BODY.lastIndex = start;
-      PEM_LOOSE_BODY.exec(text);
-      stop = PEM_LOOSE_BODY.lastIndex;
+      stop = PEM_LOOSE_BODY.exec(text) ? PEM_LOOSE_BODY.lastIndex : start;
+      PEM_SPACED_BODY.lastIndex = start;
+      if (PEM_SPACED_BODY.exec(text)) stop = Math.max(stop, PEM_SPACED_BODY.lastIndex);
     }
     const body = text.slice(start, stop).trim();
     if (body && body !== REDACTED) {
@@ -392,12 +444,27 @@ function pass(text: string): { text: string; removed: number } {
   return { text: out, removed };
 }
 
+// Espaço sem quebra (colado da web ou do WhatsApp), caractere invisível e dois-pontos largo
+// escondiam "senha:\u00a0X" e "sk-…\u200b…" das regras. Só valem no texto devolvido se algo sair.
+const ODD_SPACE = /[\u00a0\u2007\u202f]/g;
+const INVISIBLE = /[\u200b-\u200d\u2060\ufeff\u00ad]/g;
+const normalize = (text: string) =>
+  text.replace(ODD_SPACE, " ").replace(INVISIBLE, "").replace(/\uff1a/g, ":").replace(/\uff1d/g, "=");
+
 /** Texto sem dados sensíveis e quantos trechos saíram. */
 export function redactSecrets(text: string): { text: string; removed: number } {
   let out = text;
   let removed = 0;
+  const plain = text ? normalize(text) : text;
+  if (plain !== text) {
+    const r = pass(plain);
+    if (r.removed) {
+      out = r.text;
+      removed = r.removed;
+    }
+  }
   // Uma troca pode expor outra (rótulo seguido de outro valor); repete até não sobrar nada.
-  for (let round = 0; round < 3 && out; round++) {
+  for (let round = removed ? 1 : 0; round < 3 && out; round++) {
     const r = pass(out);
     if (!r.removed) break;
     out = r.text;
@@ -406,9 +473,12 @@ export function redactSecrets(text: string): { text: string; removed: number } {
   return { text: out, removed };
 }
 
-/** Nome de campo que guarda segredo: `senha`, `apiKey`, `access_token`, `x-api-key`, `client_secret`. */
+/**
+ * Nome de campo que guarda segredo: `senha`, `apiKey`, `access_token`, `x-api-key`, `client_secret`.
+ * Plural só onde não é contagem: `apiKeys` e `senhas` sim, `tokens` (uso do modelo) não.
+ */
 const SECRET_FIELD =
-  /(?:^|[_.-])(?:senha|password|passwd|secret|segredo|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|authorization|cvv|cvc)$/;
+  /(?:^|[_.-])(?:senhas?|passwords?|passwd|secrets?|segredos?|token|api[_-]?keys?|apikeys?|access[_-]?keys?|private[_-]?keys?|authorization|cvv|cvc)$/;
 const secretField = (key: string) => SECRET_FIELD.test(key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase());
 
 /** Limpa todos os textos de um valor JSON (entradas de ferramentas), mantendo a forma. */
@@ -421,12 +491,19 @@ export function redactDeep<T>(value: T): { value: T; removed: number } {
       return r.text;
     }
     if (Array.isArray(v)) return v.map(walk);
-    if (v && typeof v === "object") {
+    // Só objeto simples: Date, Buffer e afins passam como estão.
+    if (v && typeof v === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(v))) {
       return Object.fromEntries(
         Object.entries(v as Record<string, unknown>).map(([k, x]) => {
-          if (typeof x === "string" && x && x !== REDACTED && secretField(k)) {
-            removed += 1;
-            return [k, REDACTED];
+          if (secretField(k)) {
+            // Número também é segredo ("cvv": 123, "senha": 123456); lista de textos some item a item.
+            if ((typeof x === "string" && x && x !== REDACTED) || typeof x === "number" || typeof x === "bigint") {
+              removed += 1;
+              return [k, REDACTED];
+            }
+            if (Array.isArray(x)) {
+              return [k, x.map((item) => (typeof item === "string" && item && item !== REDACTED ? ((removed += 1), REDACTED) : walk(item)))];
+            }
           }
           return [k, walk(x)];
         }),

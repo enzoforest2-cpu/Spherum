@@ -354,7 +354,8 @@ export async function editItem(
       const same = await findSame(tx, xodo, topic, clientId, identity, before.id);
       if (same) throw new XodoError(`Já existe uma nota igual (#${same.n}).`, 409);
     }
-    if (topic && topic !== before.topic) {
+    // Mudou de tópico ou voltou a valer (reativada, proposta aceita): precisa caber no tópico.
+    if (topic && (topic !== before.topic || (before.status !== "ativo" && status === "ativo"))) {
       await upsertTopic(tx, xodo, topic);
       await assertTopicRoom(tx, xodo, topic, content.length);
     }

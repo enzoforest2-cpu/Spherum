@@ -90,6 +90,8 @@ export type CallInput = {
   purpose?: "execucao" | "captura" | "arrumacao";
   /** Limite de tokens da resposta, abaixo do padrão do passo. */
   maxTokens?: number;
+  /** Tempo máximo de cada chamada (padrão: 3 minutos). */
+  timeoutMs?: number;
   day: string;
   /** Cotação do dólar do dia; nula se ainda não há nenhuma. */
   usdBrl: number | null;
@@ -134,7 +136,7 @@ export async function callWithFallback(deps: BrainDeps, input: CallInput): Promi
     const message = await llm.complete(ready.model, context, {
       apiKey: ready.apiKey,
       maxTokens,
-      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+      signal: AbortSignal.timeout(input.timeoutMs ?? CALL_TIMEOUT_MS),
     });
     const failed = message.stopReason === "error" || message.stopReason === "aborted";
     const costUsd = round6(costOf(ready.model, message));

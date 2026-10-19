@@ -319,6 +319,32 @@ test("IBAN com mod-97 e agência/conta rotuladas", () => {
   }
 });
 
+test("notas comuns de agência ficam como estão", () => {
+  for (const note of [
+    "O token do Meta da Acme vence dia 12/11; renovar antes.",
+    "Senha do Instagram fica com a Ana (gerente).",
+    "Senha forte: mínimo 12 caracteres.",
+    "Senha padrão do cliente: troca no primeiro acesso.",
+    "Token de acesso: pedir para o TI.",
+    "Login e senha: com o cliente.",
+    "Chave de API: no 1Password da agência.",
+    "A senha é pessoal e intransferível.",
+    "PIN: ainda não definido. CVV não é armazenado.",
+    "Pagamentos via PIX caem em até 1 dia útil. PIX: só com nota fiscal.",
+    "RG e CPF do sócio estão no Drive.",
+    "Validade do contrato: 12/2026. Validade: 12/2026.",
+    "Vencimento: 10/26, boleto.",
+    "A agência da Ana fica na Av. Paulista, 1000. Agência 3 do Itaú fechou.",
+    "A conta 12345 da Meta foi desativada.",
+    "Código do produto: SKU-12345. O código de rastreio é BR123456789BR. Cupom BLACK30 até 30/11.",
+    "Conta de anúncios da Verano: act_1234567890123456. Pixel da loja: 1234567890123456.",
+    "ID da campanha: 120210000000000000. Conjunto 23851234567890124.",
+    "Cliente pediu relatório com CPL, CTR e ROAS toda segunda às 9h.",
+  ]) {
+    assertIntact(note);
+  }
+});
+
 test("fica intacto: IDs de campanha, R$, e-mails, telefones, CNPJ, UUIDs e UTMs", () => {
   assertIntact(
     [
@@ -394,4 +420,104 @@ test("redactDeep apaga campos com nome de segredo e conta o que saiu", () => {
   assert.equal(removed, 7);
   assert.deepEqual(redactDeep(value), { value, removed: 0 }, "limpar de novo não muda nada");
   assert.deepEqual(redactDeep({ token: "" }), { value: { token: "" }, removed: 0 });
+});
+
+// Revisão: casos que escapavam ou travavam.
+
+test("palavra longa com acento depois de um rótulo não trava (regex quadrática)", () => {
+  const word = "á".repeat(50_000);
+  for (const text of [`senha: ${word}1`, `a senha é ${word}1`, `senha: ${"aá".repeat(25_000)}1`, `senha ${"a".repeat(50_000)}`]) {
+    const started = performance.now();
+    redactSecrets(text);
+    const ms = performance.now() - started;
+    assert.ok(ms < 300, `${ms.toFixed(0)} ms para "${text.slice(0, 12)}…"`);
+  }
+});
+
+test("espaço sem quebra, caractere invisível e dois-pontos largo não escondem o segredo", () => {
+  assertRedacted("senha: Abc@123", "Abc@123", `senha: ${REDACTED}`);
+  assertRedacted("senha do insta: Abc@123", "Abc@123");
+  assertRedacted("cartão 4111 1111 1111 1111", "4111");
+  assertRedacted(`chave ${k("sk-", "proj-​", alnum(30))}`, alnum(30));
+  assertRedacted("senha： Abc@123", "Abc@123");
+  // Sem nada para tirar, o texto volta igual (inclusive o espaço sem quebra).
+  assertIntact("R$ 150,00 até sexta");
+});
+
+test("o marcador colado num valor não protege o resto", () => {
+  assertRedacted("senha: [removido]hunter2", "hunter2", `senha: ${REDACTED}`);
+  assertRedacted("https://a.com/?token=[removido]abc123", "abc123", `https://a.com/?token=${REDACTED}`);
+  assertRedacted("chave pix: [removido]ana@loja.com", "ana@loja");
+});
+
+test("variáveis de ambiente com símbolos e valores entre aspas", () => {
+  assertRedacted("DB_PASSWORD=Abc@1234!", "Abc@1234", `DB_PASSWORD=${REDACTED}`);
+  assertRedacted('SMTP_PASSWORD="Abc@1234!"', "Abc@1234", `SMTP_PASSWORD="${REDACTED}"`);
+  assertRedacted('"db_password": "p@ss w0rd!"', "p@ss", `"db_password": "${REDACTED}"`);
+  assertRedacted("META_APP_SECRET=abc!def#ghi", "abc!def", `META_APP_SECRET=${REDACTED}`);
+  assertRedacted("MAIL_PASS=hunter2", "hunter2", `MAIL_PASS=${REDACTED}`);
+  for (const ordinary of [
+    "const PRUNE_NOTES_PER_PASS = 200;",
+    "h.env.WEBHOOK_SECRET = undefined;",
+    'env: { GH_TOKEN: "${{ github.token }}" }',
+    "Bearer STATS_TOKEN: fleet totals for Admin",
+    'const CONTROL_TOKEN = "c".repeat(43);',
+    "max_tokens: 4000, prompt_tokens=1200",
+  ]) {
+    assertIntact(ordinary);
+  }
+});
+
+test("traço, seta, sem separador, pass/pwd e senha entre aspas em prosa", () => {
+  assertRedacted("senha - Abc@123", "Abc@123", `senha - ${REDACTED}`);
+  assertRedacted("Senha do insta → Abc@123", "Abc@123", `Senha do insta → ${REDACTED}`);
+  assertRedacted("usuário admin senha admin123", "admin123", `usuário admin senha ${REDACTED}`);
+  assertRedacted("login ana / senha hunter22.", "hunter22", `login ana / senha ${REDACTED}.`);
+  assertRedacted("user: admin pass: hunter2", "hunter2", `user: admin pass: ${REDACTED}`);
+  assertRedacted("pwd=Abc@123", "Abc@123", `pwd=${REDACTED}`);
+  assertRedacted('a senha do instagram é "minha senha secreta"', "secreta", `a senha do instagram é "${REDACTED}"`);
+  for (const ordinary of [
+    "O token - que vence amanhã - foi renovado",
+    "tool --token --verbose",
+    "senha – 8 caracteres no mínimo",
+    "Pass rate in Q3: 95%",
+    "pass: boolean; detail: string",
+    "pass: page?.inner?.[0] === 1280",
+    "Esqueci a senha do Gmail ontem",
+    "senha 2026 do evento",
+    "senha **forte** sempre",
+    "save your API key in **Settings → Connections**, then choose",
+  ]) {
+    assertIntact(ordinary);
+  }
+});
+
+test("PEM sem rodapé com linhas juntadas por espaço ou com espaço no fim", () => {
+  const line = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7";
+  // A captura junta tudo numa linha só antes de limpar.
+  assertRedacted(`chave: -----BEGIN PRIVATE KEY----- ${line} ${line} ${line} abc=`, line, `chave: -----BEGIN PRIVATE KEY-----\n${REDACTED}`);
+  assertRedacted(`-----BEGIN PRIVATE KEY-----\n${line}   \n${line} \nfim`, line, `-----BEGIN PRIVATE KEY-----\n${REDACTED}\nfim`);
+  assertRedacted(
+    `-----BEGIN PRIVATE KEY----- ${line} ${line} -----END PRIVATE KEY-----`,
+    line,
+    `-----BEGIN PRIVATE KEY-----\n${REDACTED}\n-----END PRIVATE KEY-----`,
+  );
+});
+
+test("cartão com pontos, palavra de cartão depois do número e conta antes da agência", () => {
+  assertRedacted("cartao: 4111.1111.1111.1111", "4111", `cartao: ${REDACTED}`);
+  assertRedacted("pedido 4111111111111111 no cartão", "4111", `pedido ${REDACTED} no cartão`);
+  assertRedacted("Conta 98765-4 agência 1234", "98765", `Conta ${REDACTED} agência ${REDACTED}`);
+  assertRedacted("https://zoom.us/j/123456789?pwd=AbCdEf123456", "AbCdEf", `https://zoom.us/j/123456789?pwd=${REDACTED}`);
+  assertIntact("Versão 1.2.3.4 e IP 192.168.0.1");
+  assertIntact("A conta 12345 da Meta foi desativada; agência 3 fechou.");
+});
+
+test("redactDeep: número e lista em campo de segredo; Date passa como está", () => {
+  const when = new Date("2026-10-19T12:00:00Z");
+  const { value, removed } = redactDeep({ cvv: 123, password: 12345678, tokens: 4000, apiKeys: ["a1", "b2"], quando: when });
+  assert.deepEqual(value, { cvv: REDACTED, password: REDACTED, tokens: 4000, apiKeys: [REDACTED, REDACTED], quando: when });
+  assert.ok(value.quando instanceof Date);
+  assert.equal(removed, 4);
+  assert.deepEqual(redactDeep(value), { value, removed: 0 });
 });
