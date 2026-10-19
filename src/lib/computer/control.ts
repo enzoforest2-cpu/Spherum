@@ -170,6 +170,9 @@ export function startControlScript(token: string, expiresMs: number, fence: numb
     // Reinicia: quem estava conectado antes (outra pessoa, revogada) cai na hora.
     `${CONTROL_VNC_STOP} 7>&- || true`,
     `${PTY_STOP} 7>&- || true`,
+    // Nada que o xodó deixou rodando (comando em segundo plano) assiste a pessoa no controle.
+    // A tela e o navegador são do usuário navegador e continuam.
+    `pkill -KILL -u xodo || true`,
     `${CONTROL_VNC_START} 7>&-`,
     `${PTY_START} 7>&-`,
   ].join("\n");

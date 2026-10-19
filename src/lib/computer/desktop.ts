@@ -21,8 +21,32 @@ export const FOLDERS = {
   lixeira: `${HOME}/.lixeira`,
 } as const;
 
-/** Ambiente limpo dos comandos do xodó: nenhuma credencial, só o básico (ideia do OpenMausBot). */
-export const XODO_ENV = "env -i HOME=/home/xodo PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo DISPLAY=:20";
+/** Ambiente limpo dos comandos do xodó: nenhuma credencial e sem a tela, só o básico (ideia do OpenMausBot). */
+export const XODO_ENV = "env -i HOME=/home/xodo PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo";
+
+/**
+ * Tela e navegador rodam no usuário navegador, à parte do xodo: o terminal e os arquivos do xodó
+ * não alcançam o CDP, os cookies dos perfis nem o cookie da tela.
+ */
+export const BROWSER_USER = "navegador";
+export const BROWSER_HOME = "/home/navegador";
+export const BROWSER_ENV = `setpriv --reuid=${BROWSER_USER} --regid=${BROWSER_USER} --init-groups --no-new-privs -- env -i HOME=${BROWSER_HOME} PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo DISPLAY=:20 XAUTHORITY=${BROWSER_HOME}/.Xauthority`;
+
+/** Roda um script como o usuário navegador (a partir de root, que troca o uid sem sudo). */
+export function runAsBrowser(
+  provider: SandboxProvider,
+  ref: string,
+  script: string,
+  opts: { timeoutMs?: number; stdin?: string } = {},
+): Promise<RunResult> {
+  return provider.run(ref, {
+    script: `${BROWSER_ENV} bash -c ${shellQuote(script)}`,
+    user: "root",
+    cwd: BROWSER_HOME,
+    stdin: opts.stdin,
+    timeoutMs: opts.timeoutMs ?? 60_000,
+  });
+}
 
 /** Roda um script como o usuário xodo (sem sudo), no ambiente limpo, a partir da pasta dele. */
 export function runAsXodo(

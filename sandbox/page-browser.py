@@ -1,7 +1,7 @@
 # Adaptado de infra/sandboxes/computer/rakazo-page-browser do Rakazo (Apache-2.0); campos sensíveis como server/browser/cdp/sensitive.ts do OpenMausBot (Apache-2.0).
 """Navegador do xodó por CDP (só biblioteca padrão).
 
-Fica em /opt/spherum/bin/page-browser.py e roda como o usuário xodo:
+Fica em /opt/spherum/bin/page-browser.py e roda como o usuário navegador (o xodo não alcança o CDP):
 
     python3 page-browser.py <acao> -     (argumentos em base64 de JSON pela entrada padrão)
 

@@ -6,7 +6,7 @@ import { assertPublicUrl, isPublicAddress, type Resolver } from "../../xodos/net
 import type { Category } from "../../xodos/policy";
 import { redactSecrets } from "../../xodos/redact";
 import { assertClient, ToolError, type ToolContext, type ToolDef } from "../../xodos/tools";
-import { runAsXodo } from "../desktop";
+import { runAsBrowser } from "../desktop";
 import { computerTool, type ComputerCall } from "../gateway";
 import { headText, shellQuote } from "../output";
 import { categorizeSite, hostOf, isStricter, labelCategory, loadSiteRules, strictest, type SiteCategory } from "../sites";
@@ -128,7 +128,7 @@ async function pageCall(c: ComputerCall, acao: PageAction, args: Record<string, 
   if (!ACTIONS.includes(acao)) throw new ToolError("Ação de navegador inválida.");
   const stdin = Buffer.from(JSON.stringify(args), "utf8").toString("base64");
   const script = ["# spherum:navegador", `python3 ${shellQuote(PAGE_BROWSER)} ${shellQuote(acao)} -`].join("\n");
-  const r = await runAsXodo(c.machine.provider, c.machine.ref, script, { timeoutMs: 60_000, stdin });
+  const r = await runAsBrowser(c.machine.provider, c.machine.ref, script, { timeoutMs: 60_000, stdin });
   const line = r.stdout.trim().split("\n").filter(Boolean).at(-1) ?? "";
   let reply: unknown = null;
   try {

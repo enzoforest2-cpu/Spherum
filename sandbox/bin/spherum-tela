@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): Xvfb e fluxbox.
-# Tela do xodó: Xvfb :20 em 1280x800x24 e fluxbox, os dois como xodo (nunca root). Idempotente.
+# Tela do xodó: Xvfb :20 em 1280x800x24 e fluxbox, os dois como navegador (nunca root nem xodo).
+# Só entra na tela quem lê o cookie do Xauthority (navegador e root). Idempotente.
 set -euo pipefail
 exec 8>&- 9>&-
 . /opt/spherum/bin/spherum-lib.sh
@@ -12,8 +13,11 @@ if ! spherum_display_up; then
   rm -f "/tmp/.X$SPHERUM_DISPLAY_NUM-lock" "/tmp/.X11-unix/X$SPHERUM_DISPLAY_NUM"
   mkdir -p /tmp/.X11-unix
   chmod 1777 /tmp/.X11-unix
-  # -nolisten tcp: a tela só aceita clientes locais; -ac porque o VNC (root) e o navegador (xodo) usam a mesma tela.
-  setsid "${SPHERUM_AS_XODO[@]}" Xvfb "$SPHERUM_DISPLAY" -screen 0 1280x800x24 -ac -nolisten tcp -noreset +extension RANDR \
+  # Cookie novo a cada tela, num arquivo só do navegador (o VNC de root também lê).
+  rm -f "$SPHERUM_XAUTH"
+  "${SPHERUM_AS_NAV[@]}" sh -c 'umask 077; xauth -q -f "$XAUTHORITY" add "$DISPLAY" . "$(od -An -tx1 -N16 /dev/urandom | tr -d " \n")"'
+  # -nolisten tcp: só clientes locais; -auth: só quem tem o cookie (o xodo não tem).
+  setsid "${SPHERUM_AS_NAV[@]}" Xvfb "$SPHERUM_DISPLAY" -screen 0 1280x800x24 -auth "$SPHERUM_XAUTH" -nolisten tcp -noreset +extension RANDR \
     </dev/null >"$SPHERUM_LOG/xvfb.log" 2>&1 &
   if ! spherum_wait 100 spherum_display_up; then
     echo "a tela (Xvfb) não subiu" >&2
@@ -22,9 +26,9 @@ if ! spherum_display_up; then
   fi
 fi
 
-if ! pgrep -u "$XODO_USER" -x fluxbox >/dev/null; then
-  # Config de root (só leitura para o xodó): menu sem terminal e atalhos sem "executar".
-  setsid "${SPHERUM_AS_XODO[@]}" fluxbox -display "$SPHERUM_DISPLAY" -rc "$SPHERUM_ETC/fluxbox/init" \
+if ! pgrep -u "$NAV_USER" -x fluxbox >/dev/null; then
+  # Config de root (só leitura): menu sem terminal e atalhos sem "executar".
+  setsid "${SPHERUM_AS_NAV[@]}" fluxbox -display "$SPHERUM_DISPLAY" -rc "$SPHERUM_ETC/fluxbox/init" \
     </dev/null >"$SPHERUM_LOG/fluxbox.log" 2>&1 &
-  spherum_wait 50 pgrep -u "$XODO_USER" -x fluxbox >/dev/null || true
+  spherum_wait 50 pgrep -u "$NAV_USER" -x fluxbox >/dev/null || true
 fi

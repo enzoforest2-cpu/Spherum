@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
-import { XODO_ENV } from "../src/lib/computer/desktop";
+import { BROWSER_ENV } from "../src/lib/computer/desktop";
 import { configureComputer, type ComputerDeps } from "../src/lib/computer/lifecycle";
 import type { RunResult } from "../src/lib/computer/provider";
 import { fakeProvider, fakeWorld } from "../src/lib/computer/providers/fake";
@@ -32,7 +32,7 @@ before(async () => {
 type El = { ref: string; papel?: string; rotulo: string; sensivel?: boolean; valor?: string; foco?: boolean; envio?: string; leva?: string };
 type Call = { acao: string; args: Record<string, unknown>; script: string };
 
-const WRAP = `${XODO_ENV} bash -lc `;
+const WRAP = `${BROWSER_ENV} bash -c `;
 const unquote = (s: string) => s.split(`'\\''`).join("'");
 const ok = (stdout = ""): RunResult => ({ code: 0, stdout, stderr: "" });
 const samePage = (a: string, b: string) => a.split("#")[0] === b.split("#")[0];

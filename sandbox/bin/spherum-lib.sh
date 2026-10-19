@@ -20,10 +20,20 @@ PTY_SOCKET=$SPHERUM_RUN/pty.sock
 PTY_SHELLS=$SPHERUM_RUN/pty-shells
 XODO_USER=xodo
 XODO_HOME=/home/xodo
+# Tela e navegador num usuário à parte: o terminal do xodo (e o da pessoa) não alcança a tela,
+# o CDP, os cookies dos perfis nem o arquivo de perfil ativo.
+NAV_USER=navegador
+NAV_HOME=/home/navegador
+SPHERUM_XAUTH=$NAV_HOME/.Xauthority
 
-# Comando como xodo, sem fork (setpriv troca o uid e executa), no ambiente limpo.
-SPHERUM_AS_XODO=(setpriv --reuid="$XODO_USER" --regid="$XODO_USER" --init-groups --
-  env -i HOME="$XODO_HOME" PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo DISPLAY="$SPHERUM_DISPLAY")
+# Comando como xodo, sem fork (setpriv troca o uid e executa), no ambiente limpo e sem tela.
+SPHERUM_AS_XODO=(setpriv --reuid="$XODO_USER" --regid="$XODO_USER" --init-groups --no-new-privs --
+  env -i HOME="$XODO_HOME" PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo)
+
+# Comando como navegador (tela, fluxbox, Chromium e page-browser).
+SPHERUM_AS_NAV=(setpriv --reuid="$NAV_USER" --regid="$NAV_USER" --init-groups --no-new-privs --
+  env -i HOME="$NAV_HOME" PATH=/usr/local/bin:/usr/bin:/bin LANG=pt_BR.UTF-8 TZ=America/Sao_Paulo
+  DISPLAY="$SPHERUM_DISPLAY" XAUTHORITY="$SPHERUM_XAUTH")
 
 spherum_require_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -76,7 +86,7 @@ spherum_stop_pid() {
 }
 
 spherum_display_up() {
-  DISPLAY=$SPHERUM_DISPLAY xdpyinfo >/dev/null 2>&1
+  DISPLAY=$SPHERUM_DISPLAY XAUTHORITY=$SPHERUM_XAUTH xdpyinfo >/dev/null 2>&1
 }
 
 spherum_port_open() {

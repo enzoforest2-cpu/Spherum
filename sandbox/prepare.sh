@@ -4,11 +4,13 @@
 #
 # Preparo da máquina do Spherum (roda como root, idempotente). Monta:
 # - usuário xodo (uid 1000 quando dá) sem sudo, com as pastas do xodó;
-# - tela Xvfb :20 1280x800x24 com fluxbox (sem terminal no desktop);
-# - Chromium como xodo, CDP só em 127.0.0.1:9222, perfis em ~/.perfis;
+# - usuário navegador (sem sudo) com a tela, o Chromium e os perfis: o xodo não alcança nada disso;
+# - tela Xvfb :20 1280x800x24 com fluxbox (sem terminal no desktop) e cookie do X só do navegador;
+# - Chromium como navegador, CDP só em 127.0.0.1:9222 (fechado para o xodo), perfis em /home/navegador/.perfis;
 # - x11vnc -viewonly em socket Unix, websockify 0.0.0.0:6100 com TokenFile em /run/spherum/tokens;
 # - vigia root (tokens vencidos, fim do controle);
-# - iptables para o uid do xodo: sem redes privadas, metadata e SMTP;
+# - iptables para os uids do xodo e do navegador: sem redes privadas, metadata, SMTP nem os
+#   agentes do provedor no loopback; o CDP só para o navegador;
 # - verificação final: só a 6100 escuta fora do loopback (aborta se CDP, VNC ou terminal aparecerem).
 #
 # Ambiente: SPHERUM_STAGING (pasta com os arquivos enviados), SPHERUM_EGRESS (aberto|restrito),
@@ -40,6 +42,8 @@ case "$STAGING" in /opt/spherum/.preparo | /opt/spherum/.preparo/*) ;; *) die "p
 
 XODO=xodo
 XODO_HOME=/home/xodo
+NAV=navegador
+NAV_HOME=/home/navegador
 SPHERUM_HOME=$XODO_HOME/spherum
 ETC=/etc/spherum
 BIN=/opt/spherum/bin
@@ -61,7 +65,7 @@ missing=()
 for pair in \
   Xvfb:xvfb xdpyinfo:x11-utils xsetroot:x11-xserver-utils x11vnc:x11vnc fluxbox:fluxbox \
   xdotool:xdotool wmctrl:wmctrl xclip:xclip scrot:scrot websockify:websockify python3:python3 \
-  iptables:iptables ss:iproute2 pgrep:procps flock:util-linux setpriv:util-linux runuser:util-linux \
+  xauth:xauth od:coreutils iptables:iptables ss:iproute2 pgrep:procps flock:util-linux setpriv:util-linux runuser:util-linux \
   curl:curl gpg:gnupg locale-gen:locales; do
   command -v "${pair%%:*}" >/dev/null 2>&1 || missing+=("${pair#*:}")
 done
@@ -185,6 +189,13 @@ XUID=$(id -u "$XODO")
 XGID=$(id -g "$XODO")
 [ "$XUID" -ne 0 ] || die "o xodo não pode ser root"
 
+# Usuário da tela e do navegador: grupo extra só o do xodo (para gravar na pasta de downloads).
+id "$NAV" >/dev/null 2>&1 || useradd -U -m -d "$NAV_HOME" -s /usr/sbin/nologin "$NAV"
+NUID=$(id -u "$NAV")
+[ "$NUID" -ne 0 ] && [ "$NUID" -ne "$XUID" ] || die "o navegador precisa de um uid só dele"
+usermod -G "$(id -gn "$XODO")" "$NAV"
+passwd -l "$NAV" >/dev/null 2>&1 || true
+
 # Nenhum grupo extra (sudo, admin, wheel, docker...) e nenhuma regra de sudo.
 usermod -G "" "$XODO"
 strip_sudoers() {
@@ -207,6 +218,7 @@ strip_sudoers() {
   fi
 }
 strip_sudoers "$XODO"
+strip_sudoers "$NAV"
 # O usuário padrão do template também perde o sudo (no E2B tudo de root vem direto pelo agente).
 if [ -n "$TEMPLATE_USER" ] && [ "$TEMPLATE_USER" != "$XODO" ]; then
   strip_sudoers "$TEMPLATE_USER"
@@ -224,10 +236,17 @@ passwd -l root >/dev/null 2>&1 || true
 # ---------------------------------------------------------------------------
 install -d -m 0750 -o "$XUID" -g "$XGID" "$XODO_HOME"
 for dir in "$SPHERUM_HOME" "$SPHERUM_HOME/agencia" "$SPHERUM_HOME/clientes" "$SPHERUM_HOME/xodos" \
-  "$SPHERUM_HOME/downloads" "$SPHERUM_HOME/.lixeira"; do
+  "$SPHERUM_HOME/.lixeira"; do
   install -d -m 0750 -o "$XUID" -g "$XGID" "$dir"
 done
-install -d -m 0700 -o "$XUID" -g "$XGID" "$XODO_HOME/.perfis" "$XODO_HOME/.perfis/agencia"
+# Downloads: o navegador grava (grupo do xodo, setgid), o xodo lê, move e apaga.
+install -d -m 2770 -o "$XUID" -g "$XGID" "$SPHERUM_HOME/downloads"
+# O navegador só atravessa a casa do xodo até a pasta de downloads.
+chmod 0750 "$XODO_HOME"
+# Perfis (cookies, logins) e estado do navegador: só dele.
+install -d -m 0700 -o "$NUID" -g "$NUID" "$NAV_HOME" "$NAV_HOME/.perfis" "$NAV_HOME/.perfis/agencia"
+# Versões antigas guardavam os perfis na casa do xodo (que podia mexer neles): saem.
+rm -rf -- "$XODO_HOME/.perfis"
 
 # ---------------------------------------------------------------------------
 # 5. Programas e páginas do Spherum (de root; o xodó só lê e executa o page-browser)
@@ -327,6 +346,13 @@ IPT6=${IPT/iptables/ip6tables}
 chain_rules() {
   local tool=$1 family=$2
   $tool -w -N SPHERUM_XODO 2>/dev/null || $tool -w -F SPHERUM_XODO
+  # Loopback: o CDP do navegador fica fechado para o xodo, e os agentes do provedor (que rodam
+  # como root ou com sudo) ficam fechados para os dois. Isto vem antes da regra que libera o lo
+  # (tráfego para o próprio IP da máquina também sai pelo lo).
+  $tool -w -A SPHERUM_XODO -o lo -p tcp --dport 9222 -m owner --uid-owner "$XUID" -j REJECT
+  for p in $ALLOWED_PORTS; do
+    $tool -w -A SPHERUM_XODO -o lo -p tcp --dport "$p" -j REJECT
+  done
   $tool -w -A SPHERUM_XODO -o lo -j RETURN
   if [ "$EGRESS" = restrito ]; then
     # Modo restrito: até o gate por domínio existir, o xodó fica sem saída nenhuma.
@@ -351,8 +377,11 @@ chain_rules() {
     $tool -w -A SPHERUM_XODO -p tcp -m multiport --dports 25,465,587 -j REJECT
   fi
   $tool -w -A SPHERUM_XODO -j RETURN
-  $tool -w -C OUTPUT -m owner --uid-owner "$XUID" -j SPHERUM_XODO 2>/dev/null ||
-    $tool -w -I OUTPUT 1 -m owner --uid-owner "$XUID" -j SPHERUM_XODO
+  local uid
+  for uid in "$XUID" "$NUID"; do
+    $tool -w -C OUTPUT -m owner --uid-owner "$uid" -j SPHERUM_XODO 2>/dev/null ||
+      $tool -w -I OUTPUT 1 -m owner --uid-owner "$uid" -j SPHERUM_XODO
+  done
 }
 chain_rules "$IPT" 4 || die "não consegui aplicar as regras de rede (IPv4)"
 if command -v "$IPT6" >/dev/null 2>&1 && $IPT6 -w -S OUTPUT >/dev/null 2>&1; then
@@ -369,6 +398,9 @@ if [ -n "$previous" ] && [ "$previous" != "$VERSION" ]; then
   say "trocando a versão $previous por $VERSION"
   pkill -f '/opt/spherum/bin/spherum-vigia' || true
   pkill -f 'websockify .*--token-source=/run/spherum/tokens' || true
+  # Versões antigas rodavam a tela e o navegador como xodo: tudo dele cai e sobe como navegador.
+  pkill -KILL -u "$XODO" || true
+  pkill -f "^Xvfb :20 " || true
 fi
 "$BIN/spherum-start"
 
@@ -403,12 +435,18 @@ fi
 [ "$(stat -c '%U %a' /run/spherum)" = "root 700" ] || die "/run/spherum precisa ser de root com 0700"
 [ "$(stat -c '%U %a' /run/spherum/tokens)" = "root 700" ] || die "/run/spherum/tokens precisa ser de root com 0700"
 # d) O xodo não vira root.
-if id -nG "$XODO" | tr ' ' '\n' | grep -Eqx 'sudo|admin|wheel|root|docker|lxd'; then die "o xodo está num grupo de administrador"; fi
+for who in "$XODO" "$NAV"; do
+  if id -nG "$who" | tr ' ' '\n' | grep -Eqx 'sudo|admin|wheel|root|docker|lxd'; then die "o $who está num grupo de administrador"; fi
+done
 if command -v sudo >/dev/null 2>&1 && setpriv --reuid="$XODO" --regid="$XODO" --init-groups -- sudo -n true >/dev/null 2>&1; then
   die "o xodo ainda tem sudo"
 fi
 # e) As regras de rede estão no lugar.
 $IPT -w -C OUTPUT -m owner --uid-owner "$XUID" -j SPHERUM_XODO || die "as regras de rede do xodo sumiram"
+$IPT -w -C OUTPUT -m owner --uid-owner "$NUID" -j SPHERUM_XODO || die "as regras de rede do navegador sumiram"
+$IPT -w -S SPHERUM_XODO | grep -q -- "--dport 9222 .*--uid-owner $XUID .*REJECT" || die "o CDP não ficou fechado para o xodo"
+# g) O xodo não lê os perfis nem o cookie da tela.
+if setpriv --reuid="$XODO" --regid="$XODO" --init-groups -- test -r "$NAV_HOME/.perfis"; then die "o xodo lê os perfis do navegador"; fi
 if [ "$EGRESS" = aberto ]; then
   $IPT -w -S SPHERUM_XODO | grep -q -- '-d 169.254.0.0/16 .*REJECT' || die "o bloqueio da metadata não ficou"
 fi

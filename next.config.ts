@@ -11,7 +11,11 @@ import type { NextConfig } from "next";
  */
 const nextConfig: NextConfig = {
   // A biblioteca de modelos carrega módulos do Node de forma dinâmica; roda direto, sem empacotar.
-  serverExternalPackages: ["@earendil-works/pi-ai"],
+  serverExternalPackages: ["@earendil-works/pi-ai", "e2b", "@daytonaio/sdk"],
+  // Os scripts da máquina (sandbox/) são lidos do disco ao preparar o computador.
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./sandbox/**/*"],
+  },
   async rewrites() {
     return {
       beforeFiles: [

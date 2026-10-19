@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): Chromium com CDP só em loopback.
-# Abre o Chromium do xodó com o perfil da agência quando ainda não há navegador. Depois quem
-# troca de perfil é o page-browser.py (mesmo arquivo de estado em ~/.perfis/.ativo.json).
+# Abre o Chromium do xodó (usuário navegador) com o perfil da agência quando ainda não há navegador.
+# Depois quem troca de perfil é o page-browser.py (mesmo arquivo de estado em
+# /home/navegador/.perfis/.ativo.json, que o xodo não lê nem escreve).
 set -euo pipefail
 exec 8>&- 9>&-
 . /opt/spherum/bin/spherum-lib.sh
@@ -11,12 +12,13 @@ spherum_dirs
 if spherum_port_open "$SPHERUM_CDP_PORT"; then exit 0; fi
 spherum_display_up || "$SPHERUM_BIN/spherum-tela"
 
-PERFIS=$XODO_HOME/.perfis
-"${SPHERUM_AS_XODO[@]}" mkdir -p "$PERFIS/agencia"
+PERFIS=$NAV_HOME/.perfis
+"${SPHERUM_AS_NAV[@]}" mkdir -p "$PERFIS/agencia"
 chmod 700 "$PERFIS" "$PERFIS/agencia"
 rm -f "$PERFIS/agencia/SingletonLock" "$PERFIS/agencia/SingletonCookie" "$PERFIS/agencia/SingletonSocket"
 # CDP só em 127.0.0.1 (a verificação do preparo aborta se ele aparecer em outro endereço).
-setsid "${SPHERUM_AS_XODO[@]}" /usr/local/bin/chromium \
+# umask 007: o que o navegador baixa fica com o grupo xodo (a pasta de downloads é do xodó).
+setsid "${SPHERUM_AS_NAV[@]}" sh -c 'umask 007; exec /usr/local/bin/chromium "$@"' chromium \
   --user-data-dir="$PERFIS/agencia" \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port="$SPHERUM_CDP_PORT" \
@@ -24,7 +26,7 @@ setsid "${SPHERUM_AS_XODO[@]}" /usr/local/bin/chromium \
   --window-position=0,0 --window-size=1280,800 about:blank \
   </dev/null >"$SPHERUM_LOG/navegador.log" 2>&1 &
 pid=$!
-printf '{"perfil": "agencia", "pid": %d}\n' "$pid" | "${SPHERUM_AS_XODO[@]}" tee "$PERFIS/.ativo.json" >/dev/null
+printf '{"perfil": "agencia", "pid": %d}\n' "$pid" | "${SPHERUM_AS_NAV[@]}" tee "$PERFIS/.ativo.json" >/dev/null
 if ! spherum_wait 150 spherum_port_open "$SPHERUM_CDP_PORT"; then
   echo "o navegador não abriu" >&2
   tail -c 2000 "$SPHERUM_LOG/navegador.log" >&2 || true

@@ -229,10 +229,15 @@ export class DaytonaProvider implements SandboxProvider {
     const ms = assertCount(timeoutMs, 600_000, "prazo do comando");
     if (cwd !== undefined) assertMachinePath(cwd);
     const nonce = randomBytes(12).toString("hex");
-    const errFile = `/tmp/spherum-err-${nonce}`;
-    const inFile = `/tmp/spherum-in-${nonce}`;
+    // Pasta 0700 por comando: a entrada e a saída de erro (de root, inclusive) não ficam à vista do xodo.
+    const dir = `/tmp/spherum-exec-${nonce}`;
+    const errFile = `${dir}/err`;
+    const inFile = `${dir}/in`;
     const marker = `__SPHERUM_STDERR_${nonce}__`;
-    if (stdin) await box.upload(stdin, inFile);
+    if (stdin) {
+      await box.exec(`mkdir -m 700 ${dir}`, 15);
+      await box.upload(stdin, inFile);
+    }
     const seconds = Math.ceil(ms / 1000);
     const body = cwd ? `cd -- ${shellQuote(cwd)} && ${script}` : script;
     const asUser =
@@ -240,12 +245,14 @@ export class DaytonaProvider implements SandboxProvider {
         ? `exec setpriv --reuid=xodo --regid=xodo --init-groups -- bash -c ${shellQuote(body)}`
         : `exec bash -c ${shellQuote(body)}`;
     const wrapper = [
+      `umask 077`,
+      stdin ? `[ -d ${dir} ] && [ ! -L ${dir} ] && [ -O ${dir} ] || exit 125` : `mkdir -m 700 ${dir} || exit 125`,
       `if [ "$(id -u)" -eq 0 ]; then as_root() { "$@"; }; else as_root() { sudo -n -- "$@"; }; fi`,
       `as_root timeout --kill-after=5 ${seconds} bash -c ${shellQuote(asUser)} <${stdin ? inFile : "/dev/null"} 2>${errFile}`,
       `rc=$?`,
       `printf '\\n%s\\n' ${marker}`,
       `base64 -w0 ${errFile} 2>/dev/null`,
-      `rm -f ${errFile} ${inFile}`,
+      `rm -rf ${dir}`,
       `exit $rc`,
     ].join("\n");
     let out: { exitCode: number; result: string };

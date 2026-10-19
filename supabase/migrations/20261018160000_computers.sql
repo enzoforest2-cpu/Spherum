@@ -160,3 +160,13 @@ grant select (id, agency_id, provider, credential_id, runtime_version, state, ge
               session_started_at, idle_ms, daily_hours_cap, egress_mode, screen_run_id, screen_expires_at, control_user_id,
               control_started_at, control_expires_at, control_run_id, error, created_at, updated_at)
   on public.computers to authenticated;
+
+-- Bucket privado dos arquivos do computador (anexos, uploads e downloads por URL assinada).
+-- Só existe no Supabase; fora dele (testes) o bloco não faz nada.
+do $$
+begin
+  if to_regclass('storage.buckets') is not null then
+    insert into storage.buckets (id, name, public) values ('computer-files', 'computer-files', false)
+      on conflict (id) do nothing;
+  end if;
+end $$;

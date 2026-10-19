@@ -549,11 +549,22 @@ test("preparo: xodo sem sudo, rede bloqueada por uid, CDP só em loopback e veri
     assert.ok(prep.includes(net), `falta ${net}`);
   }
   assert.match(prep, /--dports 25,465,587 -j REJECT/);
-  assert.match(prep, /-m owner --uid-owner "\$XUID" -j SPHERUM_XODO/);
+  assert.match(prep, /for uid in "\$XUID" "\$NUID"; do/);
+  assert.match(prep, /-m owner --uid-owner "\$uid" -j SPHERUM_XODO/);
+  // Loopback: CDP fechado para o xodo e agentes do provedor fechados para os dois, antes de liberar o lo.
+  const cdp = prep.indexOf('--dport 9222 -m owner --uid-owner "$XUID" -j REJECT');
+  const agents = prep.indexOf('-o lo -p tcp --dport "$p" -j REJECT');
+  const lo = prep.indexOf("-A SPHERUM_XODO -o lo -j RETURN");
+  assert.ok(cdp > 0 && agents > cdp && lo > agents, "bloqueios do loopback antes de liberar o lo");
   assert.match(prep, /iptables não funciona nesta máquina/);
   // Pastas do xodó com dono xodo.
   for (const dir of ["agencia", "clientes", "xodos", "downloads", ".lixeira"]) assert.ok(prep.includes(`"$SPHERUM_HOME/${dir}"`), dir);
-  assert.match(prep, /install -d -m 0700 -o "\$XUID" -g "\$XGID" "\$XODO_HOME\/\.perfis"/);
+  // Perfis do navegador só dele; downloads com o grupo do xodo; perfis antigos na casa do xodo saem.
+  assert.match(prep, /install -d -m 0700 -o "\$NUID" -g "\$NUID" "\$NAV_HOME" "\$NAV_HOME\/\.perfis"/);
+  assert.match(prep, /install -d -m 2770 -o "\$XUID" -g "\$XGID" "\$SPHERUM_HOME\/downloads"/);
+  assert.match(prep, /rm -rf -- "\$XODO_HOME\/\.perfis"/);
+  assert.match(prep, /o xodo lê os perfis do navegador/);
+  assert.match(prep, /strip_sudoers "\$NAV"/);
   // Sem terminal gráfico: menu só com o navegador e terminais trancados para o xodo.
   assert.match(prep, /\[exec\] \(Navegador\) \{\/usr\/local\/bin\/chromium\}/);
   assert.doesNotMatch(prep.split("cat >\"$ETC/fluxbox/menu\"")[1].split("EOF")[1], /xterm/);
@@ -569,9 +580,11 @@ test("preparo: xodo sem sudo, rede bloqueada por uid, CDP só em loopback e veri
   assert.ok(prep.indexOf("Verificação final") > prep.indexOf('"$BIN/spherum-start"'), "verifica depois de subir tudo");
 
   const tela = sandbox("bin/spherum-tela");
-  assert.match(tela, /Xvfb "\$SPHERUM_DISPLAY" -screen 0 1280x800x24 -ac -nolisten tcp/);
+  assert.match(tela, /Xvfb "\$SPHERUM_DISPLAY" -screen 0 1280x800x24 -auth "\$SPHERUM_XAUTH" -nolisten tcp/);
+  assert.doesNotMatch(tela, / -ac /, "a tela pede o cookie do X");
   assert.match(sandbox("bin/spherum-lib.sh"), /SPHERUM_DISPLAY=:20/);
-  assert.match(tela, /SPHERUM_AS_XODO\[@\]\}" Xvfb/, "a tela roda como xodo");
+  assert.match(tela, /SPHERUM_AS_NAV\[@\]\}" Xvfb/, "a tela roda como navegador");
+  assert.doesNotMatch(sandbox("bin/spherum-lib.sh").split("SPHERUM_AS_XODO=(")[1].split(")")[0], /DISPLAY/, "o xodo não recebe a tela");
   const nav = sandbox("bin/spherum-navegador");
   assert.match(nav, /--remote-debugging-address=127\.0\.0\.1/);
   assert.match(nav, /--remote-debugging-port="\$SPHERUM_CDP_PORT"/);
