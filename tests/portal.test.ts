@@ -4,6 +4,7 @@ import { before, test } from "node:test";
 import { createAgency } from "../src/lib/core/agencies";
 import { createClient } from "../src/lib/core/clients";
 import { clientPortal } from "../src/lib/core/client-portal";
+import { createReport, setReportStatus } from "../src/lib/core/reports";
 import { agencyPortal, goalGap, goalValue, initials, relative } from "../src/lib/core/portal";
 import { one, type Sql } from "../src/lib/xodos/db";
 import { createTestDb } from "./helpers";
@@ -125,4 +126,16 @@ test("portal do cliente: só quem é do cliente ou da agência vê; números por
   assert.equal((await clientPortal(sql, c.id, dona, NOW)).as, "agencia");
   await assert.rejects(clientPortal(sql, outro.id, marcelo, NOW), /Não encontrado/);
   await assert.rejects(clientPortal(sql, c.id, estranho, NOW), /Não encontrado/);
+});
+
+test("relatório feito na tela: rascunho não aparece no portal; publicado aparece", async () => {
+  const dona = await user(`dona-${randomUUID()}@exemplo.com`);
+  const { id: agencyId } = await createAgency(sql, dona, { name: "Agência Relatórios" });
+  const c = await createClient(sql, agencyId, dona, { name: "Cliente Relatório" });
+  const draft = await createReport(sql, agencyId, dona, { client_id: c.id, title: "Outubro", period_start: "2026-10-01", period_end: "2026-10-31", body_md: "# Outubro" });
+  assert.equal(draft.status, "draft");
+  assert.equal((await clientPortal(sql, c.id, dona, NOW)).reports.length, 0);
+  await setReportStatus(sql, agencyId, dona, draft.id, "published");
+  assert.deepEqual((await clientPortal(sql, c.id, dona, NOW)).reports.map((r) => r.title), ["Outubro"]);
+  await assert.rejects(createReport(sql, agencyId, dona, { client_id: c.id, title: "X", period_start: "2026-10-31", period_end: "2026-10-01" }), /fim do período/);
 });

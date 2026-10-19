@@ -482,6 +482,18 @@ a:hover{color:#3346D3;text-decoration:underline}
     <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto">
       <div style="max-width:1360px;margin:0 auto;padding:28px 32px 72px">
 
+        <sc-if value="{{ soon.show }}">
+          <section data-screen-label="Em breve" style="display:flex;flex-direction:column;gap:16px">
+            <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">{{ soon.title }}</h1></div>
+            <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:56px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+              <span style="width:48px;height:48px;border-radius:12px;background:rgba(70,95,255,0.10);color:#465FFF;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:26px">{{ soon.icon }}</span></span>
+              <div style="font-weight:600;font-size:16px;margin-top:4px">Este módulo está chegando</div>
+              <div style="max-width:460px;color:var(--tx2,#667085);font-size:13.5px;line-height:1.5">{{ soon.text }} Enquanto isso, nada aqui é de exemplo: quando o módulo abrir, ele já vem com os dados da sua agência.</div>
+              <button sc-camel-on-click="{{ soon.back }}" style="margin-top:8px;height:34px;padding:0 14px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500" style-hover="border-color:#465FFF;color:#465FFF">Voltar para a visão geral</button>
+            </div>
+          </section>
+        </sc-if>
+
         <sc-if value="{{ is.dashboard }}" hint-placeholder-val="{{ true }}">
           <sc-if value="{{ firstRun }}">
             <section data-screen-label="Primeiro acesso" style="max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
@@ -583,7 +595,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               </div>
 
               <div style="background:var(--sf,#fff);border:1px solid var(--cbd,transparent);border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 32px -16px rgba(16,24,40,.14);overflow:hidden">
-                <div style="display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">Operação</h2><span style="font-size:12.5px;color:var(--tx2,#667085)">Semana de 28 set a 04 out</span></div>
+                <div style="display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">Operação</h2><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ dash.weekL }}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
                   <sc-for list="{{ dash.ops }}" as="o" hint-placeholder-count="6">
                     <button sc-camel-on-click="{{ o.run }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:20px 22px;border:none;border-right:1px solid var(--bd,#E4E7EC);background:transparent;text-align:left" style-hover="background:var(--hv,#F9FAFB)">
@@ -622,7 +634,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   </div>
                   <div style="padding:10px 18px 14px;display:flex;flex-direction:column;gap:8px">
                     <svg sc-camel-view-box="0 0 600 140" sc-camel-preserve-aspect-ratio="none" style="width:100%;height:140px;display:block" aria-hidden="true"><defs><linearGradient id="spg-dash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#465FFF" stop-opacity=".26"></stop><stop offset="1" stop-color="#465FFF" stop-opacity="0"></stop></linearGradient></defs><path d="{{ dash.ch.prev }}" style="fill:none;stroke:#98A2B3;stroke-width:1.25;stroke-dasharray:3 3;vector-effect:non-scaling-stroke"></path><path d="{{ dash.ch.area }}" style="fill:url(#spg-dash);stroke:none"></path><path d="{{ dash.ch.line }}" style="fill:none;stroke:#465FFF;stroke-width:2.4;stroke-linecap:round;vector-effect:non-scaling-stroke"></path></svg>
-                    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx2,#667085);font-family:'Geist Mono',monospace"><span>30 ago</span><span>13 set</span><span>28 set</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx2,#667085);font-family:'Geist Mono',monospace"><span>{{ dash.ax0 }}</span><span>{{ dash.ax1 }}</span><span>{{ dash.ax2 }}</span></div>
                     <div style="display:flex;gap:16px;font-size:12px;color:var(--tx2,#667085);flex-wrap:wrap"><span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:2px;background:#465FFF"></span>Investimento diário</span><span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px dashed #98A2B3"></span>Período anterior</span></div>
                   </div>
                 </div>
@@ -1014,7 +1026,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                     <svg sc-camel-view-box="0 0 64 22" style="width:64px;height:22px" aria-hidden="true"><path d="{{ k.spLine }}" style="fill:none;stroke:{{ k.spC }};stroke-width:1.5"></path></svg>
                   </div>
                 </sc-for>
-                <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:12.5px;color:var(--tx2,#667085);flex-wrap:wrap"><span>Dados de demonstração. Conecte Meta Ads, Google Ads, TikTok Ads ou LinkedIn Ads para sincronizar.</span><button sc-camel-on-click="{{ camp.goInt }}" style="border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500;font-size:12.5px;padding:0">Ver integrações</button></div>
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:12.5px;color:var(--tx2,#667085);flex-wrap:wrap"><span>{{ camp.note }}</span><button sc-camel-on-click="{{ camp.goInt }}" style="border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500;font-size:12.5px;padding:0">Ver integrações</button></div>
               </div>
             </div>
           </section>
@@ -1278,7 +1290,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 
             <sc-if value="{{ fin.isDesp }}">
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
-                <div style="display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">Despesas de setembro</h2><span style="font-weight:600;font-variant-numeric:tabular-nums">R$ 28.220</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">{{ fin.expL }}</h2><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ fin.expTotal }}</span></div>
                 <sc-for list="{{ fin.exp }}" as="e"><div style="display:grid;grid-template-columns:minmax(0,1.6fr) 0.8fr minmax(0,1.2fr) 100px;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><div><div style="font-weight:500">{{ e.l }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ e.t }}</div></div><span style="color:var(--tx2,#667085)">{{ e.cat }}</span><div style="height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ e.w }};background:#98A2B3;border-radius:3px"></div></div><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">{{ e.v }}</span></div></sc-for>
               </div>
             </sc-if>
@@ -1287,7 +1299,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <div style="display:inline-flex;padding:3px;background:var(--sf2,#F2F4F7);border-radius:8px;gap:2px;flex-wrap:wrap"><sc-for list="{{ fin.filters }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.sel }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid {{ s.bd }};border-radius:6px;background:{{ s.bg }};color:{{ s.c }};box-shadow:{{ s.sh }};font-size:13px;font-weight:500">{{ s.l }}<span style="font-size:11.5px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ s.n }}</span></button></sc-for></div>
                 <div style="flex:1"></div>
-                <span style="font-size:12.5px;color:var(--tx2,#667085)">Registro manual · <button sc-camel-on-click="{{ fin.goInt }}" style="border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500;font-size:12.5px;padding:0">conectar gateway de pagamento</button></span>
+                <span style="font-size:12.5px;color:var(--tx2,#667085)">{{ fin.gwL }}<button sc-camel-on-click="{{ fin.goInt }}" style="border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500;font-size:12.5px;padding:0">{{ fin.gwBtn }}</button></span>
               </div>
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow-x:auto">
                 <div style="min-width:760px">
@@ -1390,7 +1402,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               </div>
             </sc-if>
             <sc-if value="{{ team.isWork }}">
-              <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid rgba(247,144,9,0.35);border-radius:10px;background:rgba(247,144,9,0.06);font-size:13.5px"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#B54708">balance</span><span>Rafael está com 91% da capacidade e 3 clientes em renovação. Redistribuir um cliente para Bia (47%) libera cerca de 12 tarefas por semana.</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid rgba(247,144,9,0.35);border-radius:10px;background:rgba(247,144,9,0.06);font-size:13.5px"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#B54708">balance</span><span>{{ team.tip }}</span></div>
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
                 <sc-for list="{{ team.rows }}" as="p"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px">
                   <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:12px;font-weight:600;display:grid;place-items:center">{{ p.ini }}</span><div style="flex:1"><div style="font-weight:600">{{ p.name }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ p.role }}</div></div><span style="font-size:12px;font-weight:500;color:{{ p.capC }}">{{ p.capL }}</span></div>
@@ -1465,7 +1477,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               <sc-for list="{{ sett.intg }}" as="g">
                 <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
                   <div style="padding:12px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-weight:600;font-size:13.5px">{{ g.g }}</div>
-                  <sc-for list="{{ g.items }}" as="i"><div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><span style="width:32px;height:32px;border-radius:8px;background:var(--sf2,#F2F4F7);border:1px solid var(--bd,#E4E7EC);display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ i.ini }}</span><div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13.5px">{{ i.l }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ i.d }}</div></div><span style="font-size:12px;color:var(--tx2,#667085)">Não conectado</span><sc-if value="{{ i.ready }}"><button sc-camel-on-click="{{ i.run }}" style="height:30px;padding:0 12px;border:1px solid var(--bd,#E4E7EC);border-radius:7px;background:var(--sf,#fff);font-size:12.5px;font-weight:500" style-hover="border-color:#465FFF;color:#465FFF">Conectar</button></sc-if><sc-if value="{{ i.soon }}"><span style="height:30px;padding:0 12px;border-radius:7px;background:var(--sf2,#F2F4F7);font-size:12.5px;color:var(--tx2,#667085);display:grid;place-items:center">Em breve</span></sc-if></div></sc-for>
+                  <sc-for list="{{ g.items }}" as="i"><div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><span style="width:32px;height:32px;border-radius:8px;background:var(--sf2,#F2F4F7);border:1px solid var(--bd,#E4E7EC);display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ i.ini }}</span><div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13.5px">{{ i.l }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ i.d }}</div></div><span style="font-size:12px;color:var(--tx2,#667085)">{{ i.st }}</span><sc-if value="{{ i.ready }}"><button sc-camel-on-click="{{ i.run }}" style="height:30px;padding:0 12px;border:1px solid var(--bd,#E4E7EC);border-radius:7px;background:var(--sf,#fff);font-size:12.5px;font-weight:500" style-hover="border-color:#465FFF;color:#465FFF">{{ i.btn }}</button></sc-if><sc-if value="{{ i.soon }}"><span style="height:30px;padding:0 12px;border-radius:7px;background:var(--sf2,#F2F4F7);font-size:12.5px;color:var(--tx2,#667085);display:grid;place-items:center">Em breve</span></sc-if></div></sc-for>
                 </div>
               </sc-for>
             </sc-if>
@@ -1512,7 +1524,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   </div>
                 </div></sc-for>
                 <div style="border-top:1px solid var(--bd,#EAECF0);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--sf2,#F9FAFB)">
-                  <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12.5px;color:var(--tx2,#667085)">Próxima fatura · 1 de novembro</span><span style="font-size:13.5px;font-variant-numeric:tabular-nums">{{ sett.ad.billL }}</span></div>
+                  <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ sett.nextBill }}</span><span style="font-size:13.5px;font-variant-numeric:tabular-nums">{{ sett.ad.billL }}</span></div>
                   <span style="font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ sett.ad.total }}</span>
                 </div>
               </div>
@@ -3428,6 +3440,8 @@ const IN_PROV = [
   { id: 'cal', n: 'Google Agenda', mono: 'C', c: '#1A73E8', d: 'Reuniões marcadas na prospecção', st: 'off', used: ['Prospecção'] },
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
+// Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
+const SP_SOON = { xodo: ['smart_toy', 'Os xodós já trabalham pelo Spherum; a tela para criar e acompanhar cada um está chegando.'], crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], messages: ['forum', 'Conversas com os clientes no portal.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3774,12 +3788,53 @@ class Component extends DCLogic {
     const ex = this.D.exClients || this.D.clients.map(c => Object.assign({}, c, { ex: 1 }));
     this.R = R;
     this.D = Object.assign({}, this.D, { exClients: ex, clients: R.clients, camps: R.camps, plat: R.plat, reports: R.reports, team: R.team, attention: R.attention, docs: (R.documents || []).map(d => this.spDoc(d)) });
-    if (init) return;
+    // Listas de exemplo dos módulos sem backend ficam vazias na conta real.
+    this.D.today = []; this.D.deals = []; this.D.projects = []; this.D.threads = []; this.D.invoices = [];
+    const invs = (R.invoices || []).map(i => this.spInv(i));
+    if (init) { Object.assign(this.state, { deals: [], projects: [], invs, checks: this.state.checks.map(() => false) }); return; }
+    this.setState({ invs });
     const has = id => R.clients.some(c => c.id === id), first = R.clients.length ? R.clients[0].id : null;
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
   spErr(e) { this.toastMsg((e && e.message) || 'Não deu certo agora. Tente de novo em instantes.'); }
-  exCl() { return this.D.exClients || this.D.clients; }
+  exCl() { return this.R ? [] : this.D.exClients || this.D.clients; }
+  // Fatura do servidor no formato da tela.
+  spInv(i) { const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], d = i.due_date.split('-');
+    const st = { pendente: 'Pendente', pago: 'Pago', vencido: 'Vencido', cancelado: 'Cancelado', estornado: 'Estornado' }[i.status] || i.status;
+    const m = i.paid_method === 'manual' ? 'Pago por fora' : (i.methods || []).length === 3 ? 'Pix, boleto ou cartão' : (i.methods || []).map(x => ({ pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão' }[x] || x)).join(', ');
+    return { id: i.id, client: i.client_id, desc: i.description, value: i.amount_cents / 100, due: d[2] + ' ' + MN[+d[1] - 1], dueISO: i.due_date, status: st, method: m, err: i.charge_error, url: i.payment_url, real: 1 }; }
+  async spInvAct(i, action) {
+    try { const r = await SP.api('/api/billing/invoices/' + i.id, { method: 'PATCH', body: { agency_id: this.spAg, action } }); await this.spLoad();
+      this.toastMsg(r.warning ? 'Não deu para gerar a cobrança: ' + r.warning : { cancelar: 'Fatura cancelada', marcar_pago: 'Pagamento registrado', reenviar: 'Cobrança gerada', atualizar: 'Status atualizado' }[action]); } catch (e) { this.spErr(e); } }
+  async spNewInvoice(g, money, fmtD) {
+    const meth = { Pix: ['pix'], Boleto: ['boleto'], 'Cartão': ['cartao'] }[g('method')] || ['pix', 'boleto', 'cartao'];
+    try {
+      const r = await SP.api('/api/billing/invoices', { method: 'POST', body: { agency_id: this.spAg, client_id: g('client'), description: String(g('desc')).trim(), amount: money(g('value')), due_date: g('due'), methods: meth, notes: g('notes') || undefined, monthly: g('rec') === 'Mensal' } });
+      this.setState({ dialog: null, formErr: {} }); await this.spLoad(); this.go('finance', { finTab: 'cobrancas', finFilter: 'Todas' });
+      this.toastMsg(r.warning ? 'Fatura criada, mas a cobrança não saiu: ' + r.warning : 'Cobrança criada: ' + 'R$ ' + money(g('value')).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' · vence ' + fmtD(g('due')));
+    } catch (e) { this.spErr(e); }
+  }
+  // Meios de pagamento da agência (Asaas, Mercado Pago, Stripe, Itaú).
+  spPay(id) { return (this.R.paymentAccounts || []).find(a => a.provider === id); }
+  async spPayConnect(id, label) {
+    let cat; try { cat = await SP.api('/api/billing/accounts?agency_id=' + this.spAg); } catch (e) { return this.spErr(e); }
+    const prov = cat.providers.find(p => p.id === id), cur = this.spPay(id);
+    const fields = prov.fields.map(f => ({ k: f.k, l: f.l + (f.optional ? '' : ''), type: f.multiline ? 'area' : 'text', req: f.optional ? 0 : 1, hint: f.hint || '', ph: f.secret && cur ? 'Deixe como está ou cole uma nova' : '' }));
+    if (id !== 'itau') fields.push({ k: 'env', l: 'Ambiente', type: 'pick', opts: [['producao', 'Produção', 'Cobranças de verdade'], ['teste', 'Teste', 'Sandbox, sem dinheiro de verdade']], req: 1 });
+    this.fm({ title: (cur ? 'Trocar a chave do ' : 'Conectar ') + label, desc: 'O dinheiro cai direto na conta da agência. A chave fica cifrada no Spherum e o cliente paga pelo portal.' + (cur ? ' Conectado hoje: ' + cur.label + '.' : ''), icon: 'account_balance', fields, init: { env: cur ? cur.environment : 'producao' }, okL: 'Conectar', busyL: 'Conferindo…',
+      ok: async v => { const credentials = {}; prov.fields.forEach(f => { if (v[f.k]) credentials[f.k] = String(v[f.k]); });
+        try { const r = await SP.api('/api/billing/accounts', { method: 'POST', body: { agency_id: this.spAg, provider: id, environment: v.env || 'producao', credentials } }); await this.spLoad();
+          this.toastMsg(r.warning ? label + ' conectado. ' + r.warning : label + ' conectado: ' + r.account.label); } catch (e) { this.spErr(e); } } });
+  }
+  spPayManage(id, label) { const cur = this.spPay(id); if (!cur) return this.spPayConnect(id, label);
+    const opts = [['key', 'Trocar a chave']].concat(cur.is_default ? [] : [['def', 'Cobrar por esta conta']]).concat([['off', 'Desconectar']]);
+    this.fm({ title: label + ' · ' + cur.label, desc: (cur.is_default ? 'É a conta que gera as cobranças novas.' : 'Conectada, mas as cobranças novas saem por outra conta.') + (cur.last_error ? ' Aviso: ' + cur.last_error : ''), icon: 'account_balance', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts, req: 1 }], init: { a: 'key' }, okL: 'Continuar',
+      ok: async v => { try { if (v.a === 'key') return this.spPayConnect(id, label);
+        if (v.a === 'def') { await SP.api('/api/billing/accounts/' + cur.id, { method: 'PATCH', body: { agency_id: this.spAg, is_default: true } }); await this.spLoad(); return this.toastMsg('As cobranças novas saem pelo ' + label); }
+        await SP.api('/api/billing/accounts/' + cur.id + '?agency_id=' + this.spAg, { method: 'DELETE' }); await this.spLoad(); this.toastMsg(label + ' desconectado'); } catch (e) { this.spErr(e); } } }); }
+  async spReport(c, title, from, to, body, publish) {
+    try { await SP.api('/api/reports', { method: 'POST', body: { agency_id: this.spAg, client_id: c.id, title, period_start: from, period_end: to, body_md: body, publish } }); await this.spLoad();
+      this.setState({ reportMode: 'list' }); this.toastMsg(publish ? 'Relatório publicado no portal do cliente' : 'Rascunho salvo'); } catch (e) { this.spErr(e); } }
   // Documentos: linha da tela, envio (URL assinada) e ações.
   spDoc(d) { const kb = d.size_bytes / 1024, ext = (d.name.match(/\.([a-z0-9]{1,5})$/i) || [])[1];
     return { id: d.id, name: d.name, client: d.client_id, cat: d.category, type: (ext || 'ARQ').toUpperCase(), size: kb < 1024 ? Math.max(1, Math.round(kb)) + ' KB' : (kb / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB',
@@ -3914,7 +3969,7 @@ class Component extends DCLogic {
       return { n: p.n, d: m ? p.d : p.d + ' · em breve', mono: p.mono, c: p.c, fg: p.fg || '#fff', stL: t[0], stBg: t[1], stC: t[2], bd: s === 'err' ? '#FECDCA' : 'var(--bd,#E4E7EC)',
         hasInfo: s === 'ok' || s === 'err', info: accts.length + (accts.length === 1 ? ' conta' : ' contas') + ' · ' + (conn ? conn.label : '') + ' · sincronizado ' + rel(last),
         hasMsg: s === 'err', msg: ((conn && conn.last_error) || 'O acesso venceu') + '. Os xodós e relatórios que usam esta conta estão parados.', msgBg: '#FEF3F2', msgC: '#B42318',
-        used: p.used, actL: s === 'off' ? 'Conectar' : s === 'busy' ? 'Conectando…' : s === 'ok' ? 'Sincronizar agora' : 'Reconectar', actBg: s === 'ok' ? 'var(--sf,#fff)' : '#465FFF', actC: s === 'ok' ? 'var(--tx,#101828)' : '#fff', actBd: s === 'ok' ? 'var(--bd,#D0D5DD)' : '#465FFF',
+        used: p.used.filter(u => !/^(Nina|Zuca|Faísca)$/.test(u)), actL: s === 'off' ? 'Conectar' : s === 'busy' ? 'Conectando…' : s === 'ok' ? 'Sincronizar agora' : 'Reconectar', actBg: s === 'ok' ? 'var(--sf,#fff)' : '#465FFF', actC: s === 'ok' ? 'var(--tx,#101828)' : '#fff', actBd: s === 'ok' ? 'var(--bd,#D0D5DD)' : '#465FFF',
         act: () => { if (s === 'busy') return; if (s === 'ok') { if (m[3]) this.spSync(p.id); else this.toastMsg(p.n + ' conectado'); return; } this.spConnect(p.id); }, canOff: s === 'ok', off: () => this.spOff(p.id) }; });
     const colPlat = { meta: 'meta', gads: 'google', ga4: 'ga4', tiktok: 'tiktok' };
     let full = 0;
@@ -3926,7 +3981,7 @@ class Component extends DCLogic {
           return { v: '+ Vincular', c: st({ meta: 'meta', gads: 'gads', ga4: 'ga4', tiktok: 'tiktok' }[col]) === 'ok' ? '#3538CD' : 'var(--tx2,#98A2B3)', bg: 'transparent', bd: 'transparent', pick: () => this.spLink(c, col, cn) }; }) }; });
     const okN = IN_PROV.filter(p => st(p.id) === 'ok').length, attn = IN_PROV.filter(p => st(p.id) === 'err').length;
     const last = (R.accounts || []).map(a => a.last_synced_at).filter(Boolean).sort().pop();
-    const tabs = this.tabsOf([['accts', 'Contas'], ['clients', 'Por cliente'], ['mcp', 'MCP e API'], ['log', 'Registro']], S.inTab, v => this.setState({ inTab: v })).map(t => Object.assign(t, { hasN: false }));
+    const tabs = this.tabsOf([['accts', 'Contas'], ['clients', 'Por cliente'], ['log', 'Registro']], S.inTab, v => this.setState({ inTab: v })).map(t => Object.assign(t, { hasN: false }));
     const log = (R.accounts || []).map(a => [rel(a.last_synced_at), (a.name || a.external_id) + ' · ' + a.platform, a.last_sync_error || (a.last_synced_at ? 'Sincronizado' : 'Aguardando a primeira sincronização'), a.last_sync_error ? '#F04438' : '#12B76A']);
     return { ig: { tabs, isAccts: S.inTab === 'accts', isClients: S.inTab === 'clients', isLog: S.inTab === 'log', isMcp: S.inTab === 'mcp', mcp: this.mcpV(), provs, rows, cols: IN_COLS.map(c => c[1]),
       kpis: spK([['Conectadas', okN + ' de ' + Object.keys(SP_IN).length], ['Precisam de atenção', String(attn), attn ? 'Reconecte para não perder dados' : 'Tudo em dia', attn ? '#D92D20' : '#079455'], ['Clientes com tudo vinculado', full + ' de ' + R.clients.length, 'Meta, Google e GA4'], ['Última sincronização', rel(last), 'automática todo dia']]),
@@ -4094,7 +4149,7 @@ class Component extends DCLogic {
       ['horizonte', 'Semanal', 'seg, 05 out', 'Agendado', 'Enviado 28 set · visualizado'], ['grao', 'Mensal', '01 out', 'Agendado', 'Enviado 01 set · visualizado']
     ].map((r, i) => ({ id: i, client: r[0], freq: r[1], next: r[2], status: r[3], last: r[4] }));
     const faq = [
-      ['Como conecto uma conta do Meta Ads?', 'Em Configurações → Integrações. As integrações com plataformas de anúncio estão em desenvolvimento; enquanto isso, você pode importar dados por planilha.'],
+      ['Como conecto uma conta do Meta Ads?', 'Em Integrações, clique em Conectar no Meta Ads e entre com a conta que gerencia os anúncios. Depois, na aba Por cliente, vincule cada conta de anúncio ao cliente dela.'],
       ['O cliente vê o CRM ou as tarefas internas?', 'Não. O portal do cliente mostra apenas performance, relatórios, documentos compartilhados, faturas dele e mensagens.'],
       ['Como a saúde do cliente é calculada?', 'É uma média ponderada de seis dimensões: performance vs meta, engajamento no portal, financeiro, operação, comunicação e entregas.'],
       ['Posso personalizar as etapas do CRM?', 'Sim. Em Configurações → Preferências você renomeia, reordena e cria etapas do funil.'],
@@ -4120,19 +4175,21 @@ class Component extends DCLogic {
     const cById = {}; (D.exClients || []).concat(D.clients).forEach(c => cById[c.id] = c);
     const cname = id => (cById[id] || {}).name || 'Interno';
 
-    const navItem = ([id, label, icon, badge]) => { const a = act === id; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
+    const navItem = ([id, label, icon, badge]) => { const a = act === id; if (this.R && SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
     const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', 3], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
       ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', (this.state.tcList || [1, 2, 3, 4]).filter(t => !t.st || t.st === 'open').length]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
       ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', 4], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
       .map(([label, items]) => { const GI = { Comercial: 'handshake', 'Operação': 'bolt', 'Análise': 'insights', 'Gestão': 'account_balance', Recursos: 'widgets' };
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
-        const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' ? x[3] : 0), 0);
+        const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' && !(this.R && SP_SOON[x[0]]) ? x[3] : 0), 0);
         return { label, items: items.map(navItem), hasHead: head, exp: exp ? 'true' : 'false', showItems: !head || exp, icon: GI[label] || 'folder', rot: exp ? '180deg' : '0deg',
           hbg: hasAct && !exp ? '#1F232B' : 'transparent', hc: hasAct ? '#FFFFFF' : '#A4ABB8', ic: hasAct ? '#8B9BFF' : '#7D8595', hasBadge: !exp && bsum > 0, badge: String(bsum),
           mg: head ? '1px 0 4px 19px' : '0', pl: head ? '8px' : '0', bl: head ? '1px solid #262A33' : 'none',
           toggle: () => this.setState(s => ({ navExp: Object.assign({}, s.navExp, { [label]: !exp }) })) }; });
     const titles = { dashboard: 'Visão geral', clients: 'Clientes', client: 'Clientes', onboarding: 'Clientes', crm: 'CRM', campaigns: 'Campanhas', projects: 'Projetos', performance: 'Performance', reports: 'Relatórios', finance: 'Financeiro', messages: 'Mensagens', documents: 'Documentos', team: 'Equipe', settings: 'Configurações', xodo: 'Xodós', prospect: 'Prospecção', proposals: 'Propostas', content: 'Conteúdo', roi: 'Retorno', integrations: 'Integrações', profit: 'Rentabilidade', fiscal: 'Notas e cobranças', risk: 'Radar de risco', aivis: 'Busca por IA', studio: 'Estúdio', auto: 'Automações', forms: 'Formulários', sched: 'Agendamentos', tickets: 'Chamados', publish: 'Publicar', chat: 'Chat da equipe', academy: 'Academy', badges: 'Conquistas', dre: 'DRE', score: 'Pontuação de leads', contracts: 'Contratos', minutes: 'Atas', app: 'App de celular' };
     const is = {}; Object.keys(titles).forEach(k => is[k] = S.view === k);
+    const soonDef = this.R && SP_SOON[S.view]; if (soonDef) is[S.view] = false;
+    const soon = { show: !!soonDef, title: titles[S.view] || '', icon: soonDef ? soonDef[0] : '', text: soonDef ? soonDef[1] : '', back: () => this.go('dashboard') };
 
     // clients
     const clAll = D.clients.concat(D.exClients || []).map(c => {
@@ -4196,7 +4253,11 @@ class Component extends DCLogic {
       fin: { totalF: brl(ftot), paidF: brl(paid), pendF: brl(pend), overF: brl(over), pW: paid / ftot * 100 + '%', nW: pend / ftot * 100 + '%', oW: over / ftot * 100 + '%',
         next: invs.filter(i => i.status === 'Vencido' || i.status === 'Pendente').slice(0, 4) }
     };
+    Object.assign(dash, { weekL: 'Semana de 28 set a 04 out', ax0: '30 ago', ax1: '13 set', ax2: '28 set' });
     if (this.R) {
+      const MNs = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], dl = t => String(t.getUTCDate()).padStart(2, '0') + ' ' + MNs[t.getUTCMonth()];
+      const pe = new Date(this.R.period.to + 'T12:00:00Z'), now0 = new Date(), wk0 = new Date(Date.UTC(now0.getFullYear(), now0.getMonth(), now0.getDate() - ((now0.getDay() + 6) % 7)));
+      Object.assign(dash, { weekL: 'Semana de ' + dl(wk0) + ' a ' + dl(new Date(wk0.getTime() + 6 * 864e5)), ax0: dl(new Date(pe.getTime() - 29 * 864e5)), ax1: dl(new Date(pe.getTime() - 15 * 864e5)), ax2: dl(pe) });
       const K = this.R.kpis, cpa = (s, r) => r ? s / r : 0, roas = (v, s) => s ? v / s : 0, pT = (D.plat[0] && D.plat[0][1]) || 1;
       dash.kpis[0] = Object.assign({}, dash.kpis[0], { v: brl(K.mrr), d: '', s: 'mensalidades dos clientes', run: () => this.go('clients') }, sp([K.mrr, K.mrr]));
       dash.kpis[1] = Object.assign({}, dash.kpis[1], { v: String(K.activeClients), d: '', s: 'na carteira' }, sp([K.activeClients, K.activeClients]));
@@ -4205,6 +4266,17 @@ class Component extends DCLogic {
       dash.pm = [Object.assign({ l: 'Investimento', v: kf(K.spend.cur) }, this.spD(K.spend.cur, K.spend.prev)), Object.assign({ l: 'Conversões', v: n0(K.results.cur) }, this.spD(K.results.cur, K.results.prev)),
         Object.assign({ l: 'CPA médio', v: a ? brl2(a) : '—' }, this.spD(a, b, 1)), { l: 'ROAS médio', v: r1 ? f2(r1) + 'x' : '—', d: r1 && r0 ? (r1 >= r0 ? '↑ ' : '↓ ') + f1(Math.abs(r1 - r0)) + 'x' : '', dc: r1 >= r0 ? '#079455' : '#D92D20' }];
       dash.plat = D.plat.map((p, i) => ({ name: p[0], w: p[1] / pT * 100 + '%', op: 1 - i * 0.22, spendF: kf(p[1]), cpaF: p[2] ? brl2(p[1] / p[2]) : '—' }));
+      const ym = new Date().toISOString().slice(0, 7), mon = invs.filter(i => (i.dueISO || '').slice(0, 7) === ym);
+      const sumR = (l, st) => l.filter(i => i.status === st).reduce((t, i) => t + i.value, 0), rPaid = sumR(mon, 'Pago'), rPend = sumR(mon, 'Pendente'), rOver = sumR(invs, 'Vencido'), rTot = (rPaid + rPend + rOver) || 1;
+      dash.kpis[3] = Object.assign({}, dash.kpis[3], { l: 'A receber', v: brl(sumR(invs, 'Pendente') + rOver), d: rOver ? brl(rOver) + ' vencido' : '', dc: '#D92D20', s: 'faturas em aberto', run: () => this.go('finance', { finTab: 'cobrancas' }) }, sp([1, 1]));
+      dash.fin = { totalF: brl(rPaid + rPend + rOver), paidF: brl(rPaid), pendF: brl(rPend), overF: brl(rOver), pW: rPaid / rTot * 100 + '%', nW: rPend / rTot * 100 + '%', oW: rOver / rTot * 100 + '%', next: invs.filter(i => i.status === 'Vencido' || i.status === 'Pendente').slice(0, 4) };
+      const noAcct = cl.filter(c => !this.R.accounts.some(a => a.client_id === c.id)).length;
+      dash.ops = [{ icon: 'receipt_long', l: 'Faturas vencidas', n: invs.filter(i => i.status === 'Vencido').length, s: brl(rOver), c: '#D92D20', run: () => this.go('finance', { finTab: 'cobrancas', finFilter: 'Vencido' }) },
+        { icon: 'payments', l: 'Faturas em aberto', n: invs.filter(i => i.status === 'Pendente').length, s: brl(sumR(invs, 'Pendente')), c: 'var(--tx,#101828)', run: () => this.go('finance', { finTab: 'cobrancas', finFilter: 'Pendente' }) },
+        { icon: 'lab_profile', l: 'Relatórios em rascunho', n: D.reports.filter(r => r.status === 'Rascunho').length, s: 'para revisar', c: '#B54708', run: () => this.go('reports') },
+        { icon: 'ads_click', l: 'Campanhas em atenção', n: cp.filter(c => c.att).length, s: 'acima do CPA alvo', c: '#D92D20', run: () => this.go('campaigns', { campView: 'Com problema' }) },
+        { icon: 'link_off', l: 'Clientes sem conta de anúncio', n: noAcct, s: 'vincule em Integrações', c: 'var(--tx,#101828)', run: () => this.go('integrations', { inTab: 'clients' }) },
+        { icon: 'folder_open', l: 'Documentos', n: D.docs.length, s: 'na agência', c: 'var(--tx,#101828)', run: () => this.go('documents') }];
     }
 
     // first run
@@ -4259,18 +4331,19 @@ class Component extends DCLogic {
       Object.assign({}, T('green'), { icon: 'payments', title: 'Pagamento recebido — Construtora Pilar', meta: 'R$ 7.200 via boleto', when: 'ontem', cat: 'Financeiro', run: () => this.go('finance', { finTab: 'receitas' }) }),
       Object.assign({}, T('gray'), { icon: 'visibility', title: 'Marcelo Pilar visualizou o relatório de agosto', meta: 'Relatório · 4ª visualização', when: 'ontem', cat: 'Relatório', run: () => this.go('reports') }),
       Object.assign({}, T('amber'), { icon: 'account_balance', title: 'Pet Mundo está a 8% do limite de orçamento', meta: 'Campanha · Catálogo Dinâmico', when: 'ontem', cat: 'Campanha', run: () => this.go('campaigns') }),
-      Object.assign({}, T('red'), { icon: 'error', title: 'NF 0485 retornou erro na prefeitura', meta: 'Financeiro · CNPJ do tomador divergente', when: 'sex', cat: 'Financeiro', run: () => this.go('finance', { finTab: 'notas' }) })]);
+      Object.assign({}, T('red'), { icon: 'error', title: 'NF 0485 retornou erro na prefeitura', meta: 'Financeiro · CNPJ do tomador divergente', when: 'sex', cat: 'Financeiro', run: () => this.go('finance', { finTab: 'notas' }) })].filter(() => !this.R));
     const nt = ['Tudo', 'Campanha', 'Cliente', 'Financeiro', 'Projeto', 'CRM'];
     const notif = { tabs: nt.map(t => ({ l: t, pick: () => this.setState({ notifTab: t }), bg: S.notifTab === t ? 'var(--tx,#101828)' : 'var(--sf,#fff)', c: S.notifTab === t ? 'var(--sf,#fff)' : 'var(--tx,#101828)', bd: S.notifTab === t ? 'var(--tx,#101828)' : 'var(--bd,#E4E7EC)' })),
       items: notifAll.filter(n => S.notifTab === 'Tudo' || n.cat === S.notifTab) };
     const aiQs = [['Quais clientes estão com pior performance?', 'performance', {}, 'Performance por cliente'], ['Qual cliente apresenta maior risco de churn?', 'clients', { clientsView: 'Em risco' }, 'Clientes em risco'],
       ['Quais campanhas aumentaram CPA essa semana?', 'campaigns', { campView: 'Com problema' }, 'Campanhas que precisam de atenção'], ['Quanto tenho a receber este mês?', 'finance', { finTab: 'cobrancas' }, 'Cobranças em aberto'],
       ['Quais projetos estão atrasados?', 'projects', { projView: 'timeline' }, 'Linha do tempo dos projetos'], ['Quais leads estão sem contato?', 'crm', {}, 'Funil do CRM']];
-    const ai = { brief: ['Clínica Aurora: CPL +27% e fatura vencida — maior risco de churn da carteira (saúde 54/100).', 'Relatório semanal da Loja Verano sai às 18:00 sem comentário do gestor.', 'Black Friday 2026 tem 3 tarefas vencidas; entrega em 8 dias.', 'R$ 8.400 vencidos em duas cobranças; R$ 8.500 vencem até quarta.', 'Rede Açaí da Praia está há 3 dias sem follow-up no CRM.'],
-      qs: aiQs.map((x, i) => ({ q: x[0], bd: S.aiQ === i ? '#465FFF' : 'var(--bd,#E4E7EC)', ask: () => this.setState({ aiQ: i }) })), asked: S.aiQ != null,
-      followLabel: S.aiQ != null ? aiQs[S.aiQ][3] + ' →' : '', follow: () => S.aiQ != null && this.go(aiQs[S.aiQ][1], aiQs[S.aiQ][2]) };
+    const aiR = this.R ? aiQs.filter(q => !SP_SOON[q[1]]) : aiQs;
+    const ai = { brief: this.R ? (D.attention.length ? D.attention.slice(0, 5).map(a => a.client + ': ' + a.title + '.') : ['Nada pedindo atenção agora.']) : ['Clínica Aurora: CPL +27% e fatura vencida — maior risco de churn da carteira (saúde 54/100).', 'Relatório semanal da Loja Verano sai às 18:00 sem comentário do gestor.', 'Black Friday 2026 tem 3 tarefas vencidas; entrega em 8 dias.', 'R$ 8.400 vencidos em duas cobranças; R$ 8.500 vencem até quarta.', 'Rede Açaí da Praia está há 3 dias sem follow-up no CRM.'],
+      qs: aiR.map((x, i) => ({ q: x[0], bd: S.aiQ === i ? '#465FFF' : 'var(--bd,#E4E7EC)', ask: () => this.setState({ aiQ: i }) })), asked: S.aiQ != null,
+      followLabel: S.aiQ != null && aiR[S.aiQ] ? aiR[S.aiQ][3] + ' →' : '', follow: () => S.aiQ != null && aiR[S.aiQ] && this.go(aiR[S.aiQ][1], aiR[S.aiQ][2]) };
     const hq = S.helpQ.trim().toLowerCase();
-    const help = { q: S.helpQ, onQ: e => this.setState({ helpQ: e.target.value }), ticket: () => { this.closeAll(); this.toastMsg('Chamado aberto · #4821'); },
+    const help = { q: S.helpQ, onQ: e => this.setState({ helpQ: e.target.value }), ticket: () => { this.closeAll(); if (this.R) { try { window.open('mailto:suporte@spherum.com.br?subject=' + encodeURIComponent('Ajuda · ' + this.R.agency.name)); } catch (e) {} return this.toastMsg('Escreva para suporte@spherum.com.br'); } this.toastMsg('Chamado aberto · #4821'); },
       items: D.faq.map((f, i) => ({ q: f[0], a: f[1], i })).filter(f => !hq || (f.q + f.a).toLowerCase().indexOf(hq) >= 0).map(f => ({ q: f.q, a: f.a, open: S.faq === f.i, icon: S.faq === f.i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === f.i ? -1 : f.i }) })) };
 
     // dialogs
@@ -4297,7 +4370,7 @@ class Component extends DCLogic {
         ['Projeto', [F('name', 'Nome do projeto', 'text', { req: 1, span: 2, ph: 'Ex.: Campanha de Natal' }), F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('owner', 'Responsável', 'select', { opts: teamN, def: 'João Silva' }), F('start', 'Início', 'date', { def: '2026-09-28' }), F('due', 'Prazo', 'date', { req: 1 }), F('prio', 'Prioridade', 'chips', { opts: ['Alta', 'Média', 'Baixa'], def: 'Média', span: 2 }), F('tags', 'Etiquetas', 'chips', { opts: ['Campanha', 'Criativos', 'Landing page', 'Relatório', 'Tracking', 'Estratégia', 'Conteúdo'], multi: 1, span: 2 })]],
         ['Detalhes', [F('pb', 'Criar a partir de', 'select', { opts: ['Projeto em branco', 'Playbook de nova campanha', 'Playbook de relatório mensal', 'Playbook de onboarding'], def: 'Projeto em branco', span: 2, help: 'O playbook cria as tarefas, os prazos e os responsáveis' }), F('desc', 'Descrição', 'textarea', { span: 2, ph: 'Escopo, entregáveis e links úteis' })]]] },
       cobranca: { title: 'Nova cobrança', eyebrow: 'Financeiro', desc: 'Gera uma cobrança ligada ao cliente.', cta: 'Criar cobrança', sections: [
-        ['Cobrança', [F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('value', 'Valor', 'money', { req: 1, ph: '1.500,00' }), F('desc', 'Descrição', 'text', { req: 1, span: 2, ph: 'Ex.: Produção de criativos de outubro' }), F('due', 'Vencimento', 'date', { req: 1, def: '2026-10-10' }), F('method', 'Forma de pagamento', 'select', { opts: ['Pix', 'Boleto', 'Cartão'], def: 'Pix' }), F('rec', 'Recorrência', 'chips', { opts: ['Avulsa', 'Mensal'], def: 'Avulsa', span: 2 })]],
+        ['Cobrança', [F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('value', 'Valor', 'money', { req: 1, ph: '1.500,00' }), F('desc', 'Descrição', 'text', { req: 1, span: 2, ph: 'Ex.: Produção de criativos de outubro' }), F('due', 'Vencimento', 'date', { req: 1, def: this.R ? new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10) : '2026-10-10' }), F('method', 'Forma de pagamento', 'select', { opts: this.R ? ['Cliente escolhe', 'Pix', 'Boleto', 'Cartão'] : ['Pix', 'Boleto', 'Cartão'], def: this.R ? 'Cliente escolhe' : 'Pix' }), F('rec', 'Recorrência', 'chips', { opts: ['Avulsa', 'Mensal'], def: 'Avulsa', span: 2 })]],
         ['Ao criar', [F('remind', 'Enviar lembretes automáticos', 'toggle', { def: true, span: 2, help: '3 dias antes, no dia e 2 dias após o vencimento' }), F('nf', 'Emitir nota fiscal após o pagamento', 'toggle', { def: false, span: 2, help: 'Usa os dados fiscais cadastrados do cliente' }), F('notes', 'Observações', 'textarea', { span: 2, ph: 'Aparece para o cliente na fatura' })]]] }
     };
     const dg = S.dialog; let dlg = { open: !!dg, w: '560px' };
@@ -4339,6 +4412,7 @@ class Component extends DCLogic {
           else if (dg === 'projeto') { const di = v => { const p = (v || '2026-09-28').split('-').map(Number); return p[1] === 9 ? p[2] : p[1] === 10 ? 30 + p[2] : p[1] < 9 ? 1 : 45; }; const s0 = di(g('start')), e0 = Math.max(di(g('due')), s0);
             const np = { id: 100 + S.projects.length, name: g('name'), client: g('client'), owner: g('owner'), status: 'todo', prio: g('prio'), due: fmtD(g('due')), progress: 0, tags: Object.keys(g('tags') || {}).filter(t => g('tags')[t]), start: s0, end: e0, late: false };
             this.setState(s => ({ dialog: null, formErr: {}, projects: s.projects.concat([np]) })); this.go('projects', { projView: 'list' }); this.toastMsg('Projeto criado: ' + np.name); }
+          else if (dg === 'cobranca' && this.R) { this.spNewInvoice(g, money, fmtD); }
           else if (dg === 'cobranca') { const ni = { id: 100 + S.invs.length, client: g('client'), desc: g('desc'), value: money(g('value')), due: fmtD(g('due')), status: 'Pendente', method: g('method') };
             this.setState(s => ({ dialog: null, formErr: {}, invs: s.invs.concat([ni]) })); this.go('finance', { finTab: 'cobrancas', finFilter: 'Todas' }); this.toastMsg('Cobrança criada: ' + brl(ni.value) + ' · vence ' + ni.due); }
           else if (dg === 'cliente' && this.R) { this.spNewClient(g, money); }
@@ -4358,7 +4432,7 @@ class Component extends DCLogic {
       openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => this.setState({ drawer: 'notif' }), openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
       closeAll: () => this.closeAll(),
       toggleTheme: () => this.setState(s => ({ theme: (s.theme || P.theme || 'light') === 'dark' ? 'light' : 'dark' })), themeIcon: (S.theme || P.theme || 'light') === 'dark' ? 'light_mode' : 'dark_mode',
-      is, firstRun: !!P.firstRun || !!(this.R && !this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (this.R && !this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R ? ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '') : 'Proprietário', agIni: this.R ? this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() : 'MP', agSub: this.R ? ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas') : 'Escala · 6 pessoas',
+      is, soon, firstRun: !!P.firstRun || !!(this.R && !this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (this.R && !this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R ? ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '') : 'Proprietário', agIni: this.R ? this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() : 'MP', agSub: this.R ? ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas') : 'Escala · 6 pessoas',
       setup: { steps: setupSteps, doneN: setupN, pctW: setupN / 7 * 100 + '%' }, newClient: () => openForm('cliente'),
       goProjCal: () => this.go('projects', { projView: 'calendar' }), goClientsRisk: () => this.go('clients', { clientsView: 'Em risco' }), goPerf: () => this.go('performance'), goFin: () => this.go('finance'),
       cmd, drawer, notif, ai, help, dlg, toast: { show: !!S.toast, msg: S.toast || '', hasUndo: !!S.toastU, undo: () => { const u = this._undo; this._undo = null; clearTimeout(this.tt); this.setState({ toast: null, toastU: false }); if (u) u(); } }, fm: this.fmV(),
@@ -4367,7 +4441,7 @@ class Component extends DCLogic {
   }
 
 
-  xoPlan() { const p = SP_PLANS.find(p => p.id === (this.state.planOv || this.props.plan || 'escala')) || SP_PLANS[2], x = this.state.xoExtra || 0, q = this.state.adOn || {}, rk = SP_PLANS.indexOf(p);
+  xoPlan() { const p = SP_PLANS.find(p => p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala')) || SP_PLANS[2], x = this.state.xoExtra || 0, q = this.state.adOn || {}, rk = SP_PLANS.indexOf(p);
     const ax = rk < 4 ? (q.xodo || 0) : 0, xn = p.xn === 99 ? 99 : p.xn + ax, cr = 0;
     return xn !== p.xn || cr !== p.cr ? Object.assign({}, p, { xn, cr }) : p; }
   xoBots() { return XO_BOTS.slice(0, Math.min(3, this.xoPlan().xn)); }
@@ -4903,6 +4977,7 @@ class Component extends DCLogic {
       steps[0] = ['Conectar as contas de anúncio', ads > 0, ads ? ads + (ads === 1 ? ' plataforma conectada' : ' plataformas conectadas') : 'Meta Ads, Google Ads ou TikTok', steps[0][3]];
       steps[1] = ['Vincular as contas a cada cliente', R.clients.length > 0 && linked === R.clients.length, linked + ' de ' + R.clients.length + ' clientes com conta vinculada', steps[1][3]];
       steps[2] = ['Importar os clientes', R.clients.length > 0, R.clients.length + (R.clients.length === 1 ? ' cliente cadastrado' : ' clientes cadastrados'), () => R.clients.length ? this.go('clients') : this.setState({ dialog: 'cliente', form: {} })];
+      steps[3] = ['Criar o primeiro xodó', false, 'Chega com a tela de Xodós', steps[3][3]]; steps[4] = ['Instalar o app no celular', false, 'Em breve', steps[4][3]];
       steps[5] = ['Ligar as vendas dos clientes', false, 'Em breve', steps[5][3]]; }
     const doneN = steps.filter(s => s[1]).length;
     const onb = { show: !S.onbHide && doneN < steps.length, sub: doneN + ' de ' + steps.length + ' passos concluídos', w: doneN / steps.length * 100 + '%', hide: () => this.setState({ onbHide: true }),
@@ -5090,14 +5165,17 @@ class Component extends DCLogic {
   }
 
   vBrand() {
+    if (!this._brLoaded && this.R && !this.R.loading) this._brLoaded = 1;
     if (!this._brLoaded) { this._brLoaded = 1; try { const sv = JSON.parse(localStorage.getItem('spherum.brand') || 'null'); if (sv) Object.assign(this.state, { brand: sv.brand, brLogo: sv.logo, brName: sv.name, brOnClient: sv.onClient, brOnAgency: sv.onAgency, brSide: sv.side, powered: sv.powered }); } catch (e) {} }
-    const S = this.state, plan = this.xoPlan(), rank = ['solo', 'agencia', 'escala', 'rede', 'empresarial'].indexOf(plan.id), slug = S.brSlug != null ? S.brSlug : 'marketingpro';
+    const S = this.state, plan = this.xoPlan(), rank = ['solo', 'agencia', 'escala', 'rede', 'empresarial'].indexOf(plan.id), slug = S.brSlug != null ? S.brSlug : this.R ? this.R.agency.slug || 'agencia' : 'marketingpro';
     const best = rank >= 2 ? 'own' : rank >= 1 ? 'sub' : 'app', cur = S.brDom && ({ app: 0, sub: 1, own: 2 })[S.brDom] <= rank ? S.brDom : best;
     const D = [['app', 'app.spherum.com.br/' + slug, 'Endereço padrão, com a marca Spherum', 0, 'Todos os planos'], ['sub', slug + '.spherum.com.br', 'Subdomínio com o nome da sua agência', 1, 'A partir do Agência'], ['own', 'portal.' + slug + '.com.br', 'Seu próprio domínio, sem “spherum” no endereço', 2, 'A partir do Escala']];
     const urlOf = id => D.find(d => d[0] === id)[1];
     const dnsOk = !!S.brDnsOk;
     const hexOk = h => /^#[0-9a-f]{6}$/i.test(h || '');
-    const bc = hexOk(S.brand) ? S.brand : '#465FFF', bName = S.brName != null ? S.brName : 'Marketing Pro', logo = S.brLogo || '';
+    const bc = hexOk(S.brand) ? S.brand : this.R && hexOk(this.R.agency.brand_color) ? this.R.agency.brand_color : '#465FFF', bName = S.brName != null ? S.brName : this.R ? this.R.agency.name : 'Marketing Pro', logo = S.brLogo || '';
+    // Conta real: a cor vai para a agência (o portal do cliente usa a do servidor).
+    if (this.R && !this.R.loading && hexOk(S.brand) && S.brand !== this.R.agency.brand_color) { this.R.agency.brand_color = S.brand; clearTimeout(this._bcT); this._bcT = setTimeout(() => SP.api('/api/agencies/' + this.spAg, { method: 'PATCH', body: { brand_color: S.brand } }).catch(e => this.spErr(e)), 800); }
     const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
     const fgOf = h => { const c = rgb(h); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) > 160 ? '#101828' : '#FFFFFF'; };
     const dark = h => { const c = rgb(h); return 'rgb(' + c.map(v => Math.round(v * 0.32 + 11 * 0.68)).join(',') + ')'; };
@@ -5798,7 +5876,8 @@ class Component extends DCLogic {
     const crows = x.cp.filter(cv[S.campView]).filter(k => !cq || (k.name + k.clientName).toLowerCase().indexOf(cq) >= 0);
     const camp = { views: this.segOf(Object.keys(cv).map(k => [k, k, x.cp.filter(cv[k]).length]), S.campView, set('campView')), rows: crows, count: crows.length,
       q: S.campQ, onQ: e => this.setState({ campQ: e.target.value }), totSpend: x.brl(crows.reduce((s, k) => s + k.spend, 0)), totConv: x.n0(crows.reduce((s, k) => s + k.conv, 0)),
-      goInt: () => this.go('settings', { setTab: 'integrations' }), newCamp: () => this.setState({ dialog: 'campanha', form: {} }) };
+      note: this.R ? (this.R.accounts.length ? 'Dados das contas vinculadas, atualizados todo dia. Para criar ou pausar campanhas, use o gerenciador da plataforma ou peça a um xodó.' : 'Nenhuma conta de anúncio vinculada ainda. Conecte Meta Ads, Google Ads ou TikTok Ads e vincule cada conta ao cliente.') : 'Dados de demonstração. Conecte Meta Ads, Google Ads, TikTok Ads ou LinkedIn Ads para sincronizar.',
+      goInt: () => this.go(this.R ? 'integrations' : 'settings', this.R ? { inTab: 'accts' } : { setTab: 'integrations' }), newCamp: () => this.R ? this.go('integrations', { inTab: 'accts' }) : this.setState({ dialog: 'campanha', form: {} }) };
     // Performance
     const ps = this.perfSeries(S.perfMetric, S.perfPeriod);
     const fmtM = v => S.perfMetric === 'invest' || S.perfMetric === 'receita' ? x.brl(v) : S.perfMetric === 'cpa' ? x.brl2(v) : S.perfMetric === 'roas' ? x.f2(v) + 'x' : x.n0(v);
@@ -5900,6 +5979,23 @@ class Component extends DCLogic {
         send: () => { const ch = S.rChan || 'Portal do cliente'; this.toastMsg(ch === 'WhatsApp' ? 'Envio por WhatsApp chega com a integração' : ch === 'PDF' ? 'PDF gerado' : ch === 'E-mail' ? 'Relatório enviado por e-mail' : 'Relatório publicado no portal do cliente'); },
         schedule: () => this.fm({ title: 'Agendar envio do relatório', desc: 'O relatório é gerado com os dados mais recentes e enviado sozinho.', icon: 'schedule_send', fields: [{ k: 'f', l: 'Frequência', type: 'pick', opts: ['Semanal', 'Quinzenal', 'Mensal'], req: 1 }, { k: 'd', l: 'Quando', type: 'pick', opts: ['Segunda, 8h', 'Sexta, 17h', '1º dia útil, 8h'], req: 1 }, { k: 'to', l: 'Para', req: 1, emails: 1, ph: 'cliente@empresa.com, socio@empresa.com', hint: 'Separe vários e-mails por vírgula' }], init: { f: S.rFreq || 'Mensal', d: '1º dia útil, 8h', to: 'carolina@clinicaaurora.com.br' }, okL: 'Agendar', ok: v => { const old = S.rFreq; this.setState({ rFreq: v.f }); this.toastMsg('Envio ' + v.f.toLowerCase() + ' agendado · ' + v.d, () => { this.setState({ rFreq: old }); this.toastMsg('Agendamento desfeito'); }); } }), copyLink: () => this.copyTxt('https://marketingpro.spherum.com.br/r/' + Math.random().toString(36).slice(2, 8), 'Link do relatório copiado')
       });
+      if (this.R && !c.ex) {
+        const ck = cc.reduce((t, k) => t + (k.clicks || 0), 0), im = cc.reduce((t, k) => t + (k.impressions || 0), 0), pr = this.R.period, dt = d => d.split('-').reverse().join('/');
+        const real = { Investimento: x.brl(sp), Leads: x.n0(cv), CPL: cv ? x.brl2(sp / cv) : '—', 'Conversões': x.n0(cv), ROAS: rv && sp ? x.f2(rv / sp) + 'x' : '—', CTR: im ? x.f2(ck / im * 100) + '%' : '—', CPM: im ? x.brl2(sp / im * 1000) : '—', Receita: rv ? x.brl(rv) : '—' };
+        rep.pv = Object.keys(S.rMet).filter(k => S.rMet[k]).map(k => ({ l: k, v: real[k], d: '', dc: '#079455' }));
+        rep.period = dt(pr.from) + ' a ' + dt(pr.to) + ' · últimos 30 dias';
+        rep.done = []; rep.next = []; rep.insights = [];
+        rep.comment = S.rComment != null ? S.rComment : '';
+        rep.schedule = () => this.toastMsg('O envio agendado chega em breve. Os xodós já publicam relatórios em rotina.');
+        rep.send = () => { const title = 'Relatório · ' + dt(pr.from) + ' a ' + dt(pr.to), sec = S.rSec;
+          const md = ['# ' + title, '', sec.resumo ? '## Resumo\n\n' + rep.summary + '\n' : '', sec.kpis ? '## Principais métricas\n\n' + rep.pv.map(m => '- **' + m.l + ':** ' + m.v).join('\n') + '\n' : '',
+            sec.canais && rep.channels.length ? '## Performance por canal\n\n' + rep.channels.map(ch => '- **' + ch.p + ':** ' + ch.s + ' investidos, ' + ch.v + ' resultados').join('\n') + '\n' : '',
+            sec.campanhas && cc.length ? '## Campanhas\n\n' + cc.slice(0, 10).map(k => '- **' + k.name + '** (' + k.plat + '): ' + x.brl(k.spend) + ', ' + x.n0(k.conv) + ' resultados').join('\n') + '\n' : '',
+            sec.comentario && rep.comment.trim() ? '## Comentário do gestor\n\n' + rep.comment.trim() + '\n' : ''].filter(Boolean).join('\n');
+          const ch = S.rChan || 'Portal do cliente';
+          if (ch === 'PDF') return this.spReport(c, title, pr.from, pr.to, md, false);
+          this.spReport(c, title, pr.from, pr.to, md, true); };
+      }
     }
     return { proj, rep };
   }
@@ -5910,13 +6006,24 @@ class Component extends DCLogic {
     const ff = S.finFilter || 'Todas';
     const inv = x.invs.map(i => Object.assign({}, i, { canAct: i.status === 'Vencido' || i.status === 'Pendente',
       remind: () => this.fm({ title: 'Lembrar ' + i.clientName, desc: 'Um lembrete gentil da fatura, com o link de pagamento.', icon: 'notifications_active', fields: [{ k: 'ch', l: 'Enviar por', type: 'pick', opts: ['WhatsApp', 'E-mail'], req: 1 }, { k: 'msg', l: 'Mensagem', type: 'area', req: 1, min: 15 }], init: { ch: 'WhatsApp', msg: 'Oi! Passando para lembrar da fatura da Marketing Pro. O link de pagamento está aqui embaixo. Qualquer coisa, é só me chamar.' }, okL: 'Enviar lembrete', wait: 600, ok: v => this.toastMsg('Lembrete enviado para ' + i.clientName + ' por ' + v.ch, () => this.toastMsg('Lembrete cancelado')) }),
-      pay: () => { this.setState(s => ({ invs: s.invs.map(v => v.id === i.id ? Object.assign({}, v, { status: 'Pago' }) : v) })); this.toastMsg('Pagamento registrado · ' + i.valueF); } }));
+      pay: () => { if (i.real) return this.fm({ title: 'Registrar pagamento', desc: i.clientName + ' · ' + i.desc + ' · ' + i.valueF + '. Use quando o cliente pagou por fora (transferência, dinheiro). O link de pagamento deixa de valer.', icon: 'payments', fields: [], okL: 'Registrar pagamento', ok: () => this.spInvAct(i, 'marcar_pago') });
+        this.setState(s => ({ invs: s.invs.map(v => v.id === i.id ? Object.assign({}, v, { status: 'Pago' }) : v) })); this.toastMsg('Pagamento registrado · ' + i.valueF); } }));
+    if (this.R) inv.forEach(i => { const link = location.origin + '/cliente';
+      const remind = () => this.fm({ title: 'Lembrar ' + i.clientName, desc: 'Copie a mensagem e mande pelo canal que o cliente usa. O cliente paga pelo portal.', icon: 'notifications_active', fields: [{ k: 'msg', l: 'Mensagem', type: 'area', req: 1, min: 15 }],
+        init: { msg: 'Oi! Passando para lembrar da fatura "' + i.desc + '" de ' + i.valueF + ', com vencimento em ' + i.due + '. Dá para pagar por Pix, boleto ou cartão no portal: ' + link }, okL: 'Copiar mensagem', ok: v => this.copyTxt(v.msg, 'Mensagem copiada') });
+      i.remind = () => { const opts = [['lembrar', 'Mandar um lembrete', 'Copia uma mensagem pronta com o link do portal']].concat(i.url ? [['link', 'Copiar o link de pagamento', 'Link do meio de pagamento']] : [])
+          .concat([[i.url ? 'atualizar' : 'reenviar', i.url ? 'Conferir o status agora' : 'Gerar a cobrança no meio de pagamento', i.err ? 'Último erro: ' + i.err : i.url ? 'Pergunta ao meio de pagamento se já foi pago' : 'Cria o link de Pix, boleto e cartão'], ['cancelar', 'Cancelar a fatura', 'Também cancela no meio de pagamento']]);
+        this.fm({ title: i.desc + ' · ' + i.valueF, desc: i.clientName + ' · vence ' + i.due + (i.err ? ' · a cobrança não saiu: ' + i.err : ''), icon: 'receipt_long', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts, req: 1 }], init: { a: 'lembrar' }, okL: 'Continuar',
+          ok: v => v.a === 'lembrar' ? remind() : v.a === 'link' ? this.copyTxt(i.url, 'Link de pagamento copiado') : this.spInvAct(i, v.a) }); }; });
     const nf = [['NF 0482', 'pilar', 7200, '05 set', 'Emitida', ''], ['NF 0483', 'verano', 6500, '10 set', 'Emitida', ''], ['NF 0484', 'petmundo', 4200, '10 set', 'Emitida', ''],
       ['NF 0485', 'odonto', 3200, '12 set', 'Erro', 'CNPJ do tomador divergente'], ['NF 0486', 'vida', 3600, '03 set', 'Pendente', 'Aguardando dados fiscais'], ['NF 0481', 'lumen', 900, '20 ago', 'Cancelada', 'Serviço cancelado']]
       .map(n => { const t = n[4] === 'Emitida' ? T('green') : n[4] === 'Erro' ? T('red') : n[4] === 'Pendente' ? T('amber') : T('gray'); return { num: n[0], client: x.cname(n[1]), v: x.brl(n[2]), date: n[3], st: n[4], note: n[5] || '—', c: t.c, bg: t.bg, isErr: n[4] === 'Erro' || n[4] === 'Pendente', fix: () => { if (n[4] === 'Erro') { this.toastMsg('Reenviando a nota para a prefeitura…'); clearTimeout(this._fxT); this._fxT = setTimeout(() => this.toastMsg('Nota autorizada pela prefeitura'), 1500); return; } this.fm({ title: 'Pedir dados ao cliente', desc: 'O cliente recebe um formulário curto para completar os dados da nota.', icon: 'mail', fields: [{ k: 'what', l: 'O que está faltando', type: 'multi', opts: ['CNPJ', 'Endereço', 'Inscrição municipal', 'E-mail do financeiro'], req: 1, reqMsg: 'Escolha pelo menos um item' }, { k: 'msg', l: 'Mensagem', type: 'area', req: 1, min: 10 }], init: { what: ['Inscrição municipal'], msg: 'Olá! Para emitir a nota fiscal deste mês, precisamos completar alguns dados.' }, okL: 'Enviar pedido', ok: v => this.toastMsg('Pedido enviado: ' + v.what.join(', '), () => this.toastMsg('Pedido cancelado')) }); } }; });
     const cf = [['abr', 39.8, 24.1], ['mai', 41.2, 25.0], ['jun', 43.5, 25.8], ['jul', 44.1, 26.9], ['ago', 44.6, 27.4], ['set', 48.2, 28.2]].map(m => ({ m: m[0], inH: m[1] / 50 * 150 + 'px', outH: m[2] / 50 * 150 + 'px', net: 'R$ ' + x.f1(m[1] - m[2]) + ' mil' }));
     const sumS = st => inv.filter(i => i.status === st).reduce((s, i) => s + i.value, 0); const paidS = sumS('Pago'), pendS = sumS('Pendente'), overS = sumS('Vencido');
+    const payAcc = this.R && (this.R.paymentAccounts || []).find(a => a.is_default);
     const fin = {
+      expL: 'Despesas de setembro', expTotal: 'R$ 28.220',
+      gwL: this.R ? (payAcc ? 'Cobrando pelo ' + ({ asaas: 'Asaas', mercadopago: 'Mercado Pago', stripe: 'Stripe', itau: 'Itaú' }[payAcc.provider]) + (payAcc.environment === 'teste' ? ' (teste)' : '') + ' · ' : 'Sem pagamento online · ') : 'Registro manual · ', gwBtn: this.R && payAcc ? 'gerenciar meio de pagamento' : 'conectar gateway de pagamento',
       tabs: this.tabsOf([['overview', 'Visão geral'], ['receitas', 'Receitas'], ['despesas', 'Despesas'], ['cobrancas', 'Cobranças', inv.filter(i => i.status === 'Vencido').length], ['notas', 'Notas fiscais']], S.finTab, set('finTab')),
       isOverview: S.finTab === 'overview', isRec: S.finTab === 'receitas', isDesp: S.finTab === 'despesas', isCob: S.finTab === 'cobrancas', isNf: S.finTab === 'notas',
       kpis: [['Receita', x.brl(paidS + pendS + overS), 'faturado no mês', 'var(--tx2,#667085)'], ['Recebido', x.brl(paidS), inv.filter(i => i.status === 'Pago').length + ' faturas pagas', '#079455'], ['A receber', x.brl(pendS), 'vence até 10 out', 'var(--tx2,#667085)'], ['Vencido', x.brl(overS), inv.filter(i => i.status === 'Vencido').length + ' faturas', '#D92D20'], ['Despesas', 'R$ 28.220', '↑ 2,9% vs agosto', 'var(--tx2,#667085)'], ['Resultado', 'R$ 20.020', 'margem de 41,5%', '#079455']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
@@ -5928,10 +6035,24 @@ class Component extends DCLogic {
         ['Ferramentas (Spherum, design, edição)', 'Software', 1240, 'Recorrente'], ['Contabilidade', 'Serviços', 890, 'Recorrente']].map(e => ({ l: e[0], cat: e[1], v: x.brl(e[2]), w: e[2] / 18400 * 100 + '%', t: e[3] })),
       newCharge: () => this.setState({ dialog: 'cobranca', form: {} }), goInt: () => this.go('settings', { setTab: 'integrations' })
     };
+    if (this.R) {
+      const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], now = new Date(), months = [];
+      for (let k = 5; k >= 0; k--) { const d = new Date(now.getFullYear(), now.getMonth() - k, 1); months.push([d.toISOString().slice(0, 7), MN[d.getMonth()]]); }
+      const recM = months.map(m => inv.filter(i => i.status === 'Pago' && (i.dueISO || '').slice(0, 7) === m[0]).reduce((t, i) => t + i.value, 0)), top = Math.max(1, ...recM);
+      fin.cf = months.map((m, k) => ({ m: m[1], inH: recM[k] / top * 150 + 'px', outH: '0px', net: x.brl(recM[k]) }));
+      const ym = now.toISOString().slice(0, 7), mon = inv.filter(i => (i.dueISO || '').slice(0, 7) === ym), sumM = st => mon.filter(i => i.status === st).reduce((t, i) => t + i.value, 0);
+      fin.kpis = [['Faturado no mês', x.brl(sumM('Pago') + sumM('Pendente') + sumM('Vencido')), mon.length + ' faturas com vencimento no mês', 'var(--tx2,#667085)'], ['Recebido no mês', x.brl(sumM('Pago')), mon.filter(i => i.status === 'Pago').length + ' faturas pagas', '#079455'],
+        ['A receber', x.brl(pendS), inv.filter(i => i.status === 'Pendente').length + ' faturas em aberto', 'var(--tx2,#667085)'], ['Vencido', x.brl(overS), inv.filter(i => i.status === 'Vencido').length + ' faturas', '#D92D20'],
+        ['Mensalidades ativas', String((this.R.recurrences || []).filter(r => r.active).length), x.brl((this.R.recurrences || []).filter(r => r.active).reduce((t, r) => t + r.amount_cents / 100, 0)) + ' por mês', 'var(--tx2,#667085)'], ['Despesas', '—', 'controle de despesas em breve', 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] }));
+      fin.nf = []; fin.exp = []; fin.expL = 'Despesas'; fin.expTotal = 'Controle de despesas em breve';
+      const recBy = {}; (this.R.recurrences || []).forEach(r => { if (r.active) recBy[r.client_id] = r; });
+      fin.contracts = x.cl.map(c => Object.assign({}, c, { plan: recBy[c.id] ? recBy[c.id].description : 'Sem mensalidade automática', dueDay: recBy[c.id] ? 'dia ' + recBy[c.id].day_of_month : '—' }));
+      fin.goInt = () => this.go('settings', { setTab: 'integrations' });
+    }
     // messages
     const th = D.threads.map(t => { const a = S.threadId === t.id; return Object.assign({}, t, { clientName: x.cname(t.client), last: (S.sent[t.id] || []).length ? S.sent[t.id][S.sent[t.id].length - 1] : t.msgs[t.msgs.length - 1][3],
       bg: a ? 'var(--sf2,#F2F4F7)' : 'transparent', hasUnread: t.unread > 0 && !a, pick: () => this.setState({ threadId: t.id, draft: '' }) }); });
-    const at = th.find(t => t.id === S.threadId) || th[0]; const ac = x.clById[at.client];
+    const at = th.find(t => t.id === S.threadId) || th[0] || { id: 0, client: '', msgs: [] }; const ac = x.clById[at.client];
     const msg = { threads: th, t: at, c: ac,
       msgs: at.msgs.map(m => ({ me: m[0] === 'me', them: m[0] !== 'me', who: m[1], when: m[2], text: m[3] })).concat((S.sent[at.id] || []).map(s => ({ me: true, them: false, who: 'João Silva', when: 'agora', text: s }))),
       draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }),
@@ -5943,10 +6064,10 @@ class Component extends DCLogic {
     const docs = { cats: this.segOf(cats.map(c => [c, c, c === 'Todos' ? D.docs.length : D.docs.filter(d => d.cat === c).length]), S.docCat, set('docCat')),
       rows: D.docs.filter(d => S.docCat === 'Todos' || d.cat === S.docCat).map((d, i) => Object.assign({}, d, { clientName: d.real && !d.client ? 'Interno' : x.cname(d.client), shared: d.sharedL || (d.cat !== 'Financeiro' || i % 2 === 0 ? 'Visível ao cliente' : 'Interno'), open: () => this.spDocMenu(d) })),
       approvals: [['Criativos outubro v2', 'Clínica Aurora', 'Aguardando cliente', 'amber', 'Enviado há 2 dias'], ['Landing page Implantes', 'Odonto Prime', 'Alterações solicitadas', 'red', '“Trocar foto do topo e ajustar preço”'], ['Copy Black Friday · estáticos', 'Loja Verano', 'Aprovado', 'green', 'Aprovado por Fernanda Luz · hoje']]
-        .map(a => Object.assign({ t: a[0], c: a[1], st: a[2], note: a[4] }, T(a[3]))),
+        .filter(() => !this.R).map(a => Object.assign({ t: a[0], c: a[1], st: a[2], note: a[4] }, T(a[3]))),
       upload: () => this.R ? this.fm({ title: 'Enviar arquivo', desc: 'O arquivo fica na pasta do cliente e pode ser compartilhado no portal.', icon: 'upload_file', fields: [{ k: 'file', l: 'Arquivo', type: 'file', req: 1, reqMsg: 'Escolha um arquivo', maxMb: 50, hint: 'Até 50 MB' }, { k: 'cl', l: 'Cliente', type: 'pick', opts: [['int', 'Interno da agência']].concat(this.D.clients.map(c => [c.id, c.name])), req: 1 }, { k: 'folder', l: 'Pasta', type: 'pick', opts: ['Contratos', 'Briefings', 'Relatórios', 'Criativos', 'Notas fiscais', 'Outros'], req: 1 }, { k: 'share', l: 'Visível no portal do cliente?', type: 'pick', opts: ['Sim', 'Não'], req: 1 }], init: { cl: 'int', folder: 'Criativos', share: 'Não' }, okL: 'Enviar', ok: v => this.spUpload(v) }) : this.fm({ title: 'Enviar arquivo', desc: 'O arquivo fica na pasta do cliente e pode ser compartilhado no portal.', icon: 'upload_file', fields: [{ k: 'file', l: 'Arquivo', type: 'file', req: 1, reqMsg: 'Escolha um arquivo', maxMb: 20, hint: 'Até 20 MB' }, { k: 'folder', l: 'Pasta', type: 'pick', opts: ['Contratos', 'Relatórios', 'Criativos', 'Notas fiscais'], req: 1 }, { k: 'share', l: 'Visível no portal do cliente?', type: 'pick', opts: ['Sim', 'Não'], req: 1 }], init: { folder: 'Criativos', share: 'Não' }, okL: 'Enviar', busyL: 'Enviando…', wait: 900, ok: v => { const did = 'up' + Date.now(); this.setState(s => ({ upDocs: (s.upDocs || []).concat([{ id: did, n: v.file.name, folder: v.folder, share: v.share === 'Sim' }]) })); this.toastMsg(v.file.name + ' enviado para ' + v.folder, () => { this.setState(s => ({ upDocs: (s.upDocs || []).filter(x => x.id !== did) })); this.toastMsg('Arquivo removido'); }); } }) };
     // team
-    const team = { sub: this.R ? D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : '') : '6 pessoas · capacidade média de 64%', tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
+    const team = { tip: this.R ? 'A carga de cada pessoa aparece quando os projetos e as tarefas chegarem ao Spherum. Por enquanto, a coluna Clientes mostra de quem cada um é responsável.' : 'Rafael está com 91% da capacidade e 3 clientes em renovação. Redistribuir um cliente para Bia (47%) libera cerca de 12 tarefas por semana.', sub: this.R ? D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : '') : '6 pessoas · capacidade média de 64%', tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
       rows: D.team.map(p => Object.assign({}, p, { capW: p.cap + '%', capC: p.cap >= 85 ? '#F04438' : p.cap >= 70 ? '#F79009' : '#17B26A', capL: p.cap >= 85 ? 'Carga alta' : p.cap >= 70 ? 'Carga moderada' : 'Disponível', clientsL: p.clients ? p.clients + ' clientes' : '—' })),
       invite: () => this.fm({ title: 'Convidar para a equipe', desc: 'A pessoa recebe um e-mail para criar a senha. O acesso segue a função escolhida.', icon: 'person_add', fields: [{ k: 'n', l: 'Nome', req: 1, min: 3 }, { k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@marketingpro.com.br', check: s => ((this.state.teamInv || []).some(p => p.mail === (s || '').toLowerCase())) ? 'Essa pessoa já foi convidada' : '' }, { k: 'role', l: 'Função', type: 'pick', opts: ['Admin', 'Gestor de tráfego', 'Designer', 'Atendimento', 'Financeiro'], req: 1 }], init: { role: 'Gestor de tráfego' }, okL: 'Enviar convite', wait: 700, ok: v => { if (this.R) { this.spInvite(v); return; } const pid = 'iv' + Date.now(), mail = v.mail.trim().toLowerCase(); this.setState(s => ({ teamInv: (s.teamInv || []).concat([{ id: pid, n: v.n.trim(), mail, role: v.role }]) })); this.toastMsg('Convite enviado para ' + mail, () => { this.setState(s => ({ teamInv: (s.teamInv || []).filter(x => x.id !== pid) })); this.toastMsg('Convite cancelado'); }); } }),
       roles: [['Proprietário', 'Total', 'Total', 'Total', 'Total', 'Total', 'Total'], ['Admin', 'Total', 'Total', 'Total', 'Total', 'Total', 'Editar'], ['Gestor de tráfego', 'Editar', 'Editar', 'Editar', 'Editar', 'Ver', '—'], ['Analista de mídia', 'Ver', '—', 'Editar', 'Editar', '—', '—'],
@@ -5954,20 +6075,28 @@ class Component extends DCLogic {
         .map(r => ({ role: r[0], cells: r.slice(1).map(v => ({ v, c: v === '—' ? 'var(--tx2,#98A2B3)' : v === 'Total' ? '#465FFF' : 'var(--tx,#101828)', fw: v === 'Total' ? '600' : '400' })) })),
       mods: ['Clientes', 'CRM', 'Campanhas', 'Projetos', 'Financeiro', 'Configurações'] };
     // settings
-    const intg = [['Anúncios', [['Meta Ads', 'Campanhas, gasto e conversões'], ['Google Ads', 'Pesquisa, PMax, YouTube'], ['TikTok Ads', 'Campanhas e Spark Ads'], ['LinkedIn Ads', 'Campanhas B2B'], ['Pinterest Ads', 'Em breve'], ['Microsoft Ads', 'Em breve']]],
+    const intgReal = this.R && [['Anúncios', [['meta', 'Meta Ads', 'Campanhas, gasto e conversões'], ['gads', 'Google Ads', 'Pesquisa, PMax, YouTube'], ['tiktok', 'TikTok Ads', 'Campanhas e Spark Ads'], [null, 'LinkedIn Ads', 'Em breve']]],
+      ['Analytics', [['ga4', 'Google Analytics 4', 'Receita e conversões atribuídas'], [null, 'Google Tag Manager', 'Em breve']]],
+      ['Recebimento dos clientes', [['$asaas', 'Asaas', 'Pix, boleto e cartão na mesma fatura'], ['$mercadopago', 'Mercado Pago', 'Pix, cartão e boleto pelo Checkout'], ['$stripe', 'Stripe', 'Cartão (e Pix e boleto, se a conta liberar)'], ['$itau', 'Itaú', 'Pix com vencimento pela API do banco (precisa de certificado)']]],
+      ['Comunicação', [[null, 'WhatsApp Business', 'Em breve'], [null, 'E-mail (SMTP próprio)', 'Em breve']]]]
+      .map(g => ({ g: g[0], items: g[1].map(i => { const pay = i[0] && i[0][0] === '$' ? i[0].slice(1) : null, acc = pay && this.spPay(pay), ok = pay ? !!acc : i[0] ? this.spInSt(i[0]) === 'ok' : false;
+        return { l: i[1], d: acc ? acc.label + (acc.environment === 'teste' ? ' · teste' : '') + (acc.is_default ? ' · cobranças novas saem por aqui' : '') : i[2], ini: i[1].split(' ').map(w => w[0]).join('').slice(0, 2), soon: !i[0], ready: !!i[0], st: !i[0] ? '' : ok ? 'Conectado' : 'Não conectado', btn: ok ? 'Gerenciar' : 'Conectar',
+          run: () => pay ? this.spPayManage(pay, i[1]) : this.go('integrations', { inTab: 'accts' }) }; }) }));
+    const intg = intgReal || [['Anúncios', [['Meta Ads', 'Campanhas, gasto e conversões'], ['Google Ads', 'Pesquisa, PMax, YouTube'], ['TikTok Ads', 'Campanhas e Spark Ads'], ['LinkedIn Ads', 'Campanhas B2B'], ['Pinterest Ads', 'Em breve'], ['Microsoft Ads', 'Em breve']]],
       ['Analytics', [['Google Analytics 4', 'Receita e conversões atribuídas'], ['Google Tag Manager', 'Validação de tags no onboarding']]],
       ['Financeiro', [['Asaas', 'Boleto, Pix e cartão recorrente'], ['Stripe', 'Cartão e assinaturas'], ['Pagar.me', 'Boleto, Pix e cartão'], ['Mercado Pago', 'Pix e cartão']]],
       ['Comunicação', [['WhatsApp Business', 'Relatórios, cobranças, lembretes e aprovações · em breve'], ['E-mail (SMTP próprio)', 'Envio com o domínio da agência']]]]
-      .map(g => ({ g: g[0], items: g[1].map(i => ({ l: i[0], d: i[1], ini: i[0].split(' ').map(w => w[0]).join('').slice(0, 2), soon: i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0, ready: !(i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0), run: () => this.fm({ title: i[0] + ': lista de espera', desc: 'Essa integração está em construção. Avisamos por e-mail no dia em que liberar.', icon: 'notifications', fields: [{ k: 'mail', l: 'E-mail para avisar', req: 1, email: 1 }], init: { mail: 'joao@marketingpro.com.br' }, okL: 'Entrar na lista', ok: v => this.toastMsg('Combinado: avisamos ' + v.mail.trim() + ' quando o ' + i[0] + ' liberar') }) })) }));
+      .map(g => ({ g: g[0], items: g[1].map(i => ({ l: i[0], d: i[1], ini: i[0].split(' ').map(w => w[0]).join('').slice(0, 2), soon: i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0, ready: !(i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0), st: 'Não conectado', btn: 'Conectar', run: () => this.fm({ title: i[0] + ': lista de espera', desc: 'Essa integração está em construção. Avisamos por e-mail no dia em que liberar.', icon: 'notifications', fields: [{ k: 'mail', l: 'E-mail para avisar', req: 1, email: 1 }], init: { mail: 'joao@marketingpro.com.br' }, okL: 'Entrar na lista', ok: v => this.toastMsg('Combinado: avisamos ' + v.mail.trim() + ' quando o ' + i[0] + ' liberar') }) })) }));
     const brandColors = ['#465FFF', '#0E9384', '#C4320A', '#101828'];
-    const sett = { tabs: this.tabsOf([['workspace', 'Empresa'], ['integrations', 'Integrações'], ['brand', 'Marca e portais'], ['plan', 'Plano e cobrança'], ['pipeline', 'Preferências']], S.setTab, set('setTab')),
+    const sett = { nextBill: this.R ? 'Próxima fatura · 1 de ' + ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][(new Date().getMonth() + 1) % 12] : 'Próxima fatura · 1 de novembro', tabs: this.tabsOf([['workspace', 'Empresa'], ['integrations', 'Integrações'], ['brand', 'Marca e portais'], ['plan', 'Plano e cobrança'], ['pipeline', 'Preferências']], S.setTab, set('setTab')),
       isWs: S.setTab === 'workspace', isBrand: S.setTab === 'brand', isInt: S.setTab === 'integrations', isPipe: S.setTab === 'pipeline', isPlan: S.setTab === 'plan', intg, ad: S.setTab === 'plan' ? this.vAdAg() : {},
-      wsFields: [['Nome da agência', 'Marketing Pro'], ['CNPJ', '42.118.905/0001-37'], ['E-mail de faturamento', 'financeiro@marketingpro.com.br'], ['Fuso horário', 'America/Sao_Paulo (GMT−3)'], ['Moeda', 'Real brasileiro (R$)'], ['Início do mês fiscal', 'Dia 1']].map(f => ({ l: f[0], v: f[1] })),
+      wsFields: (this.R ? [['Nome da agência', this.R.agency.name], ['CNPJ', this.R.agency.cnpj ? this.R.agency.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'], ['Telefone', this.R.agency.phone || '—'], ['Site', this.R.agency.website || '—'], ['Cidade', [this.R.agency.city, this.R.agency.state].filter(Boolean).join(' · ') || '—'], ['Fuso horário', this.R.agency.timezone || 'America/Sao_Paulo']]
+        : [['Nome da agência', 'Marketing Pro'], ['CNPJ', '42.118.905/0001-37'], ['E-mail de faturamento', 'financeiro@marketingpro.com.br'], ['Fuso horário', 'America/Sao_Paulo (GMT−3)'], ['Moeda', 'Real brasileiro (R$)'], ['Início do mês fiscal', 'Dia 1']]).map(f => ({ l: f[0], v: f[1] })),
       colors: brandColors.map(c => ({ c, ring: (S.brand || '#465FFF') === c ? '0 0 0 2px var(--sf,#fff), 0 0 0 4px ' + c : 'none', pick: () => this.setState({ brand: c }) })), brand: S.brand || '#465FFF',
       powered: S.powered !== false, pwBg: S.powered !== false ? '#465FFF' : 'var(--bd,#D0D5DD)', pwX: S.powered !== false ? '14px' : '2px', togglePowered: () => this.setState(s => ({ powered: s.powered === false })),
       stages: ['Novo lead', 'Contato realizado', 'Diagnóstico', 'Proposta enviada', 'Negociação', 'Fechado', 'Perdido'].map((s, i) => ({ s, p: [10, 20, 35, 50, 70, 100, 0][i] + '%' })),
-      plans: SP_PLANS.map(p => { const cur = p.id === (this.state.planOv || this.props.plan || 'escala'); const ci = SP_PLANS.findIndex(q => q.id === this.xoPlan().id), pi = SP_PLANS.findIndex(q => q.id === p.id); return { canSwitch: !cur, swL: p.id === 'empresarial' ? 'Falar com vendas' : pi > ci ? 'Fazer upgrade' : 'Mudar para este plano', sw: () => p.id === 'empresarial' ? this.toastMsg('Nosso time comercial fala com você em até 1 dia útil') : this.setState({ planModal: p.id }), n: p.n, d: p.d, x: p.x, xc: p.xn ? 'var(--tx,#101828)' : 'var(--tx2,#667085)', xw: p.xn ? '#EF5B3B' : 'var(--tx2,#98A2B3)', s: cur ? 'Plano atual · ' + p.price : p.price, cur, bd: cur ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: cur ? 'rgba(70,95,255,0.04)' : 'var(--sf,#fff)' }; }),
-      usage: [['Clientes', 23, 100], ['Usuários', 6, 30], ['Relatórios automáticos', 8, 60], ['Armazenamento', 12, 50]].concat(this.xoPlan().xn ? [['Xodós', Math.min(3, this.xoPlan().xn), this.xoPlan().xn === 99 ? 'ilimitados' : this.xoPlan().xn], ...(this.xoPlan().cr === 0 ? [] : [['Créditos xodó (R$)', Math.round(this.xoMonth()), this.xoPlan().cr || 'sob medida']])] : []).map(u => ({ l: u[0], v: u[1] + ' de ' + u[2] + (u[0] === 'Armazenamento' ? ' GB' : ''), w: (typeof u[2] === 'number' ? Math.min(100, u[1] / u[2] * 100) : 8) + '%' })),
+      plans: SP_PLANS.map(p => { const cur = p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala'); const ci = SP_PLANS.findIndex(q => q.id === this.xoPlan().id), pi = SP_PLANS.findIndex(q => q.id === p.id); return { canSwitch: !cur, swL: p.id === 'empresarial' ? 'Falar com vendas' : pi > ci ? 'Fazer upgrade' : 'Mudar para este plano', sw: () => p.id === 'empresarial' ? this.toastMsg('Nosso time comercial fala com você em até 1 dia útil') : this.setState({ planModal: p.id }), n: p.n, d: p.d, x: p.x, xc: p.xn ? 'var(--tx,#101828)' : 'var(--tx2,#667085)', xw: p.xn ? '#EF5B3B' : 'var(--tx2,#98A2B3)', s: cur ? 'Plano atual · ' + p.price : p.price, cur, bd: cur ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: cur ? 'rgba(70,95,255,0.04)' : 'var(--sf,#fff)' }; }),
+      usage: (this.R ? [['Clientes', this.R.clients.length, 100], ['Usuários', this.R.team.length, 30], ['Relatórios', this.R.reports.length, 60], ['Armazenamento', Math.round((this.R.documents || []).reduce((t, d) => t + d.size_bytes, 0) / 1e9 * 10) / 10, 50]] : [['Clientes', 23, 100], ['Usuários', 6, 30], ['Relatórios automáticos', 8, 60], ['Armazenamento', 12, 50]]).concat(this.xoPlan().xn ? [['Xodós', Math.min(3, this.xoPlan().xn), this.xoPlan().xn === 99 ? 'ilimitados' : this.xoPlan().xn], ...(this.xoPlan().cr === 0 ? [] : [['Créditos xodó (R$)', Math.round(this.xoMonth()), this.xoPlan().cr || 'sob medida']])] : []).map(u => ({ l: u[0], v: u[1] + ' de ' + u[2] + (u[0] === 'Armazenamento' ? ' GB' : ''), w: (typeof u[2] === 'number' ? Math.min(100, u[1] / u[2] * 100) : 8) + '%' })),
       save: () => { this.toastMsg('Salvando…'); clearTimeout(this._svT); this._svT = setTimeout(() => this.toastMsg('Alterações salvas'), 600); } };
     return { fin, msg, docs, team, sett };
   }
@@ -6008,6 +6137,11 @@ class Component extends DCLogic {
         renew: x.cl.filter(c => ['30 out 2026', '20 out 2026', '18 out 2026', '12 nov 2026', '05 nov 2026'].indexOf(c.renew) >= 0).map(c => Object.assign({}, c, { renewS: c.renew.replace(' 2026', '') }))
       }
     };
+    if (this.R) {
+      const ativos = this.R.clients.filter(c => c.status !== 'encerrado'), enc = this.R.clients.filter(c => c.status === 'encerrado');
+      clp.ret = { kpis: [['Clientes ativos', String(ativos.length), 'na carteira', 'var(--tx,#101828)'], ['Encerrados', String(enc.length), 'marcados como encerrado', enc.length ? '#D92D20' : 'var(--tx,#101828)'], ['Mensalidade média', x.brl(ativos.length ? ativos.reduce((t, c) => t + c.mrr, 0) / ativos.length : 0), 'por cliente ativo', 'var(--tx,#101828)'],
+        ['Receita mensal', x.brl(ativos.reduce((t, c) => t + c.mrr, 0)), 'soma das mensalidades', 'var(--tx,#101828)'], ['Churn e expansão', '—', 'chegam com o histórico de contratos', 'var(--tx2,#667085)'], ['Clientes sem meta', String(this.R.clients.filter(c => c.goal == null).length), 'defina CPL, CPA ou ROAS', 'var(--tx,#101828)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
+        bars: [], lost: [], renew: [] }; }
 
     // client detail
     const c = x.clById[S.clientId] || x.cl[0];
@@ -6023,13 +6157,14 @@ class Component extends DCLogic {
     const dims = dimsDef.map(d => { const hs = this.hs(d[1]); return { l: d[0], v: d[1], w: d[1] + '%', c: hs.c, ex: d[2], weight: d[3] }; });
     const ccamps = x.cp.filter(k => k.client === c.id);
     const spend = ccamps.reduce((s, k) => s + k.spend, 0), conv = ccamps.reduce((s, k) => s + k.conv, 0), rev = ccamps.reduce((s, k) => s + (k.rev || 0), 0);
-    const imp = spend / 28 * 1000, clicks = imp * 0.014;
+    const realC = this.R && !c.ex, imp = realC ? ccamps.reduce((s, k) => s + (k.impressions || 0), 0) : spend / 28 * 1000, clicks = realC ? ccamps.reduce((s, k) => s + (k.clicks || 0), 0) : imp * 0.014;
+    const ctrF = !realC ? '1,40%' : imp ? x.f2(clicks / imp * 100) + '%' : '—', cpmF = !realC ? 'R$ 28,00' : imp ? x.brl2(spend / imp * 1000) : '—';
     const objMetrics = {
-      Leads: [['Investimento', x.brl(spend)], ['Impressões', x.n0(imp)], ['Cliques', x.n0(clicks)], ['CTR', '1,40%'], ['Leads', x.n0(conv)], ['CPL', conv ? x.brl2(spend / conv) : '—']],
-      Vendas: [['Investimento', x.brl(spend)], ['Conversões', x.n0(conv)], ['CPA', conv ? x.brl2(spend / conv) : '—'], ['Receita', rev ? x.brl(rev) : '—'], ['ROAS', rev ? x.f2(rev / spend) + 'x' : '—'], ['CTR', '1,40%']],
-      Alcance: [['Investimento', x.brl(spend)], ['Impressões', x.n0(imp)], ['CPM', 'R$ 28,00'], ['Cliques', x.n0(clicks)], ['CTR', '1,40%'], ['CPC', clicks ? x.brl2(spend / clicks) : '—']]
+      Leads: [['Investimento', x.brl(spend)], ['Impressões', x.n0(imp)], ['Cliques', x.n0(clicks)], ['CTR', ctrF], ['Leads', x.n0(conv)], ['CPL', conv ? x.brl2(spend / conv) : '—']],
+      Vendas: [['Investimento', x.brl(spend)], ['Conversões', x.n0(conv)], ['CPA', conv ? x.brl2(spend / conv) : '—'], ['Receita', rev ? x.brl(rev) : '—'], ['ROAS', rev ? x.f2(rev / spend) + 'x' : '—'], ['CTR', ctrF]],
+      Alcance: [['Investimento', x.brl(spend)], ['Impressões', x.n0(imp)], ['CPM', cpmF], ['Cliques', x.n0(clicks)], ['CTR', ctrF], ['CPC', clicks ? x.brl2(spend / clicks) : '—']]
     };
-    const deltas = ['+4,1%', '+6,8%', '+2,3%', '−0,1 p.p.', '−9,6%', '+18,4%'];
+    const deltas = realC ? ['', '', '', '', '', ''] : ['+4,1%', '+6,8%', '+2,3%', '−0,1 p.p.', '−9,6%', '+18,4%'];
     const cser = this.perfSeries('invest', '30D', this.R ? c.id : x.cl.indexOf(c) + 1);
     const act = [
       ['tune', c.owner.split(' ')[0] + ' alterou o orçamento de ' + (ccamps[0] ? ccamps[0].name.split(' · ')[1] : 'campanha') + ': R$ 300 → R$ 250/dia', 'hoje, 08:40'],
@@ -6075,6 +6210,18 @@ class Component extends DCLogic {
         ['request_quote', 'Nova cobrança', () => this.setState({ dialog: 'cobranca', form: { client: c.name } })], ['playlist_add_check', 'Aplicar playbook de retenção', () => this.fm({ title: 'Aplicar playbook de retenção', desc: '6 tarefas em 30 dias: ligação de alinhamento, revisão de metas, relatório extra e pesquisa de satisfação.', icon: 'playlist_add_check', fields: [{ k: 'who', l: 'Responsável', type: 'pick', opts: ['João Silva', 'Marina Alves', 'Pedro Rocha', 'Carla Dias'], req: 1 }, { k: 'start', l: 'Começar em', type: 'date', req: 1 }], init: { who: 'Marina Alves', start: '2026-10-15' }, okL: 'Aplicar', ok: v => this.toastMsg('Playbook aplicado · 6 tarefas com ' + v.who, () => this.toastMsg('Playbook removido · tarefas apagadas')) })]].map(q => ({ icon: q[0], l: q[1], run: q[2] })),
       back: () => this.go('clients'), portal: () => this.R && !c.ex ? this.spPortal(c) : this.copyTxt('https://marketingpro.spherum.com.br/portal', 'Link do portal copiado')
     };
+    if (realC) {
+      const cInv = x.invs.filter(i => i.client === c.id), nextInv = cInv.filter(i => i.status === 'Pendente' || i.status === 'Vencido').sort((a, b) => a.dueISO < b.dueISO ? -1 : 1)[0];
+      const rec = (this.R.recurrences || []).find(r => r.client_id === c.id && r.active), lastRep = D.reports.find(r => r.client === c.id && r.status === 'Enviado');
+      cd.summary = [['Mensalidade', c.mrrF, 'var(--tx,#101828)'], ['Performance', c.cur != null ? c.perfF + ' que a meta' : 'Sem dados ainda', c.perfC], ['Próxima fatura', nextInv ? nextInv.valueF + ' · vence ' + nextInv.due : 'Nenhuma em aberto', nextInv && nextInv.status === 'Vencido' ? '#D92D20' : 'var(--tx,#101828)'],
+        ['Financeiro', c.fin, c.finC], ['Último relatório', lastRep ? lastRep.last : 'Nenhum publicado', 'var(--tx,#101828)'], ['Cliente desde', c.since, 'var(--tx,#101828)']].map(r => ({ l: r[0], v: r[1], c: r[2] }));
+      cd.contract = [['Mensalidade', c.mrrF], ['Início', c.since], ['Cobrança automática', rec ? x.brl(rec.amount_cents / 100) + ' · dia ' + rec.day_of_month : 'Não'], ['Próximo vencimento', rec ? rec.next_due.split('-').reverse().join('/') : '—'], ['Pagamento', c.fin]].map(r => ({ l: r[0], v: r[1] }));
+      cd.cs = [['Último relatório', lastRep ? lastRep.last : '—', 'var(--tx,#101828)'], ['Contas de anúncio', String(this.R.accounts.filter(a => a.client_id === c.id).length), 'var(--tx,#101828)'], ['Documentos', String(D.docs.filter(d => d.client === c.id).length), 'var(--tx,#101828)'], ['Contato principal', c.contact || '—', 'var(--tx,#101828)']].map(r => ({ l: r[0], v: r[1], c: r[2] }));
+      cd.quick = [['request_quote', 'Nova cobrança', () => this.setState({ dialog: 'cobranca', form: { client: c.id } })], ['lab_profile', 'Criar relatório', () => this.go('reports', { reportMode: 'builder', rClient: c.id })], ['upload_file', 'Enviar documento', () => this.go('documents')], ['person_add', 'Convidar para o portal', () => this.spPortal(c)]].map(q => ({ icon: q[0], l: q[1], run: q[2] }));
+      cd.dims = [['Performance', c.cur == null ? 70 : cl2(72 + c.dp * 1.2), c.cur != null ? c.gt + ' ' + c.curF + ' vs meta ' + c.goalF.replace(c.gt + ' ', '') : 'Defina a meta e vincule uma conta de anúncio', '60%'],
+        ['Financeiro', c.fin === 'Vencida' ? 30 : c.fin === 'Pendente' ? 72 : 96, c.fin === 'Vencida' ? 'Tem fatura vencida' : c.fin === 'Pendente' ? 'Fatura em aberto, no prazo' : 'Nenhuma fatura atrasada', '40%']].map(d => { const hs = this.hs(d[1]); return { l: d[0], v: d[1], w: d[1] + '%', c: hs.c, ex: d[2], weight: d[3] }; });
+      cd.pend = (c.reasons.length ? c.reasons.map(r => 'Resolver: ' + r.toLowerCase()) : ['Nenhuma pendência aberta']).map(t => ({ t }));
+    }
 
     // onboarding
     const groups = ['Comercial', 'Acessos', 'Tracking', 'Operação'];

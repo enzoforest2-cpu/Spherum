@@ -60,9 +60,9 @@ export function goalGap(metric: string | null, goal: number | null, current: num
 }
 
 export async function agencyPortal(sql: Sql, agencyId: string, userId: string, now = new Date()) {
-  const agency = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; brand_color: string | null }>(
+  const agency = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; brand_color: string | null; cnpj: string | null; phone: string | null; website: string | null; city: string | null; state: string | null; timezone: string | null; slug: string }>(
     sql,
-    `select name, plan, plan_status, trial_ends_at::text, brand_color from agencies where id = $1`,
+    `select name, slug, plan, plan_status, trial_ends_at::text, brand_color, cnpj, phone, website, city, state, timezone from agencies where id = $1`,
     [agencyId],
   );
   if (!agency) throw new XodoError("Não encontrado", 404);
@@ -96,9 +96,10 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
         group by client_id, win`,
       [agencyId, cur.from, prev.from, cur.to],
     ),
-    sql.query<{ client_id: string; platform: string; campaign_id: string; name: string | null; spend: number; results: number; revenue: number; recent: number }>(
+    sql.query<{ client_id: string; platform: string; campaign_id: string; name: string | null; spend: number; results: number; revenue: number; recent: number; clicks: number; impressions: number }>(
       `select client_id, platform, campaign_id, max(campaign_name) as name, sum(spend_cents)::float8 / 100 as spend,
               sum(leads + conversions)::float8 as results, sum(revenue_cents)::float8 / 100 as revenue,
+              sum(clicks)::float8 as clicks, sum(impressions)::float8 as impressions,
               sum(spend_cents) filter (where day > $3::date - 3)::float8 / 100 as recent
          from metrics_daily where agency_id = $1 and platform <> 'ga4' and day between $2::date and $3::date
         group by client_id, platform, campaign_id order by sum(spend_cents) desc limit 300`,
@@ -220,6 +221,8 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
       rev: num(r.revenue) > 0 ? num(r.revenue) : null,
       seed: 11 + i,
       cpa,
+      clicks: num(r.clicks),
+      impressions: num(r.impressions),
     };
   });
 
