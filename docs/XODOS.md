@@ -206,7 +206,7 @@ A migração `20261018120000_xodos.sql` cria as tabelas, as funções de teto e 
 - Toda escrita passa pelo servidor, que filtra por `agency_id`.
 - A chave cifrada e a conversa interna (`transcript`) ficam fora do alcance do navegador.
 
-As outras migrações vêm em ordem, cada uma depois da anterior: `20261018130000_integrations.sql` (conexões e anúncios), `20261018140000_channels.sql` (canais e gatilhos), `20261018150000_xodo_memory.sql` (memória nova, que migra e apaga a tabela antiga) e `20261018160000_computers.sql` (computador na nuvem e bucket de arquivos). Depois vêm `20261019100000_client_goals.sql` (meta de CPL/CPA/ROAS por cliente) e `20261019110000_documents.sql` (documentos e bucket privado). **Todas já estão aplicadas no projeto spherum do Supabase.** Ficou só uma limpeza opcional: as tabelas vazias `xodo_memory_revisions` e `xodo_memories` (memória antiga), que podem ser apagadas no SQL Editor.
+As outras migrações vêm em ordem, cada uma depois da anterior: `20261018130000_integrations.sql` (conexões e anúncios), `20261018140000_channels.sql` (canais e gatilhos), `20261018150000_xodo_memory.sql` (memória nova, que migra e apaga a tabela antiga) e `20261018160000_computers.sql` (computador na nuvem e bucket de arquivos). Depois vêm `20261019100000_client_goals.sql` (meta de CPL/CPA/ROAS por cliente), `20261019110000_documents.sql` (documentos e bucket privado) e `20261019120000_billing.sql` (cobrança dos clientes e papel financeiro; veja [COBRANCA.md](COBRANCA.md)). **Todas já estão aplicadas no projeto spherum do Supabase.** Ficou só uma limpeza opcional: as tabelas vazias `xodo_memory_revisions` e `xodo_memories` (memória antiga), que podem ser apagadas no SQL Editor.
 
 **Ordem:** essa migração depende das tabelas `agencies`, `agency_members` e `clients` da migração base do backend. Aplique a base primeiro. O arquivo `tests/fixtures/foundation.sql` mostra o mínimo que o motor espera dessas tabelas (`agencies.name`, `agency_members.role` com owner/admin/member/viewer, `clients.agency_id` e `clients.name`).
 
@@ -233,7 +233,7 @@ No Supabase → Authentication → URL Configuration, coloque `https://spherum.c
 npm test
 ```
 
-São 395 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 400 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;

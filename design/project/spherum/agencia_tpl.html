@@ -3896,7 +3896,7 @@ class Component extends DCLogic {
   }
   async spInvite(v) {
     try {
-      const r = await SP.api('/api/agencies/' + this.spAg + '/invites', { method: 'POST', body: { email: v.mail.trim().toLowerCase(), role: v.role === 'Admin' ? 'admin' : 'member' } });
+      const r = await SP.api('/api/agencies/' + this.spAg + '/invites', { method: 'POST', body: { email: v.mail.trim().toLowerCase(), role: v.role === 'Admin' ? 'admin' : v.role === 'Financeiro' ? 'financeiro' : 'member' } });
       if (!r.emailed) try { navigator.clipboard.writeText(r.link); } catch (e) {}
       this.toastMsg(r.emailed ? 'Convite enviado para ' + r.invite.email : 'Link do convite copiado. Mande para ' + r.invite.email + '.');
       this.spLoad().catch(() => {});

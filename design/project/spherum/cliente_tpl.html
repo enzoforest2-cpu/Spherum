@@ -380,6 +380,18 @@ a:hover{color:#3346D3;text-decoration:underline}
   <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto;min-width:0">
     <div style="max-width:1120px;margin:0 auto;padding:32px 32px 72px;display:flex;flex-direction:column;gap:20px">
 
+      <sc-if value="{{ soon.show }}">
+        <section data-screen-label="Cliente · Em breve" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">{{ soon.title }}</h1></div>
+          <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:56px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+            <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:28px;color:{{ br.acc }}">{{ soon.icon }}</span>
+            <div style="font-weight:600;font-size:16px">Em breve por aqui</div>
+            <div style="max-width:440px;color:#667085;font-size:13.5px;line-height:1.5">{{ soon.text }}</div>
+            <button sc-camel-on-click="{{ soon.back }}" style="margin-top:8px;height:34px;padding:0 14px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;font-size:13px;font-weight:500">Voltar para a visão geral</button>
+          </div>
+        </section>
+      </sc-if>
+
       <sc-if value="{{ is.home }}" hint-placeholder-val="{{ true }}">
         <section data-screen-label="Cliente · Visão geral" style="display:flex;flex-direction:column;gap:20px">
           <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
@@ -396,7 +408,7 @@ a:hover{color:#3346D3;text-decoration:underline}
   <sc-if value="{{ cw.npsWhy }}"><span style="font-size:15px;font-weight:600">{{ cw.npsQ }}</span><textarea value="{{ cw.npsTxt }}" sc-camel-on-change="{{ cw.onNps }}" rows="3" aria-label="Comentário" style="border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;font:400 14px/1.5 inherit;resize:vertical;outline:none"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button sc-camel-on-click="{{ cw.npsSkip }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">Pular</button><button sc-camel-on-click="{{ cw.npsSend }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">Enviar</button></div></sc-if>
   <sc-if value="{{ cw.npsDone }}"><div style="display:flex;gap:10px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#EF5B3B">favorite</span><span style="font-size:14px">Obrigado, Marcelo. O Rafael vai ler sua resposta hoje.</span></div></sc-if>
 </div></sc-if>
-<button sc-camel-on-click="{{ cw.goWork }}" style="text-align:left;background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;color:#101828;font:inherit;width:100%" style-hover="border-color:{{ br.acc }}"><span style="width:40px;height:40px;border-radius:10px;background:#FFF3EE;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1;color:#D9472A">auto_awesome</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">Esta semana a {{ br.name }} fez {{ cw.weekN }} ajustes na sua conta</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ cw.best }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#98A2B3">chevron_right</span></button>
+<sc-if value="{{ cw.showWork }}"><button sc-camel-on-click="{{ cw.goWork }}" style="text-align:left;background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;color:#101828;font:inherit;width:100%" style-hover="border-color:{{ br.acc }}"><span style="width:40px;height:40px;border-radius:10px;background:#FFF3EE;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1;color:#D9472A">auto_awesome</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">Esta semana a {{ br.name }} fez {{ cw.weekN }} ajustes na sua conta</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ cw.best }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#98A2B3">chevron_right</span></button></sc-if>
 <sc-if value="{{ cw.hasPend }}"><button sc-camel-on-click="{{ cw.goStart }}" style="text-align:left;border:1px solid #FEDF89;background:#FFFAEB;border-radius:12px;padding:12px 18px;display:flex;gap:12px;align-items:center;color:#7A2E0E;font:inherit;width:100%"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#B54708">assignment_late</span><span style="flex:1;font-size:13.5px"><b>{{ cw.pendL }}</b> para começarmos a fase 2 do Vista Parque</span><span style="font-size:13px;font-weight:600">Resolver →</span></button></sc-if>
 <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
             <div style="display:flex;flex-wrap:wrap;margin-right:-1px;margin-bottom:-1px">
@@ -426,10 +438,10 @@ a:hover{color:#3346D3;text-decoration:underline}
               <sc-for list="{{ insights }}" as="i"><div style="display:flex;gap:12px;padding:12px 20px;border-bottom:1px solid #F2F4F7"><div style="width:28px;height:28px;border-radius:7px;background:{{ i.bg }};color:{{ i.c }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:16px">{{ i.icon }}</span></div><div><div style="font-weight:500">{{ i.t }}</div><div style="font-size:12.5px;color:#667085">{{ i.ev }}</div></div></div></sc-for>
             </div>
             <div style="display:flex;flex-direction:column;gap:16px">
-              <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+              <sc-if value="{{ showAppr }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
                 <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid #E4E7EC"><h2 style="margin:0;font-size:14px;font-weight:600;flex:1">Aguardando sua aprovação</h2><span style="font-size:12px;color:#667085">{{ pendingN }} pendentes</span></div>
                 <sc-for list="{{ approvals }}" as="a"><div style="padding:12px 20px;border-bottom:1px solid #F2F4F7;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:10px"><div><div style="font-weight:500">{{ a.t }}</div><div style="font-size:12.5px;color:#667085">{{ a.d }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ a.bg }};color:{{ a.c }};font-weight:500;height:fit-content;white-space:nowrap">{{ a.st }}</span></div><sc-if value="{{ a.pending }}"><div style="display:flex;gap:8px"><button sc-camel-on-click="{{ a.approve }}" style="height:30px;padding:0 12px;border:none;border-radius:7px;background:{{ br.acc }};color:#fff;font-size:12.5px;font-weight:500">Aprovar</button><button sc-camel-on-click="{{ a.change }}" style="height:30px;padding:0 12px;border:1px solid #E4E7EC;border-radius:7px;background:#fff;font-size:12.5px;font-weight:500">Solicitar alterações</button></div></sc-if></div></sc-for>
-              </div>
+              </div></sc-if>
               <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
                 <sc-for list="{{ summary }}" as="s"><button sc-camel-on-click="{{ s.go }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;border:none;border-bottom:1px solid #F2F4F7;background:transparent;text-align:left" style-hover="background:#F9FAFB"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#667085">{{ s.icon }}</span><div style="flex:1"><div style="font-size:12.5px;color:#667085">{{ s.l }}</div><div style="font-weight:500">{{ s.v }}</div></div><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:#98A2B3">chevron_right</span></button></sc-for>
               </div>
@@ -487,14 +499,14 @@ a:hover{color:#3346D3;text-decoration:underline}
         <section data-screen-label="Cliente · Financeiro" style="display:flex;flex-direction:column;gap:16px">
           <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Financeiro</h1><p style="margin:4px 0 0;color:#667085">Suas faturas com a {{ br.name }}</p></div>
           <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-            <div style="flex:1;min-width:220px"><div style="font-size:13px;color:#667085">Próxima fatura</div><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">R$ 7.200</div><div style="font-size:13px;color:#667085">Mensalidade out/26 · vence 05 out · boleto</div></div>
-            <button sc-camel-on-click="{{ copyCode }}" style="height:36px;padding:0 14px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;font-weight:500">Copiar linha digitável</button>
-            <button sc-camel-on-click="{{ copyCode }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">Ver boleto</button>
+            <div style="flex:1;min-width:220px"><div style="font-size:13px;color:#667085">Próxima fatura</div><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">{{ nextInv.v }}</div><div style="font-size:13px;color:#667085">{{ nextInv.d }}</div></div>
+            <sc-if value="{{ nextInv.has2 }}"><button sc-camel-on-click="{{ nextInv.act2 }}" style="height:36px;padding:0 14px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;font-weight:500">{{ nextInv.b2 }}</button></sc-if>
+            <sc-if value="{{ nextInv.has1 }}"><button sc-camel-on-click="{{ nextInv.act1 }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">{{ nextInv.b1 }}</button></sc-if>
           </div>
           <sc-if value="{{ cw.pixOff }}"><div style="border:1px solid #ABEFC6;background:#ECFDF3;border-radius:12px;padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1;color:#079455">bolt</span><div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600;color:#054F31">Pague sem boleto com o Pix Automático</span><span style="font-size:13px;color:#085D3A;text-wrap:pretty">Você autoriza uma vez no app do seu banco e a mensalidade é paga sozinha todo dia 5. Dá para cancelar quando quiser, pelo próprio banco.</span></div><button sc-camel-on-click="{{ cw.pixStart }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;background:#079455">{{ cw.pixL }}</button></div></sc-if>
 <sc-if value="{{ cw.pixOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;line-height:1;color:#079455">check_circle</span><span style="flex:1;font-size:14px"><b>Pix Automático ativo.</b> A mensalidade de R$ 7.200 é paga sozinha todo dia 5, e a nota fiscal chega no seu e-mail logo depois.</span></div></sc-if>
 <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
-            <sc-for list="{{ invoices }}" as="i"><div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 20px;border-bottom:1px solid #F2F4F7;font-size:13.5px"><div><div style="font-weight:500">{{ i.d }}</div><div style="font-size:12.5px;color:#667085">Vencimento {{ i.due }} · {{ i.nf }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ i.bg }};color:{{ i.c }};font-weight:500">{{ i.st }}</span><span style="font-variant-numeric:tabular-nums;font-weight:600;min-width:80px;text-align:right">{{ i.v }}</span></div></sc-for>
+            <sc-for list="{{ invoices }}" as="i"><div sc-camel-on-click="{{ i.pay }}" style="cursor:{{ i.cur }};display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 20px;border-bottom:1px solid #F2F4F7;font-size:13.5px"><div><div style="font-weight:500">{{ i.d }}</div><div style="font-size:12.5px;color:#667085">Vencimento {{ i.due }} · {{ i.nf }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ i.bg }};color:{{ i.c }};font-weight:500">{{ i.st }}</span><span style="font-variant-numeric:tabular-nums;font-weight:600;min-width:80px;text-align:right">{{ i.v }}</span></div></sc-for>
           </div>
         </section>
       </sc-if>
@@ -736,7 +748,17 @@ class Component extends DCLogic {
       const R = await SP.api('/api/portal/cliente?client_id=' + id);
       window.__spBrand = R.agency.brand_color && /^#[0-9a-f]{6}$/i.test(R.agency.brand_color) ? { c: R.agency.brand_color } : null;
       this.R = R; this.setState({ real: Date.now() });
+      const q = new URLSearchParams(location.search);
+      if (q.get('pagamento')) { try { history.replaceState(null, '', location.pathname); } catch (e) {} this.go('fin'); this.toastMsg('Recebemos seu pagamento. A fatura muda para paga assim que o banco confirmar.'); }
     } catch (e) { this.toastMsg(e.message || 'Não deu para carregar os dados agora.'); }
+  }
+  // Pagar: o Stripe abre uma página nova; os outros usam o link da cobrança (ou o Pix copia e cola).
+  async spPay(i) {
+    try { const r = await SP.api('/api/billing/invoices/' + i.id + '/pay', { method: 'POST' });
+      if (r.url) { const w = (window.top || window).open(r.url, '_blank'); if (!w) location.href = r.url; return; }
+      if (r.pix_code) { try { navigator.clipboard.writeText(r.pix_code); } catch (e) {} return this.toastMsg('Código Pix copiado. Cole no app do seu banco para pagar.'); }
+      this.toastMsg('A agência ainda não ligou o pagamento online.');
+    } catch (e) { this.toastMsg(e.message); }
   }
   spNewReports() { const t = Date.now() - 7 * 864e5; return this.R.reports.filter(r => Date.parse(r.published_at) > t).length; }
   spDate(t) { const d = new Date(t.length === 10 ? t + 'T12:00:00Z' : t); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/\./g, '').replace(/ de /g, ' '); }
@@ -777,7 +799,7 @@ class Component extends DCLogic {
     o.ch = Object.assign({ label: S.metric === 'leads' ? resL : S.metric === 'cpl' ? costL : 'Investimento', total: S.metric === 'leads' ? f(Math.round(a)) : S.metric === 'invest' ? brl(a) : a ? brl2(a) : '—', d: z ? (dd > 0 ? '+' : '−') + pct(dd) : '—', dc: S.metric === 'invest' || !z ? '#475467' : good ? '#079455' : '#D92D20' }, this.path(cur, prev, 800, 220));
     o.metrics = this.seg([['leads', resL], ['cpl', costL], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v }));
     const ins = [], c0 = cost(t30.cur), c1 = cost(t30.prev);
-    if (c0 && c1) ins.push([c0 <= c1 ? 'green' : 'blue', c0 <= c1 ? 'trending_down' : 'trending_up', 'Seu ' + costL.toLowerCase() + (c0 <= c1 ? ' caiu ' : ' subiu ') + pct((c0 - c1) / c1 * 100), brl2(c0) + ' agora vs ' + brl2(c1) + ' no período anterior']);
+    if (c0 && c1 && Math.abs(c0 - c1) / c1 >= 0.005) ins.push([c0 <= c1 ? 'green' : 'blue', c0 <= c1 ? 'trending_down' : 'trending_up', 'Seu ' + costL.toLowerCase() + (c0 <= c1 ? ' caiu ' : ' subiu ') + pct((c0 - c1) / c1 * 100), brl2(c0) + ' agora vs ' + brl2(c1) + ' no período anterior']);
     const ch30 = R.channels.filter(c => c.d30.results > 0);
     if (ch30.length > 1) { const top = ch30.slice().sort((p, q) => q.d30.results - p.d30.results)[0]; ins.push(['blue', 'pie_chart', top.label + ' trouxe ' + Math.round(top.d30.results / t30.cur.results * 100) + '% dos ' + resL.toLowerCase(), f(Math.round(top.d30.results)) + ' de ' + f(Math.round(t30.cur.results)) + ' nos últimos 30 dias']); }
     const topC = R.camps.filter(k => k.d30.results > 0).sort((p, q) => q.d30.results - p.d30.results)[0];
@@ -786,7 +808,7 @@ class Component extends DCLogic {
     o.insights = ins.map(i => ({ t: i[2], ev: i[3], icon: i[1], c: i[0] === 'green' ? '#079455' : '#1570EF', bg: i[0] === 'green' ? 'rgba(23,178,106,0.12)' : 'rgba(46,144,250,0.12)' }));
     const did = this.spSection(/fizemos|feito|realizad/i), next = this.spSection(/pr[óo]xim|a seguir|plano/i);
     o.transparency = [{ icon: 'task_alt', h: 'O que fizemos', items: did.length ? did : ['O relatório do mês traz o detalhe do que foi feito na sua conta'] },
-      { icon: 'insights', h: 'O que aconteceu', items: [f(Math.round(t30.cur.results)) + ' ' + resL.toLowerCase() + ' nos últimos 30 dias' + (t30.prev.results ? ', ' + pct((t30.cur.results - t30.prev.results) / t30.prev.results * 100) + (t30.cur.results >= t30.prev.results ? ' a mais' : ' a menos') + ' que o período anterior' : ''), brl(t30.cur.spend) + ' investidos', c0 ? costL + ' de ' + brl2(c0) + (gv && gm !== 'ROAS' ? (c0 <= gv ? ', dentro da meta' : ', acima da meta de ' + brl2(gv)) : '') : 'Sem resultados registrados ainda'] },
+      { icon: 'insights', h: 'O que aconteceu', items: [f(Math.round(t30.cur.results)) + ' ' + resL.toLowerCase() + ' nos últimos 30 dias' + (t30.prev.results ? (t30.cur.results === t30.prev.results ? ', igual ao período anterior' : ', ' + pct((t30.cur.results - t30.prev.results) / t30.prev.results * 100) + (t30.cur.results > t30.prev.results ? ' a mais' : ' a menos') + ' que o período anterior') : ''), brl(t30.cur.spend) + ' investidos', c0 ? costL + ' de ' + brl2(c0) + (gv && gm !== 'ROAS' ? (c0 <= gv ? ', dentro da meta' : ', acima da meta de ' + brl2(gv)) : '') : 'Sem resultados registrados ainda'] },
       { icon: 'flag', h: 'O que vem a seguir', items: next.length ? next : ['Fale com a agência em Mensagens para combinar os próximos passos'] }];
     const rep = R.reports[0];
     o.summary[0] = Object.assign({}, o.summary[0], { l: 'Seu contato na agência', v: R.owner ? R.owner.name : R.agency.name });
@@ -803,6 +825,19 @@ class Component extends DCLogic {
     const first = (R.me.name || '').split(' ')[0];
     o.docs = (R.documents || []).map(d => ({ name: d.name, cat: d.category, date: this.spDate(d.created_at), type: ((d.name.match(/\.([a-z0-9]{1,5})$/i) || [])[1] || 'ARQ').toUpperCase(),
       dl: async () => { try { const r = await SP.api('/api/documents/' + d.id + '/download'); (window.top || window).open(r.url, '_blank') || (location.href = r.url); } catch (e) { this.toastMsg(e.message); } } }));
+    // Faturas e pagamento.
+    const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], dDay = d => { const p = d.split('-'); return p[2] + ' ' + MN[+p[1] - 1]; };
+    const ST = { pendente: ['Pendente', acc, `color-mix(in srgb, ${acc} 10%, transparent)`], vencido: ['Vencida', '#D92D20', 'rgba(240,68,56,0.10)'], pago: ['Pago', '#079455', 'rgba(23,178,106,0.12)'], estornado: ['Estornado', '#475467', '#F2F4F7'] };
+    const pay = i => this.spPay(i), open = i => i.status === 'pendente' || i.status === 'vencido';
+    o.invoices = (R.invoices || []).map(i => { const st = ST[i.status] || [i.status, '#475467', '#F2F4F7'];
+      return { d: i.description, due: dDay(i.due_date), st: st[0], c: st[1], bg: st[2], v: brl2(i.amount_cents / 100), nf: i.status === 'pago' ? 'pago' + (i.paid_at ? ' em ' + this.spDate(i.paid_at) : '') : open(i) ? (R.paysOnline ? 'toque para pagar' : 'pague direto com a agência') : '', pay: () => open(i) && pay(i), cur: open(i) ? 'pointer' : 'default' }; });
+    const nx = (R.invoices || []).filter(open).sort((a, b) => a.due_date < b.due_date ? -1 : 1)[0];
+    o.nextInv = nx ? { v: brl2(nx.amount_cents / 100), d: nx.description + ' · vence ' + dDay(nx.due_date) + (nx.status === 'vencido' ? ' · vencida' : ''), has1: !!R.paysOnline, b1: 'Pagar agora', act1: () => pay(nx), has2: !!nx.pix_code, b2: 'Copiar Pix copia e cola', act2: () => { try { navigator.clipboard.writeText(nx.pix_code); } catch (e) {} this.toastMsg('Código Pix copiado. Cole no app do seu banco.'); } }
+      : { v: 'Tudo pago', d: (R.invoices || []).length ? 'Nenhuma fatura em aberto' : 'Nenhuma fatura ainda', has1: false, has2: false };
+    o.summary[2] = Object.assign({}, o.summary[2], { v: nx ? brl2(nx.amount_cents / 100) + ' · vence ' + dDay(nx.due_date) : 'Nenhuma em aberto' });
+    o.cw = Object.assign({}, o.cw, { showNps: false, showWork: false, hasPend: false, pixOff: false, pixOn: false });
+    o.approvals = []; o.pendingN = 0; o.showAppr = false;
+    o.faq = o.faq.filter(f => !/aprovo um criativo|notas fiscais/.test(f.q));
     o.who = { name: R.me.name, client: R.client.name, ini: (R.me.name || R.client.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() };
     o.hello = (first ? 'Olá, ' + first + ' · ' : '') + 'dados até ' + this.spDate(R.period.to);
     o.msgSub = 'Fale com seu time na ' + nm + (R.owner ? ' · ' + R.owner.name + ' cuida da sua conta' : '');
@@ -824,8 +859,11 @@ class Component extends DCLogic {
     const S = this.state; const open = !S.narrow;
     const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 1], ['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', S.sent.length ? 0 : 1], ['help', 'Ajuda', 'help']];
-    const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
+    const nav0 = navDef; const nav = nav0.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: this.R && ['work', 'start', 'msgs'].includes(n[0]) ? '' : n[3] || '', hasBadge: !(this.R && ['work', 'start', 'msgs'].includes(n[0])) && !!n[3] && open }; });
+    const SOON = { work: ['auto_awesome', 'Aqui vai aparecer, em português claro, o que a agência e os xodós fizeram na sua conta.'], start: ['assignment', 'Os pedidos da agência para você (acessos, materiais, aprovações) vão aparecer aqui.'], msgs: ['forum', 'As conversas com a agência vão acontecer aqui. Por enquanto, fale com ela pelo canal de sempre.'] };
     const is = {}; navDef.forEach(n => is[n[0]] = S.view === n[0]);
+    const soonD = this.R && SOON[S.view]; if (soonD) is[S.view] = false;
+    const soon = { show: !!soonD, title: (navDef.find(n => n[0] === S.view) || [])[1] || '', icon: soonD ? soonD[0] : '', text: soonD ? soonD[1] : '', back: () => this.go('home') };
     const m90 = S.period === '90D' ? 2.9 : 1;
     const st = (d, dir) => { if (dir === 0 || Math.abs(d) < 3) return { state: dir === 0 ? 'Conforme o planejado' : 'Estável', icon: 'trending_flat', c: '#475467', bg: '#F2F4F7' }; const good = dir > 0 ? d > 0 : d < 0;
       return good ? { state: 'Melhorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#079455', bg: 'rgba(23,178,106,0.12)' } : { state: 'Piorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#D92D20', bg: 'rgba(240,68,56,0.10)' }; };
@@ -844,6 +882,7 @@ class Component extends DCLogic {
       ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.']]
       .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
     const out = {
+      soon, showAppr: true, nextInv: { v: 'R$ 7.200', d: 'Mensalidade out/26 · vence 05 out · boleto', has1: true, has2: true, b1: 'Ver boleto', b2: 'Copiar linha digitável', act1: () => this.toastMsg('Linha digitável copiada'), act2: () => this.toastMsg('Linha digitável copiada') },
       who: { name: 'Marcelo Pilar', client: 'Construtora Pilar', ini: 'MP' }, hello: 'Olá, Marcelo · atualizado hoje às 07:00', msgSub: 'Fale com seu time na Marketing Pro · Rafael Lima costuma responder em 1 h',
       logout: () => { this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, back: () => this.setState({ __out: false }) }, br: Object.assign(br, { powOpen: br.powOpen && open }),
       liveLogo: React.createElement(LiveLogo, { size: 15, ink: '#475467', bg: '#FFFFFF', intro: false }),
@@ -865,7 +904,7 @@ class Component extends DCLogic {
       reports: [['Relatório mensal · Setembro 2026', 'Chega em 01 out', false], ['Relatório mensal · Agosto 2026', 'Enviado 01 set · 4 páginas', true], ['Relatório mensal · Julho 2026', 'Enviado 01 ago', false], ['Relatório trimestral · Q2 2026', 'Enviado 03 jul', false]]
         .map(r => ({ t: r[0], d: r[1], isNew: r[2], open: () => { const w = window.open(URL.createObjectURL(new Blob([spDoc(r[0], 'Relatório enviado em ' + r[1])], { type: 'text/html' })), '_blank'); if (!w) this.toastMsg('Permita pop-ups para abrir o relatório'); }, pdf: () => { spDl(r[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(r[0], 'Relatório enviado em ' + r[1]), 'text/html'); this.toastMsg('Relatório baixado'); } })),
       invoices: [['Mensalidade out/26', '05 out', 'Pendente', 'R$ 7.200', ACC(), `color-mix(in srgb, ${ACC()} 10%, transparent)`, 'NF após pagamento'], ['Mensalidade set/26', '05 set', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0482'], ['Mensalidade ago/26', '05 ago', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0451'], ['Mensalidade jul/26', '05 jul', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0420']]
-        .map(i => ({ d: i[0], due: i[1], st: i[2], v: i[3], c: i[4], bg: i[5], nf: i[6] })),
+        .map(i => ({ d: i[0], due: i[1], st: i[2], v: i[3], c: i[4], bg: i[5], nf: i[6], pay: () => {}, cur: 'default' })),
       copyCode: () => { try { navigator.clipboard.writeText('23793.38128 60082.153600 47000.063300 1 99870000720000'); } catch (e) {} this.toastMsg('Linha digitável copiada'); },
       docs: [['Aditivo contratual 2026', 'Contrato', '02 jan 2026', 'PDF'], ['Relatório mensal — agosto', 'Relatório', '01 set 2026', 'PDF'], ['Contrato de prestação de serviços', 'Contrato', '14 jul 2023', 'PDF'], ['Guia de marca Construtora Pilar', 'Outros', '20 jul 2023', 'PDF']].map(d => ({ name: d[0], cat: d[1], date: d[2], type: d[3], dl: () => { spDl(d[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(d[0], d[1] + ' · ' + d[2]), 'text/html'); this.toastMsg(d[0] + ' baixado'); } })),
       chat, draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }), send, onKey: e => { if (e.key === 'Enter') send(); }, faq,
