@@ -26,6 +26,9 @@ const fields = {
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable(),
   notes: z.string().max(4000).nullable(),
   owner_user_id: z.uuid().nullable(),
+  // Meta do cliente: CPL ou CPA em reais, ROAS em vezes.
+  goal_metric: z.enum(["CPL", "CPA", "ROAS"]).nullable(),
+  goal_value: z.number().positive().max(1_000_000).nullable(),
 };
 
 export const clientInput = z.object(fields).partial().required({ name: true });
@@ -33,7 +36,7 @@ export const clientPatch = z.object(fields).partial();
 
 const COLUMNS = `c.id, c.name, c.segment, c.status, c.monthly_fee_cents::float8 / 100 as monthly_fee, c.started_on::text, c.website,
   c.instagram, c.cnpj, c.city, c.color, c.logo_path, c.notes, c.owner_user_id, op.full_name as owner_name,
-  c.health_score, c.health_reason, c.health_updated_at::text, c.archived_at::text, c.created_at::text, c.updated_at::text,
+  c.goal_metric, c.goal_value::float8 as goal_value, c.health_score, c.health_reason, c.health_updated_at::text, c.archived_at::text, c.created_at::text, c.updated_at::text,
   (select json_build_object('name', ct.name, 'email', ct.email, 'phone', ct.phone)
      from client_contacts ct where ct.client_id = c.id order by ct.is_primary desc, ct.created_at limit 1) as contact`;
 
