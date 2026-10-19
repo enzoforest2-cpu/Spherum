@@ -1,5 +1,6 @@
 import { num, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
+import { listSharedDocuments } from "./documents";
 
 /**
  * Dados do portal do cliente (design/project/spherum/cliente_tpl.html): o que a agência fez
@@ -35,7 +36,7 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
   const to = day(end);
   const since = (n: number) => day(addDays(end, -(n - 1)));
 
-  const [client, me, dailyRows, campRows, reportRows] = await Promise.all([
+  const [client, me, dailyRows, campRows, reportRows, documents] = await Promise.all([
     one<{ name: string; goal_metric: string | null; goal_value: number | null; agency: string; brand_color: string | null; owner: string | null; owner_email: string | null }>(
       sql,
       `select c.name, c.goal_metric, c.goal_value::float8 as goal_value, a.name as agency, a.brand_color, p.full_name as owner, u.email as owner_email
@@ -66,6 +67,7 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
         where client_id = $1 and status = 'published' order by period_end desc, published_at desc limit 24`,
       [clientId],
     ),
+    listSharedDocuments(sql, clientId),
   ]);
 
   // Totais das janelas de 30 e 90 dias (e das anteriores, para comparar) e por plataforma.
@@ -115,5 +117,6 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
       .map(([p, t]) => ({ label: PLATFORM_LABEL[p] ?? p, d30: t.d30, d90: t.d90 })),
     camps: [...camps.values()].sort((a, b) => b.d90.spend - a.d90.spend).slice(0, 30),
     reports: reportRows,
+    documents,
   };
 }

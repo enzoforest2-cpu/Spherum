@@ -801,6 +801,8 @@ class Component extends DCLogic {
     const nm = R.agency.name, fg = (() => { const n = parseInt(acc.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
     o.br = Object.assign({}, o.br, { acc, name: nm, lgBg: acc, lgImg: 'none', lgFg: fg, lgIni: (nm.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'A').toUpperCase() });
     const first = (R.me.name || '').split(' ')[0];
+    o.docs = (R.documents || []).map(d => ({ name: d.name, cat: d.category, date: this.spDate(d.created_at), type: ((d.name.match(/\.([a-z0-9]{1,5})$/i) || [])[1] || 'ARQ').toUpperCase(),
+      dl: async () => { try { const r = await SP.api('/api/documents/' + d.id + '/download'); (window.top || window).open(r.url, '_blank') || (location.href = r.url); } catch (e) { this.toastMsg(e.message); } } }));
     o.who = { name: R.me.name, client: R.client.name, ini: (R.me.name || R.client.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() };
     o.hello = (first ? 'Olá, ' + first + ' · ' : '') + 'dados até ' + this.spDate(R.period.to);
     o.msgSub = 'Fale com seu time na ' + nm + (R.owner ? ' · ' + R.owner.name + ' cuida da sua conta' : '');
