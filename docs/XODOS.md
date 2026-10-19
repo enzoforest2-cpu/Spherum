@@ -206,7 +206,7 @@ A migração `20261018120000_xodos.sql` cria as tabelas, as funções de teto e 
 - Toda escrita passa pelo servidor, que filtra por `agency_id`.
 - A chave cifrada e a conversa interna (`transcript`) ficam fora do alcance do navegador.
 
-As outras migrações vêm em ordem, cada uma depois da anterior: `20261018130000_integrations.sql` (conexões e anúncios), `20261018140000_channels.sql` (canais e gatilhos), `20261018150000_xodo_memory.sql` (memória nova, que migra e apaga a tabela antiga) e `20261018160000_computers.sql` (computador na nuvem e bucket de arquivos). **Nenhuma foi aplicada no Supabase ainda.**
+As outras migrações vêm em ordem, cada uma depois da anterior: `20261018130000_integrations.sql` (conexões e anúncios), `20261018140000_channels.sql` (canais e gatilhos), `20261018150000_xodo_memory.sql` (memória nova, que migra e apaga a tabela antiga) e `20261018160000_computers.sql` (computador na nuvem e bucket de arquivos). Depois vêm `20261019100000_client_goals.sql` (meta de CPL/CPA/ROAS por cliente) e `20261019110000_documents.sql` (documentos e bucket privado). **Todas já estão aplicadas no projeto spherum do Supabase.** Ficou só uma limpeza opcional: as tabelas vazias `xodo_memory_revisions` e `xodo_memories` (memória antiga), que podem ser apagadas no SQL Editor.
 
 **Ordem:** essa migração depende das tabelas `agencies`, `agency_members` e `clients` da migração base do backend. Aplique a base primeiro. O arquivo `tests/fixtures/foundation.sql` mostra o mínimo que o motor espera dessas tabelas (`agencies.name`, `agency_members.role` com owner/admin/member/viewer, `clients.agency_id` e `clients.name`).
 
@@ -218,9 +218,14 @@ As outras migrações vêm em ordem, cada uma depois da anterior: `2026101813000
 | `XODOS_ENCRYPTION_KEY` | Chave mestra do cofre, com 32 caracteres ou mais (ex.: `openssl rand -base64 48`) |
 | `CRON_SECRET` | Segredo que o agendador manda para `/api/cron/xodos` (e o servidor para encadear fatias) |
 | `APP_URL` | Endereço do app (ex.: `https://spherum.com.br`), para encadear as fatias de execuções longas |
-| `SUPABASE_SERVICE_ROLE_KEY` | Só para o bucket de arquivos do computador (veja [COMPUTADOR.md](COMPUTADOR.md)) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Buckets privados do Storage: documentos e arquivos do computador (veja [COMPUTADOR.md](COMPUTADOR.md)) |
+| `RESEND_API_KEY` e `EMAIL_FROM` | E-mails de convite (equipe e portal do cliente) e aviso de contato do site. Sem eles, o convite vira link copiado |
+| `LEADS_NOTIFY_EMAIL` | Quem recebe os contatos e pedidos de demonstração do site |
+| `LEADS_SALT` | Opcional: sal do hash de IP do limite de envios do site |
 
 Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Settings → Environment Variables.
+
+No Supabase → Authentication → URL Configuration, coloque `https://spherum.com.br` como Site URL e inclua `https://spherum.com.br/**` (e os endereços de preview da Vercel, se usar) nas Redirect URLs: os links de confirmação, de nova senha e de convite voltam para lá.
 
 ## Testes
 
@@ -228,7 +233,7 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 377 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 395 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
@@ -243,5 +248,5 @@ São 377 testes com `node:test`, PGlite (Postgres em memória, sem precisar de D
 ## O que falta
 
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
-- **Ligar a tela de Xodós do design a estas rotas.** Hoje o front é o HTML estático do design.
+- **Ligar a tela de Xodós do design a estas rotas.** O site, o portal da agência (núcleo) e o portal do cliente já usam a API; a tela de Xodós ainda mostra os exemplos do design.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.
