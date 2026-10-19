@@ -953,14 +953,17 @@ html{scroll-behavior:smooth}
         <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:28px">
           <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">
             <span style="display:flex;align-items:center;gap:12px;color:#101828">{{ liveLogoAuth }}<span style="font:italic 400 34px/1 'Instrument Serif',serif;letter-spacing:-0.01em">Spherum</span></span>
-            <div><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.025em">Entrar no Spherum</h1><p style="margin:6px 0 0;color:#667085;font-size:15px">Acesse o espaço de trabalho da sua agência.</p></div>
+            <div><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.025em">{{ loginTitle }}</h1><p style="margin:6px 0 0;color:#667085;font-size:15px">{{ loginSub }}</p></div>
           </div>
 
           <div style="background:#fff;border:1px solid #E4E7EC;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:16px;box-shadow:0 1px 2px rgba(16,24,40,0.04),0 12px 32px -16px rgba(16,24,40,0.12)">
-            <label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500">E-mail<input value="{{ email }}" sc-camel-on-change="{{ onEmail }}" type="email" placeholder="voce@agencia.com.br" autocomplete="email" style="height:44px;padding:0 14px;border:1px solid {{ errBd }};border-radius:10px;background:#fff;font-weight:400;font-size:15px;outline:none;width:100%" style-focus="border-color:#465FFF;box-shadow:0 0 0 4px rgba(70,95,255,0.12)"></label>
-            <label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500"><span style="display:flex;justify-content:space-between">Senha<span style="font-weight:500;color:#465FFF;font-size:13px;cursor:pointer">Esqueci minha senha</span></span><input value="{{ pass }}" sc-camel-on-change="{{ onPass }}" sc-camel-on-key-down="{{ onLoginKey }}" type="password" placeholder="Sua senha" autocomplete="current-password" style="height:44px;padding:0 14px;border:1px solid {{ errBd }};border-radius:10px;background:#fff;font-weight:400;font-size:15px;outline:none;width:100%" style-focus="border-color:#465FFF;box-shadow:0 0 0 4px rgba(70,95,255,0.12)"></label>
+            <sc-if value="{{ showName }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500">Seu nome<input value="{{ lname }}" sc-camel-on-change="{{ onLName }}" type="text" placeholder="Nome e sobrenome" autocomplete="name" style="height:44px;padding:0 14px;border:1px solid #D0D5DD;border-radius:10px;background:#fff;font-weight:400;font-size:15px;outline:none;width:100%" style-focus="border-color:#465FFF;box-shadow:0 0 0 4px rgba(70,95,255,0.12)"></label></sc-if>
+            <sc-if value="{{ notReset }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500">E-mail<input value="{{ email }}" sc-camel-on-change="{{ onEmail }}" type="email" placeholder="voce@agencia.com.br" autocomplete="email" style="height:44px;padding:0 14px;border:1px solid {{ errBd }};border-radius:10px;background:#fff;font-weight:400;font-size:15px;outline:none;width:100%" style-focus="border-color:#465FFF;box-shadow:0 0 0 4px rgba(70,95,255,0.12)"></label></sc-if>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500"><span style="display:flex;justify-content:space-between">Senha<sc-if value="{{ notReset }}"><span role="button" tabindex="0" sc-camel-on-click="{{ forgot }}" style="font-weight:500;color:#465FFF;font-size:13px;cursor:pointer">Esqueci minha senha</span></sc-if></span><input value="{{ pass }}" sc-camel-on-change="{{ onPass }}" sc-camel-on-key-down="{{ onLoginKey }}" type="password" placeholder="{{ passPh }}" autocomplete="current-password" style="height:44px;padding:0 14px;border:1px solid {{ errBd }};border-radius:10px;background:#fff;font-weight:400;font-size:15px;outline:none;width:100%" style-focus="border-color:#465FFF;box-shadow:0 0 0 4px rgba(70,95,255,0.12)"></label>
             <sc-if value="{{ hasErr }}"><div role="alert" style="font-size:13px;color:#D92D20;padding:10px 12px;border-radius:8px;background:rgba(240,68,56,0.08)">{{ err }}</div></sc-if>
-            <button sc-camel-on-click="{{ doLogin }}" style="height:46px;border:none;border-radius:10px;background:#465FFF;color:#fff;font-weight:600;font-size:15px;margin-top:4px" style-hover="background:#3A51E6">Entrar</button>
+            <sc-if value="{{ hasInfo }}"><div role="status" style="font-size:13px;color:#067647;padding:10px 12px;border-radius:8px;background:rgba(18,183,106,0.08)">{{ info }}</div></sc-if>
+            <button sc-camel-on-click="{{ doLogin }}" style="height:46px;border:none;border-radius:10px;background:#465FFF;color:#fff;font-weight:600;font-size:15px;margin-top:4px;opacity:{{ btnOp }}" style-hover="background:#3A51E6">{{ loginBtn }}</button>
+            <sc-if value="{{ hasInvite }}"><button sc-camel-on-click="{{ toggleInviteNew }}" style="border:none;background:transparent;padding:0;color:#465FFF;font-weight:500;font-size:13.5px">{{ inviteToggleL }}</button></sc-if>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:12px">
@@ -1075,7 +1078,7 @@ html{scroll-behavior:smooth}
           <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #F2F4F7;flex-wrap:wrap">
             <button sc-camel-on-click="{{ su.back }}" style="height:44px;padding:0 18px;border:1px solid #E4E7EC;border-radius:9px;background:#fff;font-weight:500">Voltar</button>
             <sc-if value="{{ su.notResult }}" hint-placeholder-val="{{ true }}"><button sc-camel-on-click="{{ su.next }}" style="height:44px;padding:0 22px;border:none;border-radius:9px;background:#465FFF;color:#fff;font-weight:600" style-hover="background:#3A51E6">{{ su.nextLabel }}</button></sc-if>
-            <sc-if value="{{ su.isResult }}"><div style="display:flex;gap:10px;flex-wrap:wrap"><button sc-camel-on-click="{{ su.comparePlans }}" style="height:44px;padding:0 18px;border:1px solid #E4E7EC;border-radius:9px;background:#fff;font-weight:500">Comparar planos</button><a href="javascript:window.__spOpen('agencia')" style="height:44px;padding:0 22px;border-radius:9px;background:#465FFF;color:#fff;font-weight:600;display:flex;align-items:center;text-decoration:none">Começar teste grátis de 14 dias</a></div></sc-if>
+            <sc-if value="{{ su.hasMsg }}"><div role="status" style="order:3;flex-basis:100%;font-size:13.5px;color:{{ su.msgC }};padding:10px 12px;border-radius:8px;background:{{ su.msgBg }}">{{ su.msg }}</div></sc-if><sc-if value="{{ su.isResult }}"><div style="display:flex;gap:10px;flex-wrap:wrap"><button sc-camel-on-click="{{ su.comparePlans }}" style="height:44px;padding:0 18px;border:1px solid #E4E7EC;border-radius:9px;background:#fff;font-weight:500">Comparar planos</button><button sc-camel-on-click="{{ su.finish }}" style="height:44px;padding:0 22px;border-radius:9px;background:#465FFF;color:#fff;font-weight:600;display:flex;align-items:center;text-decoration:none;border:none;cursor:pointer;opacity:{{ su.finishOp }}">{{ su.finishL }}</button></div></sc-if>
           </div>
         </div>
         <div style="text-align:center;font-size:12.5px;color:#667085">Seus dados ficam protegidos conforme a LGPD. Você pode cancelar a qualquer momento.</div>
@@ -1214,10 +1217,78 @@ function LiveLogo(p) {
   return React.createElement('span', { ref, title: p.still ? undefined : 'Spherum · ' + spPhaseLabel(h) + '. O ponto azul acompanha o horário.', onMouseEnter: () => { if (ctl.current && !p.still) ctl.current.lap(); }, onClick: p.onClick, style: { display: 'inline-block', lineHeight: 0, flexShrink: 0, width: p.size, height: p.size, cursor: p.onClick ? 'pointer' : 'default' } });
 }
 
+// <spherum-api> Sessão do Supabase Auth e chamadas à API do Spherum (fonte: design/shared/spherum-api.js; o script scripts/design-bundle.mjs copia este bloco para os modelos).
+const SP_SB = { url: 'https://fszbxwlxuncqefcwttru.supabase.co', key: 'sb_publishable_zAhuSdMR3g2zHAb7WwYyCQ_XW8CLEth' };
+const SP_SESSION = 'spherum.session';
+const SP = {
+  get() { try { return JSON.parse(localStorage.getItem(SP_SESSION) || 'null'); } catch (e) { return null; } },
+  save(d) {
+    const s = d && d.access_token ? { access_token: d.access_token, refresh_token: d.refresh_token, expires_at: d.expires_at || Math.floor(Date.now() / 1000) + (+d.expires_in || 3600), user: d.user ? { id: d.user.id, email: d.user.email } : (SP.get() || {}).user || null } : null;
+    try { if (s) localStorage.setItem(SP_SESSION, JSON.stringify(s)); else localStorage.removeItem(SP_SESSION); } catch (e) {}
+    return s;
+  },
+  authMsg(j, status) {
+    const c = String(j.error_code || j.code || j.error || ''), m = String(j.msg || j.message || j.error_description || '');
+    if (/invalid_credentials|invalid_grant/.test(c) || /invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
+    if (/email_not_confirmed/.test(c) || /not confirmed/i.test(m)) return 'Confirme o seu e-mail pelo link que enviamos antes de entrar.';
+    if (/user_already_exists|email_exists/.test(c) || /already registered/i.test(m)) return 'Este e-mail já tem conta. Entre com ele.';
+    if (/weak_password/.test(c) || /password/i.test(m) && status === 422) return 'Senha fraca: use pelo menos 8 caracteres, com letras e números.';
+    if (/rate_limit/.test(c) || status === 429) return 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';
+    if (/email_address_invalid|validation_failed/.test(c)) return 'Confira o e-mail digitado.';
+    return 'Não deu certo agora. Tente de novo em instantes.';
+  },
+  async auth(path, body, token) {
+    const h = { apikey: SP_SB.key, 'content-type': 'application/json' };
+    if (token) h.authorization = 'Bearer ' + token;
+    const r = await fetch(SP_SB.url + '/auth/v1/' + path, { method: path === 'user' ? 'PUT' : 'POST', headers: h, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(SP.authMsg(j, r.status)); e.status = r.status; throw e; }
+    return j;
+  },
+  back(q) { return location.origin + '/' + (q || ''); },
+  async login(email, password) { return SP.save(await SP.auth('token?grant_type=password', { email, password })); },
+  // Com confirmação de e-mail ligada no Supabase, volta sem sessão: a pessoa confirma pelo link.
+  async signup(email, password, data) { const j = await SP.auth('signup?redirect_to=' + encodeURIComponent(SP.back('?confirmado=1')), { email, password, data }); return j.access_token ? SP.save(j) : null; },
+  async recover(email) { await SP.auth('recover?redirect_to=' + encodeURIComponent(SP.back('?redefinir=1')), { email }); },
+  async setPassword(password) { const t = await SP.token(); if (!t) throw new Error('O link venceu. Peça outro em "Esqueci minha senha".'); await SP.auth('user', { password }, t); },
+  // Volta do link do e-mail (confirmação ou nova senha): a sessão vem no fragmento da URL.
+  fromLink() {
+    const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    if (!h.get('access_token')) return null;
+    const s = SP.save({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: h.get('expires_in'), expires_at: +h.get('expires_at') || undefined });
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    return s ? h.get('type') || 'login' : null;
+  },
+  async token() {
+    let s = SP.get();
+    if (!s) return null;
+    if (s.expires_at - 60 < Date.now() / 1000) {
+      try { s = SP.save(await SP.auth('token?grant_type=refresh_token', { refresh_token: s.refresh_token })); } catch (e) { SP.save(null); return null; }
+    }
+    return s.access_token;
+  },
+  async api(path, o) {
+    o = o || {};
+    const t = await SP.token(), h = { 'content-type': 'application/json' };
+    if (t) h.authorization = 'Bearer ' + t;
+    const r = await fetch(location.origin + path, { method: o.method || 'GET', headers: h, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || 'Não deu certo agora. Tente de novo em instantes.'); e.status = r.status; e.body = j; throw e; }
+    return j;
+  },
+  logout() {
+    const s = SP.get();
+    SP.save(null);
+    if (s) fetch(SP_SB.url + '/auth/v1/logout', { method: 'POST', headers: { apikey: SP_SB.key, authorization: 'Bearer ' + s.access_token } }).catch(() => {});
+  }
+};
+// </spherum-api>
 const SP_CAL_DEF = { connected: true, provider: 'Google Agenda', email: 'comercial@spherum.com.br', owner: 'Rafael Lima', dur: 30, buffer: 15, days: [1, 2, 3, 4, 5], from: 9, to: 18, lunch: true, notice: 4, ahead: 5, video: 'Google Meet', synced: 'há 2 min' };
-function spCalGet() { try { return Object.assign({}, SP_CAL_DEF, JSON.parse(localStorage.getItem('spherum:demoCal') || '{}')); } catch (e) { return Object.assign({}, SP_CAL_DEF); } }
+function spCalGet() { const srv = (window.__spDemo && window.__spDemo.calendar) || {}; try { return Object.assign({}, SP_CAL_DEF, JSON.parse(localStorage.getItem('spherum:demoCal') || '{}'), srv); } catch (e) { return Object.assign({}, SP_CAL_DEF, srv); } }
 function spCalSet(c) { try { localStorage.setItem('spherum:demoCal', JSON.stringify(c)); } catch (e) {} }
-function spBookGet() { try { return JSON.parse(localStorage.getItem('spherum:demoBookings') || '[]'); } catch (e) { return []; } }
+function spSlotOf(d) { const p2 = n => String(n).padStart(2, '0'); return d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + 'T' + p2(d.getHours()) + p2(d.getMinutes()) + '00'; }
+function spSlotToIso(s) { return new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(9, 11), +s.slice(11, 13)).toISOString(); }
+function spBookGet() { const srv = ((window.__spDemo && window.__spDemo.booked) || []).map(x => ({ iso: spSlotOf(new Date(x)) })); try { return JSON.parse(localStorage.getItem('spherum:demoBookings') || '[]').concat(srv); } catch (e) { return srv; } }
 function spBookAdd(b) { try { localStorage.setItem('spherum:demoBookings', JSON.stringify(spBookGet().concat([b]))); } catch (e) {} }
 function spCalSlots(cal, now) {
   const WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'], out = [], booked = spBookGet().map(b => b.iso), p2 = n => String(n).padStart(2, '0');
@@ -1230,7 +1301,7 @@ function spCalSlots(cal, now) {
       const at = new Date(x.getFullYear(), x.getMonth(), x.getDate(), Math.floor(m / 60), m % 60), t = p2(at.getHours()) + ':' + p2(at.getMinutes());
       const iso = at.getFullYear() + p2(at.getMonth() + 1) + p2(at.getDate()) + 'T' + p2(at.getHours()) + p2(at.getMinutes()) + '00';
       if (at.getTime() < min) continue;
-      slots.push({ t, iso, busy: ((doy * 7 + j * 13) % 5 === 0) || booked.includes(iso) });
+      slots.push({ t, iso, busy: booked.includes(iso) });
     }
     if (slots.length) out.push({ l: WD[x.getDay()] + ', ' + p2(x.getDate()) + '/' + p2(x.getMonth() + 1), slots });
   }
@@ -1625,7 +1696,31 @@ class Component extends DCLogic {
   }
   state = { adPlan: 0, adSel: {}, view: 'landing', annual: false, faq: -1, email: '', pass: '', err: '', step: 1, mode: null, ans: {}, cf: {}, cMsg: '', cErr: false, sent: false, wide: true, videoOpen: false, heroTab: 0, heroT: 0, heroManual: false, su: {}, suErr: {}, suStep: 1, suAlt: false, legal: null, legalFrom: null };
   legalRef = React.createRef();
-  componentDidMount() { window.__spOpen = k => this.setState({ portal: k }); this.pm = e => { const d = String(e.data || ''); if (d === 'spherum:close') this.setState({ portal: null }); else if (d.indexOf('spherum:open:') === 0) this.setState({ portal: d.slice(13) }); }; window.addEventListener('message', this.pm); this.ht = setInterval(() => { if (this.state.view !== 'landing' || this.state.videoOpen || this.state.heroManual || document.hidden) return; this.setState(s => { const t = s.heroT + 200; return t >= 7000 ? { heroT: 0, heroTab: (s.heroTab + 1) % 6 } : { heroT: t }; }); }, 200); if (this.props.startView) this.setState({ view: this.props.startView }); this.rs = () => { const w = window.innerWidth >= 1000, x = window.innerWidth >= 1420; if (w !== this.state.wide || x !== this.state.xw) this.setState({ wide: w, xw: x }); }; this.rs(); window.addEventListener('resize', this.rs); this.kh = e => { if (e.key === 'Escape') { if (this.state.legal) this.setState({ legal: null, legalFrom: null }); else if (this.state.videoOpen) this.setState({ videoOpen: false }); } }; window.addEventListener('keydown', this.kh); }
+  componentDidMount() { window.__spOpen = k => { try { localStorage.setItem('spherum.mode', 'demo'); } catch (e) {} this.setState({ portal: k, portalReal: false }); }; this.pm = e => { const d = String(e.data || ''); if (d === 'spherum:close') { if (this.state.portalReal) SP.logout(); this.setState({ portal: null, portalReal: false }); } else if (d.indexOf('spherum:open:') === 0) this.setState({ portal: d.slice(13) }); }; window.addEventListener('message', this.pm); this.ht = setInterval(() => { if (this.state.view !== 'landing' || this.state.videoOpen || this.state.heroManual || document.hidden) return; this.setState(s => { const t = s.heroT + 200; return t >= 7000 ? { heroT: 0, heroTab: (s.heroTab + 1) % 6 } : { heroT: t }; }); }, 200); if (this.props.startView) this.setState({ view: this.props.startView }); this.rs = () => { const w = window.innerWidth >= 1000, x = window.innerWidth >= 1420; if (w !== this.state.wide || x !== this.state.xw) this.setState({ wide: w, xw: x }); }; this.rs(); window.addEventListener('resize', this.rs); this.kh = e => { if (e.key === 'Escape') { if (this.state.legal) this.setState({ legal: null, legalFrom: null }); else if (this.state.videoOpen) this.setState({ videoOpen: false }); } }; window.addEventListener('keydown', this.kh); this.spBoot(); }
+  spBoot() {
+    SP.api('/api/site/demo').then(d => { window.__spDemo = d; this.forceUpdate(); }).catch(() => {});
+    const q = new URLSearchParams(location.search), invite = q.get('convite'), kind = SP.fromLink();
+    if (invite) { this.setState({ view: 'login', invite: { token: invite } }); SP.api('/api/invites/' + encodeURIComponent(invite)).then(r => this.setState({ invite: Object.assign({ token: invite }, r.invite) })).catch(x => this.setState({ invite: null, err: x.message })); }
+    if (kind === 'recovery' || (q.get('redefinir') && SP.get())) this.setState({ view: 'login', reset: true, info: 'Escolha a nova senha da sua conta.' });
+    else if (kind) { this.setState({ view: 'login' }); this.spAfterLogin(invite); }
+    else if (q.get('entrar')) { const s = SP.get(); this.setState({ view: 'login', info: s && s.user ? 'Você está conectado como ' + s.user.email + '. Clique em Entrar para continuar.' : '' }); }
+    if (q.toString()) try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  }
+  // Depois do login: aceita o convite, cria a agência do cadastro (se faltar) e abre o portal certo.
+  async spAfterLogin(inviteToken) {
+    this.setState({ busy: true, err: '' });
+    try {
+      const token = inviteToken || (this.state.invite || {}).token;
+      if (token) { await SP.api('/api/invites/accept', { method: 'POST', body: { token } }); this.setState({ invite: null }); }
+      let me = await SP.api('/api/me');
+      if (me.home === 'cadastro') {
+        try { await SP.api('/api/agencies', { method: 'POST' }); me = await SP.api('/api/me'); }
+        catch (x) { if (x.status === 400) { const s = SP.get(); this.setState({ busy: false, view: 'signup', suStep: 2, su: Object.assign({}, this.state.su, { email: s && s.user ? s.user.email : '' }), info: '' }); return; } throw x; }
+      }
+      try { localStorage.setItem('spherum.mode', 'real'); localStorage.setItem('spherum.agency', me.agencies.length ? me.agencies[0].agency_id : ''); } catch (e) {}
+      this.setState({ busy: false, portal: me.home, portalReal: true, info: '' });
+    } catch (x) { this.setState({ busy: false, err: x.message }); }
+  }
   componentDidUpdate() { if (!this.sc) { this.sc = () => { const v = window.scrollY > 8, p = window.scrollY > 560; if (v !== !!this.state.scrolled || p !== !!this.state.fabPast) this.setState({ scrolled: v, fabPast: p }); }; window.addEventListener('scroll', this.sc, { passive: true }); this.sc(); } }
   componentWillUnmount() { if (this.sc) window.removeEventListener('scroll', this.sc); window.removeEventListener('resize', this.rs); window.removeEventListener('keydown', this.kh); clearInterval(this.ht); clearInterval(this._qzT); }
   go(v) { this.setState({ view: v, err: '' }); window.scrollTo(0, 0); }
@@ -1676,7 +1771,18 @@ class Component extends DCLogic {
     const faqUi = { q: S.faqQ || '', hasQ: !!fq, empty: !fList.length, bd: fq ? 'rgba(70,95,255,.55)' : 'rgba(16,24,40,.08)', onQ: e => this.setState({ faqQ: e.target.value }), clear: () => this.setState({ faqQ: '' }),
       cats: FC.map(c => { const on = fcat === c[0]; return { l: c[1], n: String(c[0] === 'all' ? FAQ.length : FAQ.filter(x => x[0] === c[0]).length), sel: on ? 'true' : 'false', bg: on ? '#101828' : '#FFFFFF', c: on ? '#FFFFFF' : '#344054', sh: on ? 'none' : '0 0 0 1px rgba(16,24,40,.08)', pick: () => this.setState({ faqCat: c[0], faqQ: '', faq: FAQ.findIndex(x => c[0] === 'all' || x[0] === c[0]) }) }; }) };
     const doLogin = () => { const e = S.email.trim().toLowerCase(); const map = { 'agencia@demo.com': '__sp:agencia', 'cliente@demo.com': '__sp:cliente', 'admin@demo.com': '__sp:admin' };
-      if (!e || !S.pass) return this.setState({ err: 'Informe e-mail e senha.' }); if (map[e] && S.pass === 'demo123') { window.__spOpen(map[e].replace('__sp:', '')); return; } this.setState({ err: 'E-mail ou senha incorretos. Use um acesso de demonstração abaixo.' }); };
+      if (S.busy) return;
+      if (S.reset) { if ((S.pass || '').length < 8) return this.setState({ err: 'A nova senha precisa de pelo menos 8 caracteres.' }); this.setState({ busy: true, err: '' }); SP.setPassword(S.pass).then(() => { this.setState({ busy: false, reset: false, pass: '', info: 'Senha alterada.' }); this.spAfterLogin(); }, x => this.setState({ busy: false, err: x.message })); return; }
+      if (!e && !S.pass && SP.get()) { this.spAfterLogin(); return; }
+      if (!e || !S.pass) return this.setState({ err: 'Informe e-mail e senha.' }); if (map[e] && S.pass === 'demo123') { window.__spOpen(map[e].replace('__sp:', '')); return; }
+      this.setState({ busy: true, err: '', info: '' });
+      const go = S.inviteNew
+        ? ((S.lname || '').trim().length < 2 ? Promise.reject(new Error('Informe o seu nome.')) : S.pass.length < 8 ? Promise.reject(new Error('A senha precisa de pelo menos 8 caracteres.'))
+          : SP.signup(e, S.pass, { full_name: S.lname.trim() }, '?convite=' + encodeURIComponent((S.invite || {}).token || '')))
+        : SP.login(e, S.pass);
+      go.then(sess => { this.setState({ busy: false }); if (!sess) { this.setState({ info: 'Enviamos um link de confirmação para ' + e + '. Confirme e você volta direto para o convite.' }); return; } this.spAfterLogin(); }, x => this.setState({ busy: false, err: x.message })); };
+    const forgot = () => { const e = S.email.trim().toLowerCase(); if (!e) return this.setState({ err: 'Digite o seu e-mail acima e clique de novo em "Esqueci minha senha".', info: '' }); SP.recover(e).then(() => this.setState({ err: '', info: 'Se houver uma conta com ' + e + ', enviamos um link para criar uma nova senha.' }), x => this.setState({ err: x.message })); };
+    const inv = S.invite && S.invite.agency_name ? S.invite : null;
     const modes = [['solo', 'person', 'Sou gestor solo', 'Atendo meus clientes sozinho'], ['team', 'group', 'Tenho uma pequena equipe', 'De 2 a 5 pessoas na operação'], ['agency', 'domain', 'Tenho uma agência', 'Equipe, processos e dezenas de clientes']]
       .map(m => { const a = S.mode === m[0]; return { i: m[1], t: m[2], d: m[3], sel: a ? 'true' : 'false', bd: a ? '#465FFF' : '#E4E7EC', ri: a ? 'radio_button_checked' : 'radio_button_unchecked', rc: a ? '#465FFF' : '#D0D5DD', pick: () => this.setState({ mode: m[0] }) }; });
     const qDef = [['clients', 'Quantos clientes você atende hoje?', ['Nenhum ainda', '1–2', '3–10', '11–30', '30+'], false], ['plats', 'Quais plataformas você usa?', ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads', 'GA4'], true],
@@ -1759,15 +1865,17 @@ class Component extends DCLogic {
         online: isOpen ? 'Time comercial online agora' : 'Respondemos no próximo dia útil', onDot: isOpen ? '#12B76A' : '#98A2B3', onGlow: isOpen ? '0 0 0 4px rgba(18,183,106,.15)' : 'none',
         channels: [['chat', 'WhatsApp comercial', '(11) 4000-2026', 'Seg a sex, 9h às 18h', 'https://wa.me/551140002026', '#E7F8EE', '#079455'], ['mail', 'Comercial', 'comercial@spherum.com.br', 'Planos, demonstrações e migração', 'mailto:comercial@spherum.com.br', '#EEF1FF', '#465FFF'], ['support_agent', 'Suporte', 'suporte@spherum.com.br', 'Para clientes · resposta em até 4 h úteis', 'mailto:suporte@spherum.com.br', '#FFF3EE', '#C4320A'], ['handshake', 'Parcerias', 'parcerias@spherum.com.br', 'Indicação, revenda e integrações', 'mailto:parcerias@spherum.com.br', '#F4F0FF', '#6941C6'], ['newspaper', 'Imprensa', 'imprensa@spherum.com.br', 'Entrevistas e materiais da marca', 'mailto:imprensa@spherum.com.br', '#F2F4F7', '#344054']].map(c => ({ i: c[0], t: c[1], v: c[2], s: c[3], href: c[4], bg: c[5], c: c[6] })),
         steps: [['Lemos o que você escreveu', 'Uma pessoa do time comercial, não um robô, em até 1 dia útil.'], ['Montamos a demonstração', 'Com dados parecidos com os da sua agência: número de clientes, nicho e ferramentas.'], ['Conversamos 30 minutos', 'Por vídeo. Você sai sabendo qual plano faz sentido e quanto custa.']].map((s, i) => ({ n: String(i + 1), t: s[0], d: s[1] })),
-        again: () => this.setState({ sent: false, cf: { reason, channel: V.channel, role: V.role, name: V.name, email: V.email, phone: V.phone, company: V.company }, cMsg: '', cfErr: {} }) };
+        again: () => this.setState({ sent: false, cProto: null, cf: { reason, channel: V.channel, role: V.role, name: V.name, email: V.email, phone: V.phone, company: V.company }, cMsg: '', cfErr: {} }) };
       const di = Math.min(V.day != null ? V.day : Math.max(0, days.findIndex(d => d.slots.some(s => !s.busy))), Math.max(0, out.days.length - 1));
       out.dayTabs = out.days.map((d, i) => { const on = i === di, fr = days[i].slots.filter(s => !s.busy).length, pt = d.l.split(', '); return { wd: pt[0], dt: (pt[1] || '').slice(0, 5), fr: fr ? fr + (fr === 1 ? ' livre' : ' livres') : 'lotado', sel: on ? 'true' : 'false', bg: on ? '#101828' : '#fff', c: on ? '#fff' : '#101828', sub: on ? '#D0D5DD' : fr ? '#067647' : '#98A2B3', bd: on ? '#101828' : '#E4E7EC', pick: () => set('day', i) }; });
       out.daySlots = (out.days[di] || { slots: [] }).slots;
       ids.forEach(k => { out.v[k] = k === 'msg' ? msg : (V[k] || ''); out.on[k] = e => set(k, e.target.value); out.bd[k] = bd(k); out.inv[k] = E[k] ? 'true' : 'false'; });
       out.v.role = V.role; out.on.role = e => set('role', e.target.value);
-      const proto = 'SPH-' + (2026) + '-' + String(Math.abs(((V.email || 'x').split('').reduce((h, c) => h * 31 + c.charCodeAt(0), 7)) % 90000) + 10000);
+      const proto = S.cProto || 'SPH-' + (2026) + '-' + String(Math.abs(((V.email || 'x').split('').reduce((h, c) => h * 31 + c.charCodeAt(0), 7)) % 90000) + 10000);
       const booked = isDemo && calOn && V.slotIso, endIso = booked ? (() => { const s = V.slotIso, d = new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(9, 11), +s.slice(11, 13) + cal.dur), p = n => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes()) + '00'; })() : '';
       const ics = booked ? 'data:text/calendar;charset=utf-8,' + encodeURIComponent(['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Spherum//Demo//PT', 'BEGIN:VEVENT', 'UID:' + V.slotIso + '-' + (V.email || 'x') + '@spherum.com.br', 'DTSTART;TZID=America/Sao_Paulo:' + V.slotIso, 'DTEND;TZID=America/Sao_Paulo:' + endIso, 'SUMMARY:Demonstração do Spherum', 'DESCRIPTION:Com ' + cal.owner + ', por ' + cal.video + '.', 'ORGANIZER:mailto:' + cal.email, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n')) : '';
+      out.payload = () => { const t = k => (V[k] || '').trim(); return { kind: booked ? 'demonstracao' : 'contato', name: t('name'), email: t('email').toLowerCase() || undefined, phone: t('phone') || undefined, company: t('company') || undefined, message: msg.trim() || undefined, scheduled_for: booked ? spSlotToIso(V.slotIso) : undefined,
+        details: { motivo: reason, site: t('site'), cargo: V.role || '', clientes: V.clients || '', equipe: V.team || '', midia: V.media || '', ferramentas: V.tools || [], plano: V.plan || '', canal: V.channel || '', horario: booked ? V.slot : '' } }; };
       out.book = () => { if (booked) spBookAdd({ iso: V.slotIso, when: V.slot, name: (V.name || '').trim(), company: (V.company || '').trim(), email: (V.email || '').trim(), clients: V.clients || '', plan: V.plan || '' }); };
       out.done = { hasIcs: !!booked, ics, t: booked ? 'Demonstração agendada.' : 'Mensagem recebida.', d: booked ? 'O convite com o link do ' + cal.video + ' sai de ' + cal.email + ' para ' + (V.email || 'o seu e-mail') + '. Se precisar mudar o horário, é só responder o convite.' : 'Vamos responder por ' + (V.channel || 'WhatsApp').toLowerCase() + ' em até 1 dia útil.',
         rows: [['Protocolo', proto], ['Assunto', (RS.find(r => r[0] === reason) || [])[2]], booked ? ['Quando', V.slot + ' · ' + cal.dur + ' min'] : ['Resposta por', V.channel], ['Agência', (V.company || '').trim() + (V.clients ? ' · ' + V.clients + ' clientes' : '')], ['Contato', (V.name || '').trim().split(' ')[0] + ' · ' + (V.phone || '')]].map((r, i) => ({ k: r[0], v: r[1], line: i ? '#EAECF0' : 'transparent' })) };
@@ -1853,6 +1961,19 @@ class Component extends DCLogic {
         plan: { n: p[0], price, per: p[1] == null ? '' : S.annual ? '/mês no plano anual' : '/mês', who: p[2], f: p[5] }, reasons: reasons.slice(0, 5), whyTitle: S.suAlt ? (lvl < rec ? 'O que muda em relação ao ' + PL[rec][0] : 'O que você ganha') : 'Por que este plano', whyList: S.suAlt ? caveats : reasons.slice(0, 5), whyDot: S.suAlt && lvl < rec ? '#F79009' : '#465FFF', whyMark: S.suAlt && lvl < rec ? '!' : '✓',
         altText: S.suAlt ? 'Voltar para a recomendação: ' + PL[rec][0] + '.' : rec > 0 ? 'Prefere começar menor? O plano ' + alt[0] + ' atende ' + alt[2].replace('Para ', '').toLowerCase() + '.' : 'Pensando em crescer? O plano Agência inclui CRM e financeiro.',
         altLabel: S.suAlt ? 'Ver ' + PL[rec][0] : 'Ver ' + alt[0], pickAlt: () => this.setState(s => ({ suAlt: !s.suAlt })), swX: S.annual ? '16px' : '2px',
+        finishL: S.suBusy ? 'Criando o seu espaço…' : 'Começar teste grátis de 14 dias', finishOp: S.suBusy ? 0.7 : 1, msg: S.suMsg || '', hasMsg: !!S.suMsg, msgC: S.suMsgOk ? '#067647' : '#D92D20', msgBg: S.suMsgOk ? 'rgba(18,183,106,0.08)' : 'rgba(240,68,56,0.08)',
+        finish: () => {
+          if (S.suBusy) return;
+          const PLAN = { 'Solo': 'solo', 'Agência': 'agencia', 'Escala': 'escala', 'Rede': 'rede', 'Empresarial': 'empresarial' }, list = o => Object.keys(o || {}).filter(k => o[k]);
+          const signup = { name: (A.agency || '').trim(), website: (A.site || '').trim() || undefined, state: A.uf || undefined, phone: (A.phone || '').trim() || undefined, plan: PLAN[p[0]], billing_cycle: S.annual ? 'anual' : 'mensal',
+            onboarding: { mode: A.mode, clients: A.clients, team: A.team, invest: A.invest, plats: list(A.plats), tools: list(A.tools), goals: list(A.goals), rev: A.rev, recommended_plan: PLAN[PL[rec][0]] } };
+          this.setState({ suBusy: true, suMsg: '' });
+          const run = SP.get()
+            ? SP.api('/api/agencies', { method: 'POST', body: signup }).then(() => true)
+            : SP.signup((A.email || '').trim().toLowerCase(), A.pass || '', { full_name: (A.name || '').trim(), phone: (A.phone || '').trim(), signup }).then(sess => sess ? SP.api('/api/agencies', { method: 'POST' }).then(() => true) : false);
+          run.then(ok => { this.setState({ suBusy: false }); if (ok) this.spAfterLogin(); else this.setState({ suMsg: 'Conta criada. Enviamos um link de confirmação para ' + A.email + ': confirme e o seu espaço abre na hora.', suMsgOk: true }); },
+            x => this.setState({ suBusy: false, suMsg: x.message, suMsgOk: false }));
+        },
         comparePlans: () => { this.setState({ view: 'landing' }); setTimeout(() => { const el = document.getElementById('precos'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); }, 60); },
         guide: [['Cadastre seu primeiro cliente', '1 min'], ['Conecte uma conta de anúncios', 'opcional'], ['Defina a meta de CPL ou CPA', '1 min'], ['Crie seu primeiro projeto', '2 min'], ['Configure mensalidades e cobranças', '2 min'], ['Convide sua equipe', lt ? 'recomendado' : 'opcional'], ['Envie o portal para o cliente', '1 min']].map((x, i) => ({ n: i + 1, t: x[0], m: x[1] }))
       };
@@ -1900,7 +2021,7 @@ class Component extends DCLogic {
       toggle: () => this.setState(s => ({ hdrOpen: !s.hdrOpen })), video: () => this.setState({ hdrOpen: false, videoOpen: true }), top: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
     const R = window.__resources || {};
     return {
-      portalOpen: !!S.portal, portalSrc: S.portal ? (R[{ agencia: 'pAgencia', cliente: 'pCliente', admin: 'pAdmin' }[S.portal]] || '') : '', portalKey: S.portal || '',
+      portalOpen: !!S.portal, portalSrc: S.portal ? (S.portalReal ? '/' + S.portal : (R[{ agencia: 'pAgencia', cliente: 'pCliente', admin: 'pAdmin' }[S.portal]] || '')) : '', portalKey: S.portal || '',
       videoSrc: R.demoVideo || 'Spherum Video.html',
       hdr, legal, openTerms: openLegal('terms'), openPriv: openLegal('priv'), openLgpd: openLegal('priv', null, 10), openCookies: openLegal('priv', null, 8), openTermsSu: openLegal('terms', 'signup'), openPrivSu: openLegal('priv', 'signup'),
       su, showNav: S.wide !== false, videoOpen: S.videoOpen, openVideo: () => this.setState({ videoOpen: true }), closeVideo: () => this.setState({ videoOpen: false }), stop: e => e.stopPropagation(), is, goLogin: () => this.go('login'), goSignup: () => this.go('signup'), goLanding: () => this.go('landing'), goContact: () => this.go('contact'),
@@ -1953,13 +2074,20 @@ class Component extends DCLogic {
       annual: S.annual, swBg: S.annual ? '#465FFF' : '#D0D5DD', swX: S.annual ? '18px' : '2px', fab, toggleAnnual: () => this.setState(s => ({ annual: !s.annual })), toPrices: () => { const el = document.getElementById('precos'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); }, plans, faq, faqUi, qz, qzOffer, openQuiz,
       xh: this.vXh(), cmpOpen: !!S.cmpOpen, toggleCmp: () => this.setState(s => ({ cmpOpen: !s.cmpOpen })), cmpLabel: S.cmpOpen ? 'Esconder a comparação' : 'Comparar todos os recursos', cmpIcon: S.cmpOpen ? 'expand_less' : 'expand_more', cmpHead, cmpRows,
       email: S.email, pass: S.pass, onEmail: e => this.setState({ email: e.target.value, err: '' }), onPass: e => this.setState({ pass: e.target.value, err: '' }), doLogin, onLoginKey: e => { if (e.key === 'Enter') doLogin(); },
-      err: S.err, hasErr: !!S.err, errBd: S.err ? '#F04438' : '#D0D5DD',
+      err: S.err, hasErr: !!S.err, errBd: S.err ? '#F04438' : '#D0D5DD', forgot, info: S.info || '', hasInfo: !!S.info, isReset: !!S.reset, notReset: !S.reset,
+      loginTitle: S.reset ? 'Criar nova senha' : inv ? 'Convite para ' + (inv.kind === 'cliente' ? 'o portal de ' + inv.client_name : inv.agency_name) : 'Entrar no Spherum',
+      loginSub: S.reset ? 'Use pelo menos 8 caracteres.' : inv ? (inv.kind === 'cliente' ? inv.agency_name + ' convidou você. ' : '') + 'Entre ou crie a sua conta com ' + inv.email_hint + '.' : 'Acesse o espaço de trabalho da sua agência.',
+      passPh: S.reset ? 'Nova senha' : S.inviteNew ? 'Crie uma senha (mínimo de 8 caracteres)' : 'Sua senha',
+      loginBtn: S.busy ? 'Entrando…' : S.reset ? 'Salvar nova senha' : S.inviteNew ? 'Criar conta e aceitar' : inv ? 'Entrar e aceitar' : 'Entrar', btnOp: S.busy ? 0.7 : 1,
+      hasInvite: !!inv && !S.reset, showName: !!S.inviteNew && !S.reset, lname: S.lname || '', onLName: e => this.setState({ lname: e.target.value, err: '' }),
+      inviteToggleL: S.inviteNew ? 'Já tenho conta: entrar' : 'Ainda não tenho conta: criar agora', toggleInviteNew: () => this.setState(s => ({ inviteNew: !s.inviteNew, err: '' })),
       demos: [['domain', 'Agência', 'agencia@demo.com', '__sp:agencia'], ['person', 'Cliente', 'cliente@demo.com', '__sp:cliente'], ['admin_panel_settings', 'Administração', 'admin@demo.com', '__sp:admin']].map(d => ({ i: d[0], l: d[1], e: d[2] + ' · demo123', href: 'javascript:window.__spOpen(\'' + d[3].replace('__sp:', '') + '\')' })),
       stepN: S.step, stepBars: [1, 2, 3].map(i => ({ bg: i <= S.step ? '#465FFF' : '#E4E7EC' })), s1: S.step === 1, s2: S.step === 2, s3: S.step === 3, notLast: S.step < 3,
       modes, qs, nextBg: canNext ? '#465FFF' : '#A4B0FF', next: () => canNext && this.setState(s => ({ step: s.step + 1 })), back: () => S.step === 1 ? this.go('landing') : this.setState(s => ({ step: s.step - 1 })), recPlan,
       guide: [['Cadastre seu primeiro cliente', '1 min'], ['Conecte uma conta de anúncios', 'opcional'], ['Configure um objetivo', '1 min'], ['Crie seu primeiro projeto', '2 min'], ['Configure seu financeiro', '2 min'], ['Convide sua equipe', 'opcional'], ['Envie o portal para o cliente', '1 min']].map((g, i) => ({ n: i + 1, t: g[0], m: g[1] })),
       cFields: cf, cMsg: S.cMsg, onCMsg: e => this.setState({ cMsg: e.target.value }), hasCErr: ct.showErr, notSent: !S.sent, sent: S.sent,
-      ct, submitContact: () => { if (S.cBusy) return; const e = ct.validate(); if (Object.keys(e).length) return this.setState({ cErr: true, cfErr: e }); this.setState({ cErr: false, cfErr: {}, cBusy: true }); setTimeout(() => { ct.book(); this.setState({ cBusy: false, sent: true }); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 900); }
+      ct, submitContact: () => { if (S.cBusy) return; const e = ct.validate(); if (Object.keys(e).length) return this.setState({ cErr: true, cfErr: e }); this.setState({ cErr: false, cfErr: {}, cBusy: true }); SP.api('/api/leads', { method: 'POST', body: ct.payload() }).then(r => { ct.book(); this.setState({ cBusy: false, sent: true, cProto: r.protocol }); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+        x => { if (x.status === 409) SP.api('/api/site/demo').then(d => { window.__spDemo = d; this.forceUpdate(); }).catch(() => {}); this.setState({ cBusy: false, cErr: true, cfErr: x.status === 409 ? { slot: x.message } : { ok: x.message } }); }); }
     };
   }
 }

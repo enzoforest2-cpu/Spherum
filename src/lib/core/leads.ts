@@ -121,18 +121,24 @@ export async function markLeadHandled(sql: Sql, id: string, handled: boolean) {
 }
 
 /** Configuração da agenda de demonstrações (a mesma do design: dias, horários, duração…). */
-export const demoCalendarInput = z.object({
-  dur: z.number().int().min(15).max(120),
-  buffer: z.number().int().min(0).max(60),
-  days: z.array(z.number().int().min(0).max(6)).max(7),
-  from: z.string().regex(/^\d{2}:\d{2}$/),
-  to: z.string().regex(/^\d{2}:\d{2}$/),
-  lunch: z.boolean(),
-  notice: z.number().int().min(0).max(168),
-  ahead: z.number().int().min(1).max(90),
-  video: z.string().max(40).optional(),
-  owner: z.string().max(120).optional(),
-});
+export const demoCalendarInput = z
+  .object({
+    connected: z.boolean().default(true),
+    dur: z.number().int().min(15).max(120),
+    buffer: z.number().int().min(0).max(60),
+    days: z.array(z.number().int().min(0).max(6)).max(7),
+    // Horas cheias, como no design (9 = 9h).
+    from: z.number().int().min(0).max(23),
+    to: z.number().int().min(1).max(24),
+    lunch: z.boolean(),
+    notice: z.number().int().min(0).max(168),
+    ahead: z.number().int().min(1).max(30),
+    video: z.string().max(40).optional(),
+    owner: z.string().max(120).optional(),
+    email: z.email().max(254).optional(),
+    provider: z.string().max(40).optional(),
+  })
+  .refine((c) => c.to > c.from, { message: "O fim do expediente precisa vir depois do início" });
 
 export async function getSetting<T>(sql: Sql, key: string): Promise<T | null> {
   const row = await one<{ value: T }>(sql, `select value from site_settings where key = $1`, [key]);
