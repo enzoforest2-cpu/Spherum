@@ -12,11 +12,13 @@ import type { AccountRef, AdPlatform, Campaign, PlatformAccess } from "./types";
 const base = () => `https://googleads.googleapis.com/${process.env.GOOGLE_ADS_API_VERSION || "v23"}`;
 const digits = (id: string) => id.replace(/\D/g, "");
 
+/**
+ * O Google aposentou o developer token em 9/9/2026: o nível de acesso agora vem do projeto do
+ * Google Cloud dono do OAuth, e o cabeçalho é ignorado (e será recusado numa versão futura).
+ */
 function headers(account?: AccountRef): Record<string, string> {
-  const token = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-  if (!token) throw new IntegrationError("O Google Ads ainda não foi configurado no Spherum (GOOGLE_ADS_DEVELOPER_TOKEN).", 503);
   const login = account?.metadata?.login_customer_id;
-  return { "developer-token": token, ...(login ? { "login-customer-id": digits(String(login)) } : {}) };
+  return login ? { "login-customer-id": digits(String(login)) } : {};
 }
 
 type Row = Record<string, Record<string, unknown>>;

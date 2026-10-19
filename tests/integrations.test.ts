@@ -215,9 +215,9 @@ test("o app precisa estar liberado ao xodó e a conexão precisa ter a permissã
 
 test("particularidades das plataformas: Meta troca por token longo, TikTok e GitHub com erro em 200, Slack ok:false", async () => {
   const meta = fakeFetch({
-    "https://graph.facebook.com/v23.0/oauth/access_token?client_id": () => ({ access_token: "curto" }),
-    "https://graph.facebook.com/v23.0/oauth/access_token?grant_type=fb_exchange_token": () => ({ access_token: "longo", expires_in: 5_184_000 }),
-    "https://graph.facebook.com/v23.0/me/permissions": () => ({ data: [{ permission: "ads_read", status: "granted" }, { permission: "ads_management", status: "declined" }] }),
+    "https://graph.facebook.com/v26.0/oauth/access_token?client_id": () => ({ access_token: "curto" }),
+    "https://graph.facebook.com/v26.0/oauth/access_token?grant_type=fb_exchange_token": () => ({ access_token: "longo", expires_in: 5_184_000 }),
+    "https://graph.facebook.com/v26.0/me/permissions": () => ({ data: [{ permission: "ads_read", status: "granted" }, { permission: "ads_management", status: "declined" }] }),
   });
   const creds = { clientId: "id", clientSecret: "s", redirectUri: `${APP_URL}/api/integrations/meta/callback` };
   const tokens = await OAUTH_PROVIDERS.meta.exchange("c", creds, meta.fn);

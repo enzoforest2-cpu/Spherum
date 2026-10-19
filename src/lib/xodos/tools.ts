@@ -165,6 +165,19 @@ async function totals(ctx: ToolContext, client: string, start: string, end: stri
   return kpis(row!);
 }
 
+/** Conversões por plataforma: cada uma conta de um jeito (no TikTok, só o evento otimizado). */
+async function conversionsByPlatform(ctx: ToolContext, client: string, start: string, end: string) {
+  const rows = await ctx.sql.query<{ platform: string; conversions: string | number; leads: string | number }>(
+    `select platform, coalesce(sum(conversions), 0) as conversions, coalesce(sum(leads), 0) as leads from metrics_daily
+      where agency_id = $1 and client_id = $2 and day between $3::date and $4::date group by platform order by platform`,
+    [ctx.xodo.agency_id, client, start, end],
+  );
+  return Object.fromEntries(rows.map((r) => [r.platform, { conversoes: num(r.conversions), leads: num(r.leads) }]));
+}
+
+export const MIXED_CONVERSIONS_NOTE =
+  "As conversões somam plataformas que contam de jeitos diferentes (no TikTok é só o evento otimizado da campanha). Para decidir, compare por plataforma.";
+
 const GROUPS = {
   total: { select: "", group: "", order: "" },
   dia: { select: "day::text as dia,", group: "group by day", order: "order by day" },
@@ -222,6 +235,10 @@ export const TOOLS: ToolDef[] = [
           ${g.group} ${g.order} limit 200`,
         params,
       );
+      const mixed =
+        !i.plataforma && i.agrupar_por !== "plataforma" && i.agrupar_por !== "campanha"
+          ? Object.keys(await conversionsByPlatform(ctx, client.id, i.inicio, i.fim)).filter((p) => p !== "ga4").length > 1
+          : false;
       return {
         cliente: client.name,
         periodo: { inicio: i.inicio, fim: i.fim },
@@ -229,6 +246,7 @@ export const TOOLS: ToolDef[] = [
           const { spend_cents, impressions, clicks, leads, conversions, revenue_cents, ...keys } = row;
           return { ...keys, ...kpis({ spend_cents, impressions, clicks, leads, conversions, revenue_cents }) };
         }),
+        ...(mixed ? { aviso: MIXED_CONVERSIONS_NOTE } : {}),
       };
     },
   }),
@@ -254,7 +272,20 @@ export const TOOLS: ToolDef[] = [
         const b = before[key];
         variacao_pct[key] = a === null || b === null || b === 0 ? null : Number((((a - b) / b) * 100).toFixed(1));
       }
-      return { cliente: client.name, atual: now, anterior: before, variacao_pct };
+      const [convNow, convBefore] = await Promise.all([
+        conversionsByPlatform(ctx, client.id, i.atual.inicio, i.atual.fim),
+        conversionsByPlatform(ctx, client.id, i.anterior.inicio, i.anterior.fim),
+      ]);
+      const platforms = new Set([...Object.keys(convNow), ...Object.keys(convBefore)].filter((p) => p !== "ga4"));
+      return {
+        cliente: client.name,
+        atual: now,
+        anterior: before,
+        variacao_pct,
+        ...(platforms.size > 1
+          ? { conversoes_por_plataforma: { atual: convNow, anterior: convBefore }, aviso: MIXED_CONVERSIONS_NOTE }
+          : {}),
+      };
     },
   }),
   tool({

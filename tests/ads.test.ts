@@ -16,7 +16,6 @@ let sql: Sql;
 before(async () => {
   ({ sql } = await createTestDb());
   await seedFx(sql, "2026-10-01", 5);
-  process.env.GOOGLE_ADS_DEVELOPER_TOKEN = "dev-token";
 });
 
 type Call = { url: string; method: string; body: string; headers: Headers };
@@ -59,7 +58,7 @@ test("Meta: insights por campanha e dia, com leads, compras e receita, seguindo 
               action_values: [{ action_type: "purchase", value: "900.10" }],
             },
           ],
-          paging: { next: "https://graph.facebook.com/v23.0/act_1/insights?after=2" },
+          paging: { next: "https://graph.facebook.com/v26.0/act_1/insights?after=2" },
         },
   );
   const rows = await metaAds.daily(pa(f.fn), { externalId: "1", metadata: {} }, "2026-10-01", "2026-10-01");
@@ -110,7 +109,7 @@ test("Google Ads: contas de uma MCC com login-customer-id e custo em micros", as
   assert.deepEqual(accounts, [{ externalId: "222", name: "Loja Verano", currency: "BRL", metadata: { login_customer_id: "111" } }]);
   const childCall = f.calls.find((c) => c.body.includes("customer_client"))!;
   assert.equal(childCall.headers.get("login-customer-id"), "111");
-  assert.equal(childCall.headers.get("developer-token"), "dev-token");
+  assert.equal(childCall.headers.get("developer-token"), null, "o Google aposentou o developer token");
 
   const rows = await googleAds.daily(pa(f.fn), { externalId: "222", metadata: { login_customer_id: "111" } }, "2026-10-01", "2026-10-01");
   assert.deepEqual(rows[0], {

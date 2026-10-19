@@ -1,4 +1,5 @@
 import type { Autonomy, Personality, Xodo } from "./types";
+import { ADS_GUIDE } from "./skills/ads";
 
 /**
  * Persona do xodó, montada só com o que a agência escolheu no assistente de criação
@@ -49,6 +50,8 @@ export type PromptContext = {
   channel?: "slack" | "whatsapp" | "telegram";
   /** Execução disparada por um gatilho (webhook, GitHub, e-mail, Slack). */
   event?: boolean;
+  /** O xodó tem ferramentas de campanha: entra o guia de mídia paga. */
+  ads?: boolean;
 };
 
 const CHANNEL_LABEL = { slack: "Slack", whatsapp: "WhatsApp", telegram: "Telegram" } as const;
@@ -75,6 +78,7 @@ export function buildSystemPrompt(xodo: Xodo, ctx: PromptContext): string {
   if (xodo.instructions.trim()) {
     parts.push(`<instrucoes_da_agencia>\n${xodo.instructions.trim()}\n</instrucoes_da_agencia>`);
   }
+  if (ctx.ads) parts.push(ADS_GUIDE);
   // Bloco já montado (núcleo e índice de tópicos); vazio quando a memória está desligada.
   if (ctx.memory.trim()) parts.push(ctx.memory.trim());
   if (ctx.clients.length) {

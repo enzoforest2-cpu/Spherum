@@ -326,7 +326,7 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
 
   try {
     const tools = await toolsFor(deps, xodo);
-    const systemPrompt = await systemPromptFor(sql, xodo, run, nowOf(deps));
+    const systemPrompt = await systemPromptFor(sql, xodo, run, nowOf(deps), tools.some((t) => ADS_TOOLS.has(t.name)));
     const candidates = await loadCandidates(sql, xodo, run.trigger);
     let messages = parseJson<Message[]>(run.transcript);
     let steps = run.steps;
@@ -439,7 +439,10 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
   }
 }
 
-async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date) {
+/** Ferramentas que mexem em campanha: com elas, o prompt leva o guia de mídia paga. */
+const ADS_TOOLS = new Set(["listar_campanhas", "pausar_campanha", "ativar_campanha", "ajustar_verba_diaria", "auditar_conta"]);
+
+async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date, ads = false) {
   const agency = await one<{ name: string }>(sql, `select name from agencies where id = $1`, [xodo.agency_id]);
   const routine = run.routine_id
     ? await one<{ name: string; last_summary: string | null }>(
@@ -459,6 +462,7 @@ async function systemPromptFor(sql: Sql, xodo: Xodo, run: RunRow, now: Date) {
     routine: routine ? { name: routine.name, lastSummary: routine.last_summary } : undefined,
     channel: conversation?.channel as PromptContext["channel"],
     event: run.trigger === "event",
+    ads,
   });
 }
 

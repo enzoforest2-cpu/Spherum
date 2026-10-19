@@ -120,7 +120,9 @@ const google: OAuthProvider = {
 // Meta (Meta Ads e WhatsApp oficial)
 // ---------------------------------------------------------------------------
 
-export const metaGraph = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || "v23.0"}`;
+/** Versão da Graph/Marketing API. A Marketing API v23 saiu do ar em 9/6/2026 e a v24 em 6/10/2026. */
+export const META_GRAPH_DEFAULT = "v26.0";
+export const metaGraph = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || META_GRAPH_DEFAULT}`;
 
 const meta: OAuthProvider = {
   id: "meta",
@@ -128,7 +130,7 @@ const meta: OAuthProvider = {
   env: { clientId: "META_APP_ID", clientSecret: "META_APP_SECRET" },
   pkce: false,
   authorizeUrl: ({ clientId, redirectUri, state, scopes }) =>
-    url(`https://www.facebook.com/${process.env.META_GRAPH_VERSION || "v23.0"}/dialog/oauth`, {
+    url(`https://www.facebook.com/${process.env.META_GRAPH_VERSION || META_GRAPH_DEFAULT}/dialog/oauth`, {
       client_id: clientId,
       redirect_uri: redirectUri,
       state,

@@ -47,3 +47,13 @@ Copyright (c) Atai Barkai, licença MIT.
 A licença MIT pede que este aviso acompanhe as cópias:
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+### claude-ads
+
+Copyright (c) 2026 Daniel Agrici (AgriciDaniel), licença MIT (github.com/AgriciDaniel/claude-ads).
+
+- `src/lib/xodos/skills/ads.ts`: guia de mídia paga do xodó, adaptado de `ads/references/budget-allocation.md`, `ads/references/meta-audit.md` (limites de uma recomendação) e `skills/ads-monitor`, `skills/ads-math` e `skills/ads-optimize`.
+- `src/lib/integrations/ads/audit.ts`: estados das verificações, pesos por gravidade e regra de cobertura, de `ads/references/scoring-system.md`. As verificações em si são do Spherum.
+- Aviso sobre conversões do TikTok (só o evento otimizado) em `src/lib/xodos/tools.ts`, de `ads/references/tiktok-audit.md`.
+
+> MIT License — Copyright (c) 2026 Daniel Agrici (AgriciDaniel). Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.

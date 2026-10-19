@@ -2,6 +2,7 @@ import { z } from "zod";
 import { num, parseJson } from "../../xodos/db";
 import { usdBrl } from "../../xodos/fx";
 import { appCall, assertClient, ToolError, type ToolContext, type ToolDef } from "../../xodos/tools";
+import { evaluate, score, type CampaignWindow } from "./audit";
 import { AD_PLATFORMS, PLATFORM_APP, syncAccount, type AccountPlatform, type AccountRow } from "./sync";
 import type { AdPlatformId, PlatformAccess } from "./types";
 
@@ -188,6 +189,103 @@ export const ADS_TOOLS: ToolDef[] = [
         }
       }
       return { cliente: client.name, periodo: { inicio: since, fim: until }, contas: out };
+    },
+  }),
+  tool({
+    name: "auditar_conta",
+    description:
+      "Auditoria só de leitura das contas de anúncio de um cliente: dados atualizados, rastreio, gasto sem resultado, custo por resultado e CTR contra o período anterior da própria conta, verba pulverizada, ritmo da verba diária e campanhas ativas sem entrega. Dá uma nota de saúde só quando há dados suficientes.",
+    category: "leitura",
+    app: [...ADS_APPS],
+    input: z.object({
+      client_id: z.uuid(),
+      plataforma: platform.optional().describe("Sem plataforma: todas as contas de anúncio do cliente"),
+      dias: z.number().int().min(7).max(90).default(14).describe("Tamanho do período (comparado com o mesmo número de dias antes)"),
+    }),
+    summarize: (i) => `auditar as contas de anúncio${i.plataforma ? ` no ${LABEL[i.plataforma]}` : ""}`,
+    async execute(ctx, i) {
+      const client = await assertClient(ctx, i.client_id);
+      const accounts = await ctx.sql.query<AccountRow & { last_sync_error: string | null }>(
+        `select * from client_ad_accounts where agency_id = $1 and client_id = $2 and platform = any($3::text[]) order by platform, created_at`,
+        [ctx.xodo.agency_id, client.id, i.plataforma ? [i.plataforma] : ["meta", "google", "tiktok"]],
+      );
+      if (!accounts.length) throw new ToolError(`${client.name} não tem conta de anúncio ligada no Spherum.`);
+      // Janela termina ontem (o dia de hoje ainda está incompleto).
+      const end = new Date(Date.UTC(ctx.now.getUTCFullYear(), ctx.now.getUTCMonth(), ctx.now.getUTCDate() - 1));
+      const day = (d: Date) => d.toISOString().slice(0, 10);
+      const shift = (n: number) => new Date(end.getTime() - n * 86_400_000);
+      const cur = { inicio: day(shift(i.dias - 1)), fim: day(end) };
+      const prev = { inicio: day(shift(2 * i.dias - 1)), fim: day(shift(i.dias)) };
+      const results = [];
+      for (const acct of accounts.slice(0, 6)) {
+        const p = acct.platform as "meta" | "google" | "tiktok";
+        const rows = await ctx.sql.query<Record<string, string | number | null>>(
+          `select campaign_id as id, max(campaign_name) as name,
+                  sum(spend_cents) filter (where day between $4::date and $5::date) as s_now,
+                  sum(leads + conversions) filter (where day between $4::date and $5::date) as r_now,
+                  sum(impressions) filter (where day between $4::date and $5::date) as i_now,
+                  sum(clicks) filter (where day between $4::date and $5::date) as c_now,
+                  sum(spend_cents) filter (where day between $6::date and $7::date) as s_prev,
+                  sum(leads + conversions) filter (where day between $6::date and $7::date) as r_prev,
+                  sum(impressions) filter (where day between $6::date and $7::date) as i_prev,
+                  sum(clicks) filter (where day between $6::date and $7::date) as c_prev,
+                  sum(spend_cents) filter (where day > $5::date - 7) as s7,
+                  sum(spend_cents) filter (where day > $5::date - 3) as s3
+             from metrics_daily
+            where agency_id = $1 and client_id = $2 and platform = $3 and account_id = $8 and day between $6::date and $5::date
+            group by campaign_id`,
+          [ctx.xodo.agency_id, client.id, p, cur.inicio, cur.fim, prev.inicio, prev.fim, acct.external_id],
+        );
+        const last = await ctx.sql.query<{ d: string | null }>(
+          `select max(day)::text as d from metrics_daily where agency_id = $1 and client_id = $2 and platform = $3 and account_id = $4`,
+          [ctx.xodo.agency_id, client.id, p, acct.external_id],
+        );
+        const win = (k: "now" | "prev"): CampaignWindow[] =>
+          rows.map((r) => ({
+            id: String(r.id ?? ""),
+            name: (r.name as string | null) ?? null,
+            spend: num(r[`s_${k}`]) / 100,
+            results: num(r[`r_${k}`]),
+            impressions: num(r[`i_${k}`]),
+            clicks: num(r[`c_${k}`]),
+          }));
+        let live: { id: string; name: string; status: string; dailyBudget: number | null }[] | null = null;
+        try {
+          const { row, a } = await account(ctx, client.id, p, acct.external_id);
+          const factor = await toBrlFactor(ctx, row.currency);
+          live = (await AD_PLATFORMS[p].campaigns(a, ref(row))).map((c) => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            dailyBudget: c.dailyBudget === null ? null : c.dailyBudget * factor,
+          }));
+        } catch {
+          live = null;
+        }
+        const checks = evaluate({
+          platform: p,
+          dias: i.dias,
+          lastSyncedAt: acct.last_synced_at ? new Date(acct.last_synced_at) : null,
+          lastSyncError: acct.last_sync_error,
+          now: ctx.now,
+          lastDataDay: last[0]?.d ?? null,
+          windowEnd: cur.fim,
+          current: win("now"),
+          previous: win("prev"),
+          avgSpend7: new Map(rows.map((r) => [String(r.id ?? ""), num(r.s7) / 100 / 7])),
+          spend3: new Map(rows.map((r) => [String(r.id ?? ""), num(r.s3) / 100])),
+          live,
+        });
+        results.push({ plataforma: LABEL[p], conta: acct.external_id, nome: acct.name, ...score(checks), verificacoes: checks });
+      }
+      return {
+        cliente: client.name,
+        periodo: cur,
+        comparado_com: prev,
+        contas: results,
+        como_ler:
+          "saude vai de 0 a 100 (pesos: crítica 5, alta 3, média 1) e só aparece com cobertura de 60% ou mais; 'sem_dados' não conta na nota. Comparação sempre com a própria conta. Antes de sugerir mudança, confira atraso de conversão e rastreio.",
+      };
     },
   }),
 ];
