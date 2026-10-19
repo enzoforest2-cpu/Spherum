@@ -16,12 +16,19 @@ export const CAN_USE: Role[] = ["owner", "admin", "member"];
 export const CAN_READ: Role[] = ["owner", "admin", "member", "viewer"];
 
 export async function requireUser(request: Request): Promise<string> {
+  return (await requireAuth(request)).id;
+}
+
+export type AuthUser = { id: string; email: string | null; meta: Record<string, unknown> };
+
+/** Usuário do token, com e-mail e os dados guardados no cadastro (user_metadata). */
+export async function requireAuth(request: Request): Promise<AuthUser> {
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) throw new XodoError("Faça login para continuar.", 401);
   const { supabase } = await import("@/lib/supabase");
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) throw new XodoError("Sessão inválida ou expirada.", 401);
-  return data.user.id;
+  return { id: data.user.id, email: data.user.email?.toLowerCase() ?? null, meta: data.user.user_metadata ?? {} };
 }
 
 export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[]): Promise<Role> {

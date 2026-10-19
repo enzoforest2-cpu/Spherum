@@ -1,5 +1,6 @@
--- Base mínima que a migração dos Xodós espera do Supabase e da migração base do backend
--- (agencies, agency_members, clients). Só para os testes no PGlite.
+-- O mínimo do Supabase que as migrações esperam (papéis, schema auth, auth.uid() e
+-- auth.users). Só para os testes no PGlite; no Supabase tudo isso já existe.
+-- A base do Spherum (agencies, agency_members, clients...) vem da migração 20261018100000_foundation.sql.
 
 create schema if not exists auth;
 do $$ begin
@@ -12,20 +13,9 @@ create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 
-create table public.agencies (
+create table auth.users (
   id uuid primary key default gen_random_uuid(),
-  name text not null
-);
-
-create table public.agency_members (
-  agency_id uuid not null references public.agencies(id) on delete cascade,
-  user_id uuid not null,
-  role text not null check (role in ('owner', 'admin', 'member', 'viewer')),
-  primary key (agency_id, user_id)
-);
-
-create table public.clients (
-  id uuid primary key default gen_random_uuid(),
-  agency_id uuid not null references public.agencies(id) on delete cascade,
-  name text not null
+  email text,
+  raw_user_meta_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );

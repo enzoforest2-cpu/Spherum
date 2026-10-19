@@ -773,8 +773,11 @@ export async function addMessage(
      ), touched as (
        update xodo_conversations set last_message_at = now() where id = (select conversation_id from m)
      )
-     insert into channel_outbox (agency_id, conversation_id, message_id, text, approvals)
-     select agency_id, conversation_id, id, text, $8::jsonb from m where conversation_id is not null and role <> 'user'`,
+     -- Pronta para entrega desde a última batida da execução (o relógio do motor), nunca no futuro.
+     insert into channel_outbox (agency_id, conversation_id, message_id, text, approvals, next_attempt_at)
+     select agency_id, conversation_id, id, text, $8::jsonb,
+            least(now(), coalesce((select heartbeat_at from xodo_runs where id = $3), now()))
+       from m where conversation_id is not null and role <> 'user'`,
     [xodo.id, xodo.agency_id, runId, role, authorUser, text, extra.authorLabel ?? null,
       json((extra.approvals ?? []).map((a) => ({ action_id: a.actionId, summary: a.summary })))],
   );

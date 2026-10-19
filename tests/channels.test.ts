@@ -278,7 +278,7 @@ test("entrega: tenta de novo com espera e desiste depois de 5 tentativas; divide
     `insert into xodo_conversations (agency_id, xodo_id, channel, connection_id, external_key, metadata) values ($1, $2, 'telegram', $3, 'chat-7', '{"chat_id":7}') returning id`,
     [w.agencyId, w.xodo.id, w.connectionId],
   );
-  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text) values ($1, $2, $3)`, [w.agencyId, conv!.id, `${"x".repeat(60)} ${"y".repeat(60)}`]);
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, next_attempt_at) values ($1, $2, $3, $4::timestamptz)`, [w.agencyId, conv!.id, `${"x".repeat(60)} ${"y".repeat(60)}`, w.clock.now().toISOString()]);
   const flaky = fakeAdapter(100, 1);
   const deps = w.deps(new FakeModel([]));
   assert.deepEqual(await flushOutbox(deps, { telegram: flaky.adapter }), { sent: 0, failed: 0 });
@@ -288,7 +288,7 @@ test("entrega: tenta de novo com espera e desiste depois de 5 tentativas; divide
   assert.deepEqual(await flushOutbox(deps, { telegram: flaky.adapter }), { sent: 1, failed: 0 });
   assert.deepEqual(flaky.sent.map((s) => s.text), ["x".repeat(60), "y".repeat(60)]);
 
-  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text) values ($1, $2, 'nunca chega')`, [w.agencyId, conv!.id]);
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, next_attempt_at) values ($1, $2, 'nunca chega', $3::timestamptz)`, [w.agencyId, conv!.id, w.clock.now().toISOString()]);
   const down = fakeAdapter(100, 99);
   for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
     await flushOutbox(deps, { telegram: down.adapter });
@@ -327,10 +327,11 @@ test("pedido já decidido no app não é pedido de novo no canal", async () => {
      values ($1, $2, $3, 'avisar_equipe', 'equipe', 'c1', 1, 0, '{}', 'h', 'denied') returning id`,
     [run!.id, w.xodo.id, w.agencyId],
   );
-  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, approvals) values ($1, $2, 'Preciso de aprovação', $3::jsonb)`, [
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, approvals, next_attempt_at) values ($1, $2, 'Preciso de aprovação', $3::jsonb, $4::timestamptz)`, [
     w.agencyId,
     conv!.id,
     JSON.stringify([{ action_id: action!.id, summary: "avisar a equipe" }]),
+    w.clock.now().toISOString(),
   ]);
   const fake = fakeAdapter();
   await flushOutbox(w.deps(new FakeModel([])), { telegram: fake.adapter }, { conversationId: conv!.id });
@@ -469,11 +470,13 @@ test("entrega: falha no meio continua do pedaço que faltou; a próxima mensagem
     ))!.id;
   const a = await conv("ordem-a");
   const b = await conv("ordem-b");
-  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text) values ($1, $2, $3), ($1, $2, 'segunda'), ($1, $4, 'outra conversa')`, [
+  await sql.query(`insert into channel_outbox (agency_id, conversation_id, text, next_attempt_at)
+     values ($1, $2, $3, $5::timestamptz), ($1, $2, 'segunda', $5::timestamptz), ($1, $4, 'outra conversa', $5::timestamptz)`, [
     w.agencyId,
     a,
     `${"p".repeat(60)} ${"q".repeat(60)}`,
     b,
+    w.clock.now().toISOString(),
   ]);
   // Envia o primeiro pedaço e cai no segundo.
   const sent: string[] = [];
