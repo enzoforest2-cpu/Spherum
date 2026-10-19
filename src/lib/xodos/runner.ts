@@ -13,6 +13,8 @@ import { usdBrl } from "./fx";
 import { providerErrorMessage } from "./llm";
 import { enqueueCapture } from "./memory/capture";
 import { memoryPrompt, recallFor } from "./memory/recall";
+import { partBlocked } from "../computer/gateway";
+import { COMPUTER_TOOLS } from "../computer/tools";
 import { MEMORY_TOOLS } from "./memory/tools";
 import { redactDeep } from "./redact";
 import { buildSystemPrompt, type PromptContext } from "./persona";
@@ -31,6 +33,8 @@ import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
  */
 
 export const MAX_STEPS = 12;
+/** Com o computador, uma tarefa costuma ter mais passos (abrir, ler, clicar, conferir). */
+export const MAX_STEPS_COMPUTER = 40;
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 /** Uma execução "running" parada há mais que isso é tratada como travada. */
 export const STALE_RUN_MS = 10 * 60 * 1000;
@@ -70,6 +74,13 @@ export async function loadXodo(sql: Sql, xodoId: string, agencyId?: string): Pro
 /** user: pela tela do app; channel: por Slack, WhatsApp ou Telegram; routine: rotina agendada; event: gatilho. */
 export type RunTrigger = "user" | "routine" | "channel" | "event";
 
+/** Notas de retomada depois de a pessoa usar o computador (adaptadas do Rakazo, Apache-2.0). */
+export const TAKEOVER_NOTES = {
+  done: "A pessoa terminou o que você pediu no computador. Continue de onde parou e não peça o controle de novo.",
+  skipped: "A pessoa não fez o que você pediu no computador. Continue sem contar com isso; só peça o controle de novo se não houver outro caminho.",
+  expired: "Ninguém assumiu o computador a tempo. Continue sem contar com isso; só peça o controle de novo se não houver outro caminho.",
+} as const;
+
 type RunRow = {
   id: string;
   xodo_id: string;
@@ -102,14 +113,19 @@ async function disabledTools(sql: Sql, xodo: Xodo): Promise<Set<string>> {
 /** Ferramentas internas, menos as que a agência desligou para este xodó. */
 export async function enabledTools(sql: Sql, xodo: Xodo): Promise<ToolDef[]> {
   const disabled = await disabledTools(sql, xodo);
-  return [...TOOLS, ...MEMORY_TOOLS].filter((t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory));
+  return [...TOOLS, ...MEMORY_TOOLS, ...computerTools(xodo)].filter((t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory));
 }
+
+/** Ferramentas do computador na nuvem: só para xodós com ele ligado (cada uma confere a sua parte). */
+const computerTools = (xodo: Xodo) => COMPUTER_TOOLS.filter((t) => t.computerPart && !partBlocked(xodo, t.computerPart));
 
 /** Tudo que o xodó pode usar: ferramentas internas e as dos apps liberados para ele. */
 export async function toolsFor(deps: EngineDeps, xodo: Xodo): Promise<ToolDef[]> {
   const disabled = await disabledTools(deps.sql, xodo);
   const apps = await appToolsFor(integrationDeps(deps), xodo);
-  return [...TOOLS, ...MEMORY_TOOLS, ...apps].filter((t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory));
+  return [...TOOLS, ...MEMORY_TOOLS, ...computerTools(xodo), ...apps].filter(
+    (t) => !disabled.has(t.name) && (xodo.memory_enabled || !t.memory),
+  );
 }
 
 async function clientsInScope(sql: Sql, xodo: Xodo) {
@@ -286,7 +302,12 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
 // O laço
 // ---------------------------------------------------------------------------
 
-export async function continueRun(deps: EngineDeps, runId: string): Promise<RunStatus> {
+/**
+ * Roda a execução até terminar, pedir aprovação ou esperar a pessoa. Com deadline (ms do relógio
+ * do servidor), para antes de começar um passo depois dele e marca a fatia para continuar
+ * (a função da Vercel tem tempo máximo); quem chamou encadeia a próxima fatia.
+ */
+export async function continueRun(deps: EngineDeps, runId: string, opts: { deadline?: number } = {}): Promise<RunStatus> {
   const { sql } = deps;
   const run = await loadRun(sql, runId);
   if (run.status !== "running") return run.status;
@@ -303,8 +324,16 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
     // Começa pelo modelo principal; se um reserva assumir, segue com ele até o fim da execução.
     let active = 0;
 
+    const maxSteps = xodo.computer_mode === "cloud" ? MAX_STEPS_COMPUTER : MAX_STEPS;
     while (true) {
-      if (steps >= MAX_STEPS) {
+      if (opts.deadline && Date.now() > opts.deadline) {
+        await sql.query(`update xodo_runs set slice_due_at = $2::timestamptz, heartbeat_at = $2::timestamptz where id = $1`, [
+          runId,
+          nowOf(deps).toISOString(),
+        ]);
+        return "running";
+      }
+      if (steps >= maxSteps) {
         return finish(deps, xodo, runId, "completed", {
           text: "Parei aqui porque cheguei no limite de passos desta tarefa. Me diga se devo continuar.",
         });
@@ -362,7 +391,11 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
 
       if (text) await addMessage(sql, xodo, runId, "assistant", text, null);
 
-      const pending = await handleToolCalls(deps, xodo, runId, steps, calls, tools, cap, run.trigger);
+      // Depois de ler conteúdo de fora (página, arquivo baixado), segue mais cautelosa até o fim.
+      const tainted = (await one<{ tainted: boolean }>(sql, `select tainted from xodo_runs where id = $1`, [runId]))?.tainted;
+      const stepCap = stricter(cap, tainted ? "pergunta_no_que_importa" : null);
+      const stepXodo = stepCap && STRICTNESS.indexOf(stepCap) > STRICTNESS.indexOf(xodo.autonomy) ? { ...xodo, autonomy: stepCap } : xodo;
+      const pending = await handleToolCalls(deps, stepXodo, runId, steps, calls, tools, stepCap, run.trigger);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
         const numbers = await numberChannelActions(sql, runId, pending.map((p) => p.actionId));
@@ -378,6 +411,21 @@ export async function continueRun(deps: EngineDeps, runId: string): Promise<RunS
           data: { xodo_id: xodo.id, run_id: runId },
         });
         return "waiting_approval";
+      }
+      const takeover = await takeoverRequested(sql, runId, steps, tools);
+      if (takeover !== null) {
+        await sql.query(`update xodo_runs set status = 'waiting_takeover', heartbeat_at = $2::timestamptz where id = $1`, [
+          runId,
+          nowOf(deps).toISOString(),
+        ]);
+        await addMessage(sql, xodo, runId, "note", `Preciso de você no computador: ${takeover}`, null);
+        await notify(sql, xodo.agency_id, {
+          kind: "takeover_requested",
+          title: `${xodo.name} precisa de você no computador`,
+          body: takeover,
+          data: { xodo_id: xodo.id, run_id: runId },
+        });
+        return "waiting_takeover";
       }
       messages = [...messages, ...toolResultMessages(await stepResults(sql, runId, steps), nowOf(deps).getTime())];
       await sql.query(`update xodo_runs set transcript = $2::jsonb, heartbeat_at = $3::timestamptz where id = $1`, [
@@ -462,7 +510,9 @@ async function handleToolCalls(
         console.warn("[xodós] categoria dinâmica falhou", tool.name, error instanceof Error ? error.message : error);
       }
     }
-    const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy, cap });
+    const tctx = toolContext(deps, xodo, runId, trigger);
+    const site = tool.siteOf ? await tool.siteOf(tctx, parsed.data).catch(() => null) : null;
+    const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy, cap, floor: tool.floor, site });
     let reason: string | null = decision.decision === "ask" ? decision.source : null;
     if (!reason && tool.mustAsk) {
       try {
@@ -476,9 +526,20 @@ async function handleToolCalls(
       }
     }
     if (reason) {
+      let precondition: Record<string, unknown> | null = null;
+      try {
+        precondition = tool.precondition ? await tool.precondition(tctx, parsed.data) : null;
+      } catch (error) {
+        const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;
+        if (!expected) throw error;
+        await insertAction(sql, base, category, parsed.data, "failed", { error: (error as Error).message });
+        continue;
+      }
+      if (site) precondition = { ...(precondition ?? {}), site };
       const actionId = await insertAction(sql, base, category, parsed.data, "pending", null, {
         reason,
-        expiresAt: new Date(now.getTime() + APPROVAL_TTL_MS),
+        expiresAt: new Date(now.getTime() + (tool.approvalTtlMs ?? APPROVAL_TTL_MS)),
+        precondition,
       });
       const why = reason.startsWith("limite: ") ? ` (${reason.slice(8)})` : "";
       pending.push({ actionId, summary: tool.summarize(parsed.data) + why });
@@ -497,17 +558,17 @@ async function insertAction(
   input: unknown,
   status: "pending" | "executing" | "failed",
   result: unknown,
-  extra: { reason?: string; expiresAt?: Date } = {},
+  extra: { reason?: string; expiresAt?: Date; precondition?: Record<string, unknown> | null } = {},
 ): Promise<string> {
   const row = await one<{ id: string }>(
     sql,
     `insert into xodo_actions (run_id, xodo_id, agency_id, tool_name, tool_call_id, step, call_index,
-       category, input, input_hash, status, result, reason, expires_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14::timestamptz)
+       category, input, input_hash, status, result, reason, expires_at, precondition)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14::timestamptz, $15::jsonb)
      on conflict (run_id, tool_call_id) do nothing
      returning id`,
     [...base, category, json(input), inputHash(input), status, result === null ? null : json(result),
-      extra.reason ?? null, extra.expiresAt?.toISOString() ?? null],
+      extra.reason ?? null, extra.expiresAt?.toISOString() ?? null, extra.precondition ? json(extra.precondition) : null],
   );
   if (!row) throw new XodoError("O modelo repetiu o id de uma chamada de ferramenta.", 502);
   return row.id;
@@ -560,9 +621,9 @@ export function inputHash(input: unknown): string {
  */
 export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, known?: ToolDef[]) {
   const { sql } = deps;
-  const action = await one<{ tool_name: string; input: unknown; input_hash: string; run_id: string; status: string }>(
+  const action = await one<{ tool_name: string; input: unknown; input_hash: string; run_id: string; status: string; precondition: unknown }>(
     sql,
-    `select tool_name, input, input_hash, run_id, status from xodo_actions where id = $1 and agency_id = $2`,
+    `select tool_name, input, input_hash, run_id, status, precondition from xodo_actions where id = $1 and agency_id = $2`,
     [actionId, xodo.agency_id],
   );
   if (!action || action.status !== "executing") throw new XodoError("Ação não está pronta para executar", 409);
@@ -579,9 +640,11 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, 
     result = { error: "O pedido guardado foi alterado depois de criado; nada foi executado." };
   } else {
     try {
-      const data = await tool.execute(toolContext(deps, xodo, action.run_id), tool.input.parse(input));
+      const ctx = { ...toolContext(deps, xodo, action.run_id), precondition: parseJson<Record<string, unknown>>(action.precondition) };
+      const data = await tool.execute(ctx, tool.input.parse(input));
       status = "executed";
       result = { data };
+      if (tool.taints) await sql.query(`update xodo_runs set tainted = true where id = $1`, [action.run_id]);
     } catch (error) {
       const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;
       if (!expected) console.error("[xodos] erro na ferramenta", action.tool_name, error);
@@ -746,6 +809,61 @@ async function numberChannelActions(sql: Sql, runId: string, actionIds: string[]
 }
 
 const STRICTNESS: Autonomy[] = ["age_sozinho", "pergunta_no_que_importa", "sempre_pergunta"];
+
+/** A mais cautelosa de duas autonomias (nulo: sem limite). */
+function stricter(a: Autonomy | null, b: Autonomy | null): Autonomy | null {
+  if (!a) return b;
+  if (!b) return a;
+  return STRICTNESS.indexOf(a) >= STRICTNESS.indexOf(b) ? a : b;
+}
+
+/** Motivo do pedido de controle, se uma ferramenta do passo encerrou o turno esperando a pessoa. */
+async function takeoverRequested(sql: Sql, runId: string, step: number, tools: ToolDef[]): Promise<string | null> {
+  const names = tools.filter((t) => t.endsTurn === "takeover").map((t) => t.name);
+  if (!names.length) return null;
+  const row = await one<{ result: unknown }>(
+    sql,
+    `select result from xodo_actions where run_id = $1 and step = $2 and status = 'executed' and tool_name = any($3::text[]) limit 1`,
+    [runId, step, names],
+  );
+  if (!row) return null;
+  const data = parseJson<{ data?: { motivo?: unknown } }>(row.result)?.data;
+  return typeof data?.motivo === "string" && data.motivo ? data.motivo : "preciso que você faça uma parte no computador.";
+}
+
+/**
+ * A pessoa devolveu o controle do computador (ou não assumiu a tempo): o xodó continua de onde
+ * parou, com uma nota dizendo o que aconteceu.
+ */
+export async function resumeTakeover(deps: EngineDeps, runId: string, outcome: keyof typeof TAKEOVER_NOTES): Promise<RunStatus | null> {
+  const { sql } = deps;
+  const claimed = await one<RunRow>(
+    sql,
+    `update xodo_runs set status = 'running', heartbeat_at = $2::timestamptz, resume_note = $3
+      where id = $1 and status = 'waiting_takeover' returning *`,
+    [runId, nowOf(deps).toISOString(), outcome],
+  );
+  if (!claimed) return null;
+  const at = nowOf(deps).getTime();
+  const messages: Message[] = [
+    ...parseJson<Message[]>(claimed.transcript),
+    ...toolResultMessages(await stepResults(sql, runId, claimed.steps), at),
+    { role: "user", content: `[nota do Spherum] ${TAKEOVER_NOTES[outcome]}`, timestamp: at },
+  ];
+  await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(messages)]);
+  return continueRun(deps, runId);
+}
+
+/** Continua uma execução fatiada (uma chamada por fatia: a primeira que pegar leva). */
+export async function continueSlice(deps: EngineDeps, runId: string, opts: { deadline?: number } = {}): Promise<RunStatus | null> {
+  const claimed = await one(
+    deps.sql,
+    `update xodo_runs set slice_due_at = null where id = $1 and status = 'running' and slice_due_at is not null returning id`,
+    [runId],
+  );
+  if (!claimed) return null;
+  return continueRun(deps, runId, opts);
+}
 
 /**
  * Teto de autonomia de uma execução por gatilho: o conteúdo vem de fora, então por padrão

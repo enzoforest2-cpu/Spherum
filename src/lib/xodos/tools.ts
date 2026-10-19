@@ -22,6 +22,8 @@ export type ToolContext = {
   trigger?: string;
   /** Máquina da agência (computador na nuvem); nula quando o motor roda sem ela. */
   computer?: ComputerDeps | null;
+  /** Precondição guardada no pedido aprovado (só quando a ação passou por aprovação). */
+  precondition?: Record<string, unknown> | null;
   /** Acesso às conexões da agência; nulo quando o motor roda sem integrações. */
   apps: AppAccess | null;
 };
@@ -58,6 +60,17 @@ export type ToolDef<I = unknown> = {
   taints?: boolean;
   /** Encerra o turno do xodó esperando uma pessoa (ex.: pedir o controle do computador). */
   endsTurn?: "takeover";
+  /** Site da ação (host), para regras "sempre permitir" por site e para a precondição. */
+  siteOf?(ctx: ToolContext, input: I): Promise<string | null>;
+  /**
+   * O que precisa continuar igual para a ação aprovada rodar (ex.: url e rótulo do botão).
+   * Fica guardado no pedido; na execução chega em ctx.precondition.
+   */
+  precondition?(ctx: ToolContext, input: I): Promise<Record<string, unknown> | null>;
+  /** Validade do pedido de aprovação (padrão: 24 horas; ações de tela, 15 minutos). */
+  approvalTtlMs?: number;
+  /** Parte do computador na nuvem que a ferramenta usa (só aparece se ela estiver ligada no xodó). */
+  computerPart?: "browser" | "files" | "terminal" | "control";
 };
 
 /** Erro esperado: volta para o modelo como resultado com erro, sem derrubar a execução. */

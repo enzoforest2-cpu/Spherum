@@ -1,6 +1,6 @@
-import { one } from "./db";
+import { one, parseJson } from "./db";
 import { canAlwaysAllow, type Category } from "./policy";
-import { addMessage, loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
+import { addMessage, continueSlice, loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
 
 /**
  * Decisões da equipe sobre os pedidos dos xodós (modelo do OpenDots).
@@ -29,6 +29,8 @@ type ActionRow = {
   tool_name: string;
   category: string;
   status: string;
+  reason?: string | null;
+  precondition?: unknown;
 };
 
 export async function decideAction(deps: EngineDeps, input: DecideInput) {
@@ -39,11 +41,13 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
   const action = await sql.transaction(async (tx) => {
     const current = await one<ActionRow>(
       tx,
-      `select id, run_id, xodo_id, tool_name, category, status from xodo_actions where id = $1 and agency_id = $2`,
+      `select id, run_id, xodo_id, tool_name, category, status, reason, precondition from xodo_actions where id = $1 and agency_id = $2`,
       [input.actionId, input.agencyId],
     );
     if (!current) throw new XodoError("Pedido não encontrado", 404);
-    const always = wantsAlways && canAlwaysAllow(current.category as Category);
+    // "Sempre" não vale para o piso (nem o geral, nem o da ferramenta).
+    const always = wantsAlways && canAlwaysAllow(current.category as Category) && current.reason !== "floor";
+    const site = (parseJson<{ site?: unknown }>(current.precondition)?.site as string | undefined) ?? null;
     const decided = await one<ActionRow>(
       tx,
       `update xodo_actions
@@ -58,11 +62,12 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
     if (always) {
       await tx.query(
         `insert into approval_rules (agency_id, xodo_id, effect, match_kind, match_value, created_by)
-         values ($1, $2, 'always_allow', 'tool', $3, $4)`,
-        [input.agencyId, decided.xodo_id, decided.tool_name, input.userId],
+         values ($1, $2, 'always_allow', $3, $4, $5)`,
+        // Ação num site: o "sempre" vale só para aquele site.
+        [input.agencyId, decided.xodo_id, site ? "site" : "tool", site ? `${decided.tool_name}@${site}` : decided.tool_name, input.userId],
       );
     }
-    return decided;
+    return { ...decided, alwaysCreated: always };
   });
 
   if (!action) {
@@ -87,7 +92,7 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
     if (claimed) await runAction(deps, await loadXodo(sql, action.xodo_id, input.agencyId), action.id);
   }
   const final = await one<{ status: string; result: unknown }>(sql, `select status, result from xodo_actions where id = $1`, [action.id]);
-  return { actionId: action.id, runId: action.run_id, status: final!.status, alwaysRuleCreated: wantsAlways && canAlwaysAllow(action.category as Category) };
+  return { actionId: action.id, runId: action.run_id, status: final!.status, alwaysRuleCreated: action.alwaysCreated };
 }
 
 /**
@@ -118,7 +123,7 @@ export async function sweep(deps: EngineDeps) {
 
   const stale = await sql.query<{ id: string; xodo_id: string; agency_id: string }>(
     `update xodo_runs set status = 'failed', error = 'A execução parou no meio e foi encerrada.', finished_at = $1::timestamptz
-      where status = 'running' and heartbeat_at < $2::timestamptz
+      where status = 'running' and heartbeat_at < $2::timestamptz and slice_due_at is null
         and not exists (select 1 from xodo_actions a where a.run_id = xodo_runs.id and a.status = 'executing')
       returning id, xodo_id, agency_id`,
     [now.toISOString(), new Date(now.getTime() - 3 * STALE_RUN_MS).toISOString()],
@@ -127,5 +132,11 @@ export async function sweep(deps: EngineDeps) {
   for (const run of stale) {
     await addMessage(sql, { id: run.xodo_id, agency_id: run.agency_id }, run.id, "note", "Não consegui terminar: a execução parou no meio e foi encerrada. Pode pedir de novo?", null);
   }
-  return { expiredActions: expired.length, resumedRuns: runs.length, staleRuns: stale.length };
+  // Fatias que ninguém continuou (a chamada encadeada falhou): o cron continua.
+  const slices = await sql.query<{ id: string }>(
+    `select id from xodo_runs where status = 'running' and slice_due_at <= $1::timestamptz order by slice_due_at limit 10`,
+    [new Date(now.getTime() - 60_000).toISOString()],
+  );
+  for (const run of slices) await continueSlice(deps, run.id, { deadline: Date.now() + 120_000 });
+  return { expiredActions: expired.length, resumedRuns: runs.length, staleRuns: stale.length, continuedSlices: slices.length };
 }

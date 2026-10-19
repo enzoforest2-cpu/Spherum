@@ -85,6 +85,7 @@ export function computerTool<I>(def: ComputerToolDef<I>): ToolDef {
   const { run, part, screen, ...rest } = def;
   const wrapped: ToolDef<I> = {
     ...rest,
+    computerPart: part,
     floor: [...COMPUTER_FLOOR, ...(rest.floor ?? [])],
     async execute(ctx, input) {
       const deps = ctx.computer;

@@ -56,6 +56,7 @@ export type Xodo = {
 export type RunStatus =
   | "running"
   | "waiting_approval"
+  | "waiting_takeover"
   | "completed"
   | "failed"
   | "paused_budget"

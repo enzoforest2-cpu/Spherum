@@ -121,6 +121,10 @@ alter table public.xodo_runs add constraint xodo_runs_status_check
   check (status in ('running', 'waiting_approval', 'waiting_takeover', 'completed', 'failed', 'paused_budget', 'refused'));
 alter table public.xodo_runs add column resume_note text;
 alter table public.xodo_runs add column tainted boolean not null default false;
+-- Execução longa em fatias (a função da Vercel tem tempo máximo): quando a fatia acabou e a
+-- próxima ainda não começou. O cron continua as fatias que ficaram para trás.
+alter table public.xodo_runs add column slice_due_at timestamptz;
+create index xodo_runs_slices on public.xodo_runs (slice_due_at) where slice_due_at is not null;
 
 -- Ação de tela aprovada só roda se a página ainda for a mesma (url, rótulo).
 alter table public.xodo_actions add column precondition jsonb;

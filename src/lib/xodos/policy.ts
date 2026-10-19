@@ -49,7 +49,8 @@ const SAFETY_FLOOR = new Set<Category>(["cliente"]);
 
 export type ApprovalRule = {
   effect: "always_allow" | "require_approval";
-  match_kind: "tool" | "category";
+  /** site: "ferramenta@host" (ex.: navegador_clicar@business.facebook.com). */
+  match_kind: "tool" | "category" | "site";
   match_value: string;
 };
 
@@ -65,10 +66,18 @@ export function decideApproval(input: {
   autonomy: Autonomy;
   /** Autonomia máxima de uma execução por gatilho; nulo nas outras. */
   cap?: Autonomy | null;
+  /** Piso próprio da ferramenta (ex.: computador: pagamento e exclusão sempre perguntam). */
+  floor?: readonly Category[];
+  /** Site da ação (navegador), para as regras por site. */
+  site?: string | null;
 }): ApprovalDecision {
-  if (SAFETY_FLOOR.has(input.category)) return { decision: "ask", source: "floor" };
+  if (SAFETY_FLOOR.has(input.category) || input.floor?.includes(input.category)) return { decision: "ask", source: "floor" };
   const matching = input.rules.filter((rule) =>
-    rule.match_kind === "tool" ? rule.match_value === input.toolName : rule.match_value === input.category,
+    rule.match_kind === "tool"
+      ? rule.match_value === input.toolName
+      : rule.match_kind === "site"
+        ? Boolean(input.site) && rule.match_value === `${input.toolName}@${input.site}`
+        : rule.match_value === input.category,
   );
   if (matching.some((rule) => rule.effect === "require_approval")) return { decision: "ask", source: "require_approval" };
   if (input.cap && ASK_BY_AUTONOMY[input.cap].has(input.category)) return { decision: "ask", source: "cap" };
