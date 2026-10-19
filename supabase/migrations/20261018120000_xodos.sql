@@ -435,7 +435,7 @@ begin
   foreach t in array array[
     'metrics_daily', 'ai_credentials', 'xodos', 'xodo_clients', 'xodo_tools', 'approval_rules',
     'xodo_models', 'xodo_memories', 'xodo_memory_revisions', 'xodo_runs', 'xodo_messages', 'xodo_actions',
-    'ai_usage', 'xodo_budget_days', 'xodo_routines', 'notifications', 'reports'
+    'ai_usage', 'xodo_budget_days', 'xodo_routines', 'reports'
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
@@ -457,8 +457,9 @@ grant select on public.metrics_daily, public.xodos, public.xodo_models, public.x
   public.xodo_actions, public.ai_usage, public.xodo_budget_days, public.xodo_routines,
   public.reports to authenticated;
 -- Avisos: os gerais da agência e os endereçados à própria pessoa.
+alter table public.notifications enable row level security;
+revoke all on public.notifications from anon, authenticated;
 grant select on public.notifications to authenticated;
-drop policy notifications_member_read on public.notifications;
 create policy notifications_member_read on public.notifications for select to authenticated
   using (public.app_is_agency_member(agency_id) and (user_id is null or user_id = auth.uid()));
 
@@ -467,3 +468,7 @@ alter table public.fx_rates enable row level security;
 revoke all on public.fx_rates from anon, authenticated;
 grant select on public.fx_rates to authenticated;
 create policy fx_rates_read on public.fx_rates for select to authenticated using (true);
+
+-- As funções do teto e das rotinas são só do servidor.
+revoke execute on function public.xodo_budget_reserve(uuid, date, numeric), public.xodo_budget_settle(uuid, date, numeric, numeric),
+  public.xodo_claim_due_routines(timestamptz, integer), public.app_check_client_agency() from public, anon, authenticated;

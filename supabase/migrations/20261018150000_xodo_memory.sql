@@ -6,12 +6,12 @@
 -- Depende das migrações dos Xodós e dos canais.
 
 -- Sem acento e em minúsculas, para a busca casar "relatório" com "relatorio".
-create or replace function public.xodo_fold(text) returns text language sql immutable parallel safe
+create or replace function public.xodo_fold(text) returns text language sql immutable parallel safe set search_path = public
   as $$ select translate(lower($1), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn') $$;
 
 -- Identidade de uma nota: o mesmo fato escrito de jeitos levemente diferentes não duplica.
 -- Igual a factIdentity em src/lib/xodos/memory/entries.ts (um teste confere os dois).
-create or replace function public.xodo_fact_identity(text) returns text language sql immutable parallel safe
+create or replace function public.xodo_fact_identity(text) returns text language sql immutable parallel safe set search_path = public
   as $$ select regexp_replace(regexp_replace(regexp_replace(public.xodo_fold(btrim(normalize($1, NFC))),
             '^([-*•]|[0-9]+[.)])\s+', ''), '\s+', ' ', 'g'), '[.!;]+$', '') $$;
 
