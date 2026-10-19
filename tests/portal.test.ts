@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
 import { createAgency } from "../src/lib/core/agencies";
 import { createClient } from "../src/lib/core/clients";
+import { clientPortal } from "../src/lib/core/client-portal";
 import { agencyPortal, goalGap, goalValue, initials, relative } from "../src/lib/core/portal";
 import { one, type Sql } from "../src/lib/xodos/db";
 import { createTestDb } from "./helpers";
@@ -92,4 +93,36 @@ test("portal da agência: clientes com meta, campanhas, plataformas, série diá
   assert.equal(p.kpis.activeClients, 3);
   const kinds = p.attention.map((a) => `${a.kind}:${a.client}`);
   assert.ok(kinds.includes("Campanha:Clínica Sorriso") && kinds.includes("Campanha:Loja Verde") && kinds.includes("Integração:Loja Verde"), kinds.join(","));
+});
+
+test("portal do cliente: só quem é do cliente ou da agência vê; números por janela, canal e campanha; só relatórios publicados", async () => {
+  const dona = await user(`dona-${randomUUID()}@exemplo.com`, { full_name: "Ana Souza" });
+  const { id: agencyId } = await createAgency(sql, dona, { name: "Agência Cliente" });
+  const c = await createClient(sql, agencyId, dona, { name: "Construtora Pilar", owner_user_id: dona, goal_metric: "CPL", goal_value: 100 });
+  const outro = await createClient(sql, agencyId, dona, { name: "Outro" });
+  const marcelo = await user(`marcelo-${randomUUID()}@pilar.com`, { full_name: "Marcelo Pilar" });
+  await sql.query(`insert into client_portal_users (client_id, agency_id, user_id) values ($1, $2, $3)`, [c.id, agencyId, marcelo]);
+  const estranho = await user(`x-${randomUUID()}@x.com`);
+
+  await metric(agencyId, c.id, "2026-10-18", "vista", 1000, 10);
+  await metric(agencyId, c.id, "2026-09-10", "vista", 500, 5);
+  await metric(agencyId, c.id, "2026-08-01", "search", 300, 2, 0, "google");
+  await metric(agencyId, c.id, "2026-05-01", "velha", 50, 1);
+  await sql.query(
+    `insert into reports (agency_id, client_id, title, period_start, period_end, status, published_at, body_md) values
+       ($1, $2, 'Setembro', '2026-09-01', '2026-09-30', 'published', now(), '# Setembro'), ($1, $2, 'Rascunho', '2026-10-01', '2026-10-31', 'draft', null, '')`,
+    [agencyId, c.id],
+  );
+
+  const p = await clientPortal(sql, c.id, marcelo, NOW);
+  assert.equal(p.as, "cliente");
+  assert.deepEqual([p.client.name, p.agency.name, p.owner?.name, p.me.name], ["Construtora Pilar", "Agência Cliente", "Ana Souza", "Marcelo Pilar"]);
+  assert.deepEqual([p.totals.d30.cur.spend, p.totals.d30.prev.spend, p.totals.d90.cur.spend, p.totals.d90.prev.spend], [1000, 500, 1800, 50]);
+  assert.deepEqual(p.channels.map((ch) => [ch.label, ch.d30.spend, ch.d90.spend]), [["Meta Ads", 1000, 1500], ["Google Ads", 0, 300]]);
+  const vista = p.camps.find((k) => k.name === "Campanha vista")!;
+  assert.deepEqual([vista.live, vista.d30.spend, vista.d90.results], [true, 1000, 15]);
+  assert.deepEqual(p.reports.map((r) => r.title), ["Setembro"]);
+  assert.equal((await clientPortal(sql, c.id, dona, NOW)).as, "agencia");
+  await assert.rejects(clientPortal(sql, outro.id, marcelo, NOW), /Não encontrado/);
+  await assert.rejects(clientPortal(sql, c.id, estranho, NOW), /Não encontrado/);
 });

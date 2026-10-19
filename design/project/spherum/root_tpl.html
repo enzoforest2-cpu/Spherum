@@ -1717,7 +1717,7 @@ class Component extends DCLogic {
         try { await SP.api('/api/agencies', { method: 'POST' }); me = await SP.api('/api/me'); }
         catch (x) { if (x.status === 400) { const s = SP.get(); this.setState({ busy: false, view: 'signup', suStep: 2, su: Object.assign({}, this.state.su, { email: s && s.user ? s.user.email : '' }), info: '' }); return; } throw x; }
       }
-      try { localStorage.setItem('spherum.mode', 'real'); localStorage.setItem('spherum.agency', me.agencies.length ? me.agencies[0].agency_id : ''); } catch (e) {}
+      try { localStorage.setItem('spherum.mode', 'real'); localStorage.setItem('spherum.agency', me.agencies.length ? me.agencies[0].agency_id : ''); localStorage.setItem('spherum.client', (me.portals || []).length ? me.portals[0].client_id : ''); } catch (e) {}
       this.setState({ busy: false, portal: me.home, portalReal: true, info: '' });
     } catch (x) { this.setState({ busy: false, err: x.message }); }
   }

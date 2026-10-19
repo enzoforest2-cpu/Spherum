@@ -368,9 +368,9 @@ a:hover{color:#3346D3;text-decoration:underline}
       </sc-for>
     </nav>
     <div style="padding:12px 14px;border-top:1px solid #F2F4F7;display:flex;align-items:center;gap:10px">
-      <div style="width:30px;height:30px;border-radius:50%;background:#F2F4F7;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">MP</div>
+      <div style="width:30px;height:30px;border-radius:50%;background:#F2F4F7;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ who.ini }}</div>
       <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Marcelo Pilar</div><div style="font-size:11.5px;color:#667085">Construtora Pilar</div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">{{ who.name }}</div><div style="font-size:11.5px;color:#667085">{{ who.client }}</div></div>
         <button type="button" sc-camel-on-click="{{ logout }}" aria-label="Sair" title="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#667085;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
       </sc-if>
     </div>
@@ -384,7 +384,7 @@ a:hover{color:#3346D3;text-decoration:underline}
         <section data-screen-label="Cliente · Visão geral" style="display:flex;flex-direction:column;gap:20px">
           <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
             <div>
-              <div style="font-size:12.5px;color:#667085;margin-bottom:6px">Olá, Marcelo · atualizado hoje às 07:00</div>
+              <div style="font-size:12.5px;color:#667085;margin-bottom:6px">{{ hello }}</div>
               <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Como estão seus resultados</h1>
               <p style="margin:6px 0 0;color:#667085;font-size:15px">Sua conta nos {{ periodLabel }}, comparada ao período anterior</p>
             </div>
@@ -392,11 +392,11 @@ a:hover{color:#3346D3;text-decoration:underline}
           </div>
 
           <sc-if value="{{ cw.showNps }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
-  <sc-if value="{{ cw.npsAsk }}"><span style="font-size:15px;font-weight:600">De 0 a 10, quanto você recomendaria a Marketing Pro para um amigo?</span><div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px"><sc-for list="{{ cw.npsOpts }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:38px;border:1px solid {{ o.bd }};border-radius:8px;background:{{ o.bg }};color:{{ o.c }};font-size:14px;font-weight:600;padding:0">{{ o.l }}</button></sc-for></div><div style="display:flex;justify-content:space-between;font-size:12px;color:#667085"><span>Nada provável</span><span>Muito provável</span></div></sc-if>
+  <sc-if value="{{ cw.npsAsk }}"><span style="font-size:15px;font-weight:600">De 0 a 10, quanto você recomendaria a {{ br.name }} para um amigo?</span><div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px"><sc-for list="{{ cw.npsOpts }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:38px;border:1px solid {{ o.bd }};border-radius:8px;background:{{ o.bg }};color:{{ o.c }};font-size:14px;font-weight:600;padding:0">{{ o.l }}</button></sc-for></div><div style="display:flex;justify-content:space-between;font-size:12px;color:#667085"><span>Nada provável</span><span>Muito provável</span></div></sc-if>
   <sc-if value="{{ cw.npsWhy }}"><span style="font-size:15px;font-weight:600">{{ cw.npsQ }}</span><textarea value="{{ cw.npsTxt }}" sc-camel-on-change="{{ cw.onNps }}" rows="3" aria-label="Comentário" style="border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;font:400 14px/1.5 inherit;resize:vertical;outline:none"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button sc-camel-on-click="{{ cw.npsSkip }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">Pular</button><button sc-camel-on-click="{{ cw.npsSend }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">Enviar</button></div></sc-if>
   <sc-if value="{{ cw.npsDone }}"><div style="display:flex;gap:10px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#EF5B3B">favorite</span><span style="font-size:14px">Obrigado, Marcelo. O Rafael vai ler sua resposta hoje.</span></div></sc-if>
 </div></sc-if>
-<button sc-camel-on-click="{{ cw.goWork }}" style="text-align:left;background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;color:#101828;font:inherit;width:100%" style-hover="border-color:{{ br.acc }}"><span style="width:40px;height:40px;border-radius:10px;background:#FFF3EE;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1;color:#D9472A">auto_awesome</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">Esta semana a Marketing Pro fez {{ cw.weekN }} ajustes na sua conta</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ cw.best }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#98A2B3">chevron_right</span></button>
+<button sc-camel-on-click="{{ cw.goWork }}" style="text-align:left;background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;color:#101828;font:inherit;width:100%" style-hover="border-color:{{ br.acc }}"><span style="width:40px;height:40px;border-radius:10px;background:#FFF3EE;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1;color:#D9472A">auto_awesome</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">Esta semana a {{ br.name }} fez {{ cw.weekN }} ajustes na sua conta</span><span style="font-size:13px;color:#667085;text-wrap:pretty">{{ cw.best }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#98A2B3">chevron_right</span></button>
 <sc-if value="{{ cw.hasPend }}"><button sc-camel-on-click="{{ cw.goStart }}" style="text-align:left;border:1px solid #FEDF89;background:#FFFAEB;border-radius:12px;padding:12px 18px;display:flex;gap:12px;align-items:center;color:#7A2E0E;font:inherit;width:100%"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#B54708">assignment_late</span><span style="flex:1;font-size:13.5px"><b>{{ cw.pendL }}</b> para começarmos a fase 2 do Vista Parque</span><span style="font-size:13px;font-weight:600">Resolver →</span></button></sc-if>
 <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
             <div style="display:flex;flex-wrap:wrap;margin-right:-1px;margin-bottom:-1px">
@@ -405,7 +405,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <div style="font-size:13px;color:#667085">{{ k.l }}</div>
                   <div style="font-size:28px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;margin-top:4px;white-space:nowrap">{{ k.v }}</div>
                   <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:5px;background:{{ k.bg }};color:{{ k.c }};font-weight:600"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:14px">{{ k.icon }}</span>{{ k.state }}</span><span style="color:#667085">{{ k.d }} · antes {{ k.prev }}</span></div>
-                  <sc-if value="{{ k.hasGoal }}"><div style="margin-top:10px;padding-top:10px;border-top:1px solid #F2F4F7;font-size:12.5px;color:#475467">Meta {{ k.goal }} · <b style="color:#079455;font-weight:600">{{ k.goalSt }}</b></div></sc-if>
+                  <sc-if value="{{ k.hasGoal }}"><div style="margin-top:10px;padding-top:10px;border-top:1px solid #F2F4F7;font-size:12.5px;color:#475467">Meta {{ k.goal }} · <b style="color:{{ k.goalC }};font-weight:600">{{ k.goalSt }}</b></div></sc-if>
                 </div>
               </sc-for>
             </div>
@@ -485,7 +485,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 
       <sc-if value="{{ is.fin }}">
         <section data-screen-label="Cliente · Financeiro" style="display:flex;flex-direction:column;gap:16px">
-          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Financeiro</h1><p style="margin:4px 0 0;color:#667085">Suas faturas com a Marketing Pro</p></div>
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Financeiro</h1><p style="margin:4px 0 0;color:#667085">Suas faturas com a {{ br.name }}</p></div>
           <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
             <div style="flex:1;min-width:220px"><div style="font-size:13px;color:#667085">Próxima fatura</div><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">R$ 7.200</div><div style="font-size:13px;color:#667085">Mensalidade out/26 · vence 05 out · boleto</div></div>
             <button sc-camel-on-click="{{ copyCode }}" style="height:36px;padding:0 14px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;font-weight:500">Copiar linha digitável</button>
@@ -510,7 +510,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 
       <sc-if value="{{ is.msgs }}">
         <section data-screen-label="Cliente · Mensagens" style="display:flex;flex-direction:column;gap:16px">
-          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Mensagens</h1><p style="margin:4px 0 0;color:#667085">Fale com seu time na Marketing Pro · Rafael Lima costuma responder em 1 h</p></div>
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Mensagens</h1><p style="margin:4px 0 0;color:#667085">{{ msgSub }}</p></div>
           <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;display:flex;flex-direction:column;height:min(560px,calc(100vh - 220px));min-height:400px;overflow:hidden">
             <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:#F9FAFB">
               <sc-for list="{{ chat }}" as="m">
@@ -528,7 +528,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 
       <sc-if value="{{ is.work }}">
 <section data-screen-label="Cliente · Feito pela agência" style="display:flex;flex-direction:column;gap:16px">
-  <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Feito pela agência</h1><p style="margin:4px 0 0;color:#667085">O que a Marketing Pro e os xodós dela fizeram na sua conta, em português claro.</p></div>
+  <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Feito pela agência</h1><p style="margin:4px 0 0;color:#667085">O que a {{ br.name }} e os xodós dela fizeram na sua conta, em português claro.</p></div>
   <div style="background:#111318;color:#fff;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:#A4ABB8;font-weight:500;letter-spacing:.04em">RESUMO DA SEMANA · 28 SET A 4 OUT</span><span style="font-size:12px;color:#A4ABB8">também enviado no seu WhatsApp</span></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px"><sc-for list="{{ cw.week }}" as="k"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#A4ABB8">{{ k.l }}</span><span style="font-size:26px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ k.v }}</span><span style="font-size:12px;color:{{ k.c }}">{{ k.s }}</span></div></sc-for></div>
@@ -560,7 +560,7 @@ a:hover{color:#3346D3;text-decoration:underline}
       <div style="display:flex;gap:8px"><button sc-camel-on-click="{{ it.done }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">{{ it.doneL }}</button><button sc-camel-on-click="{{ it.close }}" style="height:34px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500;white-space:nowrap">Depois</button></div>
     </div></sc-if>
   </div></sc-for></div>
-  <span style="font-size:12.5px;color:#667085">Os acessos são dados pela própria plataforma (Meta, Google). A Marketing Pro nunca pede sua senha.</span>
+  <span style="font-size:12.5px;color:#667085">Os acessos são dados pela própria plataforma (Meta, Google). A {{ br.name }} nunca pede sua senha.</span>
 </section>
 </sc-if>
 <sc-if value="{{ is.help }}">
@@ -652,11 +652,160 @@ function LiveLogo(p) {
 function ACC() { return (window.__spBrand && window.__spBrand.c) || '#465FFF'; }
 function spDl(name, content, type) { const url = URL.createObjectURL(new Blob([content], { type })); const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }
 function spDoc(t, sub) { return '<!doctype html><meta charset="utf-8"><title>' + t + '</title><body style="font-family:sans-serif;padding:40px;max-width:680px;color:#101828"><h2>' + t + '</h2><p>' + (sub || '') + '</p><p style="color:#667085;margin-top:32px">Documento de demonstração.</p></body>'; }
+// <spherum-api> Sessão do Supabase Auth e chamadas à API do Spherum (fonte: design/shared/spherum-api.js; o script scripts/design-bundle.mjs copia este bloco para os modelos).
+const SP_SB = { url: 'https://fszbxwlxuncqefcwttru.supabase.co', key: 'sb_publishable_zAhuSdMR3g2zHAb7WwYyCQ_XW8CLEth' };
+const SP_SESSION = 'spherum.session';
+const SP = {
+  get() { try { return JSON.parse(localStorage.getItem(SP_SESSION) || 'null'); } catch (e) { return null; } },
+  save(d) {
+    const s = d && d.access_token ? { access_token: d.access_token, refresh_token: d.refresh_token, expires_at: d.expires_at || Math.floor(Date.now() / 1000) + (+d.expires_in || 3600), user: d.user ? { id: d.user.id, email: d.user.email } : (SP.get() || {}).user || null } : null;
+    try { if (s) localStorage.setItem(SP_SESSION, JSON.stringify(s)); else localStorage.removeItem(SP_SESSION); } catch (e) {}
+    return s;
+  },
+  authMsg(j, status) {
+    const c = String(j.error_code || j.code || j.error || ''), m = String(j.msg || j.message || j.error_description || '');
+    if (/invalid_credentials|invalid_grant/.test(c) || /invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
+    if (/email_not_confirmed/.test(c) || /not confirmed/i.test(m)) return 'Confirme o seu e-mail pelo link que enviamos antes de entrar.';
+    if (/user_already_exists|email_exists/.test(c) || /already registered/i.test(m)) return 'Este e-mail já tem conta. Entre com ele.';
+    if (/weak_password/.test(c) || /password/i.test(m) && status === 422) return 'Senha fraca: use pelo menos 8 caracteres, com letras e números.';
+    if (/rate_limit/.test(c) || status === 429) return 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';
+    if (/email_address_invalid|validation_failed/.test(c)) return 'Confira o e-mail digitado.';
+    return 'Não deu certo agora. Tente de novo em instantes.';
+  },
+  async auth(path, body, token) {
+    const h = { apikey: SP_SB.key, 'content-type': 'application/json' };
+    if (token) h.authorization = 'Bearer ' + token;
+    const r = await fetch(SP_SB.url + '/auth/v1/' + path, { method: path === 'user' ? 'PUT' : 'POST', headers: h, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(SP.authMsg(j, r.status)); e.status = r.status; throw e; }
+    return j;
+  },
+  back(q) { return location.origin + '/' + (q || ''); },
+  async login(email, password) { return SP.save(await SP.auth('token?grant_type=password', { email, password })); },
+  // Com confirmação de e-mail ligada no Supabase, volta sem sessão: a pessoa confirma pelo link.
+  async signup(email, password, data, q) { const j = await SP.auth('signup?redirect_to=' + encodeURIComponent(SP.back(q || '?confirmado=1')), { email, password, data }); return j.access_token ? SP.save(j) : null; },
+  async recover(email) { await SP.auth('recover?redirect_to=' + encodeURIComponent(SP.back('?redefinir=1')), { email }); },
+  async setPassword(password) { const t = await SP.token(); if (!t) throw new Error('O link venceu. Peça outro em "Esqueci minha senha".'); await SP.auth('user', { password }, t); },
+  // Volta do link do e-mail (confirmação ou nova senha): a sessão vem no fragmento da URL.
+  fromLink() {
+    const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    if (!h.get('access_token')) return null;
+    const s = SP.save({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: h.get('expires_in'), expires_at: +h.get('expires_at') || undefined });
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    return s ? h.get('type') || 'login' : null;
+  },
+  async token() {
+    let s = SP.get();
+    if (!s) return null;
+    if (s.expires_at - 60 < Date.now() / 1000) {
+      try { s = SP.save(await SP.auth('token?grant_type=refresh_token', { refresh_token: s.refresh_token })); } catch (e) { SP.save(null); return null; }
+    }
+    return s.access_token;
+  },
+  async api(path, o) {
+    o = o || {};
+    const t = await SP.token(), h = { 'content-type': 'application/json' };
+    if (t) h.authorization = 'Bearer ' + t;
+    const r = await fetch(location.origin + path, { method: o.method || 'GET', headers: h, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || 'Não deu certo agora. Tente de novo em instantes.'); e.status = r.status; e.body = j; throw e; }
+    return j;
+  },
+  logout() {
+    const s = SP.get();
+    SP.save(null);
+    if (s) fetch(SP_SB.url + '/auth/v1/logout', { method: 'POST', headers: { apikey: SP_SB.key, authorization: 'Bearer ' + s.access_token } }).catch(() => {});
+  }
+};
+// </spherum-api>
 class Component extends DCLogic {
   state = { view: 'home', workSeen: false, cwF: 'all', cwChat: null, cwQ: '', npsV: null, npsTxt: '', npsDone: false, pix: 'off', cwDone: { meta: true, gads: true }, cwOpen: null, cwVals: {}, period: '30D', metric: 'leads', appr: {}, draft: '', sent: [], faq: -1, toast: null, narrow: false };
   mainRef = React.createRef();
-  componentDidMount() { this.rs = () => { const n = window.innerWidth < 900; if (n !== this.state.narrow) this.setState({ narrow: n }); }; this.rs(); window.addEventListener('resize', this.rs); }
+  componentDidMount() { this.spInit(); this.rs = () => { const n = window.innerWidth < 900; if (n !== this.state.narrow) this.setState({ narrow: n }); }; this.rs(); window.addEventListener('resize', this.rs); }
   componentWillUnmount() { window.removeEventListener('resize', this.rs); clearTimeout(this.tt); }
+  // Conta de verdade: os números vêm de /api/portal/cliente. Faturas, mensagens, aprovações e o que os xodós fizeram seguem com os exemplos do design.
+  spReal() { try { return location.protocol !== 'blob:' && localStorage.getItem('spherum.mode') === 'real' && !!SP.get(); } catch (e) { return false; } }
+  async spInit() {
+    if (!this.spReal()) return;
+    try {
+      const me = await SP.api('/api/me'), list = me.portals || []; let id = null;
+      try { id = localStorage.getItem('spherum.client'); } catch (e) {}
+      if (!list.some(p => p.client_id === id)) id = list.length ? list[0].client_id : id;
+      if (!id) return;
+      try { localStorage.setItem('spherum.client', id); } catch (e) {}
+      const R = await SP.api('/api/portal/cliente?client_id=' + id);
+      window.__spBrand = R.agency.brand_color && /^#[0-9a-f]{6}$/i.test(R.agency.brand_color) ? { c: R.agency.brand_color } : null;
+      this.R = R; this.setState({ real: Date.now() });
+    } catch (e) { this.toastMsg(e.message || 'Não deu para carregar os dados agora.'); }
+  }
+  spNewReports() { const t = Date.now() - 7 * 864e5; return this.R.reports.filter(r => Date.parse(r.published_at) > t).length; }
+  spDate(t) { const d = new Date(t.length === 10 ? t + 'T12:00:00Z' : t); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/\./g, '').replace(/ de /g, ' '); }
+  // Relatório publicado (markdown simples) como página para ler ou baixar.
+  spReportHtml(r) {
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const inl = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
+    let html = '', list = false;
+    String(r.body_md || '').split('\n').forEach(l => { const m = l.match(/^(#{1,3})\s+(.*)/), li = l.match(/^\s*[-*]\s+(.*)/);
+      if (!li && list) { html += '</ul>'; list = false; }
+      if (m) html += '<h' + (m[1].length + 1) + '>' + inl(m[2]) + '</h' + (m[1].length + 1) + '>';
+      else if (li) { if (!list) { html += '<ul>'; list = true; } html += '<li>' + inl(li[1]) + '</li>'; }
+      else if (l.trim()) html += '<p>' + inl(l) + '</p>'; });
+    if (list) html += '</ul>';
+    return '<!doctype html><meta charset="utf-8"><title>' + esc(r.title) + '</title><body style="font-family:system-ui,sans-serif;padding:40px;max-width:720px;margin:0 auto;color:#101828;line-height:1.55"><div style="color:#667085;font-size:13px">' + esc(this.R.agency.name) + ' · ' + esc(this.R.client.name) + '</div><h1>' + esc(r.title) + '</h1><div style="color:#667085">' + this.spDate(r.period_start) + ' a ' + this.spDate(r.period_end) + '</div>' + html + '</body>';
+  }
+  // Itens de uma seção do relatório mais recente ("O que fizemos", "Próximos passos"…).
+  spSection(re) { const r = this.R.reports[0]; if (!r) return []; let on = false; const out = [];
+    String(r.body_md || '').split('\n').forEach(l => { const h = l.match(/^#{1,3}\s+(.*)/); if (h) { on = re.test(h[1]); return; } const li = l.match(/^\s*[-*]\s+(.*)/); if (on && li && out.length < 4) out.push(li[1].replace(/\*\*/g, '')); }); return out; }
+  spVals(o, x) {
+    const R = this.R, S = this.state, w = R.totals[S.period === '90D' ? 'd90' : 'd30'], f = x.f, brl = x.brl, brl2 = x.brl2, acc = ACC();
+    const gm = R.client.goal_metric, gv = R.client.goal_value, sale = gm === 'CPA' || gm === 'ROAS', resL = sale ? 'Conversões' : 'Leads', costL = sale ? 'Custo por conversão' : 'Custo por lead';
+    const pct = v => Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+    const kpi = (l, cur, prev, fmt, dir, goal, goalSt) => { const base = { l, v: fmt(cur), prev: prev ? fmt(prev) : '—', hasGoal: !!goal, goal: goal || '', goalSt: goalSt || '', goalC: /pior/.test(goalSt || '') ? '#D92D20' : '#079455' };
+      if (!prev) return Object.assign(base, { d: '—', state: 'Sem período anterior', icon: 'trending_flat', c: '#475467', bg: '#F2F4F7' });
+      const d = (cur - prev) / prev * 100; return Object.assign(base, { d: (d > 0 ? '+' : d < 0 ? '−' : '') + pct(d) }, x.st(d, dir)); };
+    const cost = t => t.results ? t.spend / t.results : 0, roas = t => t.spend ? t.revenue / t.spend : 0;
+    const third = gm === 'ROAS' ? kpi('ROAS', roas(w.cur), roas(w.prev), v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'x', 1, gv ? gv.toLocaleString('pt-BR') + 'x' : '', gv && roas(w.cur) ? pct((roas(w.cur) - gv) / gv * 100) + (roas(w.cur) >= gv ? ' melhor' : ' pior') + ' que a meta' : '')
+      : kpi(costL, cost(w.cur), cost(w.prev), brl2, -1, gv ? brl2(gv) : '', gv && cost(w.cur) ? pct((cost(w.cur) - gv) / gv * 100) + (cost(w.cur) <= gv ? ' melhor' : ' pior') + ' que a meta' : '');
+    o.kpis = [kpi('Investimento', w.cur.spend, w.prev.spend, brl, 0), kpi(resL, w.cur.results, w.prev.results, v => f(Math.round(v)), 1), third, kpi('Cliques', w.cur.clicks, w.prev.clicks, v => f(Math.round(v)), 1)];
+    // Gráfico: 30 dias, dia a dia, contra os 30 anteriores.
+    const end = Date.parse(R.period.to + 'T12:00:00Z'), b = []; for (let i = 0; i < 60; i++) b.push({ spend: 0, conv: 0 });
+    R.daily.forEach(r => { const k = Math.round((end - Date.parse(r.day + 'T12:00:00Z')) / 864e5); if (k >= 0 && k < 60) { b[k].spend += r.spend; b[k].conv += r.conv; } });
+    const val = t => S.metric === 'leads' ? t.conv : S.metric === 'invest' ? t.spend : (t.conv ? t.spend / t.conv : 0);
+    const cur = b.slice(0, 30).reverse().map(val), prev = b.slice(30).reverse().map(val);
+    const t30 = R.totals.d30, tv = t => S.metric === 'leads' ? t.results : S.metric === 'invest' ? t.spend : cost(t), a = tv(t30.cur), z = tv(t30.prev), dd = z ? (a - z) / z * 100 : 0;
+    const good = S.metric === 'cpl' ? dd <= 0 : dd >= 0;
+    o.ch = Object.assign({ label: S.metric === 'leads' ? resL : S.metric === 'cpl' ? costL : 'Investimento', total: S.metric === 'leads' ? f(Math.round(a)) : S.metric === 'invest' ? brl(a) : a ? brl2(a) : '—', d: z ? (dd > 0 ? '+' : '−') + pct(dd) : '—', dc: S.metric === 'invest' || !z ? '#475467' : good ? '#079455' : '#D92D20' }, this.path(cur, prev, 800, 220));
+    o.metrics = this.seg([['leads', resL], ['cpl', costL], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v }));
+    const ins = [], c0 = cost(t30.cur), c1 = cost(t30.prev);
+    if (c0 && c1) ins.push([c0 <= c1 ? 'green' : 'blue', c0 <= c1 ? 'trending_down' : 'trending_up', 'Seu ' + costL.toLowerCase() + (c0 <= c1 ? ' caiu ' : ' subiu ') + pct((c0 - c1) / c1 * 100), brl2(c0) + ' agora vs ' + brl2(c1) + ' no período anterior']);
+    const ch30 = R.channels.filter(c => c.d30.results > 0);
+    if (ch30.length > 1) { const top = ch30.slice().sort((p, q) => q.d30.results - p.d30.results)[0]; ins.push(['blue', 'pie_chart', top.label + ' trouxe ' + Math.round(top.d30.results / t30.cur.results * 100) + '% dos ' + resL.toLowerCase(), f(Math.round(top.d30.results)) + ' de ' + f(Math.round(t30.cur.results)) + ' nos últimos 30 dias']); }
+    const topC = R.camps.filter(k => k.d30.results > 0).sort((p, q) => q.d30.results - p.d30.results)[0];
+    if (topC && t30.cur.results) ins.push(['green', 'star', 'A campanha ' + topC.name + ' gerou ' + Math.round(topC.d30.results / t30.cur.results * 100) + '% dos ' + resL.toLowerCase(), f(Math.round(topC.d30.results)) + ' de ' + f(Math.round(t30.cur.results)) + ' no período']);
+    if (!ins.length) ins.push(['blue', 'schedule', 'Os primeiros números aparecem em breve', 'A agência está ligando as contas de anúncio. Os dados são atualizados todo dia.']);
+    o.insights = ins.map(i => ({ t: i[2], ev: i[3], icon: i[1], c: i[0] === 'green' ? '#079455' : '#1570EF', bg: i[0] === 'green' ? 'rgba(23,178,106,0.12)' : 'rgba(46,144,250,0.12)' }));
+    const did = this.spSection(/fizemos|feito|realizad/i), next = this.spSection(/pr[óo]xim|a seguir|plano/i);
+    o.transparency = [{ icon: 'task_alt', h: 'O que fizemos', items: did.length ? did : ['O relatório do mês traz o detalhe do que foi feito na sua conta'] },
+      { icon: 'insights', h: 'O que aconteceu', items: [f(Math.round(t30.cur.results)) + ' ' + resL.toLowerCase() + ' nos últimos 30 dias' + (t30.prev.results ? ', ' + pct((t30.cur.results - t30.prev.results) / t30.prev.results * 100) + (t30.cur.results >= t30.prev.results ? ' a mais' : ' a menos') + ' que o período anterior' : ''), brl(t30.cur.spend) + ' investidos', c0 ? costL + ' de ' + brl2(c0) + (gv && gm !== 'ROAS' ? (c0 <= gv ? ', dentro da meta' : ', acima da meta de ' + brl2(gv)) : '') : 'Sem resultados registrados ainda'] },
+      { icon: 'flag', h: 'O que vem a seguir', items: next.length ? next : ['Fale com a agência em Mensagens para combinar os próximos passos'] }];
+    const rep = R.reports[0];
+    o.summary[0] = Object.assign({}, o.summary[0], { l: 'Seu contato na agência', v: R.owner ? R.owner.name : R.agency.name });
+    o.summary[1] = Object.assign({}, o.summary[1], { v: rep ? rep.title + ' · enviado ' + this.spDate(rep.published_at) : 'Nenhum relatório ainda' });
+    const tot = R.channels.reduce((t, c) => t + c[S.period === '90D' ? 'd90' : 'd30'].spend, 0) || 1;
+    o.channels = R.channels.map(c => { const t = c[S.period === '90D' ? 'd90' : 'd30']; return { p: c.label, s: brl(t.spend), l: f(Math.round(t.results)), cpl: t.results ? brl2(t.spend / t.results) : '—', w: t.spend / tot * 100 + '%' }; });
+    o.camps = R.camps.map(k => { const t = k[S.period === '90D' ? 'd90' : 'd30']; return { name: k.name, plat: k.plat, obj: k.live ? 'Ativa' : 'Pausada', m: [['Investimento', brl(t.spend)], [resL, f(Math.round(t.results))], [costL, t.results ? brl2(t.spend / t.results) : '—'], ['Cliques', f(Math.round(t.clicks))]].map(m => ({ l: m[0], v: m[1] })), note: '' }; });
+    const newT = Date.now() - 7 * 864e5;
+    o.reports = R.reports.map(r => ({ t: r.title, d: 'Enviado ' + this.spDate(r.published_at) + ' · ' + this.spDate(r.period_start) + ' a ' + this.spDate(r.period_end), isNew: Date.parse(r.published_at) > newT,
+      open: () => { const w2 = window.open(URL.createObjectURL(new Blob([this.spReportHtml(r)], { type: 'text/html' })), '_blank'); if (!w2) this.toastMsg('Permita pop-ups para abrir o relatório'); },
+      pdf: () => { spDl(r.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\W+/g, '-') + '.html', this.spReportHtml(r), 'text/html'); this.toastMsg('Relatório baixado'); } }));
+    const nm = R.agency.name, fg = (() => { const n = parseInt(acc.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
+    o.br = Object.assign({}, o.br, { acc, name: nm, lgBg: acc, lgImg: 'none', lgFg: fg, lgIni: (nm.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'A').toUpperCase() });
+    const first = (R.me.name || '').split(' ')[0];
+    o.who = { name: R.me.name, client: R.client.name, ini: (R.me.name || R.client.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() };
+    o.hello = (first ? 'Olá, ' + first + ' · ' : '') + 'dados até ' + this.spDate(R.period.to);
+    o.msgSub = 'Fale com seu time na ' + nm + (R.owner ? ' · ' + R.owner.name + ' cuida da sua conta' : '');
+    return o;
+  }
   toastMsg(m) { clearTimeout(this.tt); this.setState({ toast: m }); this.tt = setTimeout(() => this.setState({ toast: null }), 2400); }
   cwPendN() { return CW_ITEMS.filter(i => !(this.state.cwDone || {})[i[0]]).length || 0; }
   go(v) { this.setState(v === 'work' ? { view: v, workSeen: true } : { view: v }); if (this.mainRef.current) this.mainRef.current.scrollTop = 0; }
@@ -672,14 +821,14 @@ class Component extends DCLogic {
     const br = { acc: brC, name: brName, lgBg: brLogo ? '#FFFFFF' : brC, lgImg: brLogo ? 'url("' + brLogo + '")' : 'none', lgFg: brFg, lgIni: brLogo ? '' : (brName.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'MP').toUpperCase(), powOpen: this.state.sbOpen !== false && !(brS && brS.powered === false) };
     const S = this.state; const open = !S.narrow;
     const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', 1], ['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', S.sent.length ? 0 : 1], ['help', 'Ajuda', 'help']];
+    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 1], ['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', S.sent.length ? 0 : 1], ['help', 'Ajuda', 'help']];
     const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
     const is = {}; navDef.forEach(n => is[n[0]] = S.view === n[0]);
     const m90 = S.period === '90D' ? 2.9 : 1;
     const st = (d, dir) => { if (dir === 0 || Math.abs(d) < 3) return { state: dir === 0 ? 'Conforme o planejado' : 'Estável', icon: 'trending_flat', c: '#475467', bg: '#F2F4F7' }; const good = dir > 0 ? d > 0 : d < 0;
       return good ? { state: 'Melhorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#079455', bg: 'rgba(23,178,106,0.12)' } : { state: 'Piorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#D92D20', bg: 'rgba(240,68,56,0.10)' }; };
     const K = [['Investimento', 18700 * m90, 17608 * m90, brl, 0], ['Leads', 189 * m90, 155 * m90, v => f(Math.round(v)), 1], ['Custo por lead', 98.94, 113.6, brl2, -1, 'R$ 120,00', '17,5% melhor que a meta'], ['Visitas agendadas', 42 * m90, 41 * m90, v => f(Math.round(v)), 1]];
-    const kpis = K.map(k => { const d = (k[1] - k[2]) / k[2] * 100; return Object.assign({ l: k[0], v: k[3](k[1]), prev: k[3](k[2]), d: (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', hasGoal: !!k[5], goal: k[5] || '', goalSt: k[6] || '' }, st(d, k[4])); });
+    const kpis = K.map(k => { const d = (k[1] - k[2]) / k[2] * 100; return Object.assign({ l: k[0], v: k[3](k[1]), prev: k[3](k[2]), d: (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', hasGoal: !!k[5], goal: k[5] || '', goalSt: k[6] || '', goalC: '#079455' }, st(d, k[4])); });
     const mets = { leads: ['Leads', 6.3, '189', '+21,9%', '#079455'], cpl: ['Custo por lead', 98.9, 'R$ 98,94', '−12,9%', '#079455'], invest: ['Investimento', 623, 'R$ 18.700', '+6,2%', '#475467'] };
     const mm = mets[S.metric]; const cur = this.ser(S.metric.length + 3, 30, mm[1], 0.35, S.metric === 'cpl' ? -0.15 : 0.18), prev = this.ser(S.metric.length + 40, 30, mm[1] * (S.metric === 'cpl' ? 1.14 : 0.85), 0.35, 0);
     const ch = Object.assign({ label: mm[0], total: mm[2], d: mm[3], dc: mm[4] }, this.path(cur, prev, 800, 220));
@@ -692,7 +841,8 @@ class Component extends DCLogic {
     const faq = [['O que significa “Melhorou”, “Piorou” e “Estável”?', 'Comparamos cada métrica com o mesmo número de dias imediatamente anterior. Para custos (como custo por lead), cair é melhorar. Variações abaixo de 3% aparecem como estáveis.'],
       ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.']]
       .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
-    return {
+    const out = {
+      who: { name: 'Marcelo Pilar', client: 'Construtora Pilar', ini: 'MP' }, hello: 'Olá, Marcelo · atualizado hoje às 07:00', msgSub: 'Fale com seu time na Marketing Pro · Rafael Lima costuma responder em 1 h',
       logout: () => { this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, back: () => this.setState({ __out: false }) }, br: Object.assign(br, { powOpen: br.powOpen && open }),
       liveLogo: React.createElement(LiveLogo, { size: 15, ink: '#475467', bg: '#FFFFFF', intro: false }),
       mainRef: this.mainRef, open, sbW: open ? '240px' : '64px', nav, is,
@@ -750,6 +900,7 @@ class Component extends DCLogic {
       })(),
       toast: { show: !!S.toast, msg: S.toast || '' }
     };
+    return this.R ? this.spVals(out, { f, brl, brl2, st }) : out;
   }
 }
 </script>
