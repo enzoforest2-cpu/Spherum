@@ -1,6 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
-import { serverSql } from "@/lib/xodos/db";
+import { computerDeps } from "@/lib/computer";
+import { takeoverDoneByMessage, withEngine } from "@/lib/computer/control";
+import { one, serverSql } from "@/lib/xodos/db";
 import { CAN_READ, CAN_USE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 import { continueRun, productionDeps, startRun } from "@/lib/xodos";
 import { loadXodo } from "@/lib/xodos/runner";
@@ -48,6 +50,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const deps = await productionDeps();
     const xodo = await loadXodo(deps.sql, xodoId);
     await requireRole(deps.sql, userId, xodo.agency_id, CAN_USE);
+    // O xodó esperava a pessoa no computador: a mensagem vale como "terminei" e vai junto.
+    const waiting = await one<{ id: string }>(
+      deps.sql,
+      `select id from xodo_runs where xodo_id = $1 and status = 'waiting_takeover' and conversation_id is null
+        order by started_at desc limit 1`,
+      [xodoId],
+    );
+    if (waiting) {
+      const machines = withEngine(computerDeps(deps.sql), deps, (runId, task) =>
+        after(() => task().catch((error) => console.error("[xodos] retomada falhou", runId, error))),
+      );
+      if (await takeoverDoneByMessage(machines, waiting.id, userId, text)) {
+        return NextResponse.json({ run_id: waiting.id }, { status: 202 });
+      }
+    }
     const runId = await startRun(deps, { xodoId, agencyId: xodo.agency_id, trigger: "user", text, userId });
     after(() => continueRun(deps, runId).catch((error) => console.error("[xodos] execução falhou", runId, error)));
     return NextResponse.json({ run_id: runId }, { status: 202 });

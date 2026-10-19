@@ -835,7 +835,12 @@ async function takeoverRequested(sql: Sql, runId: string, step: number, tools: T
  * A pessoa devolveu o controle do computador (ou não assumiu a tempo): o xodó continua de onde
  * parou, com uma nota dizendo o que aconteceu.
  */
-export async function resumeTakeover(deps: EngineDeps, runId: string, outcome: keyof typeof TAKEOVER_NOTES): Promise<RunStatus | null> {
+export async function resumeTakeover(
+  deps: EngineDeps,
+  runId: string,
+  outcome: keyof typeof TAKEOVER_NOTES,
+  message?: { text: string; userId: string },
+): Promise<RunStatus | null> {
   const { sql } = deps;
   const claimed = await one<RunRow>(
     sql,
@@ -845,10 +850,13 @@ export async function resumeTakeover(deps: EngineDeps, runId: string, outcome: k
   );
   if (!claimed) return null;
   const at = nowOf(deps).getTime();
+  // A mensagem que a pessoa mandou no chat enquanto o xodó esperava vai junto com a nota.
+  if (message) await addMessage(sql, { id: claimed.xodo_id, agency_id: claimed.agency_id }, runId, "user", message.text, message.userId);
+  const note = `[nota do Spherum] ${TAKEOVER_NOTES[outcome]}`;
   const messages: Message[] = [
     ...parseJson<Message[]>(claimed.transcript),
     ...toolResultMessages(await stepResults(sql, runId, claimed.steps), at),
-    { role: "user", content: `[nota do Spherum] ${TAKEOVER_NOTES[outcome]}`, timestamp: at },
+    { role: "user", content: message ? `${note}\n\nMensagem da pessoa: ${message.text}` : note, timestamp: at },
   ];
   await sql.query(`update xodo_runs set transcript = $2::jsonb where id = $1`, [runId, json(messages)]);
   return continueRun(deps, runId);

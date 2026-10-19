@@ -4,6 +4,9 @@ import { ADAPTERS } from "@/lib/channels";
 import { cleanupChannels, flushOutbox } from "@/lib/channels/outbox";
 import { pollEmailTriggers } from "@/lib/channels/triggers";
 import type { ChannelDeps } from "@/lib/channels/types";
+import { computerDeps } from "@/lib/computer";
+import { expireControls, withEngine } from "@/lib/computer/control";
+import { sweepComputers } from "@/lib/computer/lifecycle";
 import { fail } from "@/lib/xodos/http";
 import { syncDueAccounts } from "@/lib/integrations/ads/sync";
 import { warnExpiringConnections } from "@/lib/integrations/store";
@@ -14,7 +17,8 @@ export const maxDuration = 300;
 /**
  * GET /api/cron/xodos  com "Authorization: Bearer $CRON_SECRET".
  * Atualiza a cotação do dólar, sincroniza as métricas das contas de anúncio, avisa logins da
- * Meta perto de vencer, vence pedidos sem resposta, encerra execuções travadas, roda as rotinas,
+ * Meta perto de vencer, vence pedidos sem resposta, encerra execuções travadas, cuida do computador
+ * (controle vencido, máquinas pausadas, sessões longas), roda as rotinas,
  * confere os gatilhos de e-mail e entrega o que ficou na fila dos canais.
  * Chame a cada 15 minutos (ex.: pg_cron + pg_net no Supabase; veja o README).
  */
@@ -39,11 +43,16 @@ export async function GET(request: Request) {
     const ads = await syncDueAccounts(integrations);
     const expiring = await warnExpiringConnections(integrations);
     const cleanup = await sweep(deps);
+    // Computador: primeiro vence o controle de quem passou do prazo (a execução retoma com
+    // "expired"), depois dá como pausadas as máquinas vencidas e pausa sessões longas.
+    const machines = withEngine(computerDeps(deps.sql), deps);
+    const controls = await expireControls(machines);
+    const computers = { controls, ...(await sweepComputers(machines)) };
     const routines = await runDueRoutines(deps);
     const email = await pollEmailTriggers(channelDeps);
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, cleanup, routines, email, channels, delivered: { antes: queued, depois: delivered } });
+    return NextResponse.json({ fx, ads, expiring, cleanup, computers, routines, email, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

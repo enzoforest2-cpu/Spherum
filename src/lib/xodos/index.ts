@@ -1,3 +1,4 @@
+import { computerDeps } from "../computer";
 import { serverIntegrations } from "../integrations";
 import { serverSql, type Sql } from "./db";
 import { serverLlm } from "./llm";
@@ -20,5 +21,14 @@ export async function productionDeps(sql?: Sql): Promise<EngineDeps> {
     llm: serverLlm(),
     secretFor: (agencyId, credentialId) => loadCredentialSecret(db, agencyId, credentialId, masterKey),
     integrations: serverIntegrations(),
+    computer: engineComputer(db),
   };
+}
+
+/** O computador sem o banco e o relógio (o motor passa os dele). */
+function engineComputer(db: Sql): EngineDeps["computer"] {
+  const { sql: _sql, now: _now, ...rest } = computerDeps(db);
+  void _sql;
+  void _now;
+  return rest;
 }

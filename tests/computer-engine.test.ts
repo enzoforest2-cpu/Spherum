@@ -126,3 +126,35 @@ test("execução em fatias: para no prazo, uma chamada continua por vez e o cron
   assert.equal(after!.status, "completed", after!.error);
   assert.equal(await continueSlice(deps, runId), null, "fatia já continuada não roda de novo");
 });
+
+test("mensagem no chat enquanto o xodó espera retoma com o texto; esquecida por um dia, segue sem", async () => {
+  const w = await world();
+  const model = new FakeModel([
+    { toolCalls: [{ id: "c1", name: "pedir_controle", input: { motivo: "Resolva o captcha" } }] },
+    { text: "Valeu, segui daqui." },
+    { toolCalls: [{ id: "c2", name: "pedir_controle", input: { motivo: "Faça o login" } }] },
+    { text: "Sigo sem o login." },
+  ]);
+  const deps = w.deps(model);
+  const { takeoverDoneByMessage, withEngine } = await import("../src/lib/computer/control");
+  const machines = withEngine({ sql, ...deps.computer! }, deps);
+
+  const first = await startRun(deps, { xodoId: w.xodo.id, agencyId: w.agencyId, trigger: "user", text: "Entra no painel", userId: w.ownerId });
+  assert.equal(await continueRun(deps, first), "waiting_takeover");
+  assert.equal(await takeoverDoneByMessage(machines, first, w.ownerId, "pronto, resolvi"), true);
+  const status = await one<{ status: string }>(sql, `select status from xodo_runs where id = $1`, [first]);
+  assert.equal(status!.status, "completed");
+  assert.match(String(model.requests.at(-1)!.messages.at(-1)!.content), /Mensagem da pessoa: pronto, resolvi/);
+  const saved = await one(sql, `select 1 from xodo_messages where run_id = $1 and role = 'user' and text = 'pronto, resolvi'`, [first]);
+  assert.ok(saved, "a mensagem aparece na conversa");
+
+  const second = await startRun(deps, { xodoId: w.xodo.id, agencyId: w.agencyId, trigger: "user", text: "Agora o outro", userId: w.ownerId });
+  assert.equal(await continueRun(deps, second), "waiting_takeover");
+  w.clock.advance(23 * 3_600_000);
+  assert.equal((await sweep(deps)).expiredTakeovers, 0);
+  w.clock.advance(2 * 3_600_000);
+  assert.ok((await sweep(deps)).expiredTakeovers >= 1);
+  const after = await one<{ status: string }>(sql, `select status from xodo_runs where id = $1`, [second]);
+  assert.equal(after!.status, "completed");
+  assert.match(String(model.requests.at(-1)!.messages.at(-1)!.content), /Ninguém assumiu o computador a tempo/);
+});

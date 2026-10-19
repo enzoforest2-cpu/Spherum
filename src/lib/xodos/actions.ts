@@ -1,6 +1,6 @@
 import { one, parseJson } from "./db";
 import { canAlwaysAllow, type Category } from "./policy";
-import { addMessage, continueSlice, loadXodo, resumeRun, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
+import { addMessage, continueSlice, loadXodo, resumeRun, resumeTakeover, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
 
 /**
  * Decisões da equipe sobre os pedidos dos xodós (modelo do OpenDots).
@@ -99,6 +99,9 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
  * Faxina chamada pelo cron: vence pedidos sem resposta (e retoma as execuções, para o xodó
  * avisar que nada foi feito) e marca como falha execuções travadas no meio.
  */
+/** Quanto uma execução espera alguém assumir o computador antes de seguir sem isso. */
+export const TAKEOVER_WAIT_MS = 24 * 60 * 60 * 1000;
+
 export async function sweep(deps: EngineDeps) {
   const { sql } = deps;
   const now = deps.now ? deps.now() : new Date();
@@ -138,5 +141,21 @@ export async function sweep(deps: EngineDeps) {
     [new Date(now.getTime() - 60_000).toISOString()],
   );
   for (const run of slices) await continueSlice(deps, run.id, { deadline: Date.now() + 120_000 });
-  return { expiredActions: expired.length, resumedRuns: runs.length, staleRuns: stale.length, continuedSlices: slices.length };
+  // Pediu o computador e ninguém assumiu em um dia: o xodó segue sem contar com isso. Quem está
+  // no controle tem o próprio prazo (o cron do computador vence o lease e retoma).
+  const forgotten = await sql.query<{ id: string }>(
+    `select r.id from xodo_runs r
+      where r.status = 'waiting_takeover' and r.heartbeat_at < $1::timestamptz
+        and not exists (select 1 from computers c where c.control_run_id = r.id)
+      order by r.heartbeat_at limit 10`,
+    [new Date(now.getTime() - TAKEOVER_WAIT_MS).toISOString()],
+  );
+  for (const run of forgotten) await resumeTakeover(deps, run.id, "expired").catch((error) => console.error("[xodos] retomada falhou", run.id, error));
+  return {
+    expiredActions: expired.length,
+    resumedRuns: runs.length,
+    staleRuns: stale.length,
+    continuedSlices: slices.length,
+    expiredTakeovers: forgotten.length,
+  };
 }

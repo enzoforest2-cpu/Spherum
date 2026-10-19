@@ -390,12 +390,17 @@ export async function heartbeat(deps: ControlDeps, agencyId: string, userId: str
 export type ReleaseResult = { runId: string | null; resumed: RunStatus | null | "deferred" };
 
 /** Retoma a execução que esperava a pessoa (na hora ou depois da resposta). */
-async function resume(deps: ControlDeps, runId: string | null, reason: ControlReason): Promise<RunStatus | null | "deferred"> {
+async function resume(
+  deps: ControlDeps,
+  runId: string | null,
+  reason: ControlReason,
+  message?: { text: string; userId: string },
+): Promise<RunStatus | null | "deferred"> {
   if (!runId || !deps.engine) return null;
   const waiting = await one(deps.sql, `select 1 from xodo_runs where id = $1 and status = 'waiting_takeover'`, [runId]);
   if (!waiting) return null;
   const engine = deps.engine;
-  const task = () => resumeTakeover(engine, runId, reason);
+  const task = () => resumeTakeover(engine, runId, reason, message);
   if (deps.defer) {
     deps.defer(runId, task);
     return "deferred";
@@ -477,20 +482,22 @@ export async function releaseByLink(deps: ControlDeps, token: string): Promise<R
  * Se ela mesma está no controle, devolve; se ninguém está, só retoma; se outra pessoa está lá,
  * não faz nada (os xodós continuam parados até ela devolver). Devolve se tratou a mensagem.
  */
-export async function takeoverDoneByMessage(deps: ControlDeps, runId: string, userId: string): Promise<boolean> {
+export async function takeoverDoneByMessage(deps: ControlDeps, runId: string, userId: string, text?: string): Promise<boolean> {
+  const message = text ? { text, userId } : undefined;
   const { sql } = deps;
   const run = await one<{ agency_id: string; status: string }>(sql, `select agency_id, status from xodo_runs where id = $1`, [runId]);
   if (!run || run.status !== "waiting_takeover") return false;
   const row = await loadComputer(sql, run.agency_id);
   const holder = row ? heldBy(row, nowOf(deps)) : null;
   if (row && holder === userId) {
-    const result = await endLease(deps, row, "done", { userId, kind: "devolver_controle" });
-    // O lease era de outra execução: retoma esta também.
-    if (result.runId !== runId) await resume(deps, runId, "done");
+    // A execução que espera retoma com a mensagem; a do lease (se for outra) só com a nota.
+    const lease = row.control_run_id === runId ? { ...row, control_run_id: null } : row;
+    await endLease(deps, lease, "done", { userId, kind: "devolver_controle" });
+    await resume(deps, runId, "done", message);
     return true;
   }
   if (holder) return false;
-  await resume(deps, runId, "done");
+  await resume(deps, runId, "done", message);
   return true;
 }
 
