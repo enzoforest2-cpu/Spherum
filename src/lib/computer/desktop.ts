@@ -1,3 +1,4 @@
+import { shellQuote } from "./output";
 import type { RunResult, SandboxProvider } from "./provider";
 
 /**
@@ -31,7 +32,8 @@ export function runAsXodo(
   opts: { cwd?: string; timeoutMs?: number; stdin?: string } = {},
 ): Promise<RunResult> {
   return provider.run(ref, {
-    script: `${XODO_ENV} bash -lc ${JSON.stringify(script)}`,
+    // Aspas simples escapadas: o script chega inteiro ao bash, sem expansão de $ ou crases no caminho.
+    script: `${XODO_ENV} bash -lc ${shellQuote(script)}`,
     user: "xodo",
     cwd: opts.cwd ?? HOME,
     stdin: opts.stdin,
