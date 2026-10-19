@@ -143,10 +143,14 @@ As métricas vêm de `metrics_daily` (uma linha por cliente, plataforma, conta, 
 
 Uma rotina é um pedido agendado em cron de 5 campos, no fuso da agência (ex.: `0 8 * * 1`, toda segunda às 8h). O mínimo é de uma vez por hora. Com `continuity`, o resumo da última execução entra na próxima.
 
-A rota `GET /api/cron/xodos` (com `Authorization: Bearer $CRON_SECRET`) faz três coisas:
-- vence os pedidos de aprovação sem resposta;
-- encerra execuções travadas;
-- roda as rotinas vencidas, travando cada uma por 15 minutos para não haver sobreposição.
+A rota `GET /api/cron/xodos` (com `Authorization: Bearer $CRON_SECRET`):
+- atualiza a cotação do dólar, sincroniza as contas de anúncio e avisa logins perto de vencer;
+- cuida do computador (máquinas vencidas, sessões longas, controle vencido; veja [COMPUTADOR.md](COMPUTADOR.md));
+- vence os pedidos de aprovação sem resposta, encerra execuções e ações travadas e continua fatias paradas;
+- roda as rotinas vencidas, travando cada uma por 15 minutos para não haver sobreposição;
+- confere os gatilhos de e-mail e entrega a fila dos canais.
+
+Tudo com prazo interno de 4 minutos: o que não couber fica para o ciclo seguinte. Agende também `GET /api/cron/xodos/memoria` (capturas e arrumação da memória) no mesmo intervalo.
 
 Ela deve ser chamada a cada 15 minutos. O Vercel Cron no plano Hobby só roda uma vez por dia (e um agendamento mais frequente quebra o deploy), por isso a sugestão é o `pg_cron` + `pg_net` do próprio Supabase, que funcionam no plano grátis:
 
@@ -156,6 +160,16 @@ Ela deve ser chamada a cada 15 minutos. O Vercel Cron no plano Hobby só roda um
 select cron.schedule('xodos', '*/15 * * * *', $$
   select net.http_get(
     url := 'https://spherum.com.br/api/cron/xodos',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    timeout_milliseconds := 290000
+  );
+$$);
+
+select cron.schedule('xodos-memoria', '*/15 * * * *', $$
+  select net.http_get(
+    url := 'https://spherum.com.br/api/cron/xodos/memoria',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
@@ -179,7 +193,11 @@ Toda rota exige o token do Supabase Auth em `Authorization: Bearer <access_token
 | `POST /api/xodos/actions/:id` | owner, admin, member | Decide um pedido (`{ approve, scope: "once" \| "always", reason }`) |
 | `GET/POST /api/xodos/:id/routines` | leitura: todos; criar: owner, admin | Lista e cria rotinas |
 | `GET/POST/DELETE /api/xodos/credentials` | owner, admin | Lista, cadastra e revoga chaves de API |
-| `GET /api/cron/xodos` | o agendador, com `CRON_SECRET` | Cotação do dólar, faxina e rotinas |
+| `GET /api/cron/xodos` | o agendador, com `CRON_SECRET` | Cotação do dólar, faxina, computador e rotinas |
+| `GET /api/cron/xodos/memoria` | o agendador, com `CRON_SECRET` | Capturas e arrumação da memória |
+| `POST /api/xodos/runs/continue` | o próprio servidor, com `CRON_SECRET` | Próxima fatia de uma execução longa |
+
+As rotas do computador estão em [COMPUTADOR.md](COMPUTADOR.md); as de canais e gatilhos, em [CANAIS.md](CANAIS.md).
 
 ## Banco
 
@@ -187,6 +205,8 @@ A migração `20261018120000_xodos.sql` cria as tabelas, as funções de teto e 
 - Quem está logado só **lê**, e só a própria agência.
 - Toda escrita passa pelo servidor, que filtra por `agency_id`.
 - A chave cifrada e a conversa interna (`transcript`) ficam fora do alcance do navegador.
+
+As outras migrações vêm em ordem, cada uma depois da anterior: `20261018130000_integrations.sql` (conexões e anúncios), `20261018140000_channels.sql` (canais e gatilhos), `20261018150000_xodo_memory.sql` (memória nova, que migra e apaga a tabela antiga) e `20261018160000_computers.sql` (computador na nuvem e bucket de arquivos). **Nenhuma foi aplicada no Supabase ainda.**
 
 **Ordem:** essa migração depende das tabelas `agencies`, `agency_members` e `clients` da migração base do backend. Aplique a base primeiro. O arquivo `tests/fixtures/foundation.sql` mostra o mínimo que o motor espera dessas tabelas (`agencies.name`, `agency_members.role` com owner/admin/member/viewer, `clients.agency_id` e `clients.name`).
 
@@ -196,7 +216,9 @@ A migração `20261018120000_xodos.sql` cria as tabelas, as funções de teto e 
 |---|---|
 | `DATABASE_URL` | Conexão de serviço do Supabase. Use o pooler em modo transação (porta 6543) |
 | `XODOS_ENCRYPTION_KEY` | Chave mestra do cofre, com 32 caracteres ou mais (ex.: `openssl rand -base64 48`) |
-| `CRON_SECRET` | Segredo que o agendador manda para `/api/cron/xodos` |
+| `CRON_SECRET` | Segredo que o agendador manda para `/api/cron/xodos` (e o servidor para encadear fatias) |
+| `APP_URL` | Endereço do app (ex.: `https://spherum.com.br`), para encadear as fatias de execuções longas |
+| `SUPABASE_SERVICE_ROLE_KEY` | Só para o bucket de arquivos do computador (veja [COMPUTADOR.md](COMPUTADOR.md)) |
 
 Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Settings → Environment Variables.
 
@@ -206,7 +228,7 @@ Nenhuma delas vai para o Git nem para o navegador. Configure em Vercel → Setti
 npm test
 ```
 
-São 192 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 377 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
@@ -215,6 +237,8 @@ São 192 testes com `node:test`, PGlite (Postgres em memória, sem precisar de D
 - o catálogo de modelos, a guarda contra endereços internos, o cofre, a memória e as rotinas;
 - as integrações (login, renovação de token, MCP, classificador), os anúncios (contas, sincronização e limites de campanha) e as ferramentas de Gmail, Agenda, Drive, Slack, Notion e GitHub (com a categoria pelo destino), com as plataformas simuladas;
 - os canais (pareamento, roteamento, fila de entrega, aprovação por botão e por texto, assinaturas do Slack, Meta, Telegram e do gateway do WhatsApp) e os gatilhos (webhook, GitHub, e-mail, Slack, limites e autonomia limitada).
+- a memória (notas, versões, diário e desfazer, recall, captura, arrumação e limpeza de segredos);
+- o computador (ciclo de vida com corridas e falhas do provedor, piso e classificador de comandos, navegador, arquivos e terminal com um page-browser e uma máquina simulados, assumir e devolver o controle, provedores E2B e Daytona, scripts de preparo e execução em fatias).
 
 ## O que falta
 
