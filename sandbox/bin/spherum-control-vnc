@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): x11vnc de controle por lease.
+# VNC de controle (sem -viewonly): só existe enquanto uma pessoa segura o controle. Matar o
+# processo derruba a conexão na hora.
+#   spherum-control-vnc start|stop|status
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+PID_FILE=$SPHERUM_RUN/vnc-control.pid
+PATTERN="x11vnc .*-unixsock $CONTROL_SOCKET( |$)"
+
+case "${1:-}" in
+  start)
+    if [ -S "$CONTROL_SOCKET" ] && spherum_pid_alive "$PID_FILE" "$PATTERN"; then exit 0; fi
+    spherum_display_up || "$SPHERUM_BIN/spherum-tela"
+    spherum_stop_pid "$PID_FILE" "$PATTERN"
+    rm -f "$CONTROL_SOCKET"
+    setsid x11vnc -display "$SPHERUM_DISPLAY" -forever -shared -nopw -rfbport 0 -localhost -unixsock "$CONTROL_SOCKET" \
+      -xkb -ncache 0 -quiet </dev/null >"$SPHERUM_LOG/vnc-control.log" 2>&1 &
+    echo "$!" >"$PID_FILE"
+    if ! spherum_wait 50 spherum_socket_ready "$CONTROL_SOCKET"; then
+      echo "o VNC de controle não subiu" >&2
+      exit 1
+    fi
+    ;;
+  stop)
+    spherum_stop_pid "$PID_FILE" "$PATTERN"
+    pkill -KILL -f "$PATTERN" || true
+    rm -f "$CONTROL_SOCKET"
+    ;;
+  status)
+    spherum_pid_alive "$PID_FILE" "$PATTERN"
+    ;;
+  *)
+    echo "uso: spherum-control-vnc start|stop|status" >&2
+    exit 64
+    ;;
+esac

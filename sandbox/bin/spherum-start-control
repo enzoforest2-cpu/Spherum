@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Sobe o VNC de controle e o terminal (depois de gravar o token de controle com spherum-write-token).
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+if [ ! -f "$TOKEN_DIR/control" ]; then
+  echo "sem token de controle" >&2
+  exit 75
+fi
+"$SPHERUM_BIN/spherum-control-vnc" start
+"$SPHERUM_BIN/spherum-pty" start

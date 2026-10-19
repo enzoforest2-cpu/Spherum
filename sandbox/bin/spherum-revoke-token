@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Revoga um arquivo do TokenFile. O de controle também derruba o VNC de controle e o terminal.
+#   spherum-revoke-token <nome>
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+
+name=${1:-}
+[[ "$name" =~ ^[a-z0-9-]{1,40}$ ]] || { echo "nome inválido" >&2; exit 64; }
+rm -f "$TOKEN_DIR/$name" "$EXPIRY_DIR/$name" "$STAGING_DIR/$name"
+if [ "$name" = control ]; then "$SPHERUM_BIN/spherum-stop-control"; fi

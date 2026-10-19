@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Sobe (ou confere) tudo da máquina: tela, VNC de assistir, gateway, navegador e vigia. Idempotente;
+# roda no preparo, na volta de uma máquina reiniciada e pelo vigia a cada 30 s.
+#   spherum-start [--sem-navegador] [--sem-vigia]
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+browser=1
+vigia=1
+for arg in "$@"; do
+  case "$arg" in
+    --sem-navegador) browser=0 ;;
+    --sem-vigia) vigia=0 ;;
+    *) echo "opção desconhecida: $arg" >&2; exit 64 ;;
+  esac
+done
+
+exec 7>"$SPHERUM_RUN/start.lock"
+flock -w 120 7
+
+"$SPHERUM_BIN/spherum-tela" 7>&-
+"$SPHERUM_BIN/spherum-vnc" 7>&-
+"$SPHERUM_BIN/spherum-gateway" 7>&-
+if [ "$browser" -eq 1 ]; then "$SPHERUM_BIN/spherum-navegador" 7>&-; fi
+if [ "$vigia" -eq 1 ] && ! spherum_pid_alive "$SPHERUM_RUN/vigia.pid" "spherum-vigia"; then
+  setsid "$SPHERUM_BIN/spherum-vigia" 7>&- </dev/null >>"$SPHERUM_LOG/vigia.log" 2>&1 &
+fi

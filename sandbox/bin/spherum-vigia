@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Ideia do Rakazo (Apache-2.0, desktop-runtime.ts): a tela e o controle caem sozinhos no vencimento.
+# Vigia (root, um só por máquina): a cada 2 s apaga os tokens vencidos (ou sem vencimento) e,
+# quando o controle vence ou some, mata o VNC de controle e o terminal, mesmo que o cron atrase.
+# A cada 30 s confere a tela, o VNC de assistir e o gateway (o navegador fica com o page-browser).
+set -uo pipefail
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+exec 9>"$SPHERUM_RUN/vigia.lock"
+flock -n 9 || exit 0
+echo "$$" >"$SPHERUM_RUN/vigia.pid"
+
+sweep() {
+  local now f name exp
+  now=$(date +%s)
+  for f in "$EXPIRY_DIR"/*; do
+    [ -f "$f" ] || continue
+    name=${f##*/}
+    case "$name" in '' | *[!a-z0-9-]*) rm -f -- "$f"; continue ;; esac
+    exp=$(head -c 32 -- "$f" 2>/dev/null | tr -dc '0-9')
+    if [ -z "$exp" ] || [ "${#exp}" -gt 12 ] || [ "$exp" -le "$now" ]; then
+      rm -f -- "$TOKEN_DIR/$name" "$f"
+      if [ "$name" = control ]; then "$SPHERUM_BIN/spherum-stop-control" 9>&- >/dev/null 2>&1 || true; fi
+    fi
+  done
+  # Todo token tem prazo: arquivo de token sem vencimento não vale.
+  for f in "$TOKEN_DIR"/*; do
+    [ -f "$f" ] || continue
+    name=${f##*/}
+    [ -f "$EXPIRY_DIR/$name" ] || rm -f -- "$f"
+  done
+  # Sem token de controle, nada de VNC de controle nem terminal.
+  if [ ! -f "$TOKEN_DIR/control" ]; then
+    if "$SPHERUM_BIN/spherum-control-vnc" status 9>&- >/dev/null 2>&1 || "$SPHERUM_BIN/spherum-pty" status 9>&- >/dev/null 2>&1; then
+      "$SPHERUM_BIN/spherum-stop-control" 9>&- >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
+tick=0
+while true; do
+  sweep
+  if [ $((tick % 15)) -eq 0 ]; then
+    "$SPHERUM_BIN/spherum-start" --sem-navegador --sem-vigia 9>&- >/dev/null 2>&1 || true
+  fi
+  tick=$((tick + 1))
+  sleep 2
+done

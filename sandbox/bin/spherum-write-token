@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Grava um arquivo do TokenFile com vencimento (o vigia apaga quando vence).
+#   spherum-write-token <nome> <vencimento em epoch> < linhas "<prefixo>-<token>: unix_socket:<socket>"
+# Só aceita tokens do alfabeto base64url e sockets de /run/spherum; troca atômica com mv.
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+name=${1:-}
+epoch=${2:-}
+[[ "$name" =~ ^[a-z0-9-]{1,40}$ ]] || { echo "nome inválido" >&2; exit 64; }
+[[ "$epoch" =~ ^[1-9][0-9]{0,11}$ ]] || { echo "vencimento inválido" >&2; exit 64; }
+[ "$epoch" -gt "$(date +%s)" ] || { echo "vencimento no passado" >&2; exit 64; }
+
+tmp=$STAGING_DIR/$name
+: >"$tmp"
+count=0
+while IFS= read -r line || [ -n "$line" ]; do
+  [ -n "$line" ] || continue
+  if [[ ! "$line" =~ ^[a-z]-[A-Za-z0-9_-]{16,128}:\ unix_socket:/run/spherum/[a-z-]{1,40}\.sock$ ]]; then
+    rm -f "$tmp"
+    echo "linha de token inválida" >&2
+    exit 64
+  fi
+  printf '%s\n' "$line" >>"$tmp"
+  count=$((count + 1))
+  [ "$count" -le 8 ] || { rm -f "$tmp"; echo "linhas demais" >&2; exit 64; }
+done
+[ "$count" -gt 0 ] || { rm -f "$tmp"; echo "nenhum token" >&2; exit 64; }
+# O vencimento vai antes: token sem vencimento é apagado pelo vigia.
+printf '%s\n' "$epoch" >"$EXPIRY_DIR/$name"
+mv -f "$tmp" "$TOKEN_DIR/$name"

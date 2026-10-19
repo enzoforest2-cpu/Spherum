@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): servidor PTY por lease.
+# Terminal da pessoa no controle: servidor PTY num socket Unix de root; cada aba ganha um bash do
+# xodo. Parar mata o servidor e todos os bash abertos por ele.
+#   spherum-pty start|stop|status
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+PID_FILE=$SPHERUM_RUN/pty.pid
+SERVER=$SPHERUM_BIN/spherum-pty-server.py
+PATTERN="spherum-pty-server\.py $PTY_SOCKET( |$)"
+
+kill_shells() {
+  local f pid
+  for f in "$PTY_SHELLS"/*; do
+    [ -f "$f" ] || continue
+    pid=${f##*/}
+    case "$pid" in '' | *[!0-9]*) rm -f -- "$f"; continue ;; esac
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+    rm -f -- "$f"
+  done
+}
+
+case "${1:-}" in
+  start)
+    if [ -S "$PTY_SOCKET" ] && spherum_pid_alive "$PID_FILE" "$PATTERN"; then exit 0; fi
+    spherum_stop_pid "$PID_FILE" "$PATTERN"
+    pkill -KILL -f "$PATTERN" || true
+    kill_shells
+    rm -f "$PTY_SOCKET"
+    setsid python3 "$SERVER" "$PTY_SOCKET" "$PTY_SHELLS" </dev/null >"$SPHERUM_LOG/pty.log" 2>&1 &
+    echo "$!" >"$PID_FILE"
+    if ! spherum_wait 50 spherum_socket_ready "$PTY_SOCKET"; then
+      echo "o terminal não subiu" >&2
+      exit 1
+    fi
+    ;;
+  stop)
+    # TERM primeiro: cada sessão fecha o próprio bash; depois KILL no que sobrar.
+    pkill -TERM -f "$PATTERN" || true
+    spherum_wait 10 bash -c "! pgrep -f '$PATTERN' >/dev/null" || true
+    pkill -KILL -f "$PATTERN" || true
+    kill_shells
+    rm -f "$PID_FILE" "$PTY_SOCKET"
+    ;;
+  status)
+    spherum_pid_alive "$PID_FILE" "$PATTERN"
+    ;;
+  *)
+    echo "uso: spherum-pty start|stop|status" >&2
+    exit 64
+    ;;
+esac

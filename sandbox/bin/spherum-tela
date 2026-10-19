@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): Xvfb e fluxbox.
+# Tela do xodó: Xvfb :20 em 1280x800x24 e fluxbox, os dois como xodo (nunca root). Idempotente.
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+if ! spherum_display_up; then
+  pkill -f "^Xvfb $SPHERUM_DISPLAY " || true
+  rm -f "/tmp/.X$SPHERUM_DISPLAY_NUM-lock" "/tmp/.X11-unix/X$SPHERUM_DISPLAY_NUM"
+  mkdir -p /tmp/.X11-unix
+  chmod 1777 /tmp/.X11-unix
+  # -nolisten tcp: a tela só aceita clientes locais; -ac porque o VNC (root) e o navegador (xodo) usam a mesma tela.
+  setsid "${SPHERUM_AS_XODO[@]}" Xvfb "$SPHERUM_DISPLAY" -screen 0 1280x800x24 -ac -nolisten tcp -noreset +extension RANDR \
+    </dev/null >"$SPHERUM_LOG/xvfb.log" 2>&1 &
+  if ! spherum_wait 100 spherum_display_up; then
+    echo "a tela (Xvfb) não subiu" >&2
+    tail -c 2000 "$SPHERUM_LOG/xvfb.log" >&2 || true
+    exit 1
+  fi
+fi
+
+if ! pgrep -u "$XODO_USER" -x fluxbox >/dev/null; then
+  # Config de root (só leitura para o xodó): menu sem terminal e atalhos sem "executar".
+  setsid "${SPHERUM_AS_XODO[@]}" fluxbox -display "$SPHERUM_DISPLAY" -rc "$SPHERUM_ETC/fluxbox/init" \
+    </dev/null >"$SPHERUM_LOG/fluxbox.log" 2>&1 &
+  spherum_wait 50 pgrep -u "$XODO_USER" -x fluxbox >/dev/null || true
+fi

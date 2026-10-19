@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): websockify com TokenFile.
+# Gateway da tela: a única porta pública da máquina (6100). Sem token válido no TokenFile, nada
+# conecta; as páginas de /opt/spherum/web são estáticas e não guardam segredo.
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+PID_FILE=$SPHERUM_RUN/gateway.pid
+PATTERN="websockify .*--token-source=$TOKEN_DIR .*0\.0\.0\.0:$SPHERUM_GATEWAY_PORT( |$)"
+
+if spherum_pid_alive "$PID_FILE" "$PATTERN" && spherum_port_open "$SPHERUM_GATEWAY_PORT"; then exit 0; fi
+proxy=$(command -v websockify || true)
+if [ -z "$proxy" ]; then
+  echo "websockify não está instalado" >&2
+  exit 1
+fi
+spherum_stop_pid "$PID_FILE" "$PATTERN"
+pkill -f "websockify .*[ :]$SPHERUM_GATEWAY_PORT( |$)" || true
+spherum_wait 20 bash -c "! (echo >/dev/tcp/127.0.0.1/$SPHERUM_GATEWAY_PORT) 2>/dev/null" || true
+cd /
+setsid "$proxy" --heartbeat=30 --web="$SPHERUM_WEB" --token-plugin=TokenFile --token-source="$TOKEN_DIR" \
+  "0.0.0.0:$SPHERUM_GATEWAY_PORT" </dev/null >"$SPHERUM_LOG/gateway.log" 2>&1 &
+echo "$!" >"$PID_FILE"
+if ! spherum_wait 50 spherum_port_open "$SPHERUM_GATEWAY_PORT"; then
+  echo "o gateway da tela não subiu" >&2
+  tail -c 2000 "$SPHERUM_LOG/gateway.log" >&2 || true
+  exit 1
+fi

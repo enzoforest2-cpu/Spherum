@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fim do controle: apaga o token de controle e mata o VNC de controle e o terminal (a conexão cai na hora).
+set -uo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+rm -f "$TOKEN_DIR/control" "$EXPIRY_DIR/control" "$STAGING_DIR/control"
+"$SPHERUM_BIN/spherum-control-vnc" stop || true
+"$SPHERUM_BIN/spherum-pty" stop || true

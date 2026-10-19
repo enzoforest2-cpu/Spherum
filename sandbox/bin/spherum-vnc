@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Adaptado de packages/core/src/node/desktop-runtime.ts do Rakazo (Apache-2.0): x11vnc -viewonly em socket Unix.
+# VNC de assistir: sempre ligado, só leitura, num socket Unix de root (o gateway liga os tokens v- a ele).
+set -euo pipefail
+exec 8>&- 9>&-
+. /opt/spherum/bin/spherum-lib.sh
+spherum_require_root
+spherum_dirs
+
+PID_FILE=$SPHERUM_RUN/vnc-view.pid
+PATTERN="x11vnc .*-viewonly .*-unixsock $VIEW_SOCKET( |$)"
+
+if [ -S "$VIEW_SOCKET" ] && spherum_pid_alive "$PID_FILE" "$PATTERN"; then exit 0; fi
+spherum_display_up || "$SPHERUM_BIN/spherum-tela"
+spherum_stop_pid "$PID_FILE" "$PATTERN"
+rm -f "$VIEW_SOCKET"
+# -rfbport 0 e -localhost: nenhuma porta TCP; só o socket Unix.
+setsid x11vnc -display "$SPHERUM_DISPLAY" -forever -shared -viewonly -nopw -rfbport 0 -localhost -unixsock "$VIEW_SOCKET" \
+  -xkb -ncache 0 -quiet </dev/null >"$SPHERUM_LOG/vnc-view.log" 2>&1 &
+echo "$!" >"$PID_FILE"
+if ! spherum_wait 50 spherum_socket_ready "$VIEW_SOCKET"; then
+  echo "o VNC de assistir não subiu" >&2
+  tail -c 2000 "$SPHERUM_LOG/vnc-view.log" >&2 || true
+  exit 1
+fi
