@@ -9,7 +9,7 @@
 -- ---------------------------------------------------------------------------
 
 create or replace function public.app_touch_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at := now();
   return new;
@@ -289,6 +289,11 @@ create policy client_portal_users_read on public.client_portal_users for select 
   public.app_is_agency_member(agency_id) or user_id = auth.uid()
 );
 grant select on public.client_portal_users to authenticated;
+
+-- Funções: as de checagem só para quem está logado (as políticas usam); as de gatilho, para ninguém.
+revoke execute on function public.app_is_agency_member(uuid), public.app_is_client_user(uuid) from public, anon;
+grant execute on function public.app_is_agency_member(uuid), public.app_is_client_user(uuid) to authenticated;
+revoke execute on function public.app_handle_new_user(), public.app_touch_updated_at() from public, anon, authenticated;
 
 -- invites, site_leads, site_settings, spherum_staff e audit_events: nenhuma leitura pelo navegador
 -- (o que o site público precisa sai pelas rotas da API).
