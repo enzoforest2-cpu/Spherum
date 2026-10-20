@@ -2221,7 +2221,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:12px 16px;border-bottom:1px solid var(--bd,#E4E7EC)">
                       <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ xo.d.char }}</div>
                       <div style="flex:1 1 120px;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:{{ xo.d.nameFont }}">{{ xo.d.name }}</span><span style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--tx2,#667085);min-width:0"><span style="width:7px;height:7px;border-radius:50%;background:{{ xo.d.dot }};flex-shrink:0"></span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ xo.d.status }} · {{ xo.d.role }}</span></span></div>
-                      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--bd,#E4E7EC);border-radius:99px;padding:6px 10px;font-size:12.5px;font-weight:500;white-space:nowrap"><span style="font:600 10px/1 'Geist Mono',ui-monospace,monospace;color:var(--tx2,#667085)">CÉREBRO</span>{{ xo.d.brain }}</span>
+                      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--bd,#E4E7EC);border-radius:99px;padding:6px 10px;font-size:12.5px;font-weight:500;white-space:nowrap"><span style="font:600 10px/1 'Geist Mono',ui-monospace,monospace;color:var(--tx2,#667085)">CÉREBRO</span>{{ xo.d.brain }}</span><sc-if value="{{ xo.d.canManage }}"><button sc-camel-on-click="{{ xo.d.manage }}" aria-label="Gerenciar xodó" title="Pausar ou excluir" style="width:32px;height:32px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);color:var(--tx2,#667085);display:grid;place-items:center;padding:0" style-hover="border-color:#465FFF;color:#465FFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">more_horiz</span></button></sc-if>
                     </div>
                     <div ref="{{ xo.feedRef }}" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:560px">
                       <sc-for list="{{ xo.d.feed }}" as="m">
@@ -2280,7 +2280,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               </sc-if>
 
               <sc-if value="{{ xo.isAppr }}">
-                <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;color:#465FFF">phone_iphone</span><span style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">Aprove pelo celular</span><span style="font-size:12.5px;color:var(--tx2,#667085)">Notificação na hora, aprovação em dois toques e Face ID acima de R$ 500.</span></span><button sc-camel-on-click="{{ mo.show }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap">Ver como fica</button></div><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden"><div style="padding:14px 16px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600">O que o cliente vê no portal</span><span style="font-size:12px;color:var(--tx2,#667085)">Aba “Feito pela agência”</span></div><sc-for list="{{ xv.opts }}" as="g"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--bd,#F2F4F7)"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.l }}</span><span style="font-size:12px;color:var(--tx2,#667085);text-wrap:pretty">{{ g.d }}</span></span><button sc-camel-on-click="{{ g.toggle }}" role="switch" aria-checked="{{ g.on }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ g.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ g.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for></div>
+                <sc-if value="{{ xo.extras }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;color:#465FFF">phone_iphone</span><span style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">Aprove pelo celular</span><span style="font-size:12.5px;color:var(--tx2,#667085)">Notificação na hora, aprovação em dois toques e Face ID acima de R$ 500.</span></span><button sc-camel-on-click="{{ mo.show }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap">Ver como fica</button></div><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden"><div style="padding:14px 16px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600">O que o cliente vê no portal</span><span style="font-size:12px;color:var(--tx2,#667085)">Aba “Feito pela agência”</span></div><sc-for list="{{ xv.opts }}" as="g"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--bd,#F2F4F7)"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.l }}</span><span style="font-size:12px;color:var(--tx2,#667085);text-wrap:pretty">{{ g.d }}</span></span><button sc-camel-on-click="{{ g.toggle }}" role="switch" aria-checked="{{ g.on }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ g.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ g.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for></div></sc-if>
                 <sc-if value="{{ xo.noPending }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:28px;text-align:center;color:var(--tx2,#667085);font-size:14px">Nada esperando você. Os xodós pedem aprovação antes de enviar, publicar, pagar ou apagar.</div></sc-if>
                 <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ xo.appr }}" as="a"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-color:{{ a.bd }}">
 <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:6px;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">{{ a.title }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.sub }}</div></div><sc-if value="{{ a.showBot }}"><span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">{{ a.botName }}</span></sc-if></div>
@@ -2323,13 +2323,13 @@ a:hover{color:#3346D3;text-decoration:underline}
                 </sc-if>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:12px;align-items:start">
                   <sc-if value="{{ xo.ops.hasZ }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
-                    <div style="padding:14px 16px;font-size:13px;font-weight:600">Alertas de CPL e ROAS · Zuca</div>
+                    <div style="padding:14px 16px;font-size:13px;font-weight:600">{{ xo.ops.zT }}</div>
                     <sc-for list="{{ xo.ops.alerts }}" as="a"><button sc-camel-on-click="{{ a.go }}" style="display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:11px 16px;border:none;border-top:1px solid var(--bd,#E4E7EC);background:transparent;color:var(--tx,#101828);font:inherit" style-hover="background:var(--hv,#F9FAFB)"><span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:6px;flex-shrink:0"></span><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px"><span style="font-weight:600">{{ a.client }}</span> · {{ a.text }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ a.sub }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--tx2,#98A2B3)">chevron_right</span></button></sc-for>
                   </div></sc-if>
                   <sc-if value="{{ xo.ops.hasF }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
-                    <div style="padding:14px 16px;display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-size:13px;font-weight:600">Relatórios automáticos · Faísca</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ xo.ops.prog }}</span></div>
+                    <div style="padding:14px 16px;display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-size:13px;font-weight:600">{{ xo.ops.fT }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ xo.ops.prog }}</span></div>
                     <div style="padding:0 16px 12px"><div style="height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ xo.ops.progW }};background:#465FFF;border-radius:3px;transition:width .5s"></div></div></div>
-                    <sc-for list="{{ xo.ops.reports }}" as="r"><div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--bd,#E4E7EC)"><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">{{ r.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ r.when }} · publica no portal depois da sua aprovação</span></span><button sc-camel-on-click="{{ r.toggle }}" role="switch" aria-checked="{{ r.on }}" aria-label="Ligar ou desligar rotina" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ r.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ r.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for>
+                    <sc-for list="{{ xo.ops.reports }}" as="r"><div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--bd,#E4E7EC)"><span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">{{ r.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ r.when }}</span></span><button sc-camel-on-click="{{ r.toggle }}" role="switch" aria-checked="{{ r.on }}" aria-label="Ligar ou desligar rotina" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ r.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ r.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for>
                   </div></sc-if>
                 </div>
               </sc-if>
@@ -3366,7 +3366,9 @@ const XO_FEED = {
 const XO_QUEUE = ['horizonte', 'pulse', 'grao', 'lumen', 'odonto'];
 const XO_STEPS = ['Puxar dados das campanhas', 'Comparar com agosto', 'Escrever o resumo', 'Montar o relatório'];
 const XO_FIXED = [['APROVAÇÃO', 'Pagar ou comprar mídia'], ['APROVAÇÃO', 'Apagar dados para sempre'], ['APROVAÇÃO', 'Mudar permissões ou acessos'], ['SÓ VOCÊ', 'Trocar senhas'], ['SÓ VOCÊ', 'Transferir dinheiro'], ['SÓ VOCÊ', 'Assinar contratos']];
-const XO_STATUS = { idle: 'À toa', working: 'Trabalhando', needsYou: 'Precisa de você', done: 'Feito', paused: 'Pausado no limite' };
+const XO_STATUS = { idle: 'À toa', working: 'Trabalhando', needsYou: 'Precisa de você', done: 'Feito', paused: 'Pausado no limite', paused_manual: 'Pausado' };
+const XO_APP_L = { gmail: 'Gmail', calendar: 'Agenda', drive: 'Drive', google_ads: 'Google Ads', ga4: 'GA4', meta_ads: 'Meta Ads', tiktok_ads: 'TikTok Ads', slack: 'Slack', notion: 'Notion', github: 'GitHub', whatsapp: 'WhatsApp', telegram: 'Telegram', mcp: 'Servidor MCP' };
+const XO_PROV = ['anthropic', 'openai', 'google', 'xai', 'deepseek', 'mistral', 'openrouter', 'groq'];
 function xoFg(hex) { const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#101828' : '#FFFFFF'; }
 
 const PR_SRC = [
@@ -3441,7 +3443,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { xodo: ['smart_toy', 'Os xodós já trabalham pelo Spherum; a tela para criar e acompanhar cada um está chegando.'], crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], messages: ['forum', 'Conversas com os clientes no portal.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], messages: ['forum', 'Conversas com os clientes no portal.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3780,7 +3782,7 @@ class Component extends DCLogic {
       }
     } catch (e) { this.toastMsg(e.message || 'Não deu para carregar os dados agora.'); }
   }
-  async spLoad() { this.spApply(await SP.api('/api/portal/agencia?agency_id=' + this.spAg)); }
+  async spLoad() { this.spApply(await SP.api('/api/portal/agencia?agency_id=' + this.spAg)); this.spXoLoad().catch(() => {}); }
   // Enquanto carrega, a tela já abre vazia (sem piscar os exemplos).
   spEmpty() { const z = { cur: 0, prev: 0 }, y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     return { loading: 1, agency: { name: '', plan: '' }, me: { name: '', role: null }, period: { from: y, to: y }, clients: [], camps: [], plat: [], daily: [], cdaily: {}, reports: [], team: [], invites: [], attention: [], kpis: { mrr: 0, activeClients: 0, spend: z, results: z, revenue: z }, connections: [], accounts: [], pendingApprovals: 0 }; }
@@ -4444,10 +4446,77 @@ class Component extends DCLogic {
   xoPlan() { const p = SP_PLANS.find(p => p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala')) || SP_PLANS[2], x = this.state.xoExtra || 0, q = this.state.adOn || {}, rk = SP_PLANS.indexOf(p);
     const ax = rk < 4 ? (q.xodo || 0) : 0, xn = p.xn === 99 ? 99 : p.xn + ax, cr = 0;
     return xn !== p.xn || cr !== p.cr ? Object.assign({}, p, { xn, cr }) : p; }
-  xoBots() { return XO_BOTS.slice(0, Math.min(3, this.xoPlan().xn)); }
-  xoPendingN() { const ids = this.xoBots().map(b => b.id); const L = this.state.xoLim == null ? 400 : this.state.xoLim; return XO_APPR.filter(a => ids.includes(a.bot) && !(this.state.xoAppr || {})[a.id] && !(a.delta && a.delta <= L)).length; }
-  xoMonth() { const s = this.state.xoSpent || {}; return 120.7 + Object.values(s).reduce((a, b) => a + b, 0); }
+  xoBots() { if (this.R) return this.XR ? this.XR.xodos.map(x => this.spXoBot(x)) : []; return XO_BOTS.slice(0, Math.min(3, this.xoPlan().xn)); }
+  xoPendingN() { if (this.R) return this.XR ? this.XR.approvals.length || null : null; const ids = this.xoBots().map(b => b.id); const L = this.state.xoLim == null ? 400 : this.state.xoLim; return XO_APPR.filter(a => ids.includes(a.bot) && !(this.state.xoAppr || {})[a.id] && !(a.delta && a.delta <= L)).length; }
+  xoMonth() { if (this.R) return this.XR ? this.XR.month_brl : 0; const s = this.state.xoSpent || {}; return 120.7 + Object.values(s).reduce((a, b) => a + b, 0); }
+  // ---- Xodós de verdade (motor em /api/xodos) ----
+  async spXoLoad() { this._xoLast = Date.now(); this.XR = await SP.api('/api/portal/xodos?agency_id=' + this.spAg); this.setState({ xoReal: Date.now() }); }
+  spXoBot(x) { const sp = SPECIES[x.species] ? x.species : 'pingo', ci = Math.max(0, SPECIES[sp].colors.findIndex(c => c.n.pt === x.color));
+    return { id: x.id, name: x.name, sp, ci, role: x.role || 'Xodó', job: (x.instructions || '').split('\n')[0].slice(0, 160) || 'Sem instruções ainda. Abra e diga o que ele deve fazer.', brain: x.model, persona: x.personality,
+      mem: x.memory.length ? x.memory : ['Ainda não guardou nada. Ele anota o que aprender conversando com vocês.'], saved: x.routines.map(r => [r.name, r.active ? 'Rotina ativa' : 'Rotina pausada']),
+      conns: x.apps.length ? x.apps.map(a => [XO_APP_L[a] || a, 'pode usar']) : [['Spherum', 'clientes, métricas e relatórios']], cap: x.daily_budget_brl, spent: x.spent_today, x, real: 1 }; }
+  async spXoMsgs(id) { try { const r = await SP.api('/api/xodos/' + id + '/messages'); this.setState(s => ({ xoMsgs: Object.assign({}, s.xoMsgs, { [id]: r }), xoBusy: r.last_run && r.last_run.status === 'running' ? id : s.xoBusy === id ? null : s.xoBusy })); } catch (e) {} }
+  async spXoDecide(a, mode) {
+    try { await SP.api('/api/xodos/actions/' + a.id, { method: 'POST', body: { approve: mode !== 'deny', scope: mode === 'always' ? 'always' : 'once' } }); }
+    catch (e) { return this.spErr(e); }
+    this.toastMsg(mode === 'deny' ? 'Negado. O xodó segue sem fazer isso.' : mode === 'always' ? 'Permitido e virou regra para os próximos' : 'Permitido uma vez');
+    await this.spXoLoad().catch(() => {}); if (this.state.xoSel) this.spXoMsgs(this.state.xoSel);
+  }
+  async spXoSend() {
+    const S = this.state, text = (S.xoDraft || '').trim(), id = S.xoSel; if (!text || !id) return;
+    this.setState(s => ({ xoDraft: '', xoBusy: id, xoFeeds: Object.assign({}, s.xoFeeds, { [id]: (s.xoFeeds[id] || []).concat([['user', text]]) }) }));
+    try { await SP.api('/api/xodos/' + id + '/messages', { method: 'POST', body: { text } }); } catch (e) { this.setState({ xoBusy: null }); return this.spErr(e); }
+    setTimeout(() => { this.setState(s => ({ xoFeeds: Object.assign({}, s.xoFeeds, { [id]: [] }) })); this.spXoMsgs(id); }, 1500);
+  }
+  async spXoCap(b, delta) {
+    const cur = b.x.daily_budget_brl || 0, next = Math.max(5, Math.min(1000, cur + delta));
+    try { await SP.api('/api/xodos/' + b.id, { method: 'PATCH', body: { daily_budget_brl: next } }); await this.spXoLoad(); } catch (e) { this.spErr(e); }
+  }
+  spXoManage(b) {
+    const paused = b.x.status === 'paused';
+    this.fm({ title: b.name, desc: paused ? 'Pausado: não responde, não roda rotinas e ignora os gatilhos até voltar.' : 'Ativo: responde, roda as rotinas e atende os gatilhos.', icon: 'smart_toy',
+      fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts: [[paused ? 'resume' : 'pause', paused ? 'Voltar a trabalhar' : 'Pausar', paused ? 'Ele volta a responder e a rodar as rotinas' : 'Para tudo, mas guarda memória, rotinas e conversas'], ['delete', 'Excluir de vez', 'Apaga conversas, memória, rotinas e gatilhos dele. Não dá para desfazer.']], req: 1 }],
+      init: { a: paused ? 'resume' : 'pause' }, okL: 'Continuar',
+      ok: v => { if (v.a !== 'delete') return this.spXoPause(b);
+        this.fm({ title: 'Excluir ' + b.name + '?', desc: 'Conversas, memória, rotinas, gatilhos e canais dele são apagados. O histórico de gasto e os relatórios que ele fez continuam. Se só quer parar por um tempo, use Pausar.', icon: 'delete', danger: true,
+          fields: [{ k: 'n', l: 'Digite "' + b.name + '" para confirmar', req: 1, check: x => String(x || '').trim().toLowerCase() === b.name.trim().toLowerCase() ? '' : 'O nome não confere' }], okL: 'Excluir de vez', busyL: 'Excluindo…',
+          ok: async w => { try { await SP.api('/api/xodos/' + b.id + '?confirmar=' + encodeURIComponent(w.n.trim()), { method: 'DELETE' }); this.setState({ xoSel: null }); await this.spXoLoad(); this.toastMsg(b.name + ' foi excluído'); } catch (e) { this.spErr(e); } } }); } });
+  }
+  async spXoPause(b) { try { await SP.api('/api/xodos/' + b.id, { method: 'PATCH', body: { status: b.x.status === 'paused' ? 'active' : 'paused' } }); await this.spXoLoad(); this.toastMsg(b.x.status === 'paused' ? b.name + ' voltou a trabalhar' : b.name + ' pausado'); } catch (e) { this.spErr(e); } }
+  // Chave de API da agência (o xodó usa a IA na conta da agência).
+  async spXoKey(after) {
+    let cat; try { cat = await SP.api('/api/xodos/catalog'); } catch (e) { return this.spErr(e); }
+    const provs = cat.providers.filter(p => XO_PROV.includes(p.id));
+    this.fm({ title: 'Adicionar chave de IA', desc: 'Os xodós usam a IA na conta da sua agência: o provedor cobra direto de vocês. A chave fica cifrada e só os 4 últimos dígitos aparecem.', icon: 'key',
+      fields: [{ k: 'provider', l: 'Provedor', type: 'pick', opts: provs.map(p => [p.id, p.name]), req: 1 }, { k: 'label', l: 'Nome da chave', req: 1, ph: 'Ex.: Chave principal' }, { k: 'key', l: 'Chave de API', req: 1, min: 10 }],
+      init: { provider: provs[0] ? provs[0].id : '', label: 'Chave principal' }, okL: 'Guardar chave', busyL: 'Conferindo…',
+      ok: async v => { try { await SP.api('/api/xodos/credentials', { method: 'POST', body: { agency_id: this.spAg, provider: v.provider, label: v.label.trim(), api_key: v.key.trim() } }); await this.spXoLoad(); this.toastMsg('Chave guardada'); if (after) after(); } catch (e) { this.spErr(e); } } });
+  }
+  // Assistente de criação: forma → jeito e função → cérebro e limites.
+  spXoNew() {
+    const keys = (this.XR.credentials || []).filter(c => c.kind !== 'sandbox');
+    if (!keys.length) return this.spXoKey(() => this.spXoNew());
+    this.fm({ title: 'Novo xodó · forma', desc: 'Escolha a forma do seu colega de IA. Dá para mudar depois.', icon: 'smart_toy', fields: [{ k: 'sp', l: 'Forma', type: 'pick', opts: SP_KEYS.map(k => [k, SPECIES[k].label, SPECIES[k].desc.pt]), req: 1 }], init: { sp: 'pingo' }, okL: 'Continuar',
+      ok: v => { const sp = v.sp, sd = SPECIES[sp];
+        this.fm({ title: 'Novo xodó · jeito e função', desc: 'O que ele faz na equipe e como fala.', icon: 'badge', fields: [
+            { k: 'name', l: 'Nome', req: 1, ph: sd.names[0] }, { k: 'color', l: 'Cor', type: 'pick', opts: sd.colors.map(c => [c.n.pt, c.n.pt]), req: 1 },
+            { k: 'role', l: 'Função', req: 1, ph: 'Ex.: Relatórios, Alertas, Otimização' }, { k: 'job', l: 'O que ele faz', type: 'area', req: 1, min: 15, ph: 'Ex.: Monta os relatórios mensais de cada cliente e me pede aprovação antes de publicar no portal.' },
+            { k: 'pers', l: 'Jeito', type: 'pick', opts: [['curioso', 'Curioso'], ['brincalhao', 'Brincalhão'], ['direto', 'Direto'], ['zen', 'Zen']], req: 1 },
+            { k: 'auto', l: 'Autonomia', type: 'pick', opts: [['sempre_pergunta', 'Sempre pergunta', 'Pede aprovação antes de qualquer coisa'], ['pergunta_no_que_importa', 'Pergunta no que importa', 'Pergunta antes de enviar, pagar ou apagar'], ['age_sozinho', 'Age sozinho', 'Faz e conta depois, dentro das regras fixas']], req: 1 }],
+          init: { name: sd.names[0], color: sd.colors[0].n.pt, pers: 'curioso', auto: 'pergunta_no_que_importa' }, okL: 'Continuar',
+          ok: async w => { const key0 = keys[0]; let models = [];
+            try { models = (await SP.api('/api/xodos/catalog?provider=' + encodeURIComponent(key0.provider))).models || []; } catch (e) {}
+            this.fm({ title: 'Novo xodó · cérebro e limites', desc: 'O modelo de IA e quanto ele pode gastar por dia (na chave da agência).', icon: 'psychology', fields: [
+                { k: 'cred', l: 'Chave de IA', type: 'pick', opts: keys.map(c => [c.id, c.label, c.provider + ' · …' + (c.key_last4 || '')]), req: 1 },
+                { k: 'model', l: 'Modelo', type: models.length ? 'pick' : 'text', opts: models.slice(0, 8).map(m => [m.id, m.name || m.id]), req: 1, hint: models.length ? 'Os modelos da chave escolhida' : 'O nome do modelo no provedor' },
+                { k: 'cap', l: 'Teto por dia (R$)', req: 1, ph: '20', check: x => +String(x).replace(',', '.') > 0 ? '' : 'Informe um valor em reais' }],
+              init: { cred: key0.id, model: models[0] ? models[0].id : '', cap: '20' }, okL: 'Criar xodó', busyL: 'Criando…',
+              ok: async m => { const cred = keys.find(c => c.id === m.cred) || key0;
+                try { await SP.api('/api/xodos', { method: 'POST', body: { agency_id: this.spAg, name: w.name.trim(), species: sp, color: w.color, personality: w.pers, role: w.role.trim().slice(0, 40), instructions: w.job.trim(), autonomy: w.auto, provider: cred.provider, model: m.model, credential_id: cred.id, daily_budget_brl: +String(m.cap).replace(',', '.') } });
+                  await this.spXoLoad(); this.toastMsg(w.name.trim() + ' chegou na equipe'); } catch (e) { this.spErr(e); } } }); } }); } });
+  }
   xoTick() {
+    if (this.R) { if (this.XR && Date.now() - (this._xoLast || 0) > 6000) this.spXoLoad().catch(() => {}); if (this.state.xoSel) this.spXoMsgs(this.state.xoSel); return; }
     const S = this.state; if (S.xoTake || !this.xoPlan().xn) return;
     if (S.xoSpent.faisca >= S.xoCaps.faisca) return;
     const w = S.xoWork;
@@ -4456,10 +4525,12 @@ class Component extends DCLogic {
     else this.setState(s => ({ xoWork: { i: (s.xoWork.i + 1) % XO_QUEUE.length, step: 0, hold: 0, n: s.xoWork.n + 1 } }));
   }
   xoResolve(a, mode) {
+    if (a.real) return this.spXoDecide(a, mode);
     this.setState(s => ({ xoAppr: Object.assign({}, s.xoAppr, { [a.id]: mode }), xoRules: mode === 'always' ? s.xoRules.concat([[a.bot, a.rule]]) : s.xoRules }));
     this.toastMsg(mode === 'deny' ? 'Negado. Ficou como rascunho.' : mode === 'always' ? 'Regra criada: sempre permitir ' + a.rule : 'Permitido uma vez');
   }
   async xoSend() {
+    if (this.R) return this.spXoSend();
     const S = this.state, text = (S.xoDraft || '').trim(), id = S.xoSel; if (!text || !id || S.xoBusy) return;
     const bot = XO_BOTS.find(b => b.id === id);
     const add = (m) => this.setState(s => ({ xoFeeds: Object.assign({}, s.xoFeeds, { [id]: (s.xoFeeds[id] || []).concat([m]) }) }));
@@ -5079,31 +5150,41 @@ class Component extends DCLogic {
         undo: () => { this.setState(s => ({ xoUndo: Object.assign({}, s.xoUndo, { [o.id]: true }) })); this.toastMsg('Desfeito: ' + o.act.toLowerCase() + ' · ' + o.camp); },
         review: () => this.setState({ xoTab: 'appr' }) };
     });
-    return { has: has('nina'), hasZ: has('zuca'), hasF: has('faisca'), rows, limL: brl(lim) + '/dia', limNote: 'A Nina muda sozinha qualquer campanha até ' + brl(lim) + ' de diferença por dia. Acima disso, ela pede aprovação. Pausar e trocar criativo não aumentam o gasto.',
+    return { zT: 'Alertas de CPL e ROAS · Zuca', fT: 'Relatórios automáticos · Faísca', has: has('nina'), hasZ: has('zuca'), hasF: has('faisca'), rows, limL: brl(lim) + '/dia', limNote: 'A Nina muda sozinha qualquer campanha até ' + brl(lim) + ' de diferença por dia. Acima disso, ela pede aprovação. Pausar e trocar criativo não aumentam o gasto.',
       dec: () => this.setState(s => ({ xoLim: Math.max(0, s.xoLim - 100) })), inc: () => this.setState(s => ({ xoLim: Math.min(2000, s.xoLim + 100) })),
       kpis: [['Feitas sozinha hoje', String(autoN)], ['Verba ruim cortada', brl(saved) + '/dia'], ['Esperando você', String(rows.filter(r => r.isPend).length)]].map(k => ({ l: k[0], v: k[1] })),
       alerts: XO_ALERTS.map(a => ({ dot: tone[a[0]][0], bg: tone[a[0]][1], client: a[1], text: a[2], sub: a[3], go: () => this.go('performance') })),
-      reports: XO_REPORTS.map(r => { const on = S.xoRep[r[2]] !== false; return { n: r[0], when: r[1], on, swBg: on ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: on ? '18px' : '2px', toggle: () => this.setState(s => ({ xoRep: Object.assign({}, s.xoRep, { [r[2]]: !on }) })) }; }),
+      reports: XO_REPORTS.map(r => { const on = S.xoRep[r[2]] !== false; return { n: r[0], when: r[1] + ' · publica no portal depois da sua aprovação', on, swBg: on ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: on ? '18px' : '2px', toggle: () => this.setState(s => ({ xoRep: Object.assign({}, s.xoRep, { [r[2]]: !on }) })) }; }),
       prog: (7 + S.xoWork.n + (S.xoWork.step >= 4 ? 1 : 0)) + ' de 12 mensais prontos', progW: ((7 + S.xoWork.n + (S.xoWork.step >= 4 ? 1 : 0)) / 12 * 100) + '%' };
   }
   vXodo() {
     const S = this.state, plan = this.xoPlan(), bots = this.xoBots(), enabled = plan.xn > 0;
     if (enabled && !this._xoT) this._xoT = setInterval(() => { if (this.state.view === 'xodo') this.xoTick(); }, 2400);
-    const brl = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const brl = v => 'R$ ' + (+v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const cname = id => (this.exCl().find(c => c.id === id) || {}).name || id;
     const w = S.xoWork, wClient = cname(XO_QUEUE[w.i]), reportsDone = 7 + w.n + (w.step >= 4 ? 1 : 0);
-    const lim = S.xoLim, autoOk = a => !!(a.delta && a.delta <= lim), pend = id => XO_APPR.filter(a => a.bot === id && !S.xoAppr[a.id] && !autoOk(a));
+    const RX = this.R ? this.XR || { xodos: [], approvals: [], rules: [], credentials: [], month_brl: 0 } : null;
+    const lim = S.xoLim, autoOk = a => !!(a.delta && a.delta <= lim), pend = id => RX ? RX.approvals.filter(a => a.xodo_id === id) : XO_APPR.filter(a => a.bot === id && !S.xoAppr[a.id] && !autoOk(a));
     const stOf = b => {
+      if (b.real) return S.xoBusy === b.id ? 'working' : b.x.state;
       if (S.xoSpent[b.id] >= S.xoCaps[b.id]) return 'paused';
       if (b.id === 'faisca') return w.step >= 4 ? 'done' : 'working';
       if (S.xoBusy === b.id) return 'working';
       if (b.id === 'zuca' && pend('zuca').length) return 'needsYou';
       return 'idle';
     };
-    const dotOf = st => ({ idle: '#12B76A', working: '#465FFF', needsYou: '#F04438', done: '#12B76A', paused: '#F79009' })[st];
-    const spend = b => { const sp = S.xoSpent[b.id], cap = S.xoCaps[b.id], pct = sp / cap * 100; return { spendL: brl(sp) + ' de ' + brl(cap) + ' hoje', spendW: Math.min(100, pct) + '%', spendC: pct >= 100 ? '#F04438' : pct >= 80 ? '#F79009' : '#465FFF', pct }; };
-    const lineOf = (b, st) => st === 'paused' ? 'Chegou no limite do dia. Retoma amanhã ou se você aumentar o limite.' : b.id === 'faisca' ? (st === 'done' ? 'Relatório da ' + wClient + ' pronto · ' + reportsDone + ' de 12' : 'Relatório da ' + wClient + ' · ' + Math.min(w.step, 4) + '/4') : b.id === 'zuca' ? '2 clientes fora da meta · 1 risco de verba' : (pend('nina').length ? '5 mudanças sozinha hoje · 1 esperando você' : '6 mudanças sozinha hoje');
+    const dotOf = st => ({ idle: '#12B76A', working: '#465FFF', needsYou: '#F04438', done: '#12B76A', paused: '#F79009', paused_manual: '#98A2B3' })[st];
+    const spend = b => { if (b.real) { const sp = b.x.spent_today, cap = b.x.daily_budget_brl, pct = cap ? sp / cap * 100 : 0; return { spendL: brl(sp) + (cap ? ' de ' + brl(cap) : '') + ' hoje' + (cap ? '' : ' · sem teto'), spendW: Math.min(100, pct) + '%', spendC: pct >= 100 ? '#F04438' : pct >= 80 ? '#F79009' : '#465FFF', pct }; }
+      const sp = S.xoSpent[b.id], cap = S.xoCaps[b.id], pct = sp / cap * 100; return { spendL: brl(sp) + ' de ' + brl(cap) + ' hoje', spendW: Math.min(100, pct) + '%', spendC: pct >= 100 ? '#F04438' : pct >= 80 ? '#F79009' : '#465FFF', pct }; };
+    const lineOf = (b, st) => b.real ? (st === 'paused' ? 'Chegou no teto do dia. Retoma amanhã ou se você aumentar o teto.' : st === 'paused_manual' ? 'Pausado por você.' : st === 'needsYou' ? 'Esperando sua aprovação' : st === 'working' ? 'Trabalhando agora…' : b.x.last_run && b.x.last_run.last_text ? b.x.last_run.last_text.replace(/\s+/g, ' ').slice(0, 90) + (b.x.last_run.last_text.length > 90 ? '…' : '') : 'Pronto para a primeira tarefa') : st === 'paused' ? 'Chegou no limite do dia. Retoma amanhã ou se você aumentar o limite.' : b.id === 'faisca' ? (st === 'done' ? 'Relatório da ' + wClient + ' pronto · ' + reportsDone + ' de 12' : 'Relatório da ' + wClient + ' · ' + Math.min(w.step, 4) + '/4') : b.id === 'zuca' ? '2 clientes fora da meta · 1 risco de verba' : (pend('nina').length ? '5 mudanças sozinha hoje · 1 esperando você' : '6 mudanças sozinha hoje');
     const apprV = (a, showBot) => {
+      if (RX) { const bx = bots.find(x => x.id === a.xodo_id) || bots[0] || { name: 'Xodó', role: '', sp: 'pingo', ci: 0 }, spx = SPECIES[bx.sp], open = !!S.xoOpen[a.id];
+        const exp = a.expires_at ? 'Vence ' + new Date(a.expires_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '') : '';
+        const det = Object.entries(a.input || {}).filter(e => e[1] != null && typeof e[1] !== 'object').slice(0, 6).map(e => e[0].replace(/_/g, ' ') + ': ' + String(e[1]).slice(0, 120));
+        return { title: a.summary, sub: [a.category, exp].filter(Boolean).join(' · '), details: det.length ? det : ['Sem detalhes extras'], open, pending: true, resolved: false, showBot, botName: bx.name + ' · ' + bx.role,
+          bd: spx.colors[bx.ci].body, dot: '#F04438', reviewL: open ? 'Esconder detalhes' : 'Revisar detalhes', scope: '“Sempre permitir” vale para: ' + a.category, resL: '', resBg: '', resC: '',
+          onOnce: () => this.xoResolve(Object.assign({ real: 1 }, a), 'once'), onAlways: () => this.xoResolve(Object.assign({ real: 1 }, a), 'always'), onDeny: () => this.xoResolve(Object.assign({ real: 1 }, a), 'deny'),
+          onReview: () => this.setState(s => ({ xoOpen: Object.assign({}, s.xoOpen, { [a.id]: !s.xoOpen[a.id] }) })) }; }
       const res = S.xoAppr[a.id], b = XO_BOTS.find(x => x.id === a.bot), sp = SPECIES[b.sp], open = !!S.xoOpen[a.id];
       return { title: a.title, sub: a.sub, details: a.details, open, pending: !res, resolved: !!res, showBot, botName: b.name + ' · ' + b.role,
         bd: res ? 'var(--bd,#E4E7EC)' : sp.colors[b.ci].body, dot: res ? '#98A2B3' : '#F04438', reviewL: open ? 'Esconder detalhes' : 'Revisar detalhes', scope: '“Sempre permitir” vale só para: ' + a.rule,
@@ -5128,7 +5209,7 @@ class Component extends DCLogic {
         ['Consumo de IA no mês', brl(month), 'Pago direto na chave de API da agência', 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
       bots: bots.map(b => { const st = stOf(b), sp = SPECIES[b.sp], c = sp.colors[b.ci], sd = spend(b), pn = pend(b.id).length;
         return Object.assign({ name: b.name, role: b.role, job: b.job, brain: b.brain, nameFont: sp.nameFont, stage: c.stage, img: sp.dotted ? DOT_IMG : 'none', status: XO_STATUS[st], dot: dotOf(st), anim: st === 'working' ? 'xo-live 1.2s ease-in-out infinite' : 'none',
-          hasAsk: pn > 0, askL: pn + (pn === 1 ? ' aprovação' : ' aprovações'), line: lineOf(b, st), char: this.xoChar(b, 96, st === 'paused' ? 'idle' : st, true), open: () => this.setState({ xoSel: b.id, xoTake: false }) }, sd); }),
+          hasAsk: pn > 0, askL: pn + (pn === 1 ? ' aprovação' : ' aprovações'), line: lineOf(b, st), char: this.xoChar(b, 96, st === 'paused' ? 'idle' : st, true), open: () => { this.setState({ xoSel: b.id, xoTake: false }); if (b.real) this.spXoMsgs(b.id); } }, sd); }),
       back: () => this.setState({ xoSel: null }),
       appr: bots.length ? XO_APPR.filter(a => bots.some(b => b.id === a.bot) && !autoOk(a)).map(a => apprV(a, true)) : [], noPending: pendAll === 0,
       rules: S.xoRules.filter(r => bots.some(b => b.id === r[0])).map(r => ({ tag: 'SEMPRE', bg: 'rgba(18,183,106,0.12)', c: '#067647', text: r[1], who: XO_BOTS.find(b => b.id === r[0]).name }))
@@ -5138,7 +5219,7 @@ class Component extends DCLogic {
     };
     if (sel) {
       const st = stOf(sel), sp = SPECIES[sel.sp], c = sp.colors[sel.ci], sd = spend(sel);
-      const feed = XO_FEED[sel.id].concat(S.xoFeeds[sel.id] || []).concat(S.xoBusy === sel.id ? [['typing']] : []).map(m => {
+      const feed = (XO_FEED[sel.id] || []).concat(S.xoFeeds[sel.id] || []).concat(S.xoBusy === sel.id ? [['typing']] : []).map(m => {
         const v = { isSys: m[0] === 'sys', isBot: m[0] === 'bot', isUser: m[0] === 'user', isTyping: m[0] === 'typing', isTask: m[0] === 'task', isAsk: m[0] === 'ask', text: m[1] || '' };
         if (v.isAsk) v.a = apprV(XO_APPR.find(a => a.id === m[1]), false);
         if (v.isTask) { const k = Math.min(w.step, 4); Object.assign(v, { title: 'Relatório de setembro · ' + wClient, count: k + '/4', pct: k * 25 + '%', steps: XO_STEPS.map((l, i) => ({ l, mark: i < k ? '✓' : '', fill: i < k ? c.body : 'transparent', ring: i < k ? c.body : i === k ? 'var(--tx,#101828)' : 'var(--bd,#D0D5DD)', c: i <= k ? 'var(--tx,#101828)' : 'var(--tx2,#667085)' })) }); }
@@ -5155,12 +5236,58 @@ class Component extends DCLogic {
       url: fWork ? 'spherum.app/relatorios/' + XO_QUEUE[w.i] + '/setembro' : 'marketingpro-xodo · ~/', rows: rowW.map(r => ({ a: r[0], b: r[1] })), hl: (8 + Math.min(w.step, 3) * 39) + 'px', hlO: fWork ? 0.28 : 0,
       take, canTake: fWork, takeL: take ? 'Devolver controle' : 'Assumir controle', toggle: () => this.setState(s => ({ xoTake: !s.xoTake })),
       caption: take ? 'Faísca pausou e espera você devolver o controle.' : fWork ? 'Faísca: ' + XO_STEPS[Math.min(w.step, 3)].toLowerCase() + ' da ' + wClient + '…' : 'Navegador, arquivos e terminal na nuvem, prontos para a próxima tarefa.' };
+    if (RX) {
+      const RL = { always_allow: ['SEMPRE', 'rgba(18,183,106,0.12)', '#067647'], require_approval: ['APROVAÇÃO', 'var(--sf2,#F2F4F7)', 'var(--tx,#101828)'] };
+      Object.assign(out, {
+        sub: bots.length + (bots.length === 1 ? ' xodó' : ' xodós') + ' de ' + (plan.xn === 99 ? 'ilimitados' : plan.xn) + ' no plano ' + plan.n + ' · ' + brl(month) + ' de IA na chave da agência este mês',
+        newXodo: () => { if (plan.xn - bots.length > 0) return this.spXoNew(); this.toastMsg('O plano ' + plan.n + ' inclui ' + plan.xn + (plan.xn === 1 ? ' xodó' : ' xodós') + '. Mude de plano em Configurações para ter mais.'); },
+        kpis: [['Xodós', String(bots.length), plan.xn === 99 ? 'Sem limite no seu plano' : 'de ' + plan.xn + ' no plano ' + plan.n, 'var(--tx2,#667085)'],
+          ['Rotinas ativas', String(RX.xodos.reduce((t, x) => t + x.routines.filter(r => r.active).length, 0)), 'tarefas que rodam sozinhas', 'var(--tx2,#667085)'],
+          ['Esperando você', String(pendAll), pendAll ? 'Revise em Aprovações' : 'Tudo em dia', pendAll ? '#D92D20' : '#079455'],
+          ['Consumo de IA no mês', brl(month), 'Pago direto na chave de API da agência', 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
+        appr: RX.approvals.map(a => apprV(a, true)), noPending: !RX.approvals.length,
+        rules: RX.rules.map(r => { const t = RL[r.effect] || RL.require_approval, bx = bots.find(b => b.id === r.xodo_id); return { tag: t[0], bg: t[1], c: t[2], text: (r.match_kind === 'tool' ? r.match_value.replace(/_/g, ' ') : 'categoria ' + r.match_value), who: bx ? bx.name : 'Todos' }; })
+          .concat(XO_FIXED.map(r => ({ tag: r[0], bg: r[0] === 'SÓ VOCÊ' ? '#101828' : 'var(--sf2,#F2F4F7)', c: r[0] === 'SÓ VOCÊ' ? '#FFFFFF' : 'var(--tx,#101828)', text: r[1], who: 'Todos' }))) });
+      if (sel && out.d) {
+        const M = (S.xoMsgs || {})[sel.id] || { messages: [], pending_actions: [] }, st = stOf(sel);
+        out.d.feed = M.messages.map(m => ({ isSys: m.role === 'note', isBot: m.role === 'assistant', isUser: m.role === 'user', isTyping: false, isTask: false, isAsk: false, text: m.text || '' }))
+          .concat((S.xoFeeds[sel.id] || []).map(m => ({ isUser: true, isSys: false, isBot: false, isTyping: false, isTask: false, isAsk: false, text: m[1] })))
+          .concat(RX.approvals.filter(a => a.xodo_id === sel.id).map(a => ({ isAsk: true, isSys: false, isBot: false, isUser: false, isTyping: false, isTask: false, text: '', a: apprV(a, false) })))
+          .concat(st === 'working' ? [{ isTyping: true, isSys: false, isBot: false, isUser: false, isTask: false, isAsk: false, text: '' }] : []);
+        if (!out.d.feed.length) out.d.feed = [{ isSys: true, isBot: false, isUser: false, isTyping: false, isTask: false, isAsk: false, text: 'Comece pedindo uma tarefa para ' + sel.name + '.' }];
+        out.d.canManage = ['owner', 'admin'].includes(this.R.me.role); out.d.manage = () => this.spXoManage(sel);
+        out.d.spendNote = sel.x.daily_budget_brl ? (out.d.pct >= 100 ? 'Pausado no teto do dia. Aumente em Uso e limites para continuar hoje.' : out.d.pct >= 80 ? 'Passou de 80% do teto do dia.' : 'Chave de API da agência · teto definido por você') : 'Chave de API da agência · sem teto';
+      }
+      out.extras = false;
+      out.pc = { shared: 'Computador na nuvem compartilhado pelos xodós: navegador, arquivos e terminal.', live: bots.some(b => stOf(b) === 'working') ? 'AO VIVO' : 'EM REPOUSO', dot: bots.some(b => stOf(b) === 'working') ? '#F04438' : '#98A2B3', anim: 'none',
+        url: (this.R.agency.slug || 'agencia') + '-xodo · ~/', rows: rowW.map(r => ({ a: r[0], b: r[1] })), hl: '8px', hlO: 0, take: false, canTake: false, takeL: 'Assumir controle', toggle: () => {},
+        caption: 'Quando um xodó usa o computador, a tela ao vivo e o botão de assumir o controle aparecem aqui e no aviso do canal.' };
+    }
+    if (out.extras === undefined) out.extras = true;
     out.u = { used: brl(month), note: 'Tokens cobrados direto pelo provedor, na conta da agência. O Spherum não cobra pela IA: só mede o consumo e aplica os limites diários de cada xodó.',
       keys: [['Anthropic', 'Conectada · Faísca', '#12B76A'], ['OpenAI', 'Conectada · Zuca', '#12B76A'], ['xAI', 'Conectada · Nina', '#12B76A']].map(k => ({ n: k[0], s: k[1], dot: k[2] })),
       modeNote: 'Cada xodó usa o modelo que você escolher. Trocar de chave ou de modelo não apaga a memória dele.', manage: () => this.go('settings', { setTab: 'integrations' }),
       caps: bots.map(b => { const sd = spend(b), cap = S.xoCaps[b.id]; return { name: b.name, role: b.role, char: this.xoChar(b, 30, 'idle', false), spentL: brl(S.xoSpent[b.id]) + ' usados hoje', w: sd.spendW, c: sd.spendC, warn: sd.pct >= 100 ? 'Pausado' : sd.pct >= 80 ? 'Acima de 80%' : '', warnC: sd.pct >= 100 ? '#D92D20' : '#B54708', capL: brl(cap),
         dec: () => this.setState(s => ({ xoCaps: Object.assign({}, s.xoCaps, { [b.id]: Math.max(5, s.xoCaps[b.id] - 5) }) })), inc: () => this.setState(s => ({ xoCaps: Object.assign({}, s.xoCaps, { [b.id]: Math.min(200, s.xoCaps[b.id] + 5) }) })) }; }),
       plans: SP_PLANS.map(p => { const cur = p.id === plan.id; return { n: p.n, cur, xn: p.xn === 0 ? '—' : p.xn === 99 ? 'Ilimitados' : p.xn + (p.xn === 1 ? ' xodó' : ' xodós'), cr: p.cr == null ? 'Sob medida' : p.cr ? 'R$ ' + p.cr.toLocaleString('pt-BR') + '/mês' : p.xn ? 'Só API' : '—', extra: p.extra, bg: cur ? 'rgba(70,95,255,0.04)' : 'transparent' }; }) };
+    if (RX) {
+      const PN = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', xai: 'xAI', deepseek: 'DeepSeek', mistral: 'Mistral', openrouter: 'OpenRouter', groq: 'Groq', local: 'Local', custom: 'API própria' };
+      Object.assign(out.u, { keys: RX.credentials.filter(c => c.kind !== 'sandbox').map(c => ({ n: PN[c.provider] || c.provider, s: c.label + ' · …' + (c.key_last4 || '') + ' · ' + (bots.filter(b => b.x.credential_id === c.id).map(b => b.name).join(', ') || 'sem xodó'), dot: '#12B76A' })),
+        manage: () => this.spXoKey(),
+        caps: bots.map(b => { const sd = spend(b); return { name: b.name, role: b.role, char: this.xoChar(b, 30, 'idle', false), spentL: brl(b.x.spent_today) + ' usados hoje', w: sd.spendW, c: sd.spendC, warn: sd.pct >= 100 ? 'Pausado' : sd.pct >= 80 ? 'Acima de 80%' : '', warnC: sd.pct >= 100 ? '#D92D20' : '#B54708', capL: b.x.daily_budget_brl ? brl(b.x.daily_budget_brl) : 'Sem teto',
+          dec: () => this.spXoCap(b, -5), inc: () => this.spXoCap(b, 5) }; }) });
+      const tone = { red: ['#D92D20', 'rgba(240,68,56,0.10)'], amber: ['#B54708', 'rgba(247,144,9,0.13)'], green: ['#067647', 'rgba(18,183,106,0.12)'], blue: ['#1570EF', 'rgba(46,144,250,0.12)'] };
+      const cronL = c => { const p = c.split(/\s+/), hm = (p[1] || '0').padStart(2, '0') + 'h' + (p[0] !== '0' ? p[0].padStart(2, '0') : ''), dw = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+        if (p[2] !== '*' && p[4] === '*') return 'Todo dia ' + p[2] + ' às ' + hm; if (p[4] !== '*' && p[2] === '*') return (/^\d$/.test(p[4]) ? 'Toda ' + dw[+p[4]] : 'Dias ' + p[4]) + ' às ' + hm; if (p[2] === '*' && p[4] === '*') return 'Todo dia às ' + hm; return c; };
+      const allR = RX.xodos.flatMap(x => x.routines.map(r => Object.assign({ xid: x.id, xn: x.name }, r)));
+      const alertsR = (this.D.attention || []).filter(a => a.kind === 'Campanha' || a.kind === 'Integração');
+      out.ops = Object.assign({}, out.ops, { has: false, hasZ: true, hasF: true, rows: [], zT: 'Alertas de campanhas e integrações', fT: 'Rotinas dos xodós', prog: allR.filter(r => r.active).length + ' de ' + allR.length + ' ligadas', progW: (allR.length ? allR.filter(r => r.active).length / allR.length * 100 : 0) + '%',
+        alerts: alertsR.length ? alertsR.map(a => ({ dot: (tone[a.tone] || tone.blue)[0], bg: (tone[a.tone] || tone.blue)[1], client: a.client, text: a.title, sub: a.ev, go: () => this.go(a.go, a.extra || {}) }))
+          : [{ dot: tone.green[0], bg: tone.green[1], client: 'Tudo certo', text: 'nenhuma campanha fora da meta', sub: 'Os alertas aparecem quando o CPL, o CPA ou o ROAS saem da meta do cliente', go: () => this.go('performance') }],
+        reports: allR.length ? allR.map(r => ({ n: r.name, when: r.xn + ' · ' + cronL(r.cron) + (r.last_summary ? ' · última: ' + r.last_summary.slice(0, 60) : ''), on: r.active, swBg: r.active ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: r.active ? '18px' : '2px',
+          toggle: async () => { try { await SP.api('/api/xodos/' + r.xid + '/routines?routine_id=' + r.id, { method: 'PATCH', body: { active: !r.active } }); await this.spXoLoad(); this.toastMsg(r.active ? 'Rotina desligada' : 'Rotina ligada'); } catch (e) { this.spErr(e); } } }))
+          : [{ n: 'Nenhuma rotina ainda', when: 'Peça a um xodó: “toda segunda às 8h, monte o relatório semanal de cada cliente”', on: false, swBg: 'var(--bd,#D0D5DD)', swX: '2px', toggle: () => this.toastMsg('Peça a rotina conversando com o xodó') }] });
+    }
     return { xo: out };
   }
 

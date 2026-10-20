@@ -293,3 +293,24 @@ async function assertNameFree(sql: Sql, agencyId: string, name: string) {
   const taken = await one(sql, `select 1 from xodos where agency_id = $1 and name = $2`, [agencyId, name]);
   if (taken) throw new XodoError(`Já existe um xodó chamado ${name}.`, 409);
 }
+
+/**
+ * Exclui o xodó de vez: conversas, memória, rotinas, gatilhos e canais dele vão junto. O
+ * histórico de gasto (ai_usage) fica, sem o vínculo, e os relatórios que ele fez continuam.
+ * Não exclui no meio de uma tarefa: pause, espere terminar e exclua.
+ */
+export async function deleteXodo(sql: Sql, agencyId: string, xodoId: string, confirmName: string) {
+  return sql.transaction(async (tx) => {
+    const xodo = await one<{ name: string }>(tx, `select name from xodos where id = $1 and agency_id = $2 for update`, [xodoId, agencyId]);
+    if (!xodo) throw new XodoError("Xodó não encontrado", 404);
+    if (confirmName.trim().toLowerCase() !== xodo.name.trim().toLowerCase()) throw new XodoError(`Digite "${xodo.name}" para confirmar.`, 400);
+    const busy = await one(tx, `select 1 from xodo_runs where xodo_id = $1 and status in ('running', 'waiting_takeover')`, [xodoId]);
+    if (busy) throw new XodoError(`${xodo.name} está no meio de uma tarefa. Pause, espere terminar e tente de novo.`, 409);
+    await tx.query(
+      `update computers set screen_run_id = null where screen_run_id in (select id from xodo_runs where xodo_id = $1)`,
+      [xodoId],
+    );
+    await tx.query(`delete from xodos where id = $1`, [xodoId]);
+    return { name: xodo.name };
+  });
+}

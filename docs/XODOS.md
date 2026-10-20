@@ -233,7 +233,7 @@ No Supabase → Authentication → URL Configuration, coloque `https://spherum.c
 npm test
 ```
 
-São 400 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 403 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
@@ -248,5 +248,5 @@ São 400 testes com `node:test`, PGlite (Postgres em memória, sem precisar de D
 ## O que falta
 
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
-- **Ligar a tela de Xodós do design a estas rotas.** O site, o portal da agência (núcleo) e o portal do cliente já usam a API; a tela de Xodós ainda mostra os exemplos do design.
+- **Tela de Xodós:** ligada (criar em 3 passos, conversar, aprovar pedidos, teto do dia, chaves, rotinas, pausar e excluir). Ainda faltam na tela: assumir o controle do computador ao vivo, editar memória e gatilhos, e o resumo "feito pela agência" no portal do cliente.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.
