@@ -3,6 +3,7 @@ import { z } from "zod";
 import { APP_IDS, APPS, type AppId } from "../integrations/apps";
 import type { CredentialSecret } from "./brain";
 import { one, type Sql } from "./db";
+import { checkAiKey, type KeyCheck } from "./keycheck";
 import { isSelfHosted, type LlmClient } from "./llm";
 import { assertPublicUrl, type Resolver } from "./net";
 import { greeting } from "./persona";
@@ -33,6 +34,8 @@ export async function createCredential(
   createdBy: string | null,
   masterKey: string,
   resolve?: Resolver,
+  /** Com fetch, a chave é conferida no provedor antes de ser guardada. */
+  http?: typeof fetch,
 ) {
   const input = credentialInput.parse(raw);
   if (!llm.providers().some((p) => p.id === input.provider)) {
@@ -49,15 +52,17 @@ export async function createCredential(
   } else if (input.api_key.length < 8) {
     throw new XodoError("Cole a chave de API completa.");
   }
+  const check: KeyCheck = http && !isSelfHosted(input.provider) ? await checkAiKey(input.provider, input.api_key, http) : { checked: false };
   // Servidor local pode não ter chave; guardamos a chave vazia cifrada para manter um formato só.
   const id = randomUUID();
   const ciphertext = await sealSecret(input.api_key, credentialAad(agencyId, id), masterKey);
-  return one<{ id: string; provider: string; label: string; base_url: string | null; key_last4: string }>(
+  const row = await one<{ id: string; provider: string; label: string; base_url: string | null; key_last4: string }>(
     sql,
     `insert into ai_credentials (id, agency_id, provider, label, base_url, ciphertext, key_last4, created_by)
      values ($1, $2, $3, $4, $5, $6, $7, $8) returning id, provider, label, base_url, key_last4`,
     [id, agencyId, input.provider, input.label, baseUrl, ciphertext, lastFour(input.api_key), createdBy],
   );
+  return row ? { ...row, checked: check.checked, note: check.note ?? null } : row;
 }
 
 export async function listCredentials(sql: Sql, agencyId: string) {

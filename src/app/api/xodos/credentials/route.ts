@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const agencyId = uuid.parse(body?.agency_id);
     const sql = await serverSql();
     await requireRole(sql, userId, agencyId, CAN_MANAGE);
-    const credential = await createCredential(sql, serverLlm(), agencyId, body, userId, masterKeyFromEnv());
+    const credential = await createCredential(sql, serverLlm(), agencyId, body, userId, masterKeyFromEnv(), undefined, globalThis.fetch.bind(globalThis));
     return NextResponse.json({ credential }, { status: 201 });
   } catch (error) {
     return fail(error);

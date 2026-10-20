@@ -4450,7 +4450,12 @@ class Component extends DCLogic {
   xoPendingN() { if (this.R) return this.XR ? this.XR.approvals.length || null : null; const ids = this.xoBots().map(b => b.id); const L = this.state.xoLim == null ? 400 : this.state.xoLim; return XO_APPR.filter(a => ids.includes(a.bot) && !(this.state.xoAppr || {})[a.id] && !(a.delta && a.delta <= L)).length; }
   xoMonth() { if (this.R) return this.XR ? this.XR.month_brl : 0; const s = this.state.xoSpent || {}; return 120.7 + Object.values(s).reduce((a, b) => a + b, 0); }
   // ---- Xodós de verdade (motor em /api/xodos) ----
-  async spXoLoad() { this._xoLast = Date.now(); this.XR = await SP.api('/api/portal/xodos?agency_id=' + this.spAg); this.setState({ xoReal: Date.now() }); }
+  async spXoLoad() { this._xoLast = Date.now();
+    const [xr, pc] = await Promise.all([SP.api('/api/portal/xodos?agency_id=' + this.spAg), SP.api('/api/xodos/computer?agency_id=' + this.spAg).catch(() => null)]);
+    this.XR = xr; this.PC = pc;
+    // Controle meu que ficou aberto (recarregou a página): volta a renovar.
+    if (pc && pc.control && pc.control.mine && pc.control.lease_id) this.spPcBeat(pc.control.lease_id); else if (!pc || !pc.control || !pc.control.mine) this.spPcStop();
+    this.setState({ xoReal: Date.now() }); }
   spXoBot(x) { const sp = SPECIES[x.species] ? x.species : 'pingo', ci = Math.max(0, SPECIES[sp].colors.findIndex(c => c.n.pt === x.color));
     return { id: x.id, name: x.name, sp, ci, role: x.role || 'Xodó', job: (x.instructions || '').split('\n')[0].slice(0, 160) || 'Sem instruções ainda. Abra e diga o que ele deve fazer.', brain: x.model, persona: x.personality,
       mem: x.memory.length ? x.memory : ['Ainda não guardou nada. Ele anota o que aprender conversando com vocês.'], saved: x.routines.map(r => [r.name, r.active ? 'Rotina ativa' : 'Rotina pausada']),
@@ -4474,15 +4479,55 @@ class Component extends DCLogic {
   }
   spXoManage(b) {
     const paused = b.x.status === 'paused';
-    this.fm({ title: b.name, desc: paused ? 'Pausado: não responde, não roda rotinas e ignora os gatilhos até voltar.' : 'Ativo: responde, roda as rotinas e atende os gatilhos.', icon: 'smart_toy',
-      fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts: [[paused ? 'resume' : 'pause', paused ? 'Voltar a trabalhar' : 'Pausar', paused ? 'Ele volta a responder e a rodar as rotinas' : 'Para tudo, mas guarda memória, rotinas e conversas'], ['delete', 'Excluir de vez', 'Apaga conversas, memória, rotinas e gatilhos dele. Não dá para desfazer.']], req: 1 }],
-      init: { a: paused ? 'resume' : 'pause' }, okL: 'Continuar',
-      ok: v => { if (v.a !== 'delete') return this.spXoPause(b);
+    this.fm({ title: b.name, init: { a: 'mem' }, desc: paused ? 'Pausado: não responde, não roda rotinas e ignora os gatilhos até voltar.' : 'Ativo: responde, roda as rotinas e atende os gatilhos.', icon: 'smart_toy',
+      fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts: [['mem', 'Editar a memória', 'Ver, corrigir, apagar ou anotar o que ele lembra'], [paused ? 'resume' : 'pause', paused ? 'Voltar a trabalhar' : 'Pausar', paused ? 'Ele volta a responder e a rodar as rotinas' : 'Para tudo, mas guarda memória, rotinas e conversas'], ['delete', 'Excluir de vez', 'Apaga conversas, memória, rotinas e gatilhos dele. Não dá para desfazer.']], req: 1 }],
+      okL: 'Continuar',
+      ok: v => { if (v.a === 'mem') return this.spXoMemory(b); if (v.a !== 'delete') return this.spXoPause(b);
         this.fm({ title: 'Excluir ' + b.name + '?', desc: 'Conversas, memória, rotinas, gatilhos e canais dele são apagados. O histórico de gasto e os relatórios que ele fez continuam. Se só quer parar por um tempo, use Pausar.', icon: 'delete', danger: true,
           fields: [{ k: 'n', l: 'Digite "' + b.name + '" para confirmar', req: 1, check: x => String(x || '').trim().toLowerCase() === b.name.trim().toLowerCase() ? '' : 'O nome não confere' }], okL: 'Excluir de vez', busyL: 'Excluindo…',
           ok: async w => { try { await SP.api('/api/xodos/' + b.id + '?confirmar=' + encodeURIComponent(w.n.trim()), { method: 'DELETE' }); this.setState({ xoSel: null }); await this.spXoLoad(); this.toastMsg(b.name + ' foi excluído'); } catch (e) { this.spErr(e); } } }); } });
   }
   async spXoPause(b) { try { await SP.api('/api/xodos/' + b.id, { method: 'PATCH', body: { status: b.x.status === 'paused' ? 'active' : 'paused' } }); await this.spXoLoad(); this.toastMsg(b.x.status === 'paused' ? b.name + ' voltou a trabalhar' : b.name + ' pausado'); } catch (e) { this.spErr(e); } }
+  // ---- Computador na nuvem: ligar, ver ao vivo, assumir e devolver o controle ----
+  spPcBeat(lease) { if (this._pcLease === lease && this._pcT) return; this.spPcStop(); this._pcLease = lease;
+    this._pcT = setInterval(() => SP.api('/api/xodos/computer/control/heartbeat', { method: 'POST', body: { agency_id: this.spAg, lease_id: lease } }).catch(e => { this.spPcStop(); this.toastMsg('O controle do computador terminou: ' + e.message); this.spXoLoad().catch(() => {}); }), 30000); }
+  spPcStop() { clearInterval(this._pcT); this._pcT = null; this._pcLease = null; }
+  spOpen(url) { const w = (window.top || window).open(url, '_blank', 'noopener'); if (!w) this.toastMsg('Permita pop-ups para abrir a tela do computador'); }
+  async spPcView() { try { const r = await SP.api('/api/xodos/computer/screen?agency_id=' + this.spAg); if (!r.live) return this.toastMsg('O computador está desligado. Ligue para ver a tela.');
+    this.spOpen(r.control ? r.control.viewUrl : r.viewUrl); } catch (e) { this.spErr(e); } }
+  async spPcTake() {
+    try { const r = await SP.api('/api/xodos/computer/control', { method: 'POST', body: { agency_id: this.spAg } }); this.spPcBeat(r.lease_id); this.spOpen(r.view_url); await this.spXoLoad();
+      this.toastMsg('Você está no controle. Quando terminar, clique em Devolver controle.'); } catch (e) { this.spErr(e); } }
+  spPcRelease() { const c = this.PC && this.PC.control;
+    this.fm({ title: 'Devolver o controle', desc: 'O xodó continua de onde parou, com um aviso do que aconteceu.', icon: 'keyboard_return', fields: [{ k: 'r', l: 'Como foi?', type: 'pick', opts: [['done', 'Terminei', 'Fiz o que o xodó pediu'], ['skipped', 'Não fiz', 'O xodó segue sem isso']], req: 1 }], init: { r: 'done' }, okL: 'Devolver',
+      ok: async v => { try { await SP.api('/api/xodos/computer/control/release', { method: 'POST', body: { agency_id: this.spAg, reason: v.r, lease_id: c ? c.lease_id || undefined : undefined } }); this.spPcStop(); await this.spXoLoad(); this.toastMsg('Controle devolvido'); } catch (e) { this.spErr(e); } } }); }
+  async spPcStart() { this.toastMsg('Ligando o computador… pode levar até um minuto'); try { await SP.api('/api/xodos/computer/start', { method: 'POST', body: { agency_id: this.spAg } }); await this.spXoLoad(); this.toastMsg('Computador ligado'); } catch (e) { this.spErr(e); } }
+  spPcSetup() {
+    this.fm({ title: 'Configurar o computador na nuvem', desc: 'Uma máquina Linux para os xodós usarem navegador, arquivos e terminal. Ela roda na conta da agência no provedor escolhido e pausa sozinha quando ninguém usa.', icon: 'computer',
+      fields: [{ k: 'p', l: 'Provedor', type: 'pick', opts: [['e2b', 'E2B', 'e2b.dev · cobra por segundo ligado'], ['daytona', 'Daytona', 'daytona.io · cobra por segundo ligado']], req: 1 }, { k: 'key', l: 'Chave de API do provedor', req: 1, min: 10 }, { k: 'h', l: 'Teto de horas ligado por dia', req: 1, ph: '4', check: x => +x > 0 && +x <= 24 ? '' : 'Entre 1 e 24 horas' }],
+      init: { p: 'e2b', h: '4' }, okL: 'Configurar', busyL: 'Configurando…',
+      ok: async v => { try { const k = await SP.api('/api/xodos/computer/key', { method: 'POST', body: { agency_id: this.spAg, provider: v.p, label: v.p === 'e2b' ? 'E2B' : 'Daytona', api_key: v.key.trim() } });
+        await SP.api('/api/xodos/computer', { method: 'PUT', body: { agency_id: this.spAg, provider: v.p, credential_id: (k.key || k.credential || k).id, daily_hours_cap: +v.h } }); await this.spXoLoad(); this.toastMsg('Computador configurado. Ele liga sozinho quando um xodó precisar.'); } catch (e) { this.spErr(e); } } }); }
+  spPcMenu(waiting) { const pc = this.PC;
+    const opts = [['view', 'Ver a tela ao vivo', 'Só assistir; o xodó continua trabalhando']].concat([['take', 'Assumir o controle', waiting ? waiting + ' pediu você no computador' : 'O que o xodó deixou rodando é derrubado e ele espera você devolver']]);
+    this.fm({ title: 'Computador na nuvem', desc: pc.screen && pc.screen.xodo_name ? pc.screen.xodo_name + ' está usando agora.' : 'Ligado, sem ninguém usando agora.', icon: 'computer', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts, req: 1 }], init: { a: waiting ? 'take' : 'view' }, okL: 'Continuar',
+      ok: v => v.a === 'view' ? this.spPcView() : this.spPcTake() }); }
+  // ---- Memória do xodó: editar, apagar e anotar ----
+  async spXoMemory(b) {
+    let r; try { r = await SP.api('/api/xodos/' + b.id + '/memory?status=ativo&limite=200'); } catch (e) { return this.spErr(e); }
+    const notes = (r.notas || []).slice().sort((a, c) => (c.pinned - a.pinned) || (a.updated_at < c.updated_at ? 1 : -1)).slice(0, 12);
+    const fields = notes.map(nt => ({ k: 'n' + nt.n, l: '#' + nt.n + (nt.client_name ? ' · ' + nt.client_name : nt.topic ? ' · ' + nt.topic : '') + (nt.pinned ? ' · fixada' : ''), type: 'area' }))
+      .concat([{ k: 'novo', l: 'Nova anotação', type: 'area', ph: 'Ex.: A Clínica Sorriso quer o relatório em uma página só.' }]);
+    const init = {}; notes.forEach(nt => init['n' + nt.n] = nt.content);
+    this.fm({ title: 'Memória de ' + b.name, desc: (r.notas || []).length > notes.length ? 'Mostrando as ' + notes.length + ' notas mais recentes de ' + r.notas.length + '. Apague o texto de uma nota para tirá-la da memória (dá para desfazer pelo diário).' : 'Edite, apague o texto para tirar da memória, ou escreva uma nova anotação. Tudo fica no diário e dá para desfazer.', icon: 'psychology', fields, init, okL: 'Salvar memória', busyL: 'Salvando…',
+      ok: async v => { let ch = 0, err = null;
+        for (const nt of notes) { const t = String(v['n' + nt.n] || '').trim(); if (t === nt.content.trim()) continue;
+          try { if (!t) await SP.api('/api/xodos/' + b.id + '/memory/' + nt.n + '?version=' + nt.version + '&motivo=' + encodeURIComponent('apagada pela equipe na tela'), { method: 'DELETE' });
+            else await SP.api('/api/xodos/' + b.id + '/memory/' + nt.n, { method: 'PATCH', body: { version: nt.version, texto: t, motivo: 'editada pela equipe na tela' } }); ch++; } catch (e) { err = e; } }
+        const nv = String(v.novo || '').trim(); if (nv) { try { await SP.api('/api/xodos/' + b.id + '/memory', { method: 'POST', body: { texto: nv, motivo: 'anotada pela equipe na tela' } }); ch++; } catch (e) { err = e; } }
+        await this.spXoLoad().catch(() => {});
+        if (err) this.toastMsg((ch ? ch + ' mudança(s) salva(s). ' : '') + (err.status === 409 ? 'Uma nota mudou enquanto você editava; abra de novo.' : err.message)); else this.toastMsg(ch ? 'Memória salva · ' + ch + (ch === 1 ? ' mudança' : ' mudanças') : 'Nada mudou'); } });
+  }
   // Chave de API da agência (o xodó usa a IA na conta da agência).
   async spXoKey(after) {
     let cat; try { cat = await SP.api('/api/xodos/catalog'); } catch (e) { return this.spErr(e); }
@@ -4490,7 +4535,7 @@ class Component extends DCLogic {
     this.fm({ title: 'Adicionar chave de IA', desc: 'Os xodós usam a IA na conta da sua agência: o provedor cobra direto de vocês. A chave fica cifrada e só os 4 últimos dígitos aparecem.', icon: 'key',
       fields: [{ k: 'provider', l: 'Provedor', type: 'pick', opts: provs.map(p => [p.id, p.name]), req: 1 }, { k: 'label', l: 'Nome da chave', req: 1, ph: 'Ex.: Chave principal' }, { k: 'key', l: 'Chave de API', req: 1, min: 10 }],
       init: { provider: provs[0] ? provs[0].id : '', label: 'Chave principal' }, okL: 'Guardar chave', busyL: 'Conferindo…',
-      ok: async v => { try { await SP.api('/api/xodos/credentials', { method: 'POST', body: { agency_id: this.spAg, provider: v.provider, label: v.label.trim(), api_key: v.key.trim() } }); await this.spXoLoad(); this.toastMsg('Chave guardada'); if (after) after(); } catch (e) { this.spErr(e); } } });
+      ok: async v => { try { const r = await SP.api('/api/xodos/credentials', { method: 'POST', body: { agency_id: this.spAg, provider: v.provider, label: v.label.trim(), api_key: v.key.trim() } }); await this.spXoLoad(); this.toastMsg(r.credential && r.credential.checked ? 'Chave conferida no provedor e guardada' : (r.credential && r.credential.note) || 'Chave guardada'); if (after) after(); } catch (e) { this.spErr(e); } } });
   }
   // Assistente de criação: forma → jeito e função → cérebro e limites.
   spXoNew() {
@@ -5259,9 +5304,18 @@ class Component extends DCLogic {
         out.d.spendNote = sel.x.daily_budget_brl ? (out.d.pct >= 100 ? 'Pausado no teto do dia. Aumente em Uso e limites para continuar hoje.' : out.d.pct >= 80 ? 'Passou de 80% do teto do dia.' : 'Chave de API da agência · teto definido por você') : 'Chave de API da agência · sem teto';
       }
       out.extras = false;
-      out.pc = { shared: 'Computador na nuvem compartilhado pelos xodós: navegador, arquivos e terminal.', live: bots.some(b => stOf(b) === 'working') ? 'AO VIVO' : 'EM REPOUSO', dot: bots.some(b => stOf(b) === 'working') ? '#F04438' : '#98A2B3', anim: 'none',
-        url: (this.R.agency.slug || 'agencia') + '-xodo · ~/', rows: rowW.map(r => ({ a: r[0], b: r[1] })), hl: '8px', hlO: 0, take: false, canTake: false, takeL: 'Assumir controle', toggle: () => {},
-        caption: 'Quando um xodó usa o computador, a tela ao vivo e o botão de assumir o controle aparecem aqui e no aviso do canal.' };
+      const PC = this.PC, mgr = ['owner', 'admin'].includes(this.R.me.role), user = mgr || this.R.me.role === 'member';
+      const waiting = RX.xodos.find(x => x.last_run && x.last_run.status === 'waiting_takeover'), liveNow = !!(PC && PC.computer && PC.computer.live), mine = !!(PC && PC.control && PC.control.mine);
+      const pcBase = { shared: 'Computador na nuvem da agência, dividido pelos xodós: navegador, arquivos e terminal.', rows: rowW.map(r => ({ a: r[0], b: r[1] })), url: (this.R.agency.slug || 'agencia') + '-xodo · ~/', hl: '8px', hlO: 0, anim: 'none' };
+      if (!PC || !PC.configured) out.pc = Object.assign(pcBase, { live: 'NÃO CONFIGURADO', dot: '#98A2B3', take: false, canTake: mgr, takeL: 'Configurar computador', toggle: () => this.spPcSetup(),
+        caption: mgr ? 'Configure para os xodós poderem usar navegador, arquivos e terminal.' : 'O dono ou um admin da agência pode configurar o computador.' });
+      else if (mine) out.pc = Object.assign(pcBase, { live: 'VOCÊ NO CONTROLE', dot: '#F04438', anim: 'xo-live 1.2s ease-in-out infinite', hlO: 0.28, take: true, canTake: true, takeL: 'Devolver controle', toggle: () => this.fm({ title: 'Você está no controle', desc: 'A tela do computador abre em outra aba.', icon: 'computer', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts: [['release', 'Devolver ao xodó', 'Terminei ou não vou fazer'], ['view', 'Reabrir a tela', 'Se fechou a aba do computador']], req: 1 }], init: { a: 'release' }, okL: 'Continuar', ok: v => v.a === 'view' ? this.spPcView() : this.spPcRelease() }),
+        caption: 'Você está no controle até ' + new Date(PC.control.expires_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' (renova sozinho enquanto esta tela estiver aberta). A tela do computador abriu em outra aba.' });
+      else if (PC.control) out.pc = Object.assign(pcBase, { live: 'EM CONTROLE', dot: '#F79009', take: false, canTake: user, takeL: mgr ? 'Ver ou assumir' : 'Ver ao vivo', toggle: () => mgr ? this.spPcMenu(null) : this.spPcView(), caption: 'Alguém da equipe está no controle agora. Os xodós esperam a devolução.' });
+      else if (!liveNow) out.pc = Object.assign(pcBase, { live: (PC.computer.state || 'pausado').toUpperCase() === 'PAUSED' ? 'EM REPOUSO' : 'DESLIGADO', dot: '#98A2B3', take: false, canTake: user, takeL: 'Ligar o computador', toggle: () => this.spPcStart(),
+        caption: (PC.computer.error ? 'Último erro: ' + PC.computer.error + '. ' : '') + 'Pausado para não gastar. Liga sozinho quando um xodó precisa' + (PC.usage_today ? ' · ' + (Math.round((PC.usage_today.hours || PC.usage_today.used_hours || 0) * 10) / 10) + ' h ligado hoje' : '') + '.' });
+      else out.pc = Object.assign(pcBase, { live: 'AO VIVO', dot: '#F04438', anim: 'xo-live 1.2s ease-in-out infinite', hlO: PC.screen ? 0.28 : 0, take: false, canTake: user, takeL: waiting ? 'Assumir controle' : 'Ver ou assumir', toggle: () => this.spPcMenu(waiting ? waiting.name : null),
+        caption: waiting ? waiting.name + ' pediu você no computador.' : PC.screen && PC.screen.xodo_name ? PC.screen.xodo_name + ' está usando o computador.' : 'Ligado e pronto para a próxima tarefa.' });
     }
     if (out.extras === undefined) out.extras = true;
     out.u = { used: brl(month), note: 'Tokens cobrados direto pelo provedor, na conta da agência. O Spherum não cobra pela IA: só mede o consumo e aplica os limites diários de cada xodó.',

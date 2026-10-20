@@ -253,3 +253,26 @@ test("apps do xodó (Pode mexer em): conexão fixada precisa ser da agência e d
   await updateXodo(sql, llm, a.agencyId, xodo.id, { apps: [{ app: "slack", connection_id: slackA }] });
   assert.deepEqual((await sql.query(`select app from xodo_apps where xodo_id = $1`, [xodo.id])).map((r) => r.app), ["slack"]);
 });
+
+test("chave de IA é conferida no provedor ao guardar: recusada não fica; provedor fora do ar não impede", async () => {
+  const { agencyId, ownerId } = await seedAgency(sql, "Agência Chaves");
+  const calls: { url: string; headers: Headers }[] = [];
+  const http = (status: number | "down") =>
+    (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), headers: new Headers(init?.headers) });
+      if (status === "down") throw new Error("ECONNRESET");
+      return new Response("{}", { status });
+    }) as typeof fetch;
+  const body = { provider: "anthropic", label: "Principal", api_key: "sk-ant-api03-chave-de-teste" };
+  const llm2 = { ...llm, providers: () => [{ id: "anthropic", name: "Anthropic" }, { id: "openai", name: "OpenAI" }] };
+  await assert.rejects(createCredential(sql, llm2, agencyId, body, ownerId, MASTER, undefined, http(401)), /recusou essa chave/);
+  assert.equal(calls[0].url, "https://api.anthropic.com/v1/models?limit=1");
+  assert.equal(calls[0].headers.get("x-api-key"), body.api_key);
+  const ok = await createCredential(sql, llm2, agencyId, body, ownerId, MASTER, undefined, http(200));
+  assert.deepEqual([ok!.checked, ok!.note], [true, null]);
+  const down = await createCredential(sql, llm2, agencyId, { ...body, provider: "openai", api_key: "sk-proj-teste-123" }, ownerId, MASTER, undefined, http("down"));
+  assert.equal(down!.checked, false);
+  assert.match(down!.note!, /primeiro uso confirma/);
+  assert.equal(calls.at(-1)!.headers.get("authorization"), "Bearer sk-proj-teste-123");
+  assert.equal((await listCredentials(sql, agencyId)).length, 2, "a recusada não ficou");
+});
