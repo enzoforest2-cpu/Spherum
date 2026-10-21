@@ -19,6 +19,7 @@ import { MEMORY_TOOLS } from "./memory/tools";
 import { redactDeep } from "./redact";
 import { buildSystemPrompt, type PromptContext } from "./persona";
 import { XodoError } from "./errors";
+import { recordActionUpdate } from "../core/collab";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
@@ -643,9 +644,16 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, 
   } else {
     try {
       const ctx = { ...toolContext(deps, xodo, action.run_id), precondition: parseJson<Record<string, unknown>>(action.precondition) };
-      const data = await tool.execute(ctx, tool.input.parse(input));
+      const parsedInput = tool.input.parse(input);
+      const data = await tool.execute(ctx, parsedInput);
       status = "executed";
       result = { data };
+      // Mexeu numa campanha do cliente: vira atualização no "Feito pela agência" do portal.
+      if (tool.category === "campanha") {
+        await recordActionUpdate(sql, {
+          agencyId: xodo.agency_id, xodoId: xodo.id, actionId, toolName: tool.name, input: parsedInput as Record<string, unknown>, summary: tool.summarize(parsedInput),
+        }).catch((error) => console.error("[xodos] atualização do portal falhou", actionId, error));
+      }
       if (tool.taints) await sql.query(`update xodo_runs set tainted = true where id = $1`, [action.run_id]);
     } catch (error) {
       const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;

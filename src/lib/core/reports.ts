@@ -2,6 +2,7 @@ import { z } from "zod";
 import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
+import { recordReportUpdate } from "./collab";
 
 /** Relatórios feitos pela equipe na tela (os xodós também criam, pelas ferramentas deles). */
 
@@ -26,6 +27,7 @@ export async function createReport(sql: Sql, agencyId: string, userId: string, r
     [agencyId, input.client_id, input.period_start, input.period_end, input.title, input.body_md, input.publish ? "published" : "draft", userId],
   );
   await audit(sql, { agencyId, actor: userId, action: input.publish ? "relatorio_publicado" : "relatorio_criado", targetType: "report", targetId: row!.id });
+  if (input.publish) await recordReportUpdate(sql, row!.id);
   return row!;
 }
 
@@ -37,5 +39,6 @@ export async function setReportStatus(sql: Sql, agencyId: string, userId: string
     [id, agencyId, status],
   );
   if (!row) throw new XodoError("Relatório não encontrado.", 404);
+  if (status === "published") await recordReportUpdate(sql, id);
   await audit(sql, { agencyId, actor: userId, action: `relatorio_${status}`, targetType: "report", targetId: id });
 }

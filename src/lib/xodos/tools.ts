@@ -7,6 +7,7 @@ import { notify } from "./budget";
 import { num, one, type Sql } from "./db";
 import type { Category } from "./policy";
 import type { Xodo } from "./types";
+import { recordReportUpdate } from "../core/collab";
 
 /**
  * Ferramentas dos Xodós. Cada uma declara a categoria (que define a aprovação), valida a
@@ -396,6 +397,7 @@ export const TOOLS: ToolDef[] = [
         [i.report_id, ctx.xodo.agency_id],
       );
       if (!row) throw new ToolError("Só rascunhos podem ser publicados.");
+      await recordReportUpdate(ctx.sql, row.id, ctx.xodo.id);
       return { report_id: row.id, status: "published" };
     },
   }),
