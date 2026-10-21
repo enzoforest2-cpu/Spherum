@@ -45,7 +45,9 @@ test("feito pela agência: ação do xodó entra como rascunho (ou publicada com
   let c = await clientCollab(sql, s.clientId, "agencia");
   assert.deepEqual(c.updates.map((u) => [u.title, u.status, u.xodo_name]), [["Pausamos a campanha Leads Outubro", "rascunho", "Nina"]]);
   assert.equal((await clientCollab(sql, s.clientId, "cliente")).updates.length, 0, "rascunho não aparece para o cliente");
-  assert.equal((await agencyCollabSummary(sql, s.agencyId)).drafts, 1);
+  const sum0 = await agencyCollabSummary(sql, s.agencyId);
+  assert.equal(sum0.drafts, 1);
+  assert.equal(sum0.draft_items[0].client_name, "Cliente Colab");
 
   await setPortalSettings(sql, s.agencyId, { auto_publicar: true });
   await act("ajustar_verba_diaria", { nova_verba_brl: 250 });
@@ -96,7 +98,9 @@ test("pendências, aprovações e conversa: só quem é do cliente responde; a a
   await sendMessage(deps, "agencia", s.agencyId, s.clientId, s.dona, { text: "Oi Rui, tudo certo?" });
   await sendMessage(deps, "cliente", s.agencyId, s.clientId, s.cli, { text: "Tudo! E o relatório?" });
   await sendMessage(deps, "cliente", s.agencyId, s.clientId, s.cli, { text: "Ah, e a fatura." });
-  assert.equal((await agencyCollabSummary(sql, s.agencyId)).unread[s.clientId], 2);
+  const sum2 = await agencyCollabSummary(sql, s.agencyId);
+  assert.equal(sum2.unread[s.clientId], 2);
+  assert.deepEqual(sum2.threads.map((t) => [t.client_id, t.side, t.text]), [[s.clientId, "cliente", "Ah, e a fatura."]]);
   c = await clientCollab(sql, s.clientId, "cliente");
   assert.equal(c.unread, 0, "o cliente leu ao escrever");
   assert.deepEqual(c.messages.map((m) => [m.side, m.author_name]), [["agencia", "Ana Souza"], ["cliente", "Rui"], ["cliente", "Rui"]]);

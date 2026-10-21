@@ -1328,9 +1328,10 @@ a:hover{color:#3346D3;text-decoration:underline}
 
         <sc-if value="{{ is.messages }}">
           <section data-screen-label="Mensagens" style="display:flex;flex-direction:column;gap:16px">
-            <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Mensagens</h1><p style="margin:4px 0 0;color:var(--tx2,#667085)">Cada conversa fica ligada a uma campanha, projeto, relatório, fatura ou documento.</p></div>
+            <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Mensagens</h1><p style="margin:4px 0 0;color:var(--tx2,#667085)">{{ msg.sub }}</p></div>
             <div style="display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr) minmax(220px,280px);background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden;height:min(640px,calc(100vh - 220px));min-height:460px">
               <div style="border-right:1px solid var(--bd,#E4E7EC);overflow-y:auto">
+                <sc-if value="{{ msg.noThreads }}"><div style="padding:18px 14px;font-size:12.5px;color:var(--tx2,#667085);text-wrap:pretty">Nenhuma conversa ainda. Abra um cliente e use “Enviar mensagem”: ele lê e responde pelo portal.</div></sc-if>
                 <sc-for list="{{ msg.threads }}" as="t"><button sc-camel-on-click="{{ t.pick }}" style="display:flex;flex-direction:column;gap:3px;width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--bd,#E4E7EC);background:{{ t.bg }};text-align:left" style-hover="background:var(--sf2,#F2F4F7)">
                   <div style="display:flex;gap:6px;align-items:center"><span style="font-weight:600;font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.clientName }}</span><span style="font-size:11.5px;color:var(--tx2,#667085)">{{ t.when }}</span></div>
                   <div style="font-size:11.5px;color:#465FFF;font-weight:500">{{ t.ctx }} · {{ t.ctxName }}</div>
@@ -1340,6 +1341,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               <div style="display:flex;flex-direction:column;min-width:0">
                 <div style="padding:12px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><div style="font-weight:600">{{ msg.t.who }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ msg.t.clientName }} · {{ msg.t.ctx }}: {{ msg.t.ctxName }}</div></div>
                 <div style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--bg,#F7F8FA)">
+                  <sc-if value="{{ msg.empty }}"><div style="margin:auto;text-align:center;font-size:13px;color:var(--tx2,#667085);max-width:300px">{{ msg.emptyL }}</div></sc-if>
                   <sc-for list="{{ msg.msgs }}" as="m">
                     <sc-if value="{{ m.them }}"><div style="max-width:76%;align-self:flex-start"><div style="font-size:11.5px;color:var(--tx2,#667085);margin-bottom:3px">{{ m.who }} · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 10px 3px;background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);font-size:13.5px;line-height:1.5">{{ m.text }}</div></div></sc-if>
                     <sc-if value="{{ m.me }}"><div style="max-width:76%;align-self:flex-end;text-align:right"><div style="font-size:11.5px;color:var(--tx2,#667085);margin-bottom:3px">{{ m.who }} · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 3px 10px;background:#465FFF;color:#fff;font-size:13.5px;line-height:1.5;text-align:left">{{ m.text }}</div></div></sc-if>
@@ -2280,7 +2282,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               </sc-if>
 
               <sc-if value="{{ xo.isAppr }}">
-                <sc-if value="{{ xo.extras }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;color:#465FFF">phone_iphone</span><span style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">Aprove pelo celular</span><span style="font-size:12.5px;color:var(--tx2,#667085)">Notificação na hora, aprovação em dois toques e Face ID acima de R$ 500.</span></span><button sc-camel-on-click="{{ mo.show }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap">Ver como fica</button></div><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden"><div style="padding:14px 16px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600">O que o cliente vê no portal</span><span style="font-size:12px;color:var(--tx2,#667085)">Aba “Feito pela agência”</span></div><sc-for list="{{ xv.opts }}" as="g"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--bd,#F2F4F7)"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.l }}</span><span style="font-size:12px;color:var(--tx2,#667085);text-wrap:pretty">{{ g.d }}</span></span><button sc-camel-on-click="{{ g.toggle }}" role="switch" aria-checked="{{ g.on }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ g.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ g.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for></div></sc-if>
+                <sc-if value="{{ xo.extras }}"><sc-if value="{{ xo.phone }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;color:#465FFF">phone_iphone</span><span style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">Aprove pelo celular</span><span style="font-size:12.5px;color:var(--tx2,#667085)">Notificação na hora, aprovação em dois toques e Face ID acima de R$ 500.</span></span><button sc-camel-on-click="{{ mo.show }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap">Ver como fica</button></div></sc-if><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden"><div style="padding:14px 16px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600">O que o cliente vê no portal</span><span style="font-size:12px;color:var(--tx2,#667085)">Aba “Feito pela agência”</span></div><sc-for list="{{ xv.opts }}" as="g"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--bd,#F2F4F7)"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.l }}</span><span style="font-size:12px;color:var(--tx2,#667085);text-wrap:pretty">{{ g.d }}</span></span><button sc-camel-on-click="{{ g.toggle }}" role="switch" aria-checked="{{ g.on }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ g.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ g.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for><sc-if value="{{ xv.hasDrafts }}"><div style="padding:12px 16px 6px;border-top:1px solid var(--bd,#F2F4F7);font-size:12.5px;color:var(--tx2,#667085);font-weight:500">{{ xv.draftsL }}</div><sc-for list="{{ xv.drafts }}" as="d"><div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--bd,#F2F4F7)"><span style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500;text-wrap:pretty">{{ d.t }}</span><span style="font-size:12px;color:var(--tx2,#667085);text-wrap:pretty">{{ d.sub }}</span></span><div style="display:flex;gap:6px;flex-shrink:0"><button sc-camel-on-click="{{ d.edit }}" style="height:28px;padding:0 10px;border:1px solid var(--bd,#D0D5DD);border-radius:7px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:12.5px;font-weight:500">Editar</button><button sc-camel-on-click="{{ d.drop }}" style="height:28px;padding:0 10px;border:1px solid var(--bd,#D0D5DD);border-radius:7px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:12.5px;font-weight:500">Descartar</button><button sc-camel-on-click="{{ d.pub }}" style="height:28px;padding:0 10px;border:none;border-radius:7px;background:#465FFF;color:#fff;font-size:12.5px;font-weight:500">Publicar</button></div></div></sc-for></sc-if></div></sc-if>
                 <sc-if value="{{ xo.noPending }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:28px;text-align:center;color:var(--tx2,#667085);font-size:14px">Nada esperando você. Os xodós pedem aprovação antes de enviar, publicar, pagar ou apagar.</div></sc-if>
                 <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ xo.appr }}" as="a"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-color:{{ a.bd }}">
 <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:6px;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">{{ a.title }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.sub }}</div></div><sc-if value="{{ a.showBot }}"><span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">{{ a.botName }}</span></sc-if></div>
@@ -3443,7 +3445,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], messages: ['forum', 'Conversas com os clientes no portal.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3774,6 +3776,7 @@ class Component extends DCLogic {
       try { localStorage.setItem('spherum.agency', ag); } catch (e) {}
       this.spAg = ag; this.spMe = me;
       await this.spLoad();
+      this.pl = setInterval(() => { if (document.hidden || this.state.view !== 'messages') return; this.spLoad().catch(() => {}); const t = this.state.threadId; if (t && this.CC && this.CC[t]) this.spCcLoad(t, true).catch(() => {}); }, 20000);
       const q = new URLSearchParams(location.search);
       if (q.get('integracao')) {
         try { history.replaceState(null, '', location.pathname); } catch (e) {}
@@ -3903,6 +3906,77 @@ class Component extends DCLogic {
       this.toastMsg(r.emailed ? 'Convite enviado para ' + r.invite.email : 'Link do convite copiado. Mande para ' + r.invite.email + '.');
       this.spLoad().catch(() => {});
     } catch (e) { this.spErr(e); }
+  }
+  // Colaboração com o cliente (mensagens, pedidos, aprovações e o que foi feito), por cliente.
+  spWhen(t) {
+    const d = new Date(t), now = new Date(), day = x => x.toLocaleDateString('en-CA'), y = new Date(now.getTime() - 864e5);
+    if (day(d) === day(now)) return 'hoje, ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (day(d) === day(y)) return 'ontem';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace(/\./g, '').replace(/ de /g, ' ');
+  }
+  spCc(id) {
+    if (this.CC && this.CC[id]) return this.CC[id];
+    this._ccL = this._ccL || {};
+    if (!this._ccL[id]) { this._ccL[id] = 1; this.spCcLoad(id).then(() => { this._ccL[id] = 0; }, () => {}); }
+    return null;
+  }
+  async spCcLoad(id, read) {
+    const r = await SP.api('/api/clients/' + id + '/collab' + (read ? '?lido=1' : ''));
+    this.CC = Object.assign({}, this.CC, { [id]: r });
+    if (read && this.R.collab && this.R.collab.unread) this.R.collab.unread[id] = 0;
+    this.setState({ real: Date.now() });
+    return r;
+  }
+  spCcPost(id, body, method) { return SP.api('/api/clients/' + id + '/collab', { method: method || 'POST', body }); }
+  async spCcDone(id, msg) { this.toastMsg(msg); await Promise.all([this.spCcLoad(id).catch(() => {}), this.spLoad().catch(() => {})]); }
+  spUnread() { return Object.values((this.R.collab && this.R.collab.unread) || {}).reduce((t, n) => t + n, 0); }
+  async spMsgSend(id) {
+    const text = (this.state.draft || '').trim();
+    if (!text || this._sending) return;
+    this._sending = 1;
+    try { await this.spCcPost(id, { tipo: 'mensagem', text }); this.setState({ draft: '' }); await Promise.all([this.spCcLoad(id, true), this.spLoad()]); }
+    catch (e) { this.spErr(e); } finally { this._sending = 0; }
+  }
+  spOpenThread(id) { this.go('messages', { threadId: id, draft: '' }); this.spCcLoad(id, true).catch(e => this.spErr(e)); }
+  spAskClient(c) {
+    this.fm({ title: 'Pedir algo a ' + c.name, desc: 'O pedido aparece em Pendências no portal do cliente, e quem é do cliente recebe um e-mail.', icon: 'assignment',
+      fields: [{ k: 'title', l: 'O que você precisa', req: 1, ph: 'Ex.: Acesso ao Meta Business' },
+        { k: 'kind', l: 'Como o cliente resolve', type: 'pick', req: 1, opts: [['texto', 'Responde por escrito'], ['arquivo', 'Envia um arquivo'], ['passos', 'Segue os passos e marca “Já fiz”']] },
+        { k: 'details', l: 'Detalhes', type: 'area', ph: 'O contexto para o cliente entender o pedido' },
+        { k: 'steps', l: 'Passos, um por linha', type: 'area', hint: 'Só quando o cliente segue passos', check: (v, all) => all.kind === 'passos' && !(v || '').trim() ? 'Escreva pelo menos um passo' : '' },
+        { k: 'due', l: 'Prazo', type: 'date' }],
+      init: { kind: 'texto' }, okL: 'Enviar pedido',
+      ok: async v => { try {
+        await this.spCcPost(c.id, { tipo: 'pendencia', title: v.title.trim(), kind: v.kind, details: (v.details || '').trim() || undefined, due_date: v.due || undefined,
+          steps: v.kind === 'passos' ? String(v.steps || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 10) : [] });
+        await this.spCcDone(c.id, 'Pedido enviado para ' + c.name); } catch (e) { this.spErr(e); } } });
+  }
+  spSendApproval(c) {
+    const docs = this.D.docs.filter(d => d.client === c.id);
+    this.fm({ title: 'Enviar para aprovação', desc: c.name + ' aprova ou pede ajustes pelo portal. O arquivo escolhido passa a ficar visível para o cliente.', icon: 'task_alt',
+      fields: [{ k: 'title', l: 'O que o cliente vai aprovar', req: 1, ph: 'Ex.: Criativos de novembro' },
+        { k: 'doc', l: 'Arquivo', type: 'pick', opts: [['', 'Nenhum']].concat(docs.map(d => [d.id, d.name, d.cat])), hint: docs.length ? '' : 'Envie o arquivo em Documentos primeiro, ou use um link.' },
+        { k: 'link', l: 'Link', ph: 'https://…', check: (x, all) => x && !/^https:\/\/\S+$/.test(x) ? 'Use um link que comece com https://' : !x && !all.doc ? 'Escolha um arquivo acima ou cole um link' : '' },
+        { k: 'details', l: 'Recado para o cliente', type: 'area' }],
+      init: { doc: '' }, okL: 'Enviar para aprovação',
+      ok: async v => { try {
+        await this.spCcPost(c.id, { tipo: 'aprovacao', title: v.title.trim(), document_id: v.doc || undefined, link: (v.link || '').trim() || undefined, details: (v.details || '').trim() || undefined });
+        await this.spCcDone(c.id, 'Enviado para aprovação de ' + c.name); } catch (e) { this.spErr(e); } } });
+  }
+  spNewUpdate(c) {
+    this.fm({ title: 'Contar ao cliente o que foi feito', desc: 'Aparece em “Feito pela agência” no portal da ' + c.name + ', em português claro.', icon: 'campaign',
+      fields: [{ k: 'title', l: 'O que foi feito', req: 1, ph: 'Ex.: Trocamos os criativos que estavam cansados' },
+        { k: 'why', l: 'Por quê', type: 'area', ph: 'Ex.: O custo por contato subiu 30% em duas semanas' },
+        { k: 'impact', l: 'Resultado', ph: 'Ex.: −R$ 12 por contato' },
+        { k: 'kind', l: 'Tipo', type: 'pick', req: 1, opts: [['equipe', 'Trabalho da equipe'], ['otimizacao', 'Otimização'], ['alerta', 'Aviso']] }],
+      init: { kind: 'equipe' }, okL: 'Publicar no portal',
+      ok: async v => { try {
+        await this.spCcPost(c.id, { tipo: 'atualizacao', title: v.title.trim(), why: (v.why || '').trim() || undefined, impact: (v.impact || '').trim() || undefined, kind: v.kind, publish: true });
+        await this.spCcDone(c.id, 'Publicado no portal da ' + c.name); } catch (e) { this.spErr(e); } } });
+  }
+  async spDraft(d, acao, edit) {
+    try { await this.spCcPost(d.client_id, Object.assign({ tipo: 'atualizacao', item_id: d.id, acao }, edit || {}), 'PATCH');
+      await this.spCcDone(d.client_id, acao === 'publicar' ? 'Publicado no portal da ' + d.client_name : 'Rascunho descartado'); } catch (e) { this.spErr(e); }
   }
   spPortal(c) {
     this.fm({ title: 'Convidar para o portal', desc: 'Quem recebe o convite vê a performance, os relatórios e os documentos da ' + c.name + '.', icon: 'person_add', fields: [{ k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@empresa.com.br' }], okL: 'Enviar convite',
@@ -4180,7 +4254,7 @@ class Component extends DCLogic {
     const navItem = ([id, label, icon, badge]) => { const a = act === id; if (this.R && SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
     const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', 3], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
       ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', (this.state.tcList || [1, 2, 3, 4]).filter(t => !t.st || t.st === 'open').length]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
-      ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', 4], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
+      ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', this.R ? this.spUnread() : 4], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
       .map(([label, items]) => { const GI = { Comercial: 'handshake', 'Operação': 'bolt', 'Análise': 'insights', 'Gestão': 'account_balance', Recursos: 'widgets' };
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
         const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' && !(this.R && SP_SOON[x[0]]) ? x[3] : 0), 0);
@@ -4244,7 +4318,7 @@ class Component extends DCLogic {
         { icon: 'folder_managed', l: 'Projetos ativos', n: S.projects.filter(p => p.status !== 'done').length, s: projLate + ' atrasados', c: 'var(--tx,#101828)', run: () => this.go('projects') },
         { icon: 'assignment_late', l: 'Tarefas vencidas', n: 7, s: '3 em Black Friday', c: '#D92D20', run: () => this.go('projects', { projView: 'board' }) },
         { icon: 'local_shipping', l: 'Entregas na semana', n: 5, s: '2 amanhã', c: 'var(--tx,#101828)', run: () => this.go('projects', { projView: 'calendar' }) },
-        { icon: 'mark_chat_unread', l: 'Aguardando resposta', n: D.threads.filter(t => t.unread).length, s: 'clientes', c: 'var(--tx,#101828)', run: () => this.go('messages') },
+        { icon: 'mark_chat_unread', l: 'Aguardando resposta', n: this.R ? Object.values((this.R.collab && this.R.collab.unread) || {}).filter(Boolean).length : D.threads.filter(t => t.unread).length, s: 'clientes', c: 'var(--tx,#101828)', run: () => this.go('messages') },
         { icon: 'lab_profile', l: 'Relatórios pendentes', n: D.reports.filter(r => r.status === 'Rascunho').length, s: 'até 01 out', c: '#B54708', run: () => this.go('reports') },
         { icon: 'ads_click', l: 'Campanhas em atenção', n: cp.filter(c => c.att).length, s: 'acima do CPA alvo', c: '#D92D20', run: () => this.go('campaigns', { campView: 'Com problema' }) }
       ],
@@ -5015,6 +5089,15 @@ class Component extends DCLogic {
   }
   vXv() {
     const S = this.state, sw = (k, l, d) => Object.assign({ l, d }, spSw(!!S.xvOpt[k], () => this.setState(s => ({ xvOpt: Object.assign({}, s.xvOpt, { [k]: !s.xvOpt[k] }) }))));
+    if (this.R) {
+      const RC = this.R.collab || {}, on = !!(this.R.agency.portal_settings || {}).auto_publicar, items = RC.draft_items || [];
+      const toggle = async () => { try { await SP.api('/api/agencies/' + this.spAg + '/portal-settings', { method: 'PATCH', body: { auto_publicar: !on } }); await this.spLoad(); this.toastMsg(on ? 'As ações dos xodós passam pela equipe antes do portal' : 'As ações dos xodós vão direto para o portal'); } catch (e) { this.spErr(e); } };
+      const drafts = items.map(d => ({ t: d.title, sub: d.client_name + (d.xodo_name ? ' · ' + d.xodo_name : '') + ' · ' + this.spWhen(d.created_at) + (d.why ? ' · ' + d.why : ''),
+        pub: () => this.spDraft(d, 'publicar'), drop: () => this.spDraft(d, 'descartar'),
+        edit: () => this.fm({ title: 'Editar antes de publicar', desc: 'É assim que a ' + d.client_name + ' vai ler no portal.', icon: 'edit_note', fields: [{ k: 'title', l: 'O que foi feito', req: 1 }, { k: 'why', l: 'Por quê', type: 'area' }], init: { title: d.title, why: d.why || '' }, okL: 'Publicar',
+          ok: v => this.spDraft(d, 'publicar', { title: v.title.trim(), why: (v.why || '').trim() || null }) }) }));
+      return { xv: { opts: [Object.assign({ l: 'Mostrar as ações dos xodós sozinho', d: 'Desligado: cada ação passa pela equipe antes de aparecer no portal' }, spSw(on, toggle))], hasDrafts: drafts.length > 0, draftsL: drafts.length === 1 ? '1 rascunho esperando revisão' : drafts.length + ' rascunhos esperando revisão', drafts } };
+    }
     return { xv: { opts: [sw('auto', 'Mostrar as ações dos xodós sozinho', 'Desligado: cada ação passa por você antes de aparecer'), sw('week', 'Resumo semanal no WhatsApp', 'Toda segunda às 9h: 3 números, a melhor ação e o link do portal'), sw('ask', '“Pergunte ao xodó” no portal', 'Responde só com os dados do cliente. Assunto comercial vai para o responsável.')] } };
   }
   vRoi() {
@@ -5303,7 +5386,7 @@ class Component extends DCLogic {
         out.d.canManage = ['owner', 'admin'].includes(this.R.me.role); out.d.manage = () => this.spXoManage(sel);
         out.d.spendNote = sel.x.daily_budget_brl ? (out.d.pct >= 100 ? 'Pausado no teto do dia. Aumente em Uso e limites para continuar hoje.' : out.d.pct >= 80 ? 'Passou de 80% do teto do dia.' : 'Chave de API da agência · teto definido por você') : 'Chave de API da agência · sem teto';
       }
-      out.extras = false;
+      out.extras = true; out.phone = false;
       const PC = this.PC, mgr = ['owner', 'admin'].includes(this.R.me.role), user = mgr || this.R.me.role === 'member';
       const waiting = RX.xodos.find(x => x.last_run && x.last_run.status === 'waiting_takeover'), liveNow = !!(PC && PC.computer && PC.computer.live), mine = !!(PC && PC.control && PC.control.mine);
       const pcBase = { shared: 'Computador na nuvem da agência, dividido pelos xodós: navegador, arquivos e terminal.', rows: rowW.map(r => ({ a: r[0], b: r[1] })), url: (this.R.agency.slug || 'agencia') + '-xodo · ~/', hl: '8px', hlO: 0, anim: 'none' };
@@ -5318,6 +5401,7 @@ class Component extends DCLogic {
         caption: waiting ? waiting.name + ' pediu você no computador.' : PC.screen && PC.screen.xodo_name ? PC.screen.xodo_name + ' está usando o computador.' : 'Ligado e pronto para a próxima tarefa.' });
     }
     if (out.extras === undefined) out.extras = true;
+    if (out.phone === undefined) out.phone = true;
     out.u = { used: brl(month), note: 'Tokens cobrados direto pelo provedor, na conta da agência. O Spherum não cobra pela IA: só mede o consumo e aplica os limites diários de cada xodó.',
       keys: [['Anthropic', 'Conectada · Faísca', '#12B76A'], ['OpenAI', 'Conectada · Zuca', '#12B76A'], ['xAI', 'Conectada · Nina', '#12B76A']].map(k => ({ n: k[0], s: k[1], dot: k[2] })),
       modeNote: 'Cada xodó usa o modelo que você escolher. Trocar de chave ou de modelo não apaga a memória dele.', manage: () => this.go('settings', { setTab: 'integrations' }),
@@ -6239,7 +6323,24 @@ class Component extends DCLogic {
       draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }),
       send: () => { const d = S.draft.trim(); if (!d) return; this.setState(s => ({ draft: '', sent: Object.assign({}, s.sent, { [at.id]: (s.sent[at.id] || []).concat([d]) }) })); },
       onKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const d = S.draft.trim(); if (!d) return; this.setState(s => ({ draft: '', sent: Object.assign({}, s.sent, { [at.id]: (s.sent[at.id] || []).concat([d]) }) })); } },
-      openClient: () => ac && this.go('client', { clientId: ac.id }) };
+      openClient: () => ac && this.go('client', { clientId: ac.id }), sub: 'Cada conversa fica ligada a uma campanha, projeto, relatório, fatura ou documento.', noThreads: false, empty: false, emptyL: '' };
+    if (this.R) {
+      const RC = this.R.collab || {}, unr = RC.unread || {}, ths = (RC.threads || []).filter(t => x.clById[t.client_id]);
+      if (S.threadId && x.clById[S.threadId] && !ths.some(t => t.client_id === S.threadId)) ths.unshift({ client_id: S.threadId, side: null, text: '', created_at: null });
+      const selId = ths.some(t => t.client_id === S.threadId) ? S.threadId : ths.length ? ths[0].client_id : null, sc = selId ? x.clById[selId] : null, cc = selId ? this.spCc(selId) : null;
+      msg.threads = ths.map(t => { const a = t.client_id === selId, n = unr[t.client_id] || 0;
+        return { id: t.client_id, client: t.client_id, clientName: x.clById[t.client_id].name, when: t.created_at ? this.spWhen(t.created_at) : '', ctx: 'Portal', ctxName: !t.side ? 'nova conversa' : t.side === 'cliente' ? 'aguardando resposta' : 'respondida',
+          last: t.text ? (t.side === 'agencia' ? 'Você: ' : '') + t.text : 'Escreva a primeira mensagem', unread: n, hasUnread: n > 0 && !a, bg: a ? 'var(--sf2,#F2F4F7)' : 'transparent',
+          pick: () => { this.setState({ threadId: t.client_id, draft: '' }); this.spCcLoad(t.client_id, true).catch(e => this.spErr(e)); } }; });
+      msg.t = { who: sc ? sc.contact || sc.name : 'Nenhuma conversa aberta', clientName: sc ? sc.name : '—', ctx: 'Portal', ctxName: 'portal do cliente' };
+      msg.c = sc || { name: '—', seg: '', hScore: '—', hL: '', hC: 'var(--tx2,#667085)', mrrF: '—', owner: '—', fin: '—', finC: 'var(--tx2,#667085)' };
+      msg.msgs = cc ? cc.messages.map(m => ({ me: m.side === 'agencia', them: m.side !== 'agencia', who: m.author_name || (m.side === 'agencia' ? 'Equipe' : sc.name), when: this.spWhen(m.created_at), text: m.text })) : [];
+      msg.send = () => selId && this.spMsgSend(selId);
+      msg.onKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (selId) this.spMsgSend(selId); } };
+      msg.openClient = () => sc && this.go('client', { clientId: sc.id, clientTab: 'overview' });
+      msg.sub = 'As conversas com os clientes pelo portal. Quem é do cliente recebe as suas mensagens por e-mail.';
+      msg.noThreads = !ths.length; msg.empty = !!selId && !!cc && !cc.messages.length; msg.emptyL = sc ? 'Nenhuma mensagem com a ' + sc.name + ' ainda. Escreva abaixo: o cliente lê no portal e recebe um e-mail.' : '';
+    }
     // documents
     const cats = ['Todos', 'Contratos', 'Briefings', 'Criativos', 'Relatórios', 'Financeiro', 'Outros'];
     const docs = { cats: this.segOf(cats.map(c => [c, c, c === 'Todos' ? D.docs.length : D.docs.filter(d => d.cat === c).length]), S.docCat, set('docCat')),
@@ -6401,7 +6502,25 @@ class Component extends DCLogic {
       cd.quick = [['request_quote', 'Nova cobrança', () => this.setState({ dialog: 'cobranca', form: { client: c.id } })], ['lab_profile', 'Criar relatório', () => this.go('reports', { reportMode: 'builder', rClient: c.id })], ['upload_file', 'Enviar documento', () => this.go('documents')], ['person_add', 'Convidar para o portal', () => this.spPortal(c)]].map(q => ({ icon: q[0], l: q[1], run: q[2] }));
       cd.dims = [['Performance', c.cur == null ? 70 : cl2(72 + c.dp * 1.2), c.cur != null ? c.gt + ' ' + c.curF + ' vs meta ' + c.goalF.replace(c.gt + ' ', '') : 'Defina a meta e vincule uma conta de anúncio', '60%'],
         ['Financeiro', c.fin === 'Vencida' ? 30 : c.fin === 'Pendente' ? 72 : 96, c.fin === 'Vencida' ? 'Tem fatura vencida' : c.fin === 'Pendente' ? 'Fatura em aberto, no prazo' : 'Nenhuma fatura atrasada', '40%']].map(d => { const hs = this.hs(d[1]); return { l: d[0], v: d[1], w: d[1] + '%', c: hs.c, ex: d[2], weight: d[3] }; });
-      cd.pend = (c.reasons.length ? c.reasons.map(r => 'Resolver: ' + r.toLowerCase()) : ['Nenhuma pendência aberta']).map(t => ({ t }));
+      cd.quick = [['chat', 'Enviar mensagem', () => this.spOpenThread(c.id)], ['assignment', 'Pedir algo ao cliente', () => this.spAskClient(c)], ['task_alt', 'Enviar para aprovação', () => this.spSendApproval(c)], ['campaign', 'Contar ao cliente o que foi feito', () => this.spNewUpdate(c)]]
+        .map(q => ({ icon: q[0], l: q[1], run: q[2] })).concat(cd.quick).map(q => Object.assign({}, q, { run: () => { this.setState({ cdMenu: false }); q.run(); } }));
+      cd.isRisk = false;
+      const cc = this.spCc(c.id), RQ = { aberto: 'aguardando o cliente', feito: 'resolvido pelo cliente', cancelado: 'cancelado' }, AP = { pendente: 'aguardando o cliente', aprovado: 'aprovado', alteracoes: 'ajustes pedidos', cancelado: 'cancelado' };
+      const cp = cc ? cc.requests.filter(r => r.status === 'aberto').map(r => 'Aguardando o cliente: ' + r.title)
+        .concat(cc.approvals.filter(a => a.status === 'pendente').map(a => 'Aprovação pendente: ' + a.title))
+        .concat(cc.approvals.filter(a => a.status === 'alteracoes').map(a => 'Ajustes pedidos em ' + a.title + (a.comment ? ': ' + a.comment : ''))) : [];
+      cd.pend = cp.concat(c.reasons.map(r => 'Resolver: ' + r.toLowerCase())).concat(cp.length || c.reasons.length ? [] : ['Nenhuma pendência aberta']).map(t => ({ t }));
+      if (cc) {
+        const ev = cc.updates.map(u => [u.status === 'rascunho' ? 'edit_note' : u.kind === 'relatorio' ? 'lab_profile' : 'auto_awesome', (u.status === 'rascunho' ? 'Rascunho para o portal: ' : 'No portal: ') + u.title + (u.xodo_name ? ' · ' + u.xodo_name : ''), u.published_at || u.created_at])
+          .concat(cc.requests.map(r => ['assignment', 'Pedido ao cliente: ' + r.title + ' · ' + RQ[r.status], r.done_at || r.created_at]))
+          .concat(cc.approvals.map(a => ['task_alt', 'Aprovação: ' + a.title + ' · ' + AP[a.status], a.decided_at || a.created_at]))
+          .sort((p, q) => (p[2] < q[2] ? 1 : -1)).slice(0, 15).map(a => ({ icon: a[0], t: a[1], when: this.spWhen(a[2]) }));
+        cd.activity = ev.concat(cd.activity);
+        if (S.clientTab === 'messages') {
+          cd.rows = cc.messages.slice().reverse().slice(0, 30).map(m => rowT('forum', m.text.length > 90 ? m.text.slice(0, 90) + '…' : m.text, (m.author_name || (m.side === 'agencia' ? 'Equipe' : c.name)) + ' · ' + this.spWhen(m.created_at), '', m.side === 'cliente' ? 'Cliente' : 'Agência', m.side === 'cliente' ? 'primary' : 'gray'));
+          cd.rowsEmpty = !cd.rows.length;
+        }
+      } else if (S.clientTab === 'messages') { cd.rows = []; cd.rowsEmpty = true; }
     }
 
     // onboarding

@@ -63,7 +63,7 @@ export function goalGap(metric: string | null, goal: number | null, current: num
 export async function agencyPortal(sql: Sql, agencyId: string, userId: string, now = new Date()) {
   const agency = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; brand_color: string | null; cnpj: string | null; phone: string | null; website: string | null; city: string | null; state: string | null; timezone: string | null; slug: string }>(
     sql,
-    `select name, slug, plan, plan_status, trial_ends_at::text, brand_color, cnpj, phone, website, city, state, timezone from agencies where id = $1`,
+    `select name, slug, plan, plan_status, trial_ends_at::text, brand_color, cnpj, phone, website, city, state, timezone, portal_settings from agencies where id = $1`,
     [agencyId],
   );
   if (!agency) throw new XodoError("Não encontrado", 404);

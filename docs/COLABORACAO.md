@@ -67,4 +67,18 @@ Lado do cliente (só quem é do cliente):
   - `arquivo`, com `{ name, size, mime }`, que devolve a URL de envio;
   - `arquivo_pronto`, com `{ item_id }`, que confirma o envio.
 
-Os dados chegam em `collab` dentro de `/api/portal/cliente` e `/api/portal/agencia`.
+Os dados chegam em `collab` dentro de `/api/portal/cliente` e `/api/portal/agencia`. Na agência, `collab`
+traz os contadores, as não lidas por cliente, a última mensagem de cada conversa (`threads`) e os
+rascunhos esperando revisão (`draft_items`).
+
+## Nas telas
+
+- **Agência**:
+  - **Mensagens** lista as conversas e responde pelo portal.
+  - **Cliente → Mais ações** traz "Enviar mensagem", "Pedir algo ao cliente", "Enviar para aprovação" e
+    "Contar ao cliente o que foi feito". As pendências e aprovações abertas aparecem no card
+    Pendências; o histórico fica em Atividades.
+  - **Xodós → Aprovações → O que o cliente vê no portal** liga a publicação automática e mostra os
+    rascunhos para editar, publicar ou descartar.
+- **Cliente**: "Feito pela agência", Pendências, "Aguardando sua aprovação" na visão geral e
+  Mensagens.

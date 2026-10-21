@@ -325,7 +325,22 @@ export async function agencyCollabSummary(sql: Sql, agencyId: string) {
             (select count(*)::int from client_approvals where agency_id = $1 and status = 'alteracoes' and decided_at > now() - interval '14 days') as changes`,
     [agencyId],
   );
-  return { ...row!, unread: await unreadBy(sql, agencyId, "agencia") };
+  // Uma linha por conversa: a última mensagem de cada cliente.
+  const threads = await sql.query<{ client_id: string; side: Side; text: string; created_at: string; author_name: string | null }>(
+    `select distinct on (m.client_id) m.client_id, m.side, m.text, m.created_at::text, coalesce(p.full_name, u.email) as author_name
+       from client_messages m left join profiles p on p.id = m.author_user left join auth.users u on u.id = m.author_user
+      where m.agency_id = $1 order by m.client_id, m.id desc`,
+    [agencyId],
+  );
+  threads.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  // Rascunhos esperando a equipe revisar antes de irem para o portal.
+  const draftItems = await sql.query<{ id: string; client_id: string; client_name: string; kind: string; title: string; why: string | null; xodo_name: string | null; created_at: string }>(
+    `select u.id, u.client_id, c.name as client_name, u.kind, u.title, u.why, x.name as xodo_name, u.created_at::text
+       from client_updates u join clients c on c.id = u.client_id left join xodos x on x.id = u.xodo_id
+      where u.agency_id = $1 and u.status = 'rascunho' order by u.created_at desc limit 50`,
+    [agencyId],
+  );
+  return { ...row!, unread: await unreadBy(sql, agencyId, "agencia"), threads, draft_items: draftItems };
 }
 
 export const portalSettingsInput = z.object({ auto_publicar: z.boolean() }).partial();
