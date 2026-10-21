@@ -1110,13 +1110,14 @@ a:hover{color:#3346D3;text-decoration:underline}
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow-x:auto">
                 <div style="min-width:820px">
                   <div style="display:grid;grid-template-columns:minmax(240px,2fr) 1.2fr 0.9fr 0.7fr 1.3fr;gap:12px;padding:0 16px;height:38px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:12px;color:var(--tx2,#667085);font-weight:500;background:var(--bg,#F7F8FA)"><span>Projeto</span><span>Responsável</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>
-                  <sc-for list="{{ proj.rows }}" as="p" hint-placeholder-count="8"><div style="display:grid;grid-template-columns:minmax(240px,2fr) 1.2fr 0.9fr 0.7fr 1.3fr;gap:12px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px" style-hover="background:var(--hv,#F9FAFB)">
+                  <sc-for list="{{ proj.rows }}" as="p" hint-placeholder-count="8"><div sc-camel-on-click="{{ p.open }}" style="cursor:{{ p.cur }};display:grid;grid-template-columns:minmax(240px,2fr) 1.2fr 0.9fr 0.7fr 1.3fr;gap:12px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px" style-hover="background:var(--hv,#F9FAFB)">
                     <div style="min-width:0"><div style="font-weight:500">{{ p.name }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ p.clientName }}</div></div>
                     <span style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:10px;font-weight:600;display:grid;place-items:center">{{ p.ownerIni }}</span>{{ p.owner }}</span>
                     <span><span style="font-size:12px;padding:2px 8px;border-radius:5px;font-weight:500;white-space:nowrap;background:{{ p.stBg }};color:{{ p.stC }}">{{ p.stL }}</span></span>
                     <span style="font-variant-numeric:tabular-nums">{{ p.due }}</span>
                     <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ p.pW }};background:{{ p.barC }};border-radius:3px"></div></div><span style="width:34px;text-align:right;font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ p.pW }}</span></div>
                   </div></sc-for>
+                  <sc-if value="{{ proj.empty }}"><div style="padding:36px;text-align:center;color:var(--tx2,#667085)">Nenhum projeto ainda. Crie o primeiro em “Novo projeto”: dá para começar de um playbook, que já traz as tarefas.</div></sc-if>
                 </div>
               </div>
             </sc-if>
@@ -1127,7 +1128,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <div sc-camel-on-drag-over="{{ col.onDragOver }}" sc-camel-on-drop="{{ col.onDrop }}" style="background:{{ col.bg }};border:1px dashed {{ col.bd }};border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:420px">
                     <div style="display:flex;gap:6px;padding:4px"><span style="font-weight:600;font-size:13px">{{ col.name }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ col.count }}</span></div>
                     <sc-for list="{{ col.items }}" as="p">
-                      <div draggable="true" sc-camel-on-drag-start="{{ p.onDragStart }}" sc-camel-on-drag-end="{{ p.onDragEnd }}" style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:8px;padding:10px 12px;cursor:grab;opacity:{{ p.op }};display:flex;flex-direction:column;gap:8px" style-hover="border-color:#C9CFD8">
+                      <div draggable="true" sc-camel-on-click="{{ p.open }}" sc-camel-on-drag-start="{{ p.onDragStart }}" sc-camel-on-drag-end="{{ p.onDragEnd }}" style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:8px;padding:10px 12px;cursor:grab;opacity:{{ p.op }};display:flex;flex-direction:column;gap:8px" style-hover="border-color:#C9CFD8">
                         <div><div style="font-weight:600;font-size:13px">{{ p.name }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ p.clientName }}</div></div>
                         <div style="height:4px;border-radius:2px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ p.pW }};background:{{ p.barC }}"></div></div>
                         <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span title="{{ p.owner }}" style="width:20px;height:20px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:9.5px;font-weight:600;display:grid;place-items:center">{{ p.ownerIni }}</span><span style="font-size:12px;padding:2px 8px;border-radius:5px;font-weight:500;white-space:nowrap;font-size:11.5px;padding:1px 6px;background:{{ p.stBg }};color:{{ p.stC }}">{{ p.stL }}</span><div style="flex:1"></div><span style="color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ p.due }}</span></div>
@@ -1148,18 +1149,18 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <div style="position:relative">
                     <div style="position:absolute;top:0;bottom:0;left:calc(240px + (100% - 240px) * 0.6);width:0;border-left:1.5px solid #465FFF;z-index:1"></div>
                     <sc-for list="{{ proj.rows }}" as="p"><div style="display:grid;grid-template-columns:240px 1fr;border-bottom:1px solid var(--bd,#E4E7EC)">
-                      <div style="padding:9px 16px;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ p.clientName }} · {{ p.owner }}</div></div>
+                      <div sc-camel-on-click="{{ p.open }}" style="cursor:{{ p.cur }};padding:9px 16px;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ p.clientName }} · {{ p.owner }}</div></div>
                       <div style="position:relative;height:52px"><div style="position:absolute;top:14px;height:24px;left:{{ p.barL }};width:{{ p.barW }};background:{{ p.barBg }};border:1px solid {{ p.barC }};border-radius:6px;overflow:hidden;display:flex;align-items:center"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ p.pW }};background:{{ p.barC }};opacity:0.22"></div><span style="position:relative;padding:0 8px;font-size:11.5px;font-weight:500;color:{{ p.barC }};white-space:nowrap">{{ p.pW }} · {{ p.due }}</span></div></div>
                     </div></sc-for>
                   </div>
-                  <div style="display:flex;gap:16px;padding:10px 16px;font-size:12px;color:var(--tx2,#667085);flex-wrap:wrap"><span style="display:flex;align-items:center;gap:6px"><span style="height:12px;border-left:1.5px solid #465FFF"></span>Hoje · 28 set</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #F04438;background:rgba(240,68,56,0.12)"></span>Atrasado</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #98A2B3"></span>Concluído</span></div>
+                  <div style="display:flex;gap:16px;padding:10px 16px;font-size:12px;color:var(--tx2,#667085);flex-wrap:wrap"><span style="display:flex;align-items:center;gap:6px"><span style="height:12px;border-left:1.5px solid #465FFF"></span>{{ proj.todayLbl }}</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #F04438;background:rgba(240,68,56,0.12)"></span>Atrasado</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #98A2B3"></span>Concluído</span></div>
                 </div>
               </div>
             </sc-if>
 
             <sc-if value="{{ proj.isCal }}">
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
-                <div style="display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:15px;font-weight:600">Setembro 2026</h2><span style="font-size:12.5px;color:var(--tx2,#667085)">Entregas, reuniões, relatórios e vencimentos</span></div>
+                <div style="display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:15px;font-weight:600">{{ proj.calTitle }}</h2><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ proj.calSub }}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--bd,#E4E7EC);background:var(--bg,#F7F8FA)"><sc-for list="{{ proj.dows }}" as="d"><div style="padding:8px 10px;font-size:12px;color:var(--tx2,#667085);font-weight:500">{{ d }}</div></sc-for></div>
                 <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">
                   <sc-for list="{{ proj.cal }}" as="c"><div style="min-height:108px;padding:6px;border-right:1px solid var(--bd,#E4E7EC);border-bottom:1px solid var(--bd,#E4E7EC);background:{{ c.bg }};display:flex;flex-direction:column;gap:3px;min-width:0">
@@ -2963,6 +2964,32 @@ a:hover{color:#3346D3;text-decoration:underline}
             </sc-if>
           </div>
         </sc-if>
+        <sc-if value="{{ drawer.isProj }}">
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;color:var(--tx2,#667085)">{{ drawer.pj.sub }}</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;padding:2px 8px;border-radius:5px;font-weight:500;background:{{ drawer.pj.stBg }};color:{{ drawer.pj.stC }}">{{ drawer.pj.stL }}</span><span style="font-size:12px;padding:2px 8px;border-radius:5px;font-weight:500;background:{{ drawer.pj.prBg }};color:{{ drawer.pj.prC }}">{{ drawer.pj.prL }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ drawer.pj.dates }}</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:3px;background:var(--sf2,#F2F4F7);border-radius:8px;gap:2px"><sc-for list="{{ drawer.pj.sts }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.sel }}" style="height:28px;padding:0 4px;border:1px solid {{ s.bd }};border-radius:6px;background:{{ s.bg }};color:{{ s.c }};box-shadow:{{ s.sh }};font-size:12px;font-weight:500;white-space:nowrap">{{ s.l }}</button></sc-for></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--tx2,#667085)">Progresso</span><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ drawer.pj.progL }}</span></div>
+              <div style="height:8px;border-radius:4px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ drawer.pj.pW }};background:{{ drawer.pj.barC }};border-radius:4px"></div></div>
+              <sc-if value="{{ drawer.pj.manual }}"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tx2,#667085)">Sem tarefas: informe à mão</span><sc-for list="{{ drawer.pj.progOpts }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:24px;padding:0 8px;border:1px solid {{ o.bd }};border-radius:6px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500">{{ o.l }}</button></sc-for></div></sc-if>
+            </div>
+            <sc-if value="{{ drawer.pj.hasDesc }}"><div style="font-size:13px;color:var(--tx,#344054);white-space:pre-wrap;text-wrap:pretty">{{ drawer.pj.desc }}</div></sc-if>
+            <div style="display:flex;flex-direction:column;border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg,#F7F8FA);border-bottom:1px solid var(--bd,#E4E7EC)"><span style="font-size:13px;font-weight:600">Tarefas</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ drawer.pj.tasksL }}</span></div>
+              <sc-if value="{{ drawer.pj.loading }}"><div style="padding:12px;font-size:12.5px;color:var(--tx2,#667085)">Carregando…</div></sc-if>
+              <sc-for list="{{ drawer.pj.tasks }}" as="t"><div style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid var(--bd,#F2F4F7)">
+                <button sc-camel-on-click="{{ t.toggle }}" role="checkbox" aria-checked="{{ t.done }}" aria-label="{{ t.title }}" style="width:18px;height:18px;margin-top:1px;border-radius:5px;border:1.5px solid {{ t.cbBd }};background:{{ t.cbBg }};color:#fff;display:grid;place-items:center;padding:0;flex-shrink:0;font-size:12px;line-height:1">{{ t.mark }}</button>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;text-decoration:{{ t.dec }};color:{{ t.tc }};text-wrap:pretty">{{ t.title }}</span><sc-if value="{{ t.hasMeta }}"><span style="font-size:11.5px;color:{{ t.metaC }}">{{ t.meta }}</span></sc-if></div>
+                <button sc-camel-on-click="{{ t.del }}" aria-label="Apagar tarefa" style="width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:var(--tx2,#98A2B3);display:grid;place-items:center;padding:0;flex-shrink:0" style-hover="background:var(--sf2,#F2F4F7)"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:16px">close</span></button>
+              </div></sc-for>
+              <div style="display:flex;gap:6px;padding:8px 10px"><input value="{{ drawer.pj.newT }}" sc-camel-on-change="{{ drawer.pj.onNewT }}" sc-camel-on-key-down="{{ drawer.pj.onKey }}" placeholder="Nova tarefa" aria-label="Nova tarefa" style="flex:1;min-width:0;height:32px;padding:0 10px;border:1px solid var(--bd,#E4E7EC);border-radius:7px;background:var(--sf,#fff);outline:none;font-size:13px" style-focus="border-color:#465FFF"><button sc-camel-on-click="{{ drawer.pj.add }}" style="height:32px;padding:0 12px;border:none;border-radius:7px;background:#465FFF;color:#fff;font-size:12.5px;font-weight:500">Adicionar</button></div>
+            </div>
+            <div style="display:flex;gap:8px"><button sc-camel-on-click="{{ drawer.pj.edit }}" style="flex:1;height:34px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);font-size:13px;font-weight:500">Editar projeto</button><button sc-camel-on-click="{{ drawer.pj.openClient }}" style="flex:1;height:34px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);font-size:13px;font-weight:500">Abrir cliente</button><button sc-camel-on-click="{{ drawer.pj.del }}" aria-label="Excluir projeto" style="width:34px;height:34px;border:1px solid rgba(240,68,56,0.35);border-radius:8px;background:var(--sf,#fff);color:#D92D20;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">delete</span></button></div>
+          </div>
+        </sc-if>
         <sc-if value="{{ drawer.isHelp }}">
           <div style="padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)">
             <input value="{{ help.q }}" sc-camel-on-change="{{ help.onQ }}" placeholder="Buscar na central de ajuda" aria-label="Buscar ajuda" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);outline:none">
@@ -3446,7 +3473,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], projects: ['view_kanban', 'Projetos em lista, quadro, linha do tempo e calendário.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], contracts: ['contract', 'Contratos com os clientes, com renovação e assinatura.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3796,9 +3823,9 @@ class Component extends DCLogic {
     this.D = Object.assign({}, this.D, { exClients: ex, clients: R.clients, camps: R.camps, plat: R.plat, reports: R.reports, team: R.team, attention: R.attention, docs: (R.documents || []).map(d => this.spDoc(d)) });
     // Listas de exemplo dos módulos sem backend ficam vazias na conta real.
     this.D.today = []; this.D.deals = []; this.D.projects = []; this.D.threads = []; this.D.invoices = [];
-    const invs = (R.invoices || []).map(i => this.spInv(i));
-    if (init) { Object.assign(this.state, { deals: [], projects: [], invs, checks: this.state.checks.map(() => false) }); return; }
-    this.setState({ invs });
+    const invs = (R.invoices || []).map(i => this.spInv(i)), projects = (R.projects || []).map(p => this.spProj(p));
+    if (init) { Object.assign(this.state, { deals: [], projects, invs, checks: this.state.checks.map(() => false) }); return; }
+    this.setState({ invs, projects });
     const has = id => R.clients.some(c => c.id === id), first = R.clients.length ? R.clients[0].id : null;
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
@@ -3998,6 +4025,55 @@ class Component extends DCLogic {
   async spDraft(d, acao, edit) {
     try { await this.spCcPost(d.client_id, Object.assign({ tipo: 'atualizacao', item_id: d.id, acao }, edit || {}), 'PATCH');
       await this.spCcDone(d.client_id, acao === 'publicar' ? 'Publicado no portal da ' + d.client_name : 'Rascunho descartado'); } catch (e) { this.spErr(e); }
+  }
+  // Projetos: o formato das telas do design a partir de /api/portal/agencia.
+  spDm(iso) { const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], p = iso.split('-'); return p[2] + ' ' + MN[+p[1] - 1]; }
+  spIso(d) { return d.toLocaleDateString('en-CA'); }
+  spProj(r) {
+    const day = iso => Date.parse(iso + 'T12:00:00Z'), t0 = day(this.spIso(new Date())), w0 = t0 - 27 * 864e5, idx = iso => Math.round((day(iso) - w0) / 864e5) + 1;
+    const PR = { alta: 'Alta', media: 'Média', baixa: 'Baixa' }, s0 = Math.min(45, Math.max(1, idx(r.start_date))), e0 = Math.min(45, Math.max(s0, idx(r.due_date)));
+    return { id: r.id, real: 1, x: r, name: r.name, client: r.client_id, owner: r.owner_name || 'Sem responsável', status: r.status, prio: PR[r.priority] || 'Média', due: this.spDm(r.due_date), dueISO: r.due_date,
+      progress: r.progress, late: r.late, soon: !r.late && r.status !== 'done' && day(r.due_date) - t0 <= 3 * 864e5, tags: r.tags || [], start: s0, end: e0 };
+  }
+  async spPjLoad(id) {
+    try { const r = await SP.api('/api/projects/' + id + '/tasks'); this.PJT = Object.assign({}, this.PJT, { [id]: r.tasks }); this.setState({ real: Date.now() }); } catch (e) { this.spErr(e); }
+  }
+  spPjOpen(p) { this.setState({ drawer: 'proj', pjId: p.id, pjNew: '' }); this.spPjLoad(p.id); }
+  async spPjPatch(id, body, msg) {
+    try { await SP.api('/api/projects/' + id, { method: 'PATCH', body }); await this.spLoad(); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); }
+  }
+  async spPjTask(pid, tid, body) {
+    const list = (this.PJT || {})[pid] || [];
+    if (body && body.done !== undefined) { this.PJT = Object.assign({}, this.PJT, { [pid]: list.map(t => t.id === tid ? Object.assign({}, t, { done: body.done }) : t) }); this.setState({ real: Date.now() }); }
+    try {
+      if (!tid) await SP.api('/api/projects/' + pid + '/tasks', { method: 'POST', body });
+      else if (body) await SP.api('/api/projects/' + pid + '/tasks/' + tid, { method: 'PATCH', body });
+      else await SP.api('/api/projects/' + pid + '/tasks/' + tid, { method: 'DELETE' });
+      await Promise.all([this.spPjLoad(pid), this.spLoad()]);
+    } catch (e) { this.spErr(e); this.spPjLoad(pid); }
+  }
+  spTeamOpts() { return this.D.team.map(t => [t.user_id, t.name]); }
+  spPjEdit(p) {
+    const r = p.x, PRK = [['alta', 'Alta'], ['media', 'Média'], ['baixa', 'Baixa']];
+    this.fm({ title: 'Editar projeto', icon: 'folder', fields: [{ k: 'name', l: 'Nome', req: 1 }, { k: 'client', l: 'Cliente', type: 'pick', opts: [['', 'Interno da agência']].concat(this.D.clients.map(c => [c.id, c.name])) },
+        { k: 'owner', l: 'Responsável', type: 'pick', opts: [['', 'Sem responsável']].concat(this.spTeamOpts()) }, { k: 'prio', l: 'Prioridade', type: 'pick', opts: PRK, req: 1 },
+        { k: 'start', l: 'Início', type: 'date', req: 1 }, { k: 'due', l: 'Prazo', type: 'date', req: 1, check: (v, all) => v && all.start && v < all.start ? 'O prazo vem depois do início' : '' }, { k: 'desc', l: 'Descrição', type: 'area' }],
+      init: { name: r.name, client: r.client_id || '', owner: r.owner_user || '', prio: r.priority, start: r.start_date, due: r.due_date, desc: r.description || '' }, okL: 'Salvar',
+      ok: v => this.spPjPatch(p.id, { name: v.name.trim(), client_id: v.client || null, owner_user: v.owner || null, priority: v.prio, start_date: v.start, due_date: v.due, description: (v.desc || '').trim() || null }, 'Projeto atualizado') });
+  }
+  spPjDelete(p) {
+    this.fm({ title: 'Excluir o projeto?', desc: '“' + p.name + '” e as tarefas dele somem para sempre.', icon: 'delete', danger: 1, okL: 'Excluir projeto',
+      ok: async () => { try { await SP.api('/api/projects/' + p.id, { method: 'DELETE' }); this.setState({ drawer: null, pjId: null }); await this.spLoad(); this.toastMsg('Projeto excluído'); } catch (e) { this.spErr(e); } } });
+  }
+  async spNewProject(g) {
+    const tags = g('tags') || {}, PB = { 'Playbook de nova campanha': 'campanha', 'Playbook de relatório mensal': 'relatorio', 'Playbook de onboarding': 'onboarding' }, PRK = { Alta: 'alta', 'Média': 'media', Baixa: 'baixa' };
+    const owner = this.D.team.find(t => t.name === g('owner'));
+    try {
+      const r = await SP.api('/api/projects', { method: 'POST', body: { agency_id: this.spAg, name: String(g('name')).trim(), client_id: g('client') || null, owner_user: owner ? owner.user_id : null, priority: PRK[g('prio')] || 'media',
+        tags: Object.keys(tags).filter(t => tags[t]), start_date: g('start') || undefined, due_date: g('due'), playbook: PB[g('pb')], description: (g('desc') || '').trim() || undefined } });
+      this.setState({ dialog: null, formErr: {} }); this.go('projects', { projView: 'list' }); await this.spLoad();
+      this.toastMsg('Projeto criado: ' + g('name')); this.spPjOpen({ id: r.project.id });
+    } catch (e) { this.spErr(e); }
   }
   spPortal(c) {
     this.fm({ title: 'Convidar para o portal', desc: 'Quem recebe o convite vê a performance, os relatórios e os documentos da ' + c.name + '.', icon: 'person_add', fields: [{ k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@empresa.com.br' }], okL: 'Enviar convite',
@@ -4326,7 +4402,7 @@ class Component extends DCLogic {
       return Object.assign({}, i, { clientName: cname(i.client), valueF: brl(i.value), sC: st.c, sBg: st.bg }); });
     const sumSt = st => invs.filter(i => i.status === st && i.desc.indexOf('set/26') >= 0 || (i.status === st && i.desc.indexOf('Setup +') === 0)).reduce((s, i) => s + i.value, 0);
     const paid = sumSt('Pago'), pend = sumSt('Pendente'), over = sumSt('Vencido'), ftot = paid + pend + over;
-    const projLate = S.projects.filter(p => p.late && p.status !== 'done').length; const soonD = ['30 set', '01 out', '02 out']; const projAtt = S.projects.filter(p => p.status !== 'done' && (p.late || soonD.indexOf(p.due) >= 0)).length;
+    const projLate = S.projects.filter(p => p.late && p.status !== 'done').length; const soonD = ['30 set', '01 out', '02 out']; const projAtt = S.projects.filter(p => p.status !== 'done' && (p.late || (p.real ? p.soon : soonD.indexOf(p.due) >= 0))).length;
     const dash = {
       attnN: att.length, att, attEmpty: att.length === 0, today, todayN: today.length, dayCounts: [['Reuniões', ['Reunião']], ['Tarefas', ['Entrega', 'Follow-up']], ['Relatórios', ['Relatório']], ['Cobranças', ['Cobrança']]].map(g => ({ l: g[0], n: today.filter(t => g[1].indexOf(t.kind) >= 0).length })), todayLeft: today.filter(t => !t.done).length,
       kpis: [
@@ -4422,8 +4498,31 @@ class Component extends DCLogic {
 
     // drawers
     const dr = S.drawer;
-    const drawer = { open: !!dr, isNotif: dr === 'notif', isAi: dr === 'ai', isHelp: dr === 'help',
+    const drawer = { open: !!dr, isNotif: dr === 'notif', isAi: dr === 'ai', isHelp: dr === 'help', isProj: dr === 'proj',
       title: dr === 'notif' ? 'Notificações' : dr === 'ai' ? 'Spherum IA' : 'Central de ajuda', icon: dr === 'notif' ? 'notifications' : dr === 'ai' ? 'auto_awesome' : 'help', ic: dr === 'ai' ? '#465FFF' : 'var(--tx2,#667085)' };
+    if (dr === 'proj') {
+      const p = S.projects.find(q => q.id === S.pjId);
+      if (!p) drawer.open = false;
+      else {
+        const r = p.x, tasks = (this.PJT || {})[p.id], SL = [['todo', 'A fazer'], ['doing', 'Em andamento'], ['review', 'Em revisão'], ['done', 'Concluído']], PT = { Alta: 'red', 'Média': 'amber', Baixa: 'gray' };
+        const st = p.status === 'done' ? Object.assign({ l: 'Concluído' }, T('gray')) : p.late ? Object.assign({ l: 'Atrasado' }, T('red')) : p.soon ? Object.assign({ l: 'Em atenção' }, T('amber')) : Object.assign({ l: 'No prazo' }, T('green')), pt = T(PT[p.prio]);
+        const nT = (S.pjNew || '').trim(), add = () => { if (!nT) return; this.setState({ pjNew: '' }); this.spPjTask(p.id, null, { title: nT, assignee_user: r.owner_user || null }); };
+        const manual = !!tasks && !tasks.length && p.status !== 'done';
+        Object.assign(drawer, { title: p.name, icon: 'folder', ic: '#465FFF', pj: {
+          sub: (r.client_id ? cname(r.client_id) : 'Interno da agência') + ' · ' + p.owner, stL: st.l, stC: st.c, stBg: st.bg, prL: 'Prioridade ' + p.prio.toLowerCase(), prC: pt.c, prBg: pt.bg,
+          dates: this.spDm(r.start_date) + ' → ' + this.spDm(r.due_date),
+          sts: SL.map(([k, l]) => { const on = p.status === k; return { l, sel: on ? 'true' : 'false', bg: on ? 'var(--sf,#fff)' : 'transparent', c: on ? 'var(--tx,#101828)' : 'var(--tx2,#667085)', bd: on ? 'var(--bd,#E4E7EC)' : 'transparent', sh: on ? '0 1px 2px rgba(16,24,40,0.08)' : 'none', pick: () => { if (!on) this.spPjPatch(p.id, { status: k }, 'Projeto em ' + l.toLowerCase()); } }; }),
+          progL: p.progress + '%', pW: p.progress + '%', barC: p.status === 'done' ? '#98A2B3' : p.late ? '#F04438' : '#465FFF', manual,
+          progOpts: [0, 25, 50, 75, 100].map(v => { const on = p.progress === v; return { l: v + '%', bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.08)' : 'var(--sf,#fff)', c: on ? '#3538CD' : 'var(--tx,#344054)', pick: () => this.spPjPatch(p.id, { progress: v }) }; }),
+          hasDesc: !!r.description, desc: r.description || '', loading: !tasks,
+          tasksL: tasks ? tasks.filter(t => t.done).length + ' de ' + tasks.length : '',
+          tasks: (tasks || []).map(t => { const lateT = !t.done && t.due_date && t.due_date < this.spIso(new Date()); const meta = [t.assignee_name, t.due_date ? (lateT ? 'atrasada · ' : '') + this.spDm(t.due_date) : ''].filter(Boolean).join(' · ');
+            return { title: t.title, done: t.done ? 'true' : 'false', mark: t.done ? '✓' : '', cbBd: t.done ? '#465FFF' : 'var(--bd,#D0D5DD)', cbBg: t.done ? '#465FFF' : 'transparent', dec: t.done ? 'line-through' : 'none', tc: t.done ? 'var(--tx2,#667085)' : 'var(--tx,#101828)',
+              hasMeta: !!meta, meta, metaC: lateT ? '#D92D20' : 'var(--tx2,#667085)', toggle: () => this.spPjTask(p.id, t.id, { done: !t.done }), del: () => this.spPjTask(p.id, t.id, null) }; }),
+          newT: S.pjNew || '', onNewT: e => this.setState({ pjNew: e.target.value }), onKey: e => { if (e.key === 'Enter') add(); }, add,
+          edit: () => this.spPjEdit(p), del: () => this.spPjDelete(p), openClient: () => r.client_id ? this.go('client', { clientId: r.client_id, clientTab: 'projects' }) : this.toastMsg('Projeto interno, sem cliente') } });
+      }
+    }
     const notifAll = D.attention.map(a => Object.assign({}, T(a.tone), { icon: a.icon, title: a.client + ' — ' + a.title, meta: a.kind, when: 'hoje', cat: a.kind, run: () => this.go(a.go, a.extra || {}) })).concat([
       Object.assign({}, T('green'), { icon: 'payments', title: 'Pagamento recebido — Construtora Pilar', meta: 'R$ 7.200 via boleto', when: 'ontem', cat: 'Financeiro', run: () => this.go('finance', { finTab: 'receitas' }) }),
       Object.assign({}, T('gray'), { icon: 'visibility', title: 'Marcelo Pilar visualizou o relatório de agosto', meta: 'Relatório · 4ª visualização', when: 'ontem', cat: 'Relatório', run: () => this.go('reports') }),
@@ -4464,7 +4563,7 @@ class Component extends DCLogic {
         ['Orçamento e meta', [F('budget', 'Orçamento diário', 'money', { ph: '150,00' }), F('goal', 'Meta de CPA/CPL', 'money', { ph: '35,00' }), F('start', 'Início', 'date', { def: '2026-10-01' }), F('end', 'Fim', 'date', { help: 'Opcional' })]],
         ['Observações', [F('notes', 'Observações', 'textarea', { span: 2, ph: 'Públicos, criativos e hipóteses de teste' })]]] },
       projeto: { title: 'Novo projeto', eyebrow: 'Operação', desc: 'Aparece em Lista, Quadro, Linha do tempo e Calendário.', cta: 'Criar projeto', sections: [
-        ['Projeto', [F('name', 'Nome do projeto', 'text', { req: 1, span: 2, ph: 'Ex.: Campanha de Natal' }), F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('owner', 'Responsável', 'select', { opts: teamN, def: 'João Silva' }), F('start', 'Início', 'date', { def: '2026-09-28' }), F('due', 'Prazo', 'date', { req: 1 }), F('prio', 'Prioridade', 'chips', { opts: ['Alta', 'Média', 'Baixa'], def: 'Média', span: 2 }), F('tags', 'Etiquetas', 'chips', { opts: ['Campanha', 'Criativos', 'Landing page', 'Relatório', 'Tracking', 'Estratégia', 'Conteúdo'], multi: 1, span: 2 })]],
+        ['Projeto', [F('name', 'Nome do projeto', 'text', { req: 1, span: 2, ph: 'Ex.: Campanha de Natal' }), F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('owner', 'Responsável', 'select', { opts: teamN, def: this.R ? this.R.me.name : 'João Silva' }), F('start', 'Início', 'date', { def: this.R ? this.spIso(new Date()) : '2026-09-28' }), F('due', 'Prazo', 'date', { req: 1 }), F('prio', 'Prioridade', 'chips', { opts: ['Alta', 'Média', 'Baixa'], def: 'Média', span: 2 }), F('tags', 'Etiquetas', 'chips', { opts: ['Campanha', 'Criativos', 'Landing page', 'Relatório', 'Tracking', 'Estratégia', 'Conteúdo'], multi: 1, span: 2 })]],
         ['Detalhes', [F('pb', 'Criar a partir de', 'select', { opts: ['Projeto em branco', 'Playbook de nova campanha', 'Playbook de relatório mensal', 'Playbook de onboarding'], def: 'Projeto em branco', span: 2, help: 'O playbook cria as tarefas, os prazos e os responsáveis' }), F('desc', 'Descrição', 'textarea', { span: 2, ph: 'Escopo, entregáveis e links úteis' })]]] },
       cobranca: { title: 'Nova cobrança', eyebrow: 'Financeiro', desc: 'Gera uma cobrança ligada ao cliente.', cta: 'Criar cobrança', sections: [
         ['Cobrança', [F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('value', 'Valor', 'money', { req: 1, ph: '1.500,00' }), F('desc', 'Descrição', 'text', { req: 1, span: 2, ph: 'Ex.: Produção de criativos de outubro' }), F('due', 'Vencimento', 'date', { req: 1, def: this.R ? new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10) : '2026-10-10' }), F('method', 'Forma de pagamento', 'select', { opts: this.R ? ['Cliente escolhe', 'Pix', 'Boleto', 'Cartão'] : ['Pix', 'Boleto', 'Cartão'], def: this.R ? 'Cliente escolhe' : 'Pix' }), F('rec', 'Recorrência', 'chips', { opts: ['Avulsa', 'Mensal'], def: 'Avulsa', span: 2 })]],
@@ -4506,6 +4605,7 @@ class Component extends DCLogic {
           const g = k => val(k);
           if (dg === 'lead') { const st = +(g('stage') || 0); const nd = { id: 100 + S.deals.length, co: g('co'), contact: g('contact'), value: money(g('value')), owner: g('owner'), last: 'agora', next: g('next') ? g('next') + (g('nextDate') ? ' · ' + fmtD(g('nextDate')) : '') : 'Primeiro contato', days: 0, stage: st };
             this.setState(s => ({ dialog: null, formErr: {}, deals: s.deals.concat([nd]) })); this.go('crm'); this.toastMsg('Lead criado em ' + ['Novo lead', 'Contato realizado', 'Diagnóstico', 'Proposta enviada', 'Negociação'][st]); }
+          else if (dg === 'projeto' && this.R) { this.spNewProject(g); }
           else if (dg === 'projeto') { const di = v => { const p = (v || '2026-09-28').split('-').map(Number); return p[1] === 9 ? p[2] : p[1] === 10 ? 30 + p[2] : p[1] < 9 ? 1 : 45; }; const s0 = di(g('start')), e0 = Math.max(di(g('due')), s0);
             const np = { id: 100 + S.projects.length, name: g('name'), client: g('client'), owner: g('owner'), status: 'todo', prio: g('prio'), due: fmtD(g('due')), progress: 0, tags: Object.keys(g('tags') || {}).filter(t => g('tags')[t]), start: s0, end: e0, late: false };
             this.setState(s => ({ dialog: null, formErr: {}, projects: s.projects.concat([np]) })); this.go('projects', { projView: 'list' }); this.toastMsg('Projeto criado: ' + np.name); }
@@ -6212,14 +6312,16 @@ class Component extends DCLogic {
     const S = this.state, D = this.D, T = x.T, set = k => v => this.setState({ [k]: v });
     const sMap = { todo: ['A fazer', 'gray'], doing: ['Em andamento', 'blue'], review: ['Em revisão', 'amber'], done: ['Concluído', 'green'] };
     const pT = { Alta: 'red', 'Média': 'amber', Baixa: 'gray' };
-    const pr = S.projects.map(p => { const soon = ['30 set', '01 out', '02 out'].indexOf(p.due) >= 0; const st = p.status === 'done' ? Object.assign({ l: 'Concluído' }, T('gray')) : p.late ? Object.assign({ l: 'Atrasado' }, T('red')) : soon ? Object.assign({ l: 'Em atenção' }, T('amber')) : Object.assign({ l: 'No prazo' }, T('green')); const pt = T(pT[p.prio]);
+    const pr = S.projects.map(p => { const soon = p.real ? p.soon : ['30 set', '01 out', '02 out'].indexOf(p.due) >= 0; const st = p.status === 'done' ? Object.assign({ l: 'Concluído' }, T('gray')) : p.late ? Object.assign({ l: 'Atrasado' }, T('red')) : soon ? Object.assign({ l: 'Em atenção' }, T('amber')) : Object.assign({ l: 'No prazo' }, T('green')); const pt = T(pT[p.prio]);
       return Object.assign({}, p, { clientName: x.cname(p.client), stL: st.l, stC: st.c, stBg: st.bg, prC: pt.c, prBg: pt.bg, pW: p.progress + '%', ownerIni: p.owner.split(' ').map(w => w[0]).join(''),
         barL: (p.start - 1) / 45 * 100 + '%', barW: (p.end - p.start + 1) / 45 * 100 + '%', barC: p.status === 'done' ? '#98A2B3' : p.late ? '#F04438' : '#465FFF', barBg: p.status === 'done' ? 'rgba(152,162,179,0.18)' : p.late ? 'rgba(240,68,56,0.12)' : 'rgba(70,95,255,0.12)',
-        op: S.drag === 'p' + p.id ? 0.4 : 1,
+        op: S.drag === 'p' + p.id ? 0.4 : 1, cur: p.real ? 'pointer' : 'default', open: () => { if (p.real) this.spPjOpen(p); },
         onDragStart: e => { try { e.dataTransfer.setData('text/plain', 'p' + p.id); } catch (er) {} this.setState({ drag: 'p' + p.id }); }, onDragEnd: () => this.setState({ drag: null, dragOver: null }) }); });
     const cols = ['todo', 'doing', 'review', 'done'].map(k => { const over = S.dragOver === k; return { name: sMap[k][0], items: pr.filter(p => p.status === k), count: pr.filter(p => p.status === k).length, bg: over ? 'rgba(70,95,255,0.06)' : 'var(--sf2,#F2F4F7)', bd: over ? '#465FFF' : 'transparent',
       onDragOver: e => { e.preventDefault(); if (S.dragOver !== k) this.setState({ dragOver: k }); },
-      onDrop: e => { e.preventDefault(); const id = S.drag; if (!id || String(id)[0] !== 'p') return; const pid = +String(id).slice(1); this.setState(st => ({ projects: st.projects.map(p => p.id === pid ? Object.assign({}, p, { status: k, progress: k === 'done' ? 100 : p.progress, late: k === 'done' ? false : p.late }) : p), drag: null, dragOver: null })); this.toastMsg('Projeto movido para ' + sMap[k][0]); } }; });
+      onDrop: e => { e.preventDefault(); const id = S.drag; if (!id || String(id)[0] !== 'p') return;
+        if (this.R) { const rid = String(id).slice(1); this.setState(st => ({ projects: st.projects.map(p => p.id === rid ? Object.assign({}, p, { status: k }) : p), drag: null, dragOver: null })); this.spPjPatch(rid, { status: k }, 'Projeto movido para ' + sMap[k][0]); return; }
+        const pid = +String(id).slice(1); this.setState(st => ({ projects: st.projects.map(p => p.id === pid ? Object.assign({}, p, { status: k, progress: k === 'done' ? 100 : p.progress, late: k === 'done' ? false : p.late }) : p), drag: null, dragOver: null })); this.toastMsg('Projeto movido para ' + sMap[k][0]); } }; });
     const weeks = [[1, '01 set'], [8, '08 set'], [15, '15 set'], [22, '22 set'], [29, '29 set'], [36, '06 out'], [43, '13 out']].map(w => ({ l: w[1], left: (w[0] - 1) / 45 * 100 + '%' }));
     const ev = {};
     const add = (d, t, tone) => { (ev[d] = ev[d] || []).push(Object.assign({ t }, T(tone))); };
@@ -6231,7 +6333,22 @@ class Component extends DCLogic {
     const proj = { views: this.segOf([['list', 'Lista'], ['board', 'Quadro'], ['timeline', 'Linha do tempo'], ['calendar', 'Calendário']], S.projView, set('projView')),
       isList: S.projView === 'list', isBoard: S.projView === 'board', isTimeline: S.projView === 'timeline', isCal: S.projView === 'calendar',
       rows: pr, cols, weeks, todayL: 27 / 45 * 100 + '%', cal, dows: ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'],
-      active: pr.filter(p => p.status !== 'done').length, late: pr.filter(p => p.late && p.status !== 'done').length, newProj: () => this.setState({ dialog: 'projeto', form: {} }) };
+      active: pr.filter(p => p.status !== 'done').length, late: pr.filter(p => p.late && p.status !== 'done').length, newProj: () => this.setState({ dialog: 'projeto', form: {} }),
+      todayLbl: 'Hoje · 28 set', calTitle: 'Setembro 2026', calSub: 'Entregas, reuniões, relatórios e vencimentos', empty: false };
+    if (this.R) {
+      // Linha do tempo: 45 dias com hoje no dia 28; calendário do mês atual com prazos e vencimentos.
+      const now = new Date(), t0 = Date.parse(this.spIso(now) + 'T12:00:00Z'), w0 = t0 - 27 * 864e5, MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      proj.todayLbl = 'Hoje · ' + this.spDm(this.spIso(now)); proj.empty = !pr.length;
+      proj.weeks = []; for (let i = 0; i < 45; i++) { const d = new Date(w0 + i * 864e5); if (d.getUTCDay() === 1) proj.weeks.push({ l: this.spDm(d.toISOString().slice(0, 10)), left: i / 45 * 100 + '%' }); }
+      const y = now.getFullYear(), m = now.getMonth(), first = new Date(Date.UTC(y, m, 1)), lead = (first.getUTCDay() + 6) % 7, ndays = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), evR = {};
+      const addR = (iso, t, tone) => { (evR[iso] = evR[iso] || []).push(Object.assign({ t }, T(tone))); };
+      pr.forEach(p => addR(p.dueISO, p.name, p.late && p.status !== 'done' ? 'red' : p.status === 'done' ? 'gray' : 'primary'));
+      (S.invs || []).forEach(i => { if (i.dueISO && (i.status === 'Pendente' || i.status === 'Vencido')) addR(i.dueISO, 'Vence · ' + x.cname(i.client), i.status === 'Vencido' ? 'red' : 'amber'); });
+      const cellsR = [], today = this.spIso(now);
+      for (let i = 0; i < Math.ceil((lead + ndays) / 7) * 7; i++) { const d = new Date(Date.UTC(y, m, 1 + i - lead)), iso = d.toISOString().slice(0, 10), out = d.getUTCMonth() !== m, on = iso === today;
+        cellsR.push({ d: String(d.getUTCDate()), c: out ? 'var(--tx2,#98A2B3)' : 'var(--tx,#101828)', bg: on ? 'rgba(70,95,255,0.05)' : 'transparent', dBg: on ? '#465FFF' : 'transparent', dC: on ? '#fff' : 'inherit', evs: evR[iso] || [] }); }
+      proj.cal = cellsR; proj.calTitle = MES[m] + ' ' + y; proj.calSub = 'Prazos dos projetos e vencimentos das faturas';
+    }
 
     // reports
     const rep = { isList: S.reportMode === 'list', isBuilder: S.reportMode === 'builder', newReport: () => this.setState({ reportMode: 'builder' }), back: () => this.setState({ reportMode: 'list' }),
@@ -6377,7 +6494,7 @@ class Component extends DCLogic {
       docs.noAppr = !docs.approvals.length;
     }
     // team
-    const team = { tip: this.R ? 'A carga de cada pessoa aparece quando os projetos e as tarefas chegarem ao Spherum. Por enquanto, a coluna Clientes mostra de quem cada um é responsável.' : 'Rafael está com 91% da capacidade e 3 clientes em renovação. Redistribuir um cliente para Bia (47%) libera cerca de 12 tarefas por semana.', sub: this.R ? D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : '') : '6 pessoas · capacidade média de 64%', tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
+    const team = { tip: this.R ? 'A capacidade conta as tarefas abertas de cada pessoa nos projetos ativos: 20 tarefas abertas = 100%.' : 'Rafael está com 91% da capacidade e 3 clientes em renovação. Redistribuir um cliente para Bia (47%) libera cerca de 12 tarefas por semana.', sub: this.R ? D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : '') : '6 pessoas · capacidade média de 64%', tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
       rows: D.team.map(p => Object.assign({}, p, { capW: p.cap + '%', capC: p.cap >= 85 ? '#F04438' : p.cap >= 70 ? '#F79009' : '#17B26A', capL: p.cap >= 85 ? 'Carga alta' : p.cap >= 70 ? 'Carga moderada' : 'Disponível', clientsL: p.clients ? p.clients + ' clientes' : '—' })),
       invite: () => this.fm({ title: 'Convidar para a equipe', desc: 'A pessoa recebe um e-mail para criar a senha. O acesso segue a função escolhida.', icon: 'person_add', fields: [{ k: 'n', l: 'Nome', req: 1, min: 3 }, { k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@marketingpro.com.br', check: s => ((this.state.teamInv || []).some(p => p.mail === (s || '').toLowerCase())) ? 'Essa pessoa já foi convidada' : '' }, { k: 'role', l: 'Função', type: 'pick', opts: ['Admin', 'Gestor de tráfego', 'Designer', 'Atendimento', 'Financeiro'], req: 1 }], init: { role: 'Gestor de tráfego' }, okL: 'Enviar convite', wait: 700, ok: v => { if (this.R) { this.spInvite(v); return; } const pid = 'iv' + Date.now(), mail = v.mail.trim().toLowerCase(); this.setState(s => ({ teamInv: (s.teamInv || []).concat([{ id: pid, n: v.n.trim(), mail, role: v.role }]) })); this.toastMsg('Convite enviado para ' + mail, () => { this.setState(s => ({ teamInv: (s.teamInv || []).filter(x => x.id !== pid) })); this.toastMsg('Convite cancelado'); }); } }),
       roles: [['Proprietário', 'Total', 'Total', 'Total', 'Total', 'Total', 'Total'], ['Admin', 'Total', 'Total', 'Total', 'Total', 'Total', 'Editar'], ['Gestor de tráfego', 'Editar', 'Editar', 'Editar', 'Editar', 'Ver', '—'], ['Analista de mídia', 'Ver', '—', 'Editar', 'Editar', '—', '—'],

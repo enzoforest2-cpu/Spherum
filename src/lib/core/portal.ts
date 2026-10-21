@@ -3,6 +3,7 @@ import { XodoError } from "../xodos/errors";
 import { listConnections } from "../integrations/store";
 import { listAccounts, listInvoices, listRecurrences } from "../billing";
 import { agencyCollabSummary } from "./collab";
+import { listProjects, teamLoad } from "./projects";
 import { listDocuments } from "./documents";
 
 /**
@@ -71,7 +72,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 
-  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab] = await Promise.all([
+  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab, projects, load] = await Promise.all([
     one<{ full_name: string | null; role: string; email: string | null }>(
       sql,
       `select p.full_name, m.role, u.email from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
@@ -150,6 +151,8 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     listRecurrences(sql, agencyId),
     listAccounts(sql, agencyId),
     agencyCollabSummary(sql, agencyId),
+    listProjects(sql, agencyId, now),
+    teamLoad(sql, agencyId),
   ]);
 
   const totals = new Map<string, { cur: Totals; prev: Totals }>();
@@ -265,7 +268,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
 
   const team = memberRows.map((m) => {
     const name = m.full_name || m.email || "Sem nome";
-    return { user_id: m.user_id, name, ini: initials(name), role: m.title || ROLE_LABEL[m.role] || m.role, perm: ROLE_LABEL[m.role] || m.role, roleKey: m.role, email: m.email, clients: m.clients, projects: 0, tasks: 0, cap: 0 };
+    return { user_id: m.user_id, name, ini: initials(name), role: m.title || ROLE_LABEL[m.role] || m.role, perm: ROLE_LABEL[m.role] || m.role, roleKey: m.role, email: m.email, clients: m.clients, projects: load[m.user_id]?.projects ?? 0, tasks: load[m.user_id]?.tasks ?? 0, cap: Math.min(100, (load[m.user_id]?.tasks ?? 0) * 5) };
   });
 
   const attention: Record<string, unknown>[] = [];
@@ -318,5 +321,6 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     recurrences,
     paymentAccounts,
     collab,
+    projects,
   };
 }

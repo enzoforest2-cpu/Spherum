@@ -17,6 +17,13 @@ export async function clientAgency(sql: Sql, clientId: string): Promise<string> 
   return row.agency_id;
 }
 
+/** Agência dona do projeto. */
+export async function projectAgency(sql: Sql, projectId: string): Promise<string> {
+  const row = await one<{ agency_id: string }>(sql, `select agency_id from projects where id = $1`, [projectId]);
+  if (!row) throw new XodoError("Projeto não encontrado.", 404);
+  return row.agency_id;
+}
+
 /** Link do convite: o site abre o convite e pede login ou cadastro com o e-mail convidado. */
 export function inviteLink(token: string, request: Request): string {
   const base = process.env.APP_URL?.trim() || new URL(request.url).origin;
