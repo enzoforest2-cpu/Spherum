@@ -94,6 +94,7 @@ test("pendências, aprovações e conversa: só quem é do cliente responde; a a
   await assert.rejects(decideApproval(sql, s.cli, a1.id, { decision: "aprovado" }), /já foi decidida/);
   const sum = await agencyCollabSummary(sql, s.agencyId);
   assert.deepEqual([sum.approvals, sum.changes], [0, 1]);
+  assert.deepEqual(sum.approval_items.map((a) => [a.title, a.status, a.comment, a.decided_by_name]), [["Criativos de novembro", "alteracoes", "Trocar a foto do topo", "Rui"]]);
 
   await sendMessage(deps, "agencia", s.agencyId, s.clientId, s.dona, { text: "Oi Rui, tudo certo?" });
   await sendMessage(deps, "cliente", s.agencyId, s.clientId, s.cli, { text: "Tudo! E o relatório?" });

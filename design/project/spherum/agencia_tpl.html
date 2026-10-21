@@ -855,7 +855,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   </div>
                   <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
                     <div style="display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">Pendências</h2></div>
-                    <sc-for list="{{ cd.pend }}" as="p"><div style="display:flex;gap:10px;padding:10px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><span style="width:6px;height:6px;border-radius:50%;background:#F79009;margin-top:7px;flex-shrink:0"></span>{{ p.t }}</div></sc-for>
+                    <sc-for list="{{ cd.pend }}" as="p"><div style="display:flex;gap:10px;padding:10px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><span style="width:6px;height:6px;border-radius:50%;background:#F79009;margin-top:7px;flex-shrink:0"></span><span style="flex:1;min-width:0">{{ p.t }}</span><sc-if value="{{ p.canCancel }}"><button sc-camel-on-click="{{ p.cancel }}" style="height:24px;padding:0 8px;border:1px solid var(--bd,#E4E7EC);border-radius:6px;background:var(--sf,#fff);color:var(--tx2,#667085);font-size:12px;flex-shrink:0">Cancelar</button></sc-if></div></sc-for>
                   </div>
                 </div>
               </div>
@@ -1376,7 +1376,8 @@ a:hover{color:#3346D3;text-decoration:underline}
             </div>
             <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
               <div style="padding:14px 18px;border-bottom:1px solid var(--bd,#E4E7EC)"><h2 style="margin:0;font-size:14px;font-weight:600">Aprovações</h2><div style="font-size:12.5px;color:var(--tx2,#667085);margin-top:2px">Criativos, copies e landing pages enviados para o cliente aprovar no portal</div></div>
-              <sc-for list="{{ docs.approvals }}" as="a"><div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><div><div style="font-weight:500">{{ a.t }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ a.c }}</div></div><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.note }}</span><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ a.bg }};color:{{ a.c }};font-weight:500;white-space:nowrap">{{ a.st }}</span></div></sc-for>
+              <sc-for list="{{ docs.approvals }}" as="a"><div sc-camel-on-click="{{ a.open }}" style="cursor:{{ a.cur }};display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px" style-hover="background:var(--hv,#F9FAFB)"><div><div style="font-weight:500">{{ a.t }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ a.cl }}</div></div><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.note }}</span><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ a.bg }};color:{{ a.c }};font-weight:500;white-space:nowrap">{{ a.st }}</span></div></sc-for>
+              <sc-if value="{{ docs.noAppr }}"><div style="padding:18px;font-size:13px;color:var(--tx2,#667085)">Nenhuma aprovação nos últimos 30 dias. Abra um cliente e use “Enviar para aprovação”.</div></sc-if>
             </div>
             <div style="display:inline-flex;padding:3px;background:var(--sf2,#F2F4F7);border-radius:8px;gap:2px;flex-wrap:wrap;align-self:flex-start"><sc-for list="{{ docs.cats }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.sel }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid {{ s.bd }};border-radius:6px;background:{{ s.bg }};color:{{ s.c }};box-shadow:{{ s.sh }};font-size:13px;font-weight:500">{{ s.l }}<span style="font-size:11.5px;color:var(--tx2,#667085)">{{ s.n }}</span></button></sc-for></div>
             <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow-x:auto">
@@ -3937,6 +3938,26 @@ class Component extends DCLogic {
     try { await this.spCcPost(id, { tipo: 'mensagem', text }); this.setState({ draft: '' }); await Promise.all([this.spCcLoad(id, true), this.spLoad()]); }
     catch (e) { this.spErr(e); } finally { this._sending = 0; }
   }
+  // Cancelar um pedido ou uma aprovação que ainda espera o cliente.
+  spCancelItem(clientId, tipo, item) {
+    const req = tipo === 'pendencia';
+    this.fm({ title: req ? 'Cancelar o pedido?' : 'Cancelar a aprovação?', desc: 'O cliente deixa de ver “' + item.title + '” no portal.', icon: 'block', danger: 1, okL: req ? 'Cancelar pedido' : 'Cancelar aprovação',
+      ok: async () => { try { await this.spCcPost(clientId, { tipo, item_id: item.id, acao: 'cancelar' }, 'PATCH'); await this.spCcDone(clientId, req ? 'Pedido cancelado' : 'Aprovação cancelada'); } catch (e) { this.spErr(e); } } });
+  }
+  spApprovalMenu(a) {
+    const opts = [];
+    if (a.document_id) opts.push(['doc', 'Abrir o arquivo']);
+    if (a.link) opts.push(['link', 'Abrir o link']);
+    opts.push(['client', 'Ver o cliente']);
+    if (a.status === 'pendente') opts.push(['cancel', 'Cancelar a aprovação', 'O cliente deixa de ver no portal']);
+    this.fm({ title: a.title, desc: a.client_name + (a.comment ? ' · “' + a.comment + '”' : ''), icon: 'task_alt', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', opts, req: 1 }], init: { a: opts[0][0] }, okL: 'Continuar',
+      ok: async v => {
+        if (v.a === 'client') return this.go('client', { clientId: a.client_id, clientTab: 'overview' });
+        if (v.a === 'link') return (window.top || window).open(a.link, '_blank', 'noopener');
+        if (v.a === 'cancel') return this.spCancelItem(a.client_id, 'aprovacao', a);
+        try { const r = await SP.api('/api/documents/' + a.document_id + '/download'); (window.top || window).open(r.url, '_blank') || (location.href = r.url); } catch (e) { this.spErr(e); }
+      } });
+  }
   spOpenThread(id) { this.go('messages', { threadId: id, draft: '' }); this.spCcLoad(id, true).catch(e => this.spErr(e)); }
   spAskClient(c) {
     this.fm({ title: 'Pedir algo a ' + c.name, desc: 'O pedido aparece em Pendências no portal do cliente, e quem é do cliente recebe um e-mail.', icon: 'assignment',
@@ -6346,8 +6367,15 @@ class Component extends DCLogic {
     const docs = { cats: this.segOf(cats.map(c => [c, c, c === 'Todos' ? D.docs.length : D.docs.filter(d => d.cat === c).length]), S.docCat, set('docCat')),
       rows: D.docs.filter(d => S.docCat === 'Todos' || d.cat === S.docCat).map((d, i) => Object.assign({}, d, { clientName: d.real && !d.client ? 'Interno' : x.cname(d.client), shared: d.sharedL || (d.cat !== 'Financeiro' || i % 2 === 0 ? 'Visível ao cliente' : 'Interno'), open: () => this.spDocMenu(d) })),
       approvals: [['Criativos outubro v2', 'Clínica Aurora', 'Aguardando cliente', 'amber', 'Enviado há 2 dias'], ['Landing page Implantes', 'Odonto Prime', 'Alterações solicitadas', 'red', '“Trocar foto do topo e ajustar preço”'], ['Copy Black Friday · estáticos', 'Loja Verano', 'Aprovado', 'green', 'Aprovado por Fernanda Luz · hoje']]
-        .filter(() => !this.R).map(a => Object.assign({ t: a[0], c: a[1], st: a[2], note: a[4] }, T(a[3]))),
+        .filter(() => !this.R).map(a => Object.assign({ t: a[0], cl: a[1], st: a[2], note: a[4], cur: 'default', open: () => {} }, T(a[3]))),
       upload: () => this.R ? this.fm({ title: 'Enviar arquivo', desc: 'O arquivo fica na pasta do cliente e pode ser compartilhado no portal.', icon: 'upload_file', fields: [{ k: 'file', l: 'Arquivo', type: 'file', req: 1, reqMsg: 'Escolha um arquivo', maxMb: 50, hint: 'Até 50 MB' }, { k: 'cl', l: 'Cliente', type: 'pick', opts: [['int', 'Interno da agência']].concat(this.D.clients.map(c => [c.id, c.name])), req: 1 }, { k: 'folder', l: 'Pasta', type: 'pick', opts: ['Contratos', 'Briefings', 'Relatórios', 'Criativos', 'Notas fiscais', 'Outros'], req: 1 }, { k: 'share', l: 'Visível no portal do cliente?', type: 'pick', opts: ['Sim', 'Não'], req: 1 }], init: { cl: 'int', folder: 'Criativos', share: 'Não' }, okL: 'Enviar', ok: v => this.spUpload(v) }) : this.fm({ title: 'Enviar arquivo', desc: 'O arquivo fica na pasta do cliente e pode ser compartilhado no portal.', icon: 'upload_file', fields: [{ k: 'file', l: 'Arquivo', type: 'file', req: 1, reqMsg: 'Escolha um arquivo', maxMb: 20, hint: 'Até 20 MB' }, { k: 'folder', l: 'Pasta', type: 'pick', opts: ['Contratos', 'Relatórios', 'Criativos', 'Notas fiscais'], req: 1 }, { k: 'share', l: 'Visível no portal do cliente?', type: 'pick', opts: ['Sim', 'Não'], req: 1 }], init: { folder: 'Criativos', share: 'Não' }, okL: 'Enviar', busyL: 'Enviando…', wait: 900, ok: v => { const did = 'up' + Date.now(); this.setState(s => ({ upDocs: (s.upDocs || []).concat([{ id: did, n: v.file.name, folder: v.folder, share: v.share === 'Sim' }]) })); this.toastMsg(v.file.name + ' enviado para ' + v.folder, () => { this.setState(s => ({ upDocs: (s.upDocs || []).filter(x => x.id !== did) })); this.toastMsg('Arquivo removido'); }); } }) };
+    if (this.R) {
+      const AS = { pendente: ['Aguardando cliente', 'amber'], alteracoes: ['Alterações solicitadas', 'red'], aprovado: ['Aprovado', 'green'] };
+      docs.approvals = ((this.R.collab && this.R.collab.approval_items) || []).map(a => { const st = AS[a.status] || AS.pendente;
+        const note = a.status === 'alteracoes' ? (a.comment ? '“' + a.comment + '”' : 'Ajustes pedidos') : a.status === 'aprovado' ? 'Aprovado' + (a.decided_by_name ? ' por ' + a.decided_by_name : '') + ' · ' + this.spWhen(a.decided_at) : 'Enviado ' + this.spWhen(a.created_at);
+        return Object.assign({ t: a.title, cl: a.client_name, st: st[0], note, cur: 'pointer', open: () => this.spApprovalMenu(a) }, T(st[1])); });
+      docs.noAppr = !docs.approvals.length;
+    }
     // team
     const team = { tip: this.R ? 'A carga de cada pessoa aparece quando os projetos e as tarefas chegarem ao Spherum. Por enquanto, a coluna Clientes mostra de quem cada um é responsável.' : 'Rafael está com 91% da capacidade e 3 clientes em renovação. Redistribuir um cliente para Bia (47%) libera cerca de 12 tarefas por semana.', sub: this.R ? D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : '') : '6 pessoas · capacidade média de 64%', tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
       rows: D.team.map(p => Object.assign({}, p, { capW: p.cap + '%', capC: p.cap >= 85 ? '#F04438' : p.cap >= 70 ? '#F79009' : '#17B26A', capL: p.cap >= 85 ? 'Carga alta' : p.cap >= 70 ? 'Carga moderada' : 'Disponível', clientsL: p.clients ? p.clients + ' clientes' : '—' })),
@@ -6506,10 +6534,10 @@ class Component extends DCLogic {
         .map(q => ({ icon: q[0], l: q[1], run: q[2] })).concat(cd.quick).map(q => Object.assign({}, q, { run: () => { this.setState({ cdMenu: false }); q.run(); } }));
       cd.isRisk = false;
       const cc = this.spCc(c.id), RQ = { aberto: 'aguardando o cliente', feito: 'resolvido pelo cliente', cancelado: 'cancelado' }, AP = { pendente: 'aguardando o cliente', aprovado: 'aprovado', alteracoes: 'ajustes pedidos', cancelado: 'cancelado' };
-      const cp = cc ? cc.requests.filter(r => r.status === 'aberto').map(r => 'Aguardando o cliente: ' + r.title)
-        .concat(cc.approvals.filter(a => a.status === 'pendente').map(a => 'Aprovação pendente: ' + a.title))
-        .concat(cc.approvals.filter(a => a.status === 'alteracoes').map(a => 'Ajustes pedidos em ' + a.title + (a.comment ? ': ' + a.comment : ''))) : [];
-      cd.pend = cp.concat(c.reasons.map(r => 'Resolver: ' + r.toLowerCase())).concat(cp.length || c.reasons.length ? [] : ['Nenhuma pendência aberta']).map(t => ({ t }));
+      const cp = cc ? cc.requests.filter(r => r.status === 'aberto').map(r => ({ t: 'Aguardando o cliente: ' + r.title, canCancel: true, cancel: () => this.spCancelItem(c.id, 'pendencia', r) }))
+        .concat(cc.approvals.filter(a => a.status === 'pendente').map(a => ({ t: 'Aprovação pendente: ' + a.title, canCancel: true, cancel: () => this.spCancelItem(c.id, 'aprovacao', a) })))
+        .concat(cc.approvals.filter(a => a.status === 'alteracoes').map(a => ({ t: 'Ajustes pedidos em ' + a.title + (a.comment ? ': ' + a.comment : '') }))) : [];
+      cd.pend = cp.concat(c.reasons.map(r => ({ t: 'Resolver: ' + r.toLowerCase() }))).concat(cp.length || c.reasons.length ? [] : [{ t: 'Nenhuma pendência aberta' }]);
       if (cc) {
         const ev = cc.updates.map(u => [u.status === 'rascunho' ? 'edit_note' : u.kind === 'relatorio' ? 'lab_profile' : 'auto_awesome', (u.status === 'rascunho' ? 'Rascunho para o portal: ' : 'No portal: ') + u.title + (u.xodo_name ? ' · ' + u.xodo_name : ''), u.published_at || u.created_at])
           .concat(cc.requests.map(r => ['assignment', 'Pedido ao cliente: ' + r.title + ' · ' + RQ[r.status], r.done_at || r.created_at]))

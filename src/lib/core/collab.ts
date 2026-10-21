@@ -340,7 +340,17 @@ export async function agencyCollabSummary(sql: Sql, agencyId: string) {
       where u.agency_id = $1 and u.status = 'rascunho' order by u.created_at desc limit 50`,
     [agencyId],
   );
-  return { ...row!, unread: await unreadBy(sql, agencyId, "agencia"), threads, draft_items: draftItems };
+  // Aprovações da agência inteira: as que esperam o cliente e as decididas nos últimos 30 dias.
+  const approvalItems = await sql.query<{ id: string; client_id: string; client_name: string; title: string; status: string; comment: string | null; document_id: string | null; link: string | null; decided_by_name: string | null; decided_at: string | null; created_at: string }>(
+    `select a.id, a.client_id, c.name as client_name, a.title, a.status, a.comment, a.document_id, a.link,
+            coalesce(p.full_name, u.email) as decided_by_name, a.decided_at::text, a.created_at::text
+       from client_approvals a join clients c on c.id = a.client_id
+       left join profiles p on p.id = a.decided_by left join auth.users u on u.id = a.decided_by
+      where a.agency_id = $1 and (a.status = 'pendente' or (a.status <> 'cancelado' and a.decided_at > now() - interval '30 days'))
+      order by (a.status = 'pendente') desc, coalesce(a.decided_at, a.created_at) desc limit 50`,
+    [agencyId],
+  );
+  return { ...row!, unread: await unreadBy(sql, agencyId, "agencia"), threads, draft_items: draftItems, approval_items: approvalItems };
 }
 
 export const portalSettingsInput = z.object({ auto_publicar: z.boolean() }).partial();
