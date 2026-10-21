@@ -233,7 +233,7 @@ No Supabase → Authentication → URL Configuration, coloque `https://spherum.c
 npm test
 ```
 
-São 408 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
+São 411 testes com `node:test`, PGlite (Postgres em memória, sem precisar de Docker) e o provedor falso da pi-ai. Eles cobrem:
 - as regras de aprovação;
 - o gasto em reais, a cotação e o teto opcional (inclusive com reservas simultâneas);
 - o fluxo completo de aprovação, negação, vencimento e execução única;
