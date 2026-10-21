@@ -419,6 +419,17 @@ export async function billingSweep(deps: BillingDeps, opts: { deadline?: number 
   const left = () => !opts.deadline || Date.now() < opts.deadline - 5_000;
   const overdue = await deps.sql.query(`update invoices set status = 'vencido' where status = 'pendente' and due_date < $1::date returning id`, [today(now)]);
 
+  // Contratos: o aviso prévio que chegou ao fim encerra o contrato e a mensalidade; a pausa que acabou some.
+  const ended = await deps.sql.query<{ recurrence_id: string | null }>(
+    `update client_contracts set status = 'encerrado', ended_at = now() where status = 'aviso' and notice_end < $1::date returning recurrence_id`,
+    [today(now)],
+  );
+  for (const e of ended) if (e.recurrence_id) await deps.sql.query(`update invoice_recurrences set active = false where id = $1`, [e.recurrence_id]);
+  await deps.sql.query(
+    `update client_contracts set pause_from = null, pause_to = null, pause_reason = null, pause_billing = null where pause_to is not null and pause_to <= $1::date`,
+    [today(now)],
+  );
+
   let generated = 0;
   const due = await deps.sql.query<{ id: string; agency_id: string; client_id: string; description: string; amount_cents: number; methods: string[]; next_due: string; created_by: string | null }>(
     `select r.id, r.agency_id, r.client_id, r.description, r.amount_cents::float8 as amount_cents, r.methods, r.next_due::text, r.created_by
@@ -428,16 +439,31 @@ export async function billingSweep(deps: BillingDeps, opts: { deadline?: number 
   );
   for (const r of due) {
     if (!left()) break;
+    const advance = () => deps.sql.query(`update invoice_recurrences set next_due = (next_due + interval '1 month')::date where id = $1`, [r.id]);
+    // O contrato ligado à mensalidade decide: depois da saída não cobra; na pausa, suspende, cobra metade ou mantém.
+    const k = await one<{ status: string; notice_end: string | null; pause_from: string | null; pause_to: string | null; pause_billing: string | null }>(
+      deps.sql,
+      `select status, notice_end::text, pause_from::text, pause_to::text, pause_billing from client_contracts where recurrence_id = $1 and status <> 'encerrado' limit 1`,
+      [r.id],
+    );
+    if (k?.status === "aviso" && k.notice_end && r.next_due > k.notice_end) {
+      await deps.sql.query(`update invoice_recurrences set active = false where id = $1`, [r.id]);
+      continue;
+    }
+    const paused = !!k?.pause_from && k.pause_from <= r.next_due && r.next_due < k.pause_to!;
+    const half = paused && k!.pause_billing === "metade";
+    const amount = half ? Math.round(r.amount_cents / 2) : r.amount_cents;
+    if ((paused && k!.pause_billing === "suspender") || amount < 100) {
+      await advance();
+      continue;
+    }
     const made = await one<{ id: string }>(
       deps.sql,
       `insert into invoices (agency_id, client_id, description, amount_cents, due_date, methods, recurrence_id, created_by)
        values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (recurrence_id, due_date) do nothing returning id`,
-      [r.agency_id, r.client_id, r.description, r.amount_cents, r.next_due, r.methods, r.id, r.created_by],
+      [r.agency_id, r.client_id, half ? `${r.description} (pausa: 50%)`.slice(0, 200) : r.description, amount, r.next_due, r.methods, r.id, r.created_by],
     );
-    await deps.sql.query(
-      `update invoice_recurrences set next_due = (next_due + interval '1 month')::date where id = $1`,
-      [r.id],
-    );
+    await advance();
     if (made) {
       generated += 1;
       await chargeInvoice(deps, r.agency_id, made.id);

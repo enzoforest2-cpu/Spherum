@@ -24,6 +24,13 @@ export async function projectAgency(sql: Sql, projectId: string): Promise<string
   return row.agency_id;
 }
 
+/** Agência dona do contrato. */
+export async function contractAgency(sql: Sql, contractId: string): Promise<string> {
+  const row = await one<{ agency_id: string }>(sql, `select agency_id from client_contracts where id = $1`, [contractId]);
+  if (!row) throw new XodoError("Contrato não encontrado.", 404);
+  return row.agency_id;
+}
+
 /** Link do convite: o site abre o convite e pede login ou cadastro com o e-mail convidado. */
 export function inviteLink(token: string, request: Request): string {
   const base = process.env.APP_URL?.trim() || new URL(request.url).origin;

@@ -20,6 +20,7 @@ import { redactDeep } from "./redact";
 import { buildSystemPrompt, type PromptContext } from "./persona";
 import { XodoError } from "./errors";
 import { recordActionUpdate } from "../core/collab";
+import { pausedContract } from "../core/contracts";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
@@ -645,6 +646,12 @@ export async function runAction(deps: EngineDeps, xodo: Xodo, actionId: string, 
     try {
       const ctx = { ...toolContext(deps, xodo, action.run_id), precondition: parseJson<Record<string, unknown>>(action.precondition) };
       const parsedInput = tool.input.parse(input);
+      // Contrato pausado: os xodós não mexem nas campanhas nem no portal do cliente até a volta.
+      const clientId = (parsedInput as { client_id?: unknown }).client_id;
+      if ((tool.category === "campanha" || tool.category === "cliente") && typeof clientId === "string") {
+        const paused = await pausedContract(sql, clientId, nowOf(deps));
+        if (paused) throw new XodoError(`O contrato deste cliente está pausado até ${paused.until.split("-").reverse().join("/")}; nada foi feito.`, 409);
+      }
       const data = await tool.execute(ctx, parsedInput);
       status = "executed";
       result = { data };
