@@ -955,7 +955,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <div sc-camel-on-drag-over="{{ col.onDragOver }}" sc-camel-on-drop="{{ col.onDrop }}" style="background:{{ col.bg }};border:1px dashed {{ col.bd }};border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:380px;transition:background 120ms">
                     <div style="display:flex;flex-direction:column;gap:2px;padding:4px 4px 6px"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ col.name }}</span><span style="font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ col.count }}</span></div><span style="font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums;white-space:nowrap">{{ col.total }}</span></div>
                     <sc-for list="{{ col.deals }}" as="d">
-                      <div draggable="true" sc-camel-on-drag-start="{{ d.onDragStart }}" sc-camel-on-drag-end="{{ d.onDragEnd }}" style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:8px;padding:10px 12px;cursor:grab;opacity:{{ d.op }};display:flex;flex-direction:column;gap:6px" style-hover="border-color:#C9CFD8">
+                      <div draggable="true" sc-camel-on-click="{{ d.open }}" sc-camel-on-drag-start="{{ d.onDragStart }}" sc-camel-on-drag-end="{{ d.onDragEnd }}" style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:8px;padding:10px 12px;cursor:grab;opacity:{{ d.op }};display:flex;flex-direction:column;gap:6px" style-hover="border-color:#C9CFD8">
                         <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:600;font-size:13px">{{ d.co }}</span><span title="{{ d.owner }}" style="width:22px;height:22px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:10px;font-weight:600;display:grid;place-items:center;flex-shrink:0">{{ d.ownerIni }}</span></div>
                         <div style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ d.valueF }}</div>
                         <div style="font-size:12.5px;color:{{ d.nextC }}">{{ d.next }}</div>
@@ -980,7 +980,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                       <span style="font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ g.total }} · probabilidade {{ g.prob }}</span>
                     </div>
                     <sc-for list="{{ g.deals }}" as="d">
-                      <div style="display:grid;grid-template-columns:minmax(220px,1.8fr) 110px minmax(200px,1.6fr) 150px 110px 110px;gap:16px;padding:0 18px;min-height:56px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px" style-hover="background:var(--hv,#F9FAFB)">
+                      <div sc-camel-on-click="{{ d.open }}" style="cursor:{{ d.cur }};display:grid;grid-template-columns:minmax(220px,1.8fr) 110px minmax(200px,1.6fr) 150px 110px 110px;gap:16px;padding:0 18px;min-height:56px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px" style-hover="background:var(--hv,#F9FAFB)">
                         <div style="display:flex;align-items:center;gap:10px;min-width:0">
                           <div style="width:30px;height:30px;border-radius:7px;background:var(--sf2,#F2F4F7);display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ d.coIni }}</div>
                           <div style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.co }}</div><div style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.contact }}</div></div>
@@ -3417,6 +3417,7 @@ const PR_NAMES = { ig: [['Studio Move Pilates', 'Pilates · Batel'], ['Arena Cro
   maps: [['Clínica Renova Estética', '4,8 ★ · 312 avaliações'], ['Espaço Bem-Estar Juvevê', '4,6 ★ · 128 avaliações'], ['Dermacare Curitiba', '4,9 ★ · 540 avaliações'], ['Studio Glow', '4,7 ★ · 96 avaliações'], ['Instituto Belle', '4,5 ★ · 210 avaliações'], ['Clínica Ápice', '4,8 ★ · 77 avaliações']],
   cnpj: [['Movimento Academia Ltda', '9313-1 · desde 2016'], ['Forma Fitness ME', '9313-1 · desde 2019'], ['Ginástica Total Ltda', '9313-1 · desde 2011'], ['Academia Sul Atlética', '9313-1 · desde 2021']],
   csv: [['Bruno Farias', 'Indicação · evento'], ['Lia Campos', 'Indicação · evento'], ['Otávio Reis', 'Lista do evento']] };
+const CAN_BILL_R = ['owner', 'admin', 'financeiro'];
 const PR_STAGES = [['Na fila', '#98A2B3'], ['Abordado', '#465FFF'], ['Respondeu', '#7A5AF8'], ['Qualificado', '#F79009'], ['Reunião', '#12B76A'], ['Cliente', '#067647']];
 const PR_STEPS0 = [
   { t: 'Primeira mensagem', day: 0, text: '{Oi|Olá}, {nome}! Aqui é a Ana, da Marketing Pro. Vi o perfil da {empresa} e curti o trabalho de vocês. A gente ajuda {segmento} a lotar a agenda com anúncios. Posso te mandar 2 ideias rápidas?' },
@@ -3474,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { crm: ['filter_alt', 'Funil de vendas com etapas, valores e próximos passos.'], score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], minutes: ['event_note', 'Atas de reunião com tarefas.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], tickets: ['support_agent', 'Chamados dos clientes com prazo.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], onboarding: ['checklist', 'Checklist de entrada de cada cliente.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3824,9 +3825,9 @@ class Component extends DCLogic {
     this.D = Object.assign({}, this.D, { exClients: ex, clients: R.clients, camps: R.camps, plat: R.plat, reports: R.reports, team: R.team, attention: R.attention, docs: (R.documents || []).map(d => this.spDoc(d)) });
     // Listas de exemplo dos módulos sem backend ficam vazias na conta real.
     this.D.today = []; this.D.deals = []; this.D.projects = []; this.D.threads = []; this.D.invoices = [];
-    const invs = (R.invoices || []).map(i => this.spInv(i)), projects = (R.projects || []).map(p => this.spProj(p));
-    if (init) { Object.assign(this.state, { deals: [], projects, invs, checks: this.state.checks.map(() => false) }); return; }
-    this.setState({ invs, projects });
+    const invs = (R.invoices || []).map(i => this.spInv(i)), projects = (R.projects || []).map(p => this.spProj(p)), deals = ((R.crm && R.crm.deals) || []).map(d => this.spDeal(d));
+    if (init) { Object.assign(this.state, { deals, projects, invs, checks: this.state.checks.map(() => false) }); return; }
+    this.setState({ invs, projects, deals });
     const has = id => R.clients.some(c => c.id === id), first = R.clients.length ? R.clients[0].id : null;
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
@@ -4074,6 +4075,51 @@ class Component extends DCLogic {
         tags: Object.keys(tags).filter(t => tags[t]), start_date: g('start') || undefined, due_date: g('due'), playbook: PB[g('pb')], description: (g('desc') || '').trim() || undefined } });
       this.setState({ dialog: null, formErr: {} }); this.go('projects', { projView: 'list' }); await this.spLoad();
       this.toastMsg('Projeto criado: ' + g('name')); this.spPjOpen({ id: r.project.id });
+    } catch (e) { this.spErr(e); }
+  }
+  // CRM de verdade: negócios do /api/portal/agencia (crm.deals), no formato das telas do design.
+  spDeal(r) {
+    const IDX = { novo: 0, contato: 1, diagnostico: 2, proposta: 3, negociacao: 4, ganho: 5, perdido: 6 }, ago = t => { if (!t) return 'sem contato'; const d = Math.floor((Date.now() - Date.parse(t)) / 864e5); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : 'há ' + d + ' dias'; };
+    const open = IDX[r.stage] < 5, ref = r.last_contact_at || r.created_at, stale = open && (Date.now() - Date.parse(ref)) / 864e5 >= 3;
+    return { id: r.id, real: 1, x: r, co: r.company, contact: [r.contact_name, r.email || r.phone].filter(Boolean).join(' · ') || 'Sem contato', value: r.value_cents / 100, owner: r.owner_name || 'Sem responsável',
+      last: ago(r.last_contact_at), next: r.stage === 'perdido' ? 'Perdido' + (r.lost_reason ? ': ' + r.lost_reason : '') : (r.next_action || 'Sem próxima ação') + (r.next_action_date ? ' · ' + this.spDm(r.next_action_date) : ''), days: r.days_in_stage, stage: IDX[r.stage], stale };
+  }
+  async spDealPatch(id, body, msg) { try { await SP.api('/api/deals/' + id, { method: 'PATCH', body }); await this.spLoad(); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); this.spLoad().catch(() => {}); } }
+  spDealLost(d) {
+    this.fm({ title: 'Perdido · ' + d.co, desc: 'O negócio sai do funil e entra na taxa de fechamento.', icon: 'thumb_down', fields: [{ k: 'why', l: 'Por que perdemos?', type: 'pick', req: 1, opts: ['Preço', 'Sem verba agora', 'Escolheu outra agência', 'Parou de responder', 'Outro'] }], init: { why: 'Preço' }, okL: 'Marcar como perdido',
+      ok: v => this.spDealPatch(d.id, { stage: 'perdido', lost_reason: v.why }, d.co + ' marcado como perdido') });
+  }
+  spDealMenu(d) {
+    const r = d.x, open = d.stage < 5, opts = [['contact', 'Registrar contato', 'e a próxima ação'], ['edit', 'Editar']];
+    if (open) opts.push(['lost', 'Marcar como perdido']); if (d.stage === 6) opts.push(['reopen', 'Voltar para o funil']); if (r.client_id) opts.push(['client', 'Ver o cliente']); opts.push(['del', 'Excluir']);
+    const mon = v => Number(String(v || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    this.fm({ title: d.co, desc: [d.contact, this.p3Brl(d.value) + '/mês', d.owner].join(' · '), icon: 'handshake', fields: [{ k: 'a', l: 'O que fazer?', type: 'pick', req: 1, opts }], init: { a: open ? 'contact' : 'edit' }, okL: 'Continuar',
+      ok: v => v.a === 'contact' ? this.fm({ title: 'Contato com ' + d.co, desc: 'Marca o contato de hoje e combina o próximo passo.', icon: 'call', fields: [{ k: 'next', l: 'Próxima ação', req: 1, ph: 'Ex.: Mandar a proposta' }, { k: 'date', l: 'Quando', type: 'date' }],
+            init: { next: r.next_action || '', date: r.next_action_date || '' }, okL: 'Salvar', ok: w => this.spDealPatch(d.id, { contacted: true, next_action: w.next.trim(), next_action_date: w.date || null }, 'Contato registrado') })
+        : v.a === 'edit' ? this.fm({ title: 'Editar · ' + d.co, icon: 'edit', fields: [{ k: 'co', l: 'Empresa', req: 1 }, { k: 'ct', l: 'Contato' }, { k: 'em', l: 'E-mail', email: 1 }, { k: 'ph', l: 'WhatsApp' }, { k: 'val', l: 'Valor mensal (R$)' }, { k: 'own', l: 'Responsável', type: 'pick', opts: [['', 'Sem responsável']].concat(this.spTeamOpts()) }, { k: 'notes', l: 'Observações', type: 'area' }],
+            init: { co: r.company, ct: r.contact_name || '', em: r.email || '', ph: r.phone || '', val: String(r.value_cents / 100).replace('.', ','), own: r.owner_user || '', notes: r.notes || '' }, okL: 'Salvar',
+            ok: w => this.spDealPatch(d.id, { company: w.co.trim(), contact_name: w.ct.trim() || null, email: w.em.trim() || null, phone: w.ph.trim() || null, value: mon(w.val), owner_user: w.own || null, notes: (w.notes || '').trim() || null }, 'Negócio atualizado') })
+        : v.a === 'lost' ? this.spDealLost(d)
+        : v.a === 'reopen' ? this.spDealPatch(d.id, { stage: 'novo' }, d.co + ' voltou para o funil')
+        : v.a === 'client' ? this.go('client', { clientId: r.client_id, clientTab: 'overview' })
+        : this.fm({ title: 'Excluir o negócio?', desc: d.co + ' some do CRM. Se já virou cliente, o cliente continua.', icon: 'delete', danger: 1, okL: 'Excluir',
+            ok: async () => { try { await SP.api('/api/deals/' + d.id, { method: 'DELETE' }); await this.spLoad(); this.toastMsg('Negócio excluído'); } catch (e) { this.spErr(e); } } }) });
+  }
+  async spNewDeal(g, money) {
+    const ST = ['novo', 'contato', 'diagnostico', 'proposta', 'negociacao'], src = g('src'), owner = this.D.team.find(t => t.name === g('owner'));
+    try {
+      await SP.api('/api/deals', { method: 'POST', body: { agency_id: this.spAg, company: String(g('co')).trim(), contact_name: (g('contact') || '').trim() || null, email: (g('email') || '').trim() || null, phone: (g('phone') || '').trim() || null,
+        segment: g('seg') || null, website: (g('site') || '').trim() || null, source: typeof src === 'string' ? src : null, value: money(g('value')), stage: ST[+(g('stage') || 0)] || 'novo', owner_user: owner ? owner.user_id : null,
+        next_action: (g('next') || '').trim() || null, next_action_date: g('nextDate') || null, notes: (g('notes') || '').trim() || null } });
+      this.setState({ dialog: null, formErr: {} }); this.go('crm'); await this.spLoad(); this.toastMsg('Lead criado: ' + g('co'));
+    } catch (e) { this.spErr(e); }
+  }
+  async spWin(d) {
+    try {
+      const r = await SP.api('/api/deals/' + d.id + '/win', { method: 'POST', body: { contract: true, billing_day: 10, onboarding: true, invite: true } });
+      this.setState({ dialog: null }); await this.spLoad();
+      this.go('client', { clientId: r.client_id, clientTab: 'overview' });
+      this.toastMsg(d.co + ' agora é cliente' + (r.project_id ? ' · onboarding iniciado' : '') + (r.contract_skipped ? ' · peça a quem cobra para criar o contrato' : '') + (r.invited ? (r.invited.emailed ? ' · convite enviado' : ' · link do portal criado') : ''));
     } catch (e) { this.spErr(e); }
   }
   spPortal(c) {
@@ -4557,7 +4603,7 @@ class Component extends DCLogic {
       lead: { title: 'Novo lead', eyebrow: 'CRM', desc: 'Entra no funil na etapa escolhida.', cta: 'Criar lead', sections: [
         ['Empresa', [F('co', 'Empresa', 'text', { req: 1, span: 2, ph: 'Ex.: Padaria Trigo Fino' }), F('seg', 'Segmento', 'select', { opts: segs, ph: 'Selecione' }), F('site', 'Site ou Instagram', 'text', { ph: '@empresa' })]],
         ['Contato', [F('contact', 'Nome do contato', 'text', { req: 1, ph: 'Nome da pessoa' }), F('phone', 'WhatsApp', 'tel', { ph: '(11) 99999-9999' }), F('email', 'E-mail', 'email', { span: 2, ph: 'nome@empresa.com.br' })]],
-        ['Oportunidade', [F('value', 'Valor mensal estimado', 'money', { req: 1, ph: '2.500,00' }), F('stage', 'Etapa', 'select', { opts: [['0', 'Novo lead'], ['1', 'Contato realizado'], ['2', 'Diagnóstico'], ['3', 'Proposta enviada'], ['4', 'Negociação']], def: '0' }), F('src', 'Origem', 'chips', { opts: ['Indicação', 'Instagram', 'Google', 'Site', 'Evento', 'Outro'], span: 2 }), F('owner', 'Responsável', 'select', { opts: teamN, def: 'João Silva' }), F('nextDate', 'Data da próxima ação', 'date'), F('next', 'Próxima ação', 'text', { span: 2, ph: 'Ex.: Ligar para agendar o diagnóstico' })]],
+        ['Oportunidade', [F('value', 'Valor mensal estimado', 'money', { req: 1, ph: '2.500,00' }), F('stage', 'Etapa', 'select', { opts: [['0', 'Novo lead'], ['1', 'Contato realizado'], ['2', 'Diagnóstico'], ['3', 'Proposta enviada'], ['4', 'Negociação']], def: '0' }), F('src', 'Origem', 'chips', { opts: ['Indicação', 'Instagram', 'Google', 'Site', 'Evento', 'Outro'], span: 2 }), F('owner', 'Responsável', 'select', { opts: teamN, def: this.R ? this.R.me.name : 'João Silva' }), F('nextDate', 'Data da próxima ação', 'date'), F('next', 'Próxima ação', 'text', { span: 2, ph: 'Ex.: Ligar para agendar o diagnóstico' })]],
         ['Observações', [F('notes', 'Observações', 'textarea', { span: 2, ph: 'Contexto, dores, investimento atual em mídia...' })]]] },
       campanha: { title: 'Nova campanha', eyebrow: 'Operação', desc: 'Registro manual. Com a integração, as campanhas passam a ser sincronizadas.', cta: 'Criar campanha', sections: [
         ['Campanha', [F('client', 'Cliente', 'select', { req: 1, opts: clientOpts, ph: 'Selecione' }), F('plat', 'Plataforma', 'select', { req: 1, opts: ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads'], def: 'Meta Ads' }), F('name', 'Nome da campanha', 'text', { req: 1, span: 2, ph: 'Ex.: Leads Outubro · Harmonização' }), F('obj', 'Objetivo', 'chips', { opts: ['Leads', 'Vendas', 'Tráfego', 'Alcance'], def: 'Leads' }), F('status', 'Status', 'chips', { opts: ['Ativa', 'Pausada', 'Rascunho'], def: 'Rascunho' })]],
@@ -4577,6 +4623,13 @@ class Component extends DCLogic {
         steps: [['Cliente criado', 'Com contato ' + d.contact + ', responsável ' + d.owner + ' e contrato mensal'], ['Onboarding iniciado', 'Playbook de onboarding · 14 etapas · prazo de 9 dias'], ['Projeto de setup', 'Setup de contas e tracking, com tarefas atribuídas'],
           ['Cobrança recorrente', brl(d.value) + ' todo dia 10 · primeira em 10 out'], ['Portal do cliente', 'Convite enviado a ' + d.contact.split(' ')[0] + ' após o contrato assinado']].map((s, i) => ({ n: i + 1, t: s[0], d: s[1] })),
         confirm: () => { this.setState(s => ({ dialog: null, deals: s.deals.map(x => x.id === d.id ? Object.assign({}, x, { stage: 5, next: 'Convertido em cliente', days: 0 }) : x) })); this.go('onboarding'); this.toastMsg(d.co + ' agora é cliente · onboarding iniciado'); } });
+      if (d.real) { const bill = CAN_BILL_R.includes(this.R.me.role), mng = ['owner', 'admin'].includes(this.R.me.role), em = d.x.email;
+        dlg.desc = 'Transformar ' + d.co + ' em cliente? Isso já deixa pronto o que está abaixo.';
+        dlg.steps = [['Cliente criado', 'Em onboarding, com ' + (d.x.contact_name ? 'o contato ' + d.x.contact_name + ' e ' : '') + 'responsável ' + d.owner],
+          ['Onboarding iniciado', 'Projeto com o playbook de onboarding · 14 tarefas · prazo de 9 dias'],
+          ['Contrato e cobrança', !d.value ? 'Sem valor no negócio: crie o contrato depois em Contratos' : bill ? this.p3Brl(d.value) + ' por mês, vencendo todo dia 10, por 12 meses' : 'Quem cobra (dono, admin ou financeiro) cria o contrato em Contratos'],
+          ['Portal do cliente', em && mng ? 'Convite enviado para ' + em : em ? 'Dono ou admin convida pelo cliente' : 'Sem e-mail no negócio: convide pelo cliente depois']].map((s, i) => ({ n: i + 1, t: s[0], d: s[1] }));
+        dlg.confirm = () => this.spWin(d); }
     } else if (dg && forms[dg]) {
       const fd = forms[dg]; const err = S.formErr || {};
       const defs = {}; fd.sections.forEach(s => s[1].forEach(x => { if (x.def !== undefined) defs[x.k] = x.def; }));
@@ -4604,7 +4657,8 @@ class Component extends DCLogic {
           const bad = {}; fd.sections.forEach(s => s[1].forEach(x => { const v = val(x.k); if (x.req && (!v || (x.t === 'money' && !money(v)))) bad[x.k] = 'Campo obrigatório'; else if (x.t === 'email' && v && !/^\S+@\S+\.\S+$/.test(v)) bad[x.k] = 'E-mail inválido'; }));
           if (Object.keys(bad).length) { this.setState({ formErr: bad }); return; }
           const g = k => val(k);
-          if (dg === 'lead') { const st = +(g('stage') || 0); const nd = { id: 100 + S.deals.length, co: g('co'), contact: g('contact'), value: money(g('value')), owner: g('owner'), last: 'agora', next: g('next') ? g('next') + (g('nextDate') ? ' · ' + fmtD(g('nextDate')) : '') : 'Primeiro contato', days: 0, stage: st };
+          if (dg === 'lead' && this.R) { this.spNewDeal(g, money); }
+          else if (dg === 'lead') { const st = +(g('stage') || 0); const nd = { id: 100 + S.deals.length, co: g('co'), contact: g('contact'), value: money(g('value')), owner: g('owner'), last: 'agora', next: g('next') ? g('next') + (g('nextDate') ? ' · ' + fmtD(g('nextDate')) : '') : 'Primeiro contato', days: 0, stage: st };
             this.setState(s => ({ dialog: null, formErr: {}, deals: s.deals.concat([nd]) })); this.go('crm'); this.toastMsg('Lead criado em ' + ['Novo lead', 'Contato realizado', 'Diagnóstico', 'Proposta enviada', 'Negociação'][st]); }
           else if (dg === 'projeto' && this.R) { this.spNewProject(g); }
           else if (dg === 'projeto') { const di = v => { const p = (v || '2026-09-28').split('-').map(Number); return p[1] === 9 ? p[2] : p[1] === 10 ? 30 + p[2] : p[1] < 9 ? 1 : 45; }; const s0 = di(g('start')), e0 = Math.max(di(g('due')), s0);
@@ -6309,24 +6363,31 @@ class Component extends DCLogic {
     const openDeals = S.deals.filter(d => d.stage < 5);
     const pipe = openDeals.reduce((s, d) => s + d.value, 0), wtd = openDeals.reduce((s, d) => s + d.value * prob[d.stage], 0);
     const fc = S.deals.filter(d => d.stage >= 3 && d.stage < 5).reduce((s, d) => s + d.value * prob[d.stage], 0);
-    const card = d => { const stale = /há [3-9] d/.test(d.last) && d.stage < 5; return Object.assign({}, d, { valueF: x.brl(d.value) + '/mês', ownerIni: d.owner.split(' ').map(w => w[0]).join(''), stageName: stages[d.stage],
+    const card = d => { const stale = d.real ? d.stale : /há [3-9] d/.test(d.last) && d.stage < 5; return Object.assign({}, d, { valueF: x.brl(d.value) + '/mês', ownerIni: d.owner.split(' ').map(w => w[0]).join(''), stageName: stages[d.stage],
       daysL: d.stage === 5 ? 'Fechado' : d.stage === 6 ? 'Perdido' : d.days + (d.days === 1 ? ' dia' : ' dias') + ' na etapa', stale, nextC: stale ? '#B54708' : 'var(--tx2,#667085)', isNeg: d.stage === 4, isWon: d.stage === 5, op: S.drag === d.id ? 0.4 : 1,
       onDragStart: e => { try { e.dataTransfer.setData('text/plain', String(d.id)); e.dataTransfer.effectAllowed = 'move'; } catch (er) {} this.setState({ drag: d.id }); },
       onDragEnd: () => this.setState({ drag: null, dragOver: null }),
-      win: e => { e.stopPropagation(); this.setState({ dialog: 'won', wonDeal: d.id }); } }); };
+      win: e => { e.stopPropagation(); this.setState({ dialog: 'won', wonDeal: d.id }); }, cur: d.real ? 'pointer' : 'default', open: () => { if (d.real && S.drag == null) this.spDealMenu(d); } }); };
     const crm = {
       views: this.segOf([['pipeline', 'Funil'], ['list', 'Lista']], S.crmView, set('crmView')), isPipe: S.crmView === 'pipeline', isList: S.crmView === 'list',
       metrics: [['Valor do funil', x.brl(pipe), 'por mês · ' + openDeals.length + ' negócios abertos'], ['Previsão de outubro', x.brl(fc), 'proposta enviada + negociação'], ['Taxa de fechamento', '32%', 'últimos 90 dias'], ['Ciclo médio de vendas', '18 dias', 'do lead ao fechamento']].map(m => ({ l: m[0], v: m[1], s: m[2] })),
       cols: stages.map((s, i) => { const ds = S.deals.filter(d => d.stage === i).map(card); const over = S.dragOver === i;
         return { name: s, count: ds.length, total: x.kf(ds.reduce((a, d) => a + d.value, 0)), prob: Math.round(prob[i] * 100) + '%', deals: ds, bg: over ? 'rgba(70,95,255,0.06)' : 'var(--sf2,#F2F4F7)', bd: over ? '#465FFF' : 'transparent',
           onDragOver: e => { e.preventDefault(); if (S.dragOver !== i) this.setState({ dragOver: i }); },
-          onDrop: e => { e.preventDefault(); const id = S.drag; if (id == null) return; this.setState(st => ({ deals: st.deals.map(d => d.id === id ? Object.assign({}, d, { stage: i, days: 0 }) : d), drag: null, dragOver: null }));
+          onDrop: e => { e.preventDefault(); const id = S.drag; if (id == null) return;
+            if (this.R) { const d = S.deals.find(x => x.id === id); this.setState({ drag: null, dragOver: null }); if (!d || d.stage === i) return; if (d.stage === 5) return this.toastMsg('Negócio ganho já virou cliente');
+              if (i === 5) return this.setState({ dialog: 'won', wonDeal: id }); if (i === 6) return this.spDealLost(d);
+              this.setState(st => ({ deals: st.deals.map(x => x.id === id ? Object.assign({}, x, { stage: i, days: 0 }) : x) })); return this.spDealPatch(id, { stage: ['novo', 'contato', 'diagnostico', 'proposta', 'negociacao'][i] }, 'Movido para ' + s); }
+            this.setState(st => ({ deals: st.deals.map(d => d.id === id ? Object.assign({}, d, { stage: i, days: 0 }) : d), drag: null, dragOver: null }));
             if (i === 5) this.setState({ dialog: 'won', wonDeal: id }); else if (i === 6) this.toastMsg('Negócio marcado como perdido'); else this.toastMsg('Movido para ' + s); } }; }),
       rows: S.deals.map(card).sort((a, b) => b.stage - a.stage),
       groups: stages.map((s, i) => { const ds = S.deals.filter(d => d.stage === i).map(card).map(d => Object.assign(d, { coIni: d.co.split(' ').filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join(''), valueShort: x.brl(d.value), daysShort: d.stage >= 5 ? '—' : d.days + (d.days === 1 ? ' dia' : ' dias') }));
         return { name: s, count: ds.length, total: x.brl(ds.reduce((a, d) => a + d.value, 0)) + '/mês', prob: Math.round(prob[i] * 100) + '%', deals: ds, dot: i === 5 ? '#17B26A' : i === 6 ? '#98A2B3' : ['#C7D0FF', '#A4B3FF', '#8093FF', '#5B72FF', '#465FFF'][i] }; }).filter(g => g.count > 0),
       newLead: () => this.setState({ dialog: 'lead', form: {} }), customize: () => this.go('settings', { setTab: 'pipeline' })
     };
+    if (this.R && this.R.crm) { const st = this.R.crm.stats, mN = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][new Date().getMonth()];
+      crm.metrics = [['Valor do funil', x.brl(st.pipeline_cents / 100), 'por mês · ' + st.open + (st.open === 1 ? ' negócio aberto' : ' negócios abertos')], ['Previsão de ' + mN, x.brl(st.forecast_cents / 100), 'proposta enviada + negociação, pela chance de cada etapa'],
+        ['Taxa de fechamento', st.close_rate == null ? '—' : st.close_rate + '%', st.won_90d + ' ganhos e ' + st.lost_90d + ' perdidos em 90 dias'], ['Ciclo médio de vendas', st.cycle_days == null ? '—' : st.cycle_days + (st.cycle_days === 1 ? ' dia' : ' dias'), 'do lead ao fechamento']].map(m => ({ l: m[0], v: m[1], s: m[2] })); }
     // Campaigns
     const cv = { 'Todas': () => true, 'Com problema': k => k.att, 'Meta': k => k.plat === 'Meta', 'Google': k => k.plat === 'Google', 'Dentro da meta': k => k.cpa <= k.target, 'Fora da meta': k => k.cpa > k.target };
     const cq = S.campQ.trim().toLowerCase();
