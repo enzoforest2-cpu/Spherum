@@ -5,6 +5,7 @@ import { listAccounts, listInvoices, listRecurrences } from "../billing";
 import { agencyCollabSummary } from "./collab";
 import { listContracts } from "./contracts";
 import { crmBoard } from "./crm";
+import { listMeetings } from "./meetings";
 import { listProjects, teamLoad } from "./projects";
 import { listDocuments } from "./documents";
 
@@ -74,7 +75,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 
-  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab, projects, load, contracts, crm] = await Promise.all([
+  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab, projects, load, contracts, crm, meetings] = await Promise.all([
     one<{ full_name: string | null; role: string; email: string | null }>(
       sql,
       `select p.full_name, m.role, u.email from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
@@ -157,6 +158,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     teamLoad(sql, agencyId),
     listContracts(sql, agencyId, now),
     crmBoard(sql, agencyId, now),
+    listMeetings(sql, agencyId),
   ]);
 
   const totals = new Map<string, { cur: Totals; prev: Totals }>();
@@ -328,5 +330,6 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     projects,
     contracts,
     crm,
+    meetings,
   };
 }

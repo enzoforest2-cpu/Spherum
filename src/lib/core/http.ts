@@ -38,6 +38,13 @@ export async function dealAgency(sql: Sql, dealId: string): Promise<string> {
   return row.agency_id;
 }
 
+/** Agência dona da reunião (atas). */
+export async function meetingAgency(sql: Sql, meetingId: string): Promise<string> {
+  const row = await one<{ agency_id: string }>(sql, `select agency_id from meetings where id = $1`, [meetingId]);
+  if (!row) throw new XodoError("Reunião não encontrada.", 404);
+  return row.agency_id;
+}
+
 /** Link do convite: o site abre o convite e pede login ou cadastro com o e-mail convidado. */
 export function inviteLink(token: string, request: Request): string {
   const base = process.env.APP_URL?.trim() || new URL(request.url).origin;

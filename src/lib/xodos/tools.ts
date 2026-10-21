@@ -8,6 +8,7 @@ import { num, one, type Sql } from "./db";
 import type { Category } from "./policy";
 import type { Xodo } from "./types";
 import { recordReportUpdate } from "../core/collab";
+import { writeMinutes } from "../core/meetings";
 
 /**
  * Ferramentas dos Xodós. Cada uma declara a categoria (que define a aprovação), valida a
@@ -380,6 +381,28 @@ export const TOOLS: ToolDef[] = [
         [ctx.xodo.agency_id, client.id, i.inicio, i.fim, i.titulo, i.conteudo_md, ctx.xodo.id],
       );
       return { report_id: row!.id, status: "draft", cliente: client.name };
+    },
+  }),
+  tool({
+    name: "registrar_ata",
+    description:
+      "Escreve a ata de uma reunião já registrada em Atas: resumo, decisões e próximos passos (com responsável e prazo). Fica como rascunho para a equipe revisar e enviar ao cliente.",
+    category: "rascunho",
+    input: z.object({
+      reuniao_id: z.uuid(),
+      resumo: z.string().min(1).max(4000),
+      decisoes: z.array(z.string().min(1).max(300)).max(30).default([]),
+      passos: z
+        .array(z.object({ titulo: z.string().min(1).max(200), responsavel: z.string().max(120).optional().describe("Nome de quem faz"), prazo: day.optional() }))
+        .max(30)
+        .default([]),
+    }),
+    summarize: () => "escrever a ata da reunião",
+    async execute(ctx, i) {
+      const r = await writeMinutes(ctx.sql, ctx.xodo.agency_id, { xodoId: ctx.xodo.id }, i.reuniao_id, {
+        summary: i.resumo, decisions: i.decisoes, steps: i.passos.map((p) => ({ title: p.titulo, owner: p.responsavel ?? null, due_date: p.prazo ?? null })),
+      });
+      return { ata: "rascunho", cliente: r.client, passos: i.passos.length };
     },
   }),
   tool({
