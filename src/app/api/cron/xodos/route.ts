@@ -17,6 +17,8 @@ import { fiscalSweep } from "@/lib/core/fiscal";
 import { fiscalDeps } from "@/lib/core/fiscal-focus";
 import { contentDeps } from "@/lib/core/content-meta";
 import { prospectSweep } from "@/lib/core/prospect";
+import { pushSweep } from "@/lib/core/push";
+import { webPushSender } from "@/lib/core/push-web";
 import { videoSweep } from "@/lib/core/studio";
 import { studioDeps } from "@/lib/core/studio-providers";
 import { whatsappSender } from "@/lib/core/prospect-wa";
@@ -79,9 +81,12 @@ export async function GET(request: Request) {
     const posts = await publishSweep(await contentDeps(deps.sql), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // Prospecção: passos vencidos da cadência (seg a sex, 9h às 18h, até o limite do dia).
     const prospect = await prospectSweep(deps.sql, whatsappSender(integrations), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    // App de celular: os avisos novos viram notificação nos aparelhos (se as chaves VAPID estiverem configuradas).
+    const sender = webPushSender();
+    const push = sender ? await pushSweep(deps.sql, sender, new Date()).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`) : "sem VAPID";
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, channels, delivered: { antes: queued, depois: delivered } });
+    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { app: ['smartphone', 'App de celular para aprovar e acompanhar.'] };
+const SP_SOON = {};
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -7128,7 +7128,50 @@ class Component extends DCLogic {
     Object.assign(this.state, { apScr: 'home', apQs: 22, apQe: 7, apPush: { appr: true, hot: true, fail: true, chat: true, xodo: false }, apAppr: [['Faísca · Relatórios', 'Publicar o relatório de setembro da Loja Verano'], ['Pedro Rocha · Criação', 'Carrossel da Clínica Aurora · versão B'], ['Zuca · Atendimento', 'Responder a Clínica Aurora sobre a fatura vencida']],
       apDev: [['iPhone 15 · João Silva', 'Ativo agora'], ['Galaxy S24 · Marina Alves', 'há 2 h'], ['iPhone 13 · Carla Dias', 'ontem']] });
   }
+  // App de celular (modo real): o Spherum instalado na tela inicial (PWA) com notificações Web Push.
+  async spApLoad() { this.APD = await SP.api('/api/app?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
+  async spApPrefs(body, msg) { try { const r = await SP.api('/api/app', { method: 'PATCH', body: Object.assign({ agency_id: this.spAg }, body) }); this.APD = Object.assign({}, this.APD, { prefs: r.prefs }); this.setState({ real: Date.now() }); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); } }
+  async spApEnable() {
+    const A = this.APD;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return this.toastMsg('Este navegador não aceita notificações. No iPhone, adicione o Spherum à tela de início (Compartilhar → Adicionar à Tela de Início) e abra por lá.');
+    if (!A || !A.vapid_public_key) return this.toastMsg('As notificações ainda não foram configuradas no servidor.');
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return this.toastMsg('Sem permissão para notificações neste aparelho.');
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      const key = A.vapid_public_key.replace(/-/g, '+').replace(/_/g, '/'), raw = atob(key + '='.repeat((4 - key.length % 4) % 4)), arr = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+      const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: arr }));
+      const j = sub.toJSON(), ua = navigator.userAgent, label = (/iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Navegador') + ' · ' + (this.R.me.name || '');
+      await SP.api('/api/app/devices', { method: 'POST', body: { agency_id: this.spAg, endpoint: j.endpoint, keys: j.keys, label } });
+      await this.spApLoad(); this.toastMsg('Notificações ativadas neste aparelho');
+    } catch (e) { this.spErr(e); }
+  }
+  vAppReal() {
+    const S = this.state, A = this.APD;
+    if (!A) this.spLazy('ap', 'app', () => this.spApLoad());
+    const g = this.gate(0, 'App de celular', null), scr = S.apScr || 'home', P = (A && A.prefs) || { categories: [], quiet_start: 22, quiet_end: 7 }, devs = (A && A.devices) || [];
+    const ap = ((this.XR && this.XR.approvals) || []), xs = ((this.XR && this.XR.xodos) || []), n = ap.length, hr = h => h == null ? '—' : String(h).padStart(2, '0') + 'h';
+    const PUSH = [['appr', 'Aprovações', 'Pedidos dos xodós e decisões dos clientes'], ['hot', 'Leads e reuniões', 'Formulário respondido, reunião marcada ou cancelada'], ['fail', 'Falhas', 'Post que não saiu, nota com erro, fatura atrasada'], ['chat', 'Para você', 'Reconhecimentos, trilhas e onboarding'], ['xodo', 'Tudo dos xodós', 'Mensagens e avisos de cada xodó']];
+    const cats = P.categories || [], setQ = (k, d) => { const v = ((P[k] == null ? (k === 'quiet_start' ? 22 : 7) : P[k]) + d + 24) % 24; this.spApPrefs({ [k]: v }); };
+    const team = (this.R.collab && this.R.collab.threads) || [], msgs = ((this.TCM && this._tchCur && this.TCM[this._tchCur]) || []).slice(-4);
+    return { app: Object.assign({}, g, { addL: devs.length ? 'Testar notificação' : 'Ativar neste aparelho',
+      add: async () => { if (!devs.length) return this.spApEnable(); try { const r = await SP.api('/api/app/test', { method: 'POST', body: { agency_id: this.spAg } }); this.toastMsg('Notificação de teste enviada para ' + r.sent + (r.sent === 1 ? ' aparelho' : ' aparelhos')); } catch (e) { this.spErr(e); } },
+      screens: [['home', 'Início'], ['appr', 'Aprovações'], ['chat', 'Chat']].map(o => Object.assign({ l: o[1], pick: () => this.setState({ apScr: o[0] }) }, spSeg(scr === o[0]))),
+      title: scr === 'home' ? 'Olá, ' + (this.R.me.name || '').split(' ')[0] : scr === 'appr' ? 'Aprovações' : '# chat da equipe', isHome: scr === 'home', isAppr: scr === 'appr', isChat: scr === 'chat', noAppr: !n,
+      home: [['task_alt', n ? n + ' esperando você' : 'Nada esperando você', 'Pedidos dos xodós', '#465FFF', 'rgba(70,95,255,.1)', 'appr'], ['smart_toy', xs.length + (xs.length === 1 ? ' xodó trabalhando' : ' xodós trabalhando'), 'Xodós', '#C4320A', 'rgba(239,91,59,.12)', null], ['forum', (this.spUnread() || 0) + ' mensagens de clientes', 'Mensagens', '#B42318', 'rgba(240,68,56,.1)', null], ['chat', (this.tchUnN() || 0) + ' no chat da equipe', 'Chat da equipe', '#067647', 'rgba(18,183,106,.12)', 'chat']].map(h => ({ icon: h[0], t: h[1], s: h[2], c: h[3], bg: h[4], go: () => h[5] ? this.setState({ apScr: h[5] }) : this.toastMsg('No app, isto abre ' + h[2]) })),
+      appr: ap.slice(0, 6).map(a => ({ who: ((xs.find(x => x.id === a.xodo_id) || {}).name || 'Xodó'), t: a.summary, ok: () => this.spXoDecide(a, 'once'), no: () => this.spXoDecide(a, 'deny') })),
+      chat: msgs.map(m => Object.assign({ who: (m.author_name || 'Spherum').split(' ')[0], t: m.text.length > 90 ? m.text.slice(0, 88) + '…' : m.text }, this.p2Av(m.author_name || 'Spherum'))),
+      tabbar: [['home', 'Início', 'home'], ['appr', 'Aprovar', 'task_alt'], ['chat', 'Chat', 'chat']].map(t => ({ l: t[1], icon: t[2], c: scr === t[0] ? '#465FFF' : '#98A2B3', hasN: t[0] === 'appr' && n > 0, n: String(n), pick: () => this.setState({ apScr: t[0] }) })),
+      sendLink: () => this.copyTxt(location.origin + '/prototipo/agencia.html', 'Link copiado · no celular, abra e use “Adicionar à tela de início”'),
+      copyLink: () => this.copyTxt(location.origin + '/prototipo/agencia.html', 'Link copiado'),
+      hasBrand: true, brandL: 'É o próprio Spherum instalado na tela de início (sem loja de apps). ' + (A ? A.team.with_app + ' de ' + A.team.n + ' pessoas da equipe já ativaram.' : ''),
+      push: PUSH.map(p => Object.assign({ l: p[1], d: p[2] }, spSw(cats.includes(p[0]), () => this.spApPrefs({ categories: cats.includes(p[0]) ? cats.filter(c => c !== p[0]) : cats.concat([p[0]]) })))),
+      qsL: hr(P.quiet_start), qeL: hr(P.quiet_end), qsDec: () => setQ('quiet_start', -1), qsInc: () => setQ('quiet_start', 1), qeDec: () => setQ('quiet_end', -1), qeInc: () => setQ('quiet_end', 1),
+      devN: devs.length + (devs.length === 1 ? ' aparelho' : ' aparelhos'), devs: devs.map(d => ({ n: d.label || 'Aparelho', s: d.last_error ? 'Erro: ' + d.last_error.slice(0, 60) : 'desde ' + this.spWhen(d.created_at), off: async () => { try { await SP.api('/api/app/devices/' + d.id, { method: 'DELETE' }); await this.spApLoad(); this.toastMsg('Aparelho desconectado'); } catch (e) { this.spErr(e); } } })) }) };
+  }
   vApp() {
+    if (this.R) return this.vAppReal();
     this.apInit();
     const S = this.state, g = this.gate(0, 'App de celular', null), scr = S.apScr, n = S.apAppr.length;
     const msgs = ((S.tchMsgs && S.tchMsgs.geral) || []).filter(m => m[0] !== 'day').slice(-4);
