@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], proposals: ['request_quote', 'Propostas com assinatura digital.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3826,8 +3826,10 @@ class Component extends DCLogic {
     // Listas de exemplo dos módulos sem backend ficam vazias na conta real.
     this.D.today = []; this.D.deals = []; this.D.projects = []; this.D.threads = []; this.D.invoices = [];
     const invs = (R.invoices || []).map(i => this.spInv(i)), projects = (R.projects || []).map(p => this.spProj(p)), deals = ((R.crm && R.crm.deals) || []).map(d => this.spDeal(d));
-    if (init) { Object.assign(this.state, { deals, projects, invs, checks: this.state.checks.map(() => false) }); return; }
-    this.setState({ invs, projects, deals });
+    const PR = R.proposals || { proposals: [], catalog: null, stats: {} }, ppList = PR.proposals.map(r => this.spPpFromRow(r)), ppCat = Array.isArray(PR.catalog) ? PR.catalog : (this.state.ppCat || PP2_CAT.map(c => Object.assign({}, c)));
+    this._ppSaved = {}; ppList.forEach(p => { this._ppSaved[p.id] = JSON.stringify(this.spPpPayload(p)); }); if (Array.isArray(PR.catalog)) this._ppCatSaved = JSON.stringify(ppCat);
+    if (init) { Object.assign(this.state, { deals, projects, invs, ppList, ppCat, checks: this.state.checks.map(() => false) }); return; }
+    this.setState({ invs, projects, deals, ppList, ppCat });
     const has = id => R.clients.some(c => c.id === id), first = R.clients.length ? R.clients[0].id : null;
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
@@ -5044,13 +5046,58 @@ class Component extends DCLogic {
       hasAlert: st('gads') === 'err', alertL: 'O Google Ads perdeu o acesso há 2 dias. A Nina não consegue otimizar 6 clientes e os relatórios de outubro vão sair sem os dados do Google.', alertFix: () => connect(IN_PROV[1]),
       log: S.inLog.map(l => ({ t: l[0], a: l[1], b: l[2], c: l[3] })), syncAll: () => { this.toastMsg('Sincronizando ' + okN + ' integrações…'); clearTimeout(this._syT); this._syT = setTimeout(() => this.toastMsg(okN + ' integrações sincronizadas · dados até agora'), 1600); } } };
   }
+  // Propostas de verdade (/api/proposals): o editor do design guarda o documento; o servidor cuida do link, das visualizações e do aceite.
+  spPpFromRow(r) {
+    const ST = { rascunho: 'draft', enviada: r.views ? 'viewed' : 'sent', aceita: 'signed', recusada: 'declined' }, doc = r.doc || {};
+    const base = ppNew({ id: r.id, who: r.company, contact: r.contact_name || '', email: r.email || '', phone: r.phone || '', src: r.source || 'Direta', items: [] });
+    return Object.assign(base, doc, { id: r.id, who: r.company, contact: r.contact_name || '', email: r.email || '', phone: r.phone || '', src: r.source || 'Direta', items: doc.items || [], adds: doc.adds || [],
+      st: r.expired ? 'sent' : ST[r.status] || 'draft', views: r.views, sent: r.sent_at ? this.spDm(r.sent_at.slice(0, 10)) : '—', valid: r.valid_until ? this.spDm(r.valid_until) + (r.expired ? ' · vencida' : '') : '—',
+      signed: r.accepted_at ? new Date(r.accepted_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '') + (r.accepted_name ? ' · ' + r.accepted_name : '') : null,
+      reason: r.decline_reason ? '“' + r.decline_reason + '”' : null, real: 1, x: r });
+  }
+  spPpPayload(p) {
+    const META = { id: 1, who: 1, contact: 1, email: 1, phone: 1, src: 1, st: 1, views: 1, sent: 1, valid: 1, signed: 1, reason: 1, real: 1, x: 1, _deal: 1, _client: 1 }, doc = {};
+    Object.keys(p).forEach(k => { if (!META[k] && typeof p[k] !== 'function') doc[k] = p[k]; });
+    const c = this.ppCalc(p);
+    return { company: p.who || 'Sem nome', contact_name: p.contact || null, email: (p.email || '').trim() || null, phone: p.phone || null, source: p.src || null, doc, monthly_cents: Math.max(0, Math.round(c.mon * 100)), one_time_cents: Math.max(0, Math.round(c.u * 100)), term_months: p.term || 6 };
+  }
+  spPpSync() {
+    // Salva sozinho o que mudou no editor (compara com o último salvo).
+    this._ppSaved = this._ppSaved || {}; this._ppT = this._ppT || {};
+    (this.state.ppList || []).forEach(p => { if (!p.real) return; const body = this.spPpPayload(p), key = JSON.stringify(body);
+      if (this._ppSaved[p.id] === undefined) { this._ppSaved[p.id] = key; return; }
+      if (this._ppSaved[p.id] === key) return;
+      clearTimeout(this._ppT[p.id]); this._ppT[p.id] = setTimeout(async () => { try { await SP.api('/api/proposals/' + p.id, { method: 'PATCH', body }); this._ppSaved[p.id] = key; } catch (e) { this.spErr(e); } }, 900); });
+    const cat = JSON.stringify(this.state.ppCat || []);
+    if (this._ppCatSaved === undefined) this._ppCatSaved = cat;
+    else if (this._ppCatSaved !== cat && ['owner', 'admin'].includes(this.R.me.role)) { clearTimeout(this._ppCatT); this._ppCatT = setTimeout(async () => { try { await SP.api('/api/agencies/' + this.spAg + '/proposal-catalog', { method: 'PATCH', body: { catalog: JSON.parse(cat) } }); this._ppCatSaved = cat; } catch (e) { this.spErr(e); } }, 1200); }
+  }
+  async spPpCreate(p) {
+    try { const r = await SP.api('/api/proposals', { method: 'POST', body: Object.assign({ agency_id: this.spAg, deal_id: p._deal || null, client_id: p._client || null }, this.spPpPayload(p)) }); await this.spLoad(); this.setState({ ppSel: r.proposal.id, ppTab: 'items' }); this.toastMsg('Proposta criada'); } catch (e) { this.spErr(e); }
+  }
+  spPpSend(p, resend) {
+    this.fm({ title: resend ? 'Reenviar a proposta' : 'Enviar a proposta', desc: (resend ? 'Um link novo substitui o anterior. ' : '') + 'O cliente lê e aceita pelo link, sem precisar de login.', icon: 'send',
+      fields: [{ k: 'days', l: 'Validade (dias)', req: 1, check: v => !(+v >= 1 && +v <= 90) ? 'Use de 1 a 90 dias' : '' }, { k: 'mail', l: 'Enviar por e-mail', type: 'pick', req: 1, opts: p.email ? [['sim', 'Sim, para ' + p.email], ['nao', 'Não, só quero o link']] : [['nao', 'Só o link (sem e-mail na proposta)']] }],
+      init: { days: String(p.validDays || 15), mail: p.email ? 'sim' : 'nao' }, okL: resend ? 'Reenviar' : 'Enviar',
+      ok: async v => { try { const cur = (this.state.ppList || []).find(x => x.id === p.id) || p, body = this.spPpPayload(cur), key = JSON.stringify(body);
+        if ((this._ppSaved || {})[p.id] !== key) { clearTimeout((this._ppT || {})[p.id]); await SP.api('/api/proposals/' + p.id, { method: 'PATCH', body }); this._ppSaved[p.id] = key; }
+        const r = await SP.api('/api/proposals/' + p.id + '/send', { method: 'POST', body: { valid_days: +v.days, email: v.mail === 'sim' } });
+        this._ppLinks = Object.assign({}, this._ppLinks, { [p.id]: r.link }); try { navigator.clipboard.writeText(r.link); } catch (e) {}
+        await this.spLoad(); this.toastMsg(r.emailed ? 'Proposta enviada para ' + p.email + ' · link copiado' : 'Link da proposta copiado. Mande para ' + (p.contact || 'o cliente') + '.'); } catch (e) { this.spErr(e); } } });
+  }
+  spPpDelete(p) {
+    this.fm({ title: 'Excluir a proposta?', desc: '“' + p.who + '” some para sempre e o link para de funcionar.', icon: 'delete', danger: 1, okL: 'Excluir',
+      ok: async () => { try { await SP.api('/api/proposals/' + p.id, { method: 'DELETE' }); this.setState({ ppSel: null }); await this.spLoad(); this.toastMsg('Proposta excluída'); } catch (e) { this.spErr(e); } } });
+  }
   ppCalc(p) { const disc = ({ 3: 0, 6: 5, 12: 10 })[p.term] || 0; let m = 0, u = 0; p.items.forEach(i => { const v = i.p * i.q * (1 - (i.disc || 0) / 100); if (i.u === 'mês') m += v; else u += v; }); const md = Math.round(m * (1 - disc / 100)), add = (p.adds || []).filter(a => a.st === 'signed' && a.type !== 'ext').reduce((x, a) => x + a.delta, 0); return { m, md, u, disc, add, mon: md + add, total: (md + add) * p.term + u }; }
   vProp() {
     const S = this.state; if (!S.ppList) { this.state.ppList = PP2_LIST(); this.state.ppCat = PP2_CAT.map(c => Object.assign({}, c)); }
     const L = this.state.ppList, CAT = this.state.ppCat, brl = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR'), cph = S.pfCph || 85;
+    if (this.R) this.spPpSync();
     const upd = (id, patch) => this.setState(s => ({ ppList: s.ppList.map(x => x.id === id ? Object.assign({}, x, typeof patch === 'function' ? patch(x) : patch) : x) }));
     const stL = p => p.st === 'viewed' ? 'Visualizada ' + p.views + 'x' : PP_STAT[p.st][0];
-    const mk = (o) => { const id = Math.max.apply(null, L.map(x => x.id)) + 1; const p = Object.assign(ppNew(Object.assign({ id }, o)), { items: (o.items || []).map(cid => { const c = CAT.find(x => x.id === cid); return ppItem(c); }) }); this.setState(s => ({ ppList: [p].concat(s.ppList), ppSel: id, ppTab: 'items' })); };
+    const mk = (o) => { const id = this.R ? 'novo' : Math.max.apply(null, L.map(x => x.id)) + 1; const p = Object.assign(ppNew(Object.assign({ id }, o)), { items: (o.items || []).map(cid => { const c = CAT.find(x => x.id === cid); return ppItem(c); }) });
+      if (this.R) return this.spPpCreate(p); this.setState(s => ({ ppList: [p].concat(s.ppList), ppSel: id, ppTab: 'items' })); };
     const open = L.filter(p => p.st === 'sent' || p.st === 'viewed'), sg = L.filter(p => p.st === 'signed'), sum = a => a.reduce((x, p) => x + this.ppCalc(p).mon, 0);
     const out = { isList: true, isEdit: false, cphL: 'R$ ' + cph + '/h',
       ltabs: this.tabsOf([['list', 'Propostas'], ['cat', 'Catálogo de serviços'], ['tpl', 'Modelos']], S.ppLTab, v => this.setState({ ppLTab: v })), lList: S.ppLTab === 'list', lCat: S.ppLTab === 'cat', lTpl: S.ppLTab === 'tpl',
@@ -5062,7 +5109,17 @@ class Component extends DCLogic {
       addCat: () => this.setState(s => ({ ppCat: s.ppCat.concat([{ id: 'c' + Date.now() % 100000, n: 'Novo serviço', d: 'Descreva o que está incluso', u: 'mês', p: 500, h: 4, on: true }]) })),
       tpls: PP2_TPL.map(t => { const its = t[2].map(id => CAT.find(c => c.id === id)).filter(Boolean), mon = its.filter(c => c.u === 'mês').reduce((a, c) => a + c.p, 0), un = its.filter(c => c.u !== 'mês').reduce((a, c) => a + c.p, 0);
         return { n: t[0], d: t[1], c: t[3], items: its.map(c => c.n + (c.p ? ' · ' + brl(c.p) + (c.u === 'mês' ? '/mês' : '') : ' · incluso')), p: brl(mon) + '/mês' + (un ? ' + ' + brl(un) : ''), stat: t[4], use: () => mk({ who: 'Novo cliente', contact: 'Contato', src: 'Modelo · ' + t[0], items: t[2], color: t[3] }) }; }),
-      newP: () => mk({ who: 'Pulso Funcional', contact: 'Marina Costa', src: 'Prospecção', items: ['traf', 'cri', 'rel', 'setup'] }), back: () => this.setState({ ppSel: null }) };
+      newP: () => this.R ? this.fm({ title: 'Nova proposta', desc: 'Depois é só ajustar os itens, as condições e a aparência.', icon: 'request_quote',
+          fields: [{ k: 'from', l: 'Para', type: 'pick', req: 1, opts: [['', 'Uma empresa nova']].concat(S.deals.filter(d => d.real && d.stage < 5).map(d => ['d:' + d.id, d.co, 'negócio do CRM'])).concat(this.D.clients.map(c => ['c:' + c.id, c.name, 'cliente'])) },
+            { k: 'who', l: 'Empresa (se for nova)', check: (v, all) => !all.from && !(v || '').trim() ? 'Informe a empresa' : '' }, { k: 'ct', l: 'Contato' }, { k: 'em', l: 'E-mail do contato', email: 1 }], init: { from: '' }, okL: 'Criar proposta',
+          ok: v => { const d = v.from.startsWith('d:') ? S.deals.find(x => x.id === v.from.slice(2)) : null, c = v.from.startsWith('c:') ? this.D.clients.find(x => x.id === v.from.slice(2)) : null;
+            const p = Object.assign(ppNew({ id: 'novo', who: d ? d.co : c ? c.name : v.who.trim(), contact: (v.ct || '').trim() || (d && d.x.contact_name) || '', email: (v.em || '').trim() || (d && d.x.email) || '', src: d ? 'CRM' : c ? 'Cliente' : 'Prospecção', items: [] }), { items: ['traf', 'rel'].map(id => CAT.find(x => x.id === id)).filter(Boolean).map(x => ppItem(x)) });
+            this.spPpCreate(Object.assign(p, { _deal: d ? d.id : null, _client: c ? c.id : null })).then(() => {}); } })
+        : mk({ who: 'Pulso Funcional', contact: 'Marina Costa', src: 'Prospecção', items: ['traf', 'cri', 'rel', 'setup'] }), back: () => this.setState({ ppSel: null }) };
+    if (this.R) { const PS = (this.R.proposals || {}).stats || {}, rows = (this.R.proposals || {}).proposals || [], m30 = Date.now() - 30 * 864e5;
+      const op = L.filter(p => p.st === 'sent' || p.st === 'viewed'), sg = L.filter(p => p.st === 'signed' && p.x && Date.parse(p.x.accepted_at) > m30), sm = a => a.reduce((x, p) => x + this.ppCalc(p).mon, 0);
+      out.kpis = spK([['Em aberto', brl(sm(op)) + '/mês', op.length + (op.length === 1 ? ' proposta' : ' propostas')], ['Aceitas', brl(sm(sg)) + '/mês', sg.length + (sg.length === 1 ? ' aceite' : ' aceites') + ' nos últimos 30 dias', '#079455'],
+        ['Taxa de aceite', PS.accept_rate == null ? '—' : PS.accept_rate + '%', 'últimos 90 dias'], ['Tempo até aceitar', PS.days_to_accept == null ? '—' : String(PS.days_to_accept).replace('.', ',') + ' dias', 'média']]); void rows; }
     const p = L.find(x => x.id === S.ppSel);
     if (!p) return { pp: out };
     const c = this.ppCalc(p), t = PP_STAT[p.st], locked = p.st !== 'draft', signed = p.st === 'signed', canEdit = !locked;
@@ -5072,12 +5129,20 @@ class Component extends DCLogic {
     const sw = (obj, k, l, d) => Object.assign({ l, d }, spSw(!!p[obj][k], () => set(x => ({ [obj]: Object.assign({}, x[obj], { [k]: !x[obj][k] }) }))));
     const segOf = (list, cur, key) => list.map(o => Object.assign({ l: o[1], pick: () => set({ [key]: o[0] }) }, spSeg(cur === o[0])));
     const now = new Date(), hm = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-    const dup = () => { const id = Math.max.apply(null, L.map(x => x.id)) + 1; this.setState(s => ({ ppList: [Object.assign({}, p, { id, st: 'draft', views: 0, sent: '—', valid: '—', reason: null, signed: null, adds: [], items: p.items.map(i => Object.assign({}, i, { k: ++_ppK })) })].concat(s.ppList), ppSel: id, ppTab: 'items' })); this.toastMsg('Cópia criada como rascunho'); };
+    const dup = () => { if (this.R) return this.spPpCreate(Object.assign({}, p, { st: 'draft', adds: [], items: p.items.map(i => Object.assign({}, i, { k: ++_ppK })) })); const id = Math.max.apply(null, L.map(x => x.id)) + 1; this.setState(s => ({ ppList: [Object.assign({}, p, { id, st: 'draft', views: 0, sent: '—', valid: '—', reason: null, signed: null, adds: [], items: p.items.map(i => Object.assign({}, i, { k: ++_ppK })) })].concat(s.ppList), ppSel: id, ppTab: 'items' })); this.toastMsg('Cópia criada como rascunho'); };
     const acts = { draft: [spAct('Enviar por WhatsApp', 1, () => { upd(p.id, { st: 'sent', sent: '02 out', valid: (2 + p.validDays) + ' out' }); this.toastMsg('Proposta enviada para ' + p.contact + ' por WhatsApp'); }), spAct('Enviar por e-mail', 0, () => { upd(p.id, { st: 'sent', sent: '02 out', valid: (2 + p.validDays) + ' out' }); this.toastMsg('Proposta enviada para ' + p.contact + ' por e-mail'); }), spAct('Baixar PDF', 0, () => { this.dl('proposta-' + (p.client || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html', '<!doctype html><meta charset="utf-8"><title>Proposta comercial</title><body style="font-family:sans-serif;padding:40px;max-width:680px;color:#101828"><h2>Proposta comercial</h2><p>Para: ' + (p.contact || '') + '</p><p>Cliente: ' + (p.client || '') + '</p><p style="color:#667085;margin-top:32px">Documento de demonstração gerado pelo Spherum.</p></body>', 'text/html'); this.toastMsg('Proposta baixada'); })],
       sent: [spAct('Simular: cliente abriu', 1, () => { upd(p.id, { st: 'viewed', views: 1 }); this.toastMsg(p.contact + ' abriu a proposta agora'); }), spAct('Reenviar', 0, () => this.fm({ title: 'Reenviar a proposta', desc: p.contact + ' recebe o link de novo, com um recado seu.', icon: 'forward_to_inbox', fields: [{ k: 'ch', l: 'Enviar por', type: 'pick', opts: ['E-mail', 'WhatsApp'], req: 1 }, { k: 'msg', l: 'Recado', type: 'area', req: 1, min: 10 }], init: { ch: 'E-mail', msg: 'Oi! Reenviando a proposta para facilitar. Fico à disposição para qualquer ajuste.' }, okL: 'Reenviar', wait: 600, ok: v => this.toastMsg('Proposta reenviada para ' + p.contact + ' por ' + v.ch, () => this.toastMsg('Reenvio cancelado')) })), spAct('Duplicar', 0, dup)],
       viewed: [spAct('Simular: cliente assinou', 1, () => { upd(p.id, { st: 'signed', signed: '02 out, ' + hm }); this.toastMsg('Contrato assinado! Cobrança e onboarding criados.'); }), spAct('Lembrar cliente', 0, () => this.fm({ title: 'Lembrar ' + p.contact, desc: 'Um empurrãozinho para assinar, com o link do contrato.', icon: 'notifications_active', fields: [{ k: 'ch', l: 'Enviar por', type: 'pick', opts: ['WhatsApp', 'E-mail'], req: 1 }, { k: 'msg', l: 'Mensagem', type: 'area', req: 1, min: 10 }], init: { ch: 'WhatsApp', msg: 'Oi! O contrato está pronto para assinar, leva menos de um minuto. Qualquer dúvida, me chama.' }, okL: 'Enviar lembrete', wait: 600, ok: v => this.toastMsg('Lembrete enviado para ' + p.contact + ' por ' + v.ch, () => this.toastMsg('Lembrete cancelado')) })), spAct('Duplicar', 0, dup)],
       signed: [spAct('Novo aditivo', 1, () => this.setState({ ppTab: 'adds' })), spAct('Baixar contrato', 0, () => { this.dl('contrato-' + (p.client || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html', '<!doctype html><meta charset="utf-8"><title>Contrato de prestação de serviços</title><body style="font-family:sans-serif;padding:40px;max-width:680px;color:#101828"><h2>Contrato de prestação de serviços</h2><p>Contratante: ' + (p.client || '') + '</p><p>Assinado por: ' + (p.contact || '') + '</p><p style="color:#667085;margin-top:32px">Documento de demonstração gerado pelo Spherum.</p></body>', 'text/html'); this.toastMsg('Contrato baixado'); }), spAct('Abrir onboarding', 0, () => this.go('risk'))],
       declined: [spAct('Duplicar e ajustar', 1, dup)] }[p.st];
+    if (this.R && p.real) { const link = (this._ppLinks || {})[p.id], see = () => link ? (window.top || window).open(link, '_blank') : this.toastMsg('O link aparece ao enviar ou reenviar a proposta'), r = p.x;
+      const rm = spAct('Excluir', 0, () => this.spPpDelete(p));
+      acts.length = 0;
+      ({ draft: [spAct('Enviar', 1, () => this.spPpSend(p, false)), spAct('Duplicar', 0, dup), rm],
+        sent: [spAct('Reenviar link', 1, () => this.spPpSend(p, true)), spAct('Ver como o cliente', 0, see), spAct('Duplicar', 0, dup), rm],
+        viewed: [spAct('Reenviar link', 1, () => this.spPpSend(p, true)), spAct('Ver como o cliente', 0, see), spAct('Duplicar', 0, dup), rm],
+        signed: [spAct('Ver cliente', 1, () => r.client_id && this.go('client', { clientId: r.client_id, clientTab: 'overview' })), spAct('Novo aditivo', 0, () => this.setState({ ppTab: 'adds' })), spAct('Duplicar', 0, dup)],
+        declined: [spAct('Duplicar e ajustar', 1, dup), rm] }[p.st] || []).forEach(a => acts.push(a)); }
     const hours = p.items.reduce((a, i) => a + ((CAT.find(x => x.id === i.cat) || {}).h || 4) * i.q, 0), mg = c.md ? (c.md - hours * cph) / c.md * 100 : 0;
     const sel = p.items, price = i => { const v = i.p * i.q * (1 - (i.disc || 0) / 100); return v ? brl(v) + (i.u === 'mês' ? '/mês' : ' único') : 'Incluso'; };
     const vw = p.views > 0 || signed, dec = p.st === 'declined';
