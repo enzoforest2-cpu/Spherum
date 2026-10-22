@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { sched: ['event_available', 'Página de agendamento com a sua agenda.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -5484,6 +5484,14 @@ class Component extends DCLogic {
       steps: steps.map(s => ({ l: s[0], d: s[2], go: s[3], mark: s[1] ? '✓' : '', cBd: s[1] ? '#12B76A' : 'var(--bd,#D0D5DD)', cBg: s[1] ? '#12B76A' : 'transparent', tc: s[1] ? 'var(--tx2,#667085)' : 'var(--tx,#101828)', bg: s[1] ? 'var(--sf2,#F9FAFB)' : 'var(--sf,#fff)' })) };
     return { mo, pm, cm, onb };
   }
+  // Carga sob demanda de uma tela: só com a tela aberta, uma por vez, e depois de falhar espera 30 s.
+  spLazy(key, view, fn) {
+    if (this.state.view !== view) return;
+    const k = '_lz_' + key, now = Date.now();
+    if (this[k] && (this[k] === 'busy' || now - this[k] < 30000)) return;
+    this[k] = 'busy';
+    fn().then(() => { this[k] = 0; }, e => { this[k] = Date.now(); this.spErr(e); });
+  }
   // Prospecção (modo real): listas próprias, cadência pelo WhatsApp oficial com modelos aprovados, Conversas e Funil.
   async spPrLoad() { this.PR = await SP.api('/api/prospect?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
   async spPrCfg(body, msg) { try { await SP.api('/api/prospect', { method: 'PATCH', body: Object.assign({ agency_id: this.spAg }, body) }); await this.spPrLoad(); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); this.spPrLoad().catch(() => {}); } }
@@ -5511,7 +5519,7 @@ class Component extends DCLogic {
   }
   vProspectReal() {
     const S = this.state, P = this.PR;
-    if (!P) { if (!this._prL) { this._prL = 1; this.spPrLoad().catch(e => this.spErr(e)).finally(() => { this._prL = 0; }); } }
+    if (!P) this.spLazy('pr', 'prospect', () => this.spPrLoad());
     if (!this._prP) this._prP = setInterval(() => { if (!document.hidden && this.state.view === 'prospect' && this.R) { this.spPrLoad().catch(() => {}); if (this.state.prTab === 'chat' && this.state.prChat) this.spPrMsgs(this.state.prChat).catch(() => {}); } }, 15000);
     const D = P || { config: { steps: [{ t: 'Primeira mensagem', day: 0, text: '', template: null }], variations: [], daily_limit: 50, running: false, connection_id: null }, leads: [], variations: [], stats: { sent_today: 0, contacted: 0, replied: 0, queued: 0, qualified: 0, meetings: 0, crm: 0, opted_out: 0, errors: 0, unread: 0, in_window: false } };
     const C = D.config, L = D.leads, st = D.stats, brl = n => Number(n).toLocaleString('pt-BR'), team = this.D.team || [];
@@ -6219,7 +6227,7 @@ class Component extends DCLogic {
     const S = this.state, rk = this.gate(1, 'Chat da equipe', null).rk, g = this.gate(1, 'Chat da equipe', rk === 1 ? 'No plano Agência: até 10 canais e 90 dias de histórico.' : null);
     const all = this.R.teamChat || [], meId = this.R.me.user_id, team = this.D.team || [];
     const sel = all.find(c => c.id === S.tchCh) || all[0] || null, cur = sel ? sel.id : null;
-    if (cur && this._tchCur !== cur) { this._tchCur = cur; if (!(this.TCM && this.TCM[cur])) this.spTchLoad(cur).catch(e => this.spErr(e)); }
+    if (cur) { this._tchCur = cur; if (!(this.TCM && this.TCM[cur])) this.spLazy('tch' + cur, 'chat', () => this.spTchLoad(cur)); }
     const pick = id => { this.setState({ tchCh: id, tchErr: '' }); this.spTchLoad(id).catch(e => this.spErr(e)); };
     const row = c => ({ hasUn: c.unread > 0 && cur !== c.id, un: String(c.unread || 0), bg: cur === c.id ? 'rgba(70,95,255,.08)' : 'transparent', fw: c.unread || cur === c.id ? '600' : '500', pick: () => pick(c.id) });
     const cname = c => c.client_id ? ((this.D.clients.find(x => x.id === c.client_id) || {}).name || c.name) : c.name;
@@ -6841,7 +6849,52 @@ class Component extends DCLogic {
       stages: ['Novo lead', 'Qualificado', 'Reunião marcada'].map(x => Object.assign({ l: x, pick: () => this.setState({ foStage: x }) }, spChip(S.foStage === x))),
       notify: [['wa', 'WhatsApp do comercial'], ['mail', 'E-mail'], ['xodo', 'Um xodó']].map(x => Object.assign({ l: (S.foNotify[x[0]] ? '✓ ' : '') + x[1], pick: () => this.setState(s => ({ foNotify: Object.assign({}, s.foNotify, { [x[0]]: !s.foNotify[x[0]] }) })) }, spChip(!!S.foNotify[x[0]]))) }) };
   }
+  // Agendamentos (modo real): tipos de reunião, horários livres e reuniões marcadas.
+  async spBkLoad() { this.BK = await SP.api('/api/bookings?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
+  async spBkSlots(id) { const r = await SP.api('/api/bookings/types/' + id); this.BKS = Object.assign({}, this.BKS, { [id]: r.days }); this.setState({ real: Date.now() }); }
+  async spBkPatch(id, body, msg) { try { await SP.api('/api/bookings/types/' + id, { method: 'PATCH', body }); await Promise.all([this.spBkLoad(), this.spBkSlots(id)]); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); } }
+  vSchedReal() {
+    const S = this.state, B = this.BK;
+    if (!B) this.spLazy('bk', 'sched', () => this.spBkLoad());
+    const g = this.gate(0, 'Agendamentos', null);
+    const types = (B && B.types) || [], ty = types.find(t => t.id === S.scType) || types[0];
+    if (ty && !(this.BKS && this.BKS[ty.id])) this.spLazy('bks' + ty.id, 'sched', () => this.spBkSlots(ty.id));
+    const google = (this.R.connections || []).filter(c => c.provider === 'google' && c.status !== 'revoked');
+    const link = t => location.origin + '/agenda/' + t.code;
+    const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const tm = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const dayIso = iso => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const newType = () => this.fm({ title: 'Novo tipo de reunião', desc: 'Cada tipo ganha uma página com os seus horários livres.', icon: 'event', fields: [{ k: 'n', l: 'Nome', req: 1, min: 3, ph: 'Ex.: Diagnóstico gratuito' }, { k: 'd', l: 'Duração', type: 'pick', opts: [['15', '15 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 h'], ['90', '1 h 30']], req: 1 }, { k: 'deal', l: 'Quem marcar e não for cliente', type: 'pick', opts: [['1', 'Vira negócio no CRM'], ['0', 'Só a reunião']], req: 1 }], init: { d: '30', deal: '1' }, okL: 'Criar',
+      ok: async v => { try { const r = await SP.api('/api/bookings/types', { method: 'POST', body: { agency_id: this.spAg, name: v.n.trim(), duration_min: parseInt(v.d, 10), create_deal: v.deal === '1', connection_id: google.length === 1 ? google[0].id : null } }); await this.spBkLoad(); this.setState({ scType: r.type.id, scDay: null }); this.toastMsg('Tipo de reunião criado'); } catch (e) { this.spErr(e); } } });
+    if (!ty) return { sc: Object.assign(g, { hdr: [{ l: 'Novo tipo de reunião', icon: 'add', st: this.bP(), run: newType }], g: { t: B ? 'Crie o primeiro tipo de reunião' : 'Carregando…', d: 'Ex.: “Diagnóstico gratuito”, 30 min. O link vai no site, no Instagram ou na proposta.', ib: 'rgba(70,95,255,.1)', ic: '#465FFF', l: 'Criar', st: this.bP(), run: newType },
+      types: [], days: [], hours: [], books: [], bookN: '0 marcadas', url: '', typeN: '—', typeD: '', wk: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'], cal: [], slots: [], noSlots: true }) };
+    const gc = ty.connection_id && google.find(c => c.id === ty.connection_id);
+    const gcard = gc ? { t: 'Google Agenda conectada', d: (gc.external_account || gc.label) + ' · só mostramos horários livres na sua agenda e o evento sai com o Meet', ib: 'rgba(18,183,106,.12)', ic: '#079455', l: 'Desligar', st: 'height:34px;padding:0 12px;border:none;border-radius:9px;background:var(--sf2,#F2F4F7);color:var(--tx,#101828);font-size:13px;font-weight:500', run: () => this.spBkPatch(ty.id, { connection_id: null }, 'Google Agenda desligada deste tipo') }
+      : google.length ? { t: 'Usar a Google Agenda', d: 'A conta ' + (google[0].external_account || google[0].label) + ' já está conectada. Ligue para não oferecer horários ocupados e criar o evento com o Meet.', ib: 'rgba(70,95,255,.1)', ic: '#465FFF', l: 'Ligar', st: this.bP(), run: () => this.spBkPatch(ty.id, { connection_id: google[0].id }, 'Google Agenda ligada') }
+      : { t: 'Conecte a Google Agenda', d: 'Assim o Spherum não oferece horários em que você já tem compromisso e cria o evento com o Meet.', ib: 'rgba(70,95,255,.1)', ic: '#465FFF', l: 'Conectar', st: this.bP(), run: () => this.go('integrations') };
+    const days = (this.BKS && this.BKS[ty.id]) || [], free = {}; days.forEach(d => { free[d.day] = d.slots; });
+    // Calendário do mês atual (ou do mês escolhido).
+    const today = new Date(), base = S.scMonth || today.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7), [yy, mm] = base.split('-').map(Number);
+    const startDow = new Date(Date.UTC(yy, mm - 1, 1, 12)).getUTCDay(), nDays = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+    const cal = []; for (let i = 0; i < startDow; i++) cal.push({ n: '', bg: 'transparent', c: 'transparent', fw: '400', op: 0, cur: 'default', pick: () => {} });
+    for (let d = 1; d <= nDays; d++) { const iso = base + '-' + String(d).padStart(2, '0'), ok = !!(free[iso] && free[iso].length), on = S.scDay === iso; cal.push({ n: String(d), bg: on ? '#465FFF' : ok ? 'rgba(70,95,255,.08)' : 'transparent', c: on ? '#fff' : ok ? '#3538CD' : '#98A2B3', fw: ok ? '600' : '400', op: 1, cur: ok ? 'pointer' : 'default', pick: () => { if (ok) this.setState({ scDay: iso }); } }); }
+    const bookFor = h => this.fm({ title: ty.name + ' · ' + S.scDay.split('-').reverse().slice(0, 2).join('/') + ', ' + h, desc: 'Marca em nome do convidado: ele recebe a confirmação por e-mail, como se tivesse marcado pela página.', icon: 'event_available', fields: [{ k: 'n', l: 'Nome', req: 1, min: 2 }, { k: 'm', l: 'E-mail', req: 1, email: 1 }, { k: 'w', l: 'WhatsApp', check: s => s && s.replace(/\D/g, '').length < 10 ? 'Telefone incompleto' : '' }], okL: 'Marcar',
+      ok: async v => { try { const r = await SP.api('/api/public/bookings/' + ty.code, { method: 'POST', body: { start: S.scDay + 'T' + h + ':00-03:00', name: v.n.trim(), email: v.m.trim(), phone: (v.w || '').trim() } }); await Promise.all([this.spBkLoad(), this.spBkSlots(ty.id)]); this.toastMsg(r.meet ? 'Reunião marcada · evento criado com o Meet' : 'Reunião marcada · confirmação enviada por e-mail'); } catch (e) { this.spErr(e); } } });
+    const DAYS = [[1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb'], [0, 'Dom']];
+    const up = (B.bookings || []).filter(b => b.status === 'confirmada' && Date.parse(b.end_at) > Date.now()).sort((a, b) => a.start_at.localeCompare(b.start_at));
+    return { sc: Object.assign(g, {
+      hdr: [{ l: 'Novo tipo de reunião', icon: 'add', st: this.bP(), run: newType }],
+      g: gcard,
+      types: types.map(t => ({ n: t.name + (t.active ? '' : ' · desativado'), d: t.duration_min + ' min · ' + (t.connection_id ? 'com link do Meet' : 'sem agenda conectada') + (t.upcoming ? ' · ' + t.upcoming + ' marcada' + (t.upcoming > 1 ? 's' : '') : ''), c: t.color, bg: t.id === ty.id ? 'rgba(70,95,255,.05)' : 'transparent', pick: () => this.setState({ scType: t.id, scDay: null }), copy: () => this.copyTxt(link(t), 'Link de “' + t.name + '” copiado') })),
+      days: DAYS.map(d => { const on = ty.days.indexOf(d[0]) >= 0; return Object.assign({ l: d[1], pick: () => { const nd = on ? ty.days.filter(x => x !== d[0]) : ty.days.concat([d[0]]); ty.days = nd; this.setState({ scDay: null }); this.spBkPatch(ty.id, { days: nd }); } }, spChip(on)); }),
+      hours: [[8, 17], [9, 18], [10, 19], [13, 20]].map(h => Object.assign({ l: h[0] + 'h às ' + h[1] + 'h', pick: () => { ty.from_hour = h[0]; ty.to_hour = h[1]; this.setState({ scDay: null }); this.spBkPatch(ty.id, { from_hour: h[0], to_hour: h[1] }); } }, spChip(ty.from_hour === h[0] && ty.to_hour === h[1]))),
+      books: up.slice(0, 30).map(b => { const t = types.find(x => x.id === b.type_id) || {}, d = dayIso(b.start_at); return { mon: MN[+d.slice(5, 7) - 1].toUpperCase(), day: String(+d.slice(8)), who: b.name + (b.client_id ? ' · cliente' : ''), meta: (t.name || '') + ' · ' + tm(b.start_at) + ' · ' + (t.duration_min || 30) + ' min' + (b.calendar_error ? ' · sem evento na agenda' : b.meet_link ? ' · Meet' : ''),
+        cancel: () => this.fm({ title: 'Cancelar a reunião com ' + b.name + '?', desc: b.name + ' recebe um e-mail e o evento sai da agenda.', icon: 'event_busy', fields: [{ k: 'r', l: 'Motivo (vai no e-mail)', ph: 'Opcional' }], okL: 'Cancelar reunião', ok: async v => { try { await SP.api('/api/bookings/' + b.id, { method: 'DELETE', body: { reason: (v.r || '').trim() || undefined } }); await Promise.all([this.spBkLoad(), this.spBkSlots(b.type_id)]); this.toastMsg('Reunião cancelada · o convidado foi avisado'); } catch (e) { this.spErr(e); } } }) }; }),
+      bookN: up.length + (up.length === 1 ? ' marcada' : ' marcadas'), url: link(ty).replace(/^https?:\/\//, ''), typeN: ty.name, typeD: ty.duration_min + ' min · ' + (gc ? 'Google Meet · ' : '') + 'fuso de Brasília',
+      wk: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'], cal, slots: S.scDay && free[S.scDay] ? free[S.scDay].map(h => ({ l: h, pick: () => bookFor(h) })) : [], noSlots: !S.scDay || !free[S.scDay] }) };
+  }
   vSched() {
+    if (this.R) return this.vSchedReal();
     if (this.state.scTypes == null) Object.assign(this.state, { scG: false, scGMail: '', scType: 't1', scDay: null, scDays: [1, 2, 3, 4, 5], scFrom: 9, scTo: 18,
       scTypes: [{ id: 't1', n: 'Diagnóstico gratuito', dur: 30, c: '#465FFF' }, { id: 't2', n: 'Apresentação de proposta', dur: 45, c: '#7A5AF8' }, { id: 't3', n: 'Alinhamento mensal', dur: 30, c: '#0E9384' }],
       scBooks: [{ id: 'b1', who: 'Rafael Couto', t: 't1', d: 16, h: '10:00' }, { id: 'b2', who: 'Fernanda Luz · Loja Verano', t: 't3', d: 17, h: '14:30' }, { id: 'b3', who: 'Juliana Prado', t: 't2', d: 21, h: '09:00' }] });
