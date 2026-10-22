@@ -3,13 +3,14 @@ import { z } from "zod";
 import { clientAccess } from "@/lib/core/client-portal";
 import { answerRequest, decideApproval, markRead, sendMessage } from "@/lib/core/collab";
 import { documentsStorage, finishUpload, startUpload } from "@/lib/core/documents";
+import { openTicket, replyTicket } from "@/lib/core/tickets";
 import { one, serverSql } from "@/lib/xodos/db";
 import { XodoError } from "@/lib/xodos/errors";
 import { fail, requireUser, uuid } from "@/lib/xodos/http";
 
 const body = z.object({
   client_id: uuid,
-  tipo: z.enum(["pendencia", "aprovacao", "mensagem", "lido", "arquivo", "arquivo_pronto"]),
+  tipo: z.enum(["pendencia", "aprovacao", "mensagem", "lido", "arquivo", "arquivo_pronto", "chamado", "chamado_resposta"]),
   item_id: z.uuid().optional(),
 }).passthrough();
 
@@ -21,6 +22,8 @@ const body = z.object({
  *   lido                                               marca a conversa como lida
  *   arquivo { name, size, mime }                       começa o envio de um arquivo (devolve a URL de upload)
  *   arquivo_pronto { item_id }                         confirma o arquivo enviado
+ *   chamado { subject, text, priority? }               abre um chamado para a agência
+ *   chamado_resposta { item_id, text }                 responde (ou reabre) um chamado
  */
 export async function POST(request: Request) {
   try {
@@ -52,6 +55,17 @@ export async function POST(request: Request) {
           await startUpload(sql, documentsStorage(), access.agencyId, userId, { ...rest, client_id: p.client_id, category: "Outros", shared: true }),
           { status: 201 },
         );
+      case "chamado": {
+        const priority = rest.priority === "alta" || rest.priority === "baixa" ? rest.priority : "media";
+        return NextResponse.json(await openTicket(sql, access.agencyId, userId, "cliente", { client_id: p.client_id, subject: rest.subject, text: rest.text, priority }), { status: 201 });
+      }
+      case "chamado_resposta": {
+        const id = uuid.parse(p.item_id);
+        const mine = await one(sql, `select 1 from tickets where id = $1 and client_id = $2`, [id, p.client_id]);
+        if (!mine) throw new XodoError("Chamado não encontrado.", 404);
+        await replyTicket({ sql }, access.agencyId, userId, "cliente", id, String(rest.text ?? ""));
+        return NextResponse.json({ ok: true });
+      }
       case "arquivo_pronto": {
         const id = uuid.parse(p.item_id);
         const mine = await one(sql, `select 1 from documents where id = $1 and client_id = $2 and uploaded_by = $3`, [id, p.client_id, userId]);

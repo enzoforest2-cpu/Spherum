@@ -45,6 +45,13 @@ export async function meetingAgency(sql: Sql, meetingId: string): Promise<string
   return row.agency_id;
 }
 
+/** Agência dona do chamado. */
+export async function ticketAgency(sql: Sql, ticketId: string): Promise<string> {
+  const row = await one<{ agency_id: string }>(sql, `select agency_id from tickets where id = $1`, [ticketId]);
+  if (!row) throw new XodoError("Chamado não encontrado.", 404);
+  return row.agency_id;
+}
+
 /** Link do convite: o site abre o convite e pede login ou cadastro com o e-mail convidado. */
 export function inviteLink(token: string, request: Request): string {
   const base = process.env.APP_URL?.trim() || new URL(request.url).origin;
