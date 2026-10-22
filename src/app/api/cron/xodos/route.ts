@@ -8,6 +8,8 @@ import type { ChannelDeps } from "@/lib/channels/types";
 import { computerDeps } from "@/lib/computer";
 import { expireControls, withEngine } from "@/lib/computer/control";
 import { sweepComputers } from "@/lib/computer/lifecycle";
+import { prospectSweep } from "@/lib/core/prospect";
+import { whatsappSender } from "@/lib/core/prospect-wa";
 import { fail } from "@/lib/xodos/http";
 import { syncDueAccounts } from "@/lib/integrations/ads/sync";
 import { warnExpiringConnections } from "@/lib/integrations/store";
@@ -55,9 +57,11 @@ export async function GET(request: Request) {
     const cleanup = await sweep(deps, { deadline });
     const routines = Date.now() < deadline - 30_000 ? await runDueRoutines(deps, 5, { deadline }) : [];
     const email = await pollEmailTriggers(channelDeps);
+    // Prospecção: passos vencidos da cadência (seg a sex, 9h às 18h, até o limite do dia).
+    const prospect = await prospectSweep(deps.sql, whatsappSender(integrations), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, channels, delivered: { antes: queued, depois: delivered } });
+    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

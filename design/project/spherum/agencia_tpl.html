@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { sched: ['event_available', 'Página de agendamento com a sua agenda.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -5484,7 +5484,180 @@ class Component extends DCLogic {
       steps: steps.map(s => ({ l: s[0], d: s[2], go: s[3], mark: s[1] ? '✓' : '', cBd: s[1] ? '#12B76A' : 'var(--bd,#D0D5DD)', cBg: s[1] ? '#12B76A' : 'transparent', tc: s[1] ? 'var(--tx2,#667085)' : 'var(--tx,#101828)', bg: s[1] ? 'var(--sf2,#F9FAFB)' : 'var(--sf,#fff)' })) };
     return { mo, pm, cm, onb };
   }
+  // Prospecção (modo real): listas próprias, cadência pelo WhatsApp oficial com modelos aprovados, Conversas e Funil.
+  async spPrLoad() { this.PR = await SP.api('/api/prospect?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
+  async spPrCfg(body, msg) { try { await SP.api('/api/prospect', { method: 'PATCH', body: Object.assign({ agency_id: this.spAg }, body) }); await this.spPrLoad(); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); this.spPrLoad().catch(() => {}); } }
+  async spPrLead(id, body, msg) { try { await SP.api('/api/prospect/leads/' + id, { method: 'PATCH', body }); await Promise.all([this.spPrLoad(), this.spPrMsgs(id)]); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); } }
+  async spPrMsgs(id) { const r = await SP.api('/api/prospect/leads/' + id); this.PRM = Object.assign({}, this.PRM, { [id]: r.messages }); const l = this.PR && this.PR.leads.find(x => x.id === id); if (l) l.read_at = new Date().toISOString(); this.setState({ real: Date.now() }); }
+  spPrCsv(text) {
+    const lines = String(text || '').replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) return [];
+    const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+    const split = l => { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
+    const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const head = split(lines[0]).map(norm), col = re => head.findIndex(h => re.test(h));
+    const ph = col(/telefone|whats|celular|fone|phone/);
+    const idx = ph >= 0 ? { phone: ph, name: col(/^nome|contato|name/), company: col(/empresa|negocio|company|loja/), email: col(/e-?mail/), segment: col(/segmento|ramo|setor/), city: col(/cidade|city/) } : { phone: 0, name: 1, company: 2, email: -1, segment: -1, city: -1 };
+    return lines.slice(ph >= 0 ? 1 : 0).map(split).map(c => { const r = {}; Object.keys(idx).forEach(k => { if (idx[k] >= 0 && c[idx[k]]) r[k] = c[idx[k]].slice(0, k === 'email' ? 254 : 120); }); r.phone = r.phone || ''; return r; }).filter(r => r.phone);
+  }
+  spPrImport(list) {
+    const OK = 'Sim: são contatos da agência (clientes, eventos, indicações) e podem receber mensagem';
+    this.fm({ title: 'Importar planilha', desc: 'CSV com uma coluna de telefone (e, se tiver, nome, empresa, e-mail, segmento e cidade). Números repetidos, inválidos ou que pediram para sair ficam de fora.', icon: 'upload_file',
+      fields: [{ k: 'f', l: 'Arquivo CSV', type: 'file', req: 1, maxMb: 5 }, { k: 'list', l: 'Salvar na lista', req: 1 }, { k: 'ok', l: 'Origem dos contatos', type: 'pick', opts: [OK], req: 1, reqMsg: 'Confirme a origem da lista' }],
+      init: { list: list || 'Planilha importada' }, okL: 'Importar',
+      ok: async v => { try { if (!/\.csv$|\.txt$/i.test(v.f.name)) { this.toastMsg('Salve a planilha como CSV e tente de novo'); return; } const rows = this.spPrCsv(await v.f.text()); if (!rows.length) { this.toastMsg('Não encontrei telefones no arquivo'); return; }
+        const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list: v.list.trim(), source: 'planilha', consent: true, rows: rows.slice(0, 10000) } });
+        await this.spPrLoad(); this.setState({ prTab: 'leads', prLf: v.list.trim() }); this.toastMsg(r.added + ' leads importados · ' + r.dup + ' repetidos · ' + r.bad + ' inválidos' + (r.blocked ? ' · ' + r.blocked + ' bloqueados' : '')); } catch (e) { this.spErr(e); } } });
+  }
+  vProspectReal() {
+    const S = this.state, P = this.PR;
+    if (!P) { if (!this._prL) { this._prL = 1; this.spPrLoad().catch(e => this.spErr(e)).finally(() => { this._prL = 0; }); } }
+    if (!this._prP) this._prP = setInterval(() => { if (!document.hidden && this.state.view === 'prospect' && this.R) { this.spPrLoad().catch(() => {}); if (this.state.prTab === 'chat' && this.state.prChat) this.spPrMsgs(this.state.prChat).catch(() => {}); } }, 15000);
+    const D = P || { config: { steps: [{ t: 'Primeira mensagem', day: 0, text: '', template: null }], variations: [], daily_limit: 50, running: false, connection_id: null }, leads: [], variations: [], stats: { sent_today: 0, contacted: 0, replied: 0, queued: 0, qualified: 0, meetings: 0, crm: 0, opted_out: 0, errors: 0, unread: 0, in_window: false } };
+    const C = D.config, L = D.leads, st = D.stats, brl = n => Number(n).toLocaleString('pt-BR'), team = this.D.team || [];
+    const fmtPh = p => { const d = p.slice(2); return '(' + d.slice(0, 2) + ') ' + d.slice(2, -4) + '-' + d.slice(-4); };
+    const nm = l => l.company || l.name || fmtPh(l.phone), avC = ['#465FFF', '#C13584', '#128C7E', '#D93025', '#F79009', '#7A5AF8'], ci = id => parseInt(id.slice(0, 6), 16) % avC.length;
+    const STG = { novo: ['Novo', '#98A2B3'], fila: ['Na fila', '#98A2B3'], abordado: ['Abordado', '#465FFF'], respondeu: ['Respondeu', '#7A5AF8'], qualificado: ['Qualificado', '#F79009'], reuniao: ['Reunião', '#12B76A'], crm: ['No CRM', '#067647'], saiu: ['Saiu da lista', '#98A2B3'], erro: ['Erro no envio', '#D92D20'] };
+    const unreadL = l => !!(l.last_in_at && (!l.read_at || l.read_at < l.last_in_at));
+    const tab = S.prTab, tabs = this.tabsOf([['cap', 'Captar'], ['leads', 'Leads', L.length], ['disp', 'Disparos'], ['cad', 'Cadência'], ['chat', 'Conversas', st.unread || null], ['fun', 'Funil']], tab, v => this.setState({ prTab: v }));
+    const conns = (this.R.connections || []).filter(c => c.provider === 'whatsapp_cloud'), conn = conns.find(c => c.id === C.connection_id);
+    const swv = (on, toggle) => ({ on: on ? 'true' : 'false', swBg: on ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: on ? '18px' : '2px', toggle });
+    const lists = {}; L.forEach(l => { lists[l.list_name] = (lists[l.list_name] || 0) + 1; });
+    const listNames = Object.keys(lists);
+    // Captar: só listas da própria agência.
+    const SRC = [['csv', 'Planilha', 'Importe uma lista que você já tem', 'table_view', '#475467', 'var(--sf2,#F2F4F7)']];
+    const sources = SRC.map(s => ({ n: s[1], d: s[2], icon: s[3], icC: s[4], icBg: s[5], bd: '#465FFF', bg: 'rgba(70,95,255,0.04)', pick: () => {} }));
+    const jobs = listNames.map(n => { const ls = L.filter(l => l.list_name === n), sent = ls.filter(l => l.last_out_at).length; return { label: n, icon: 'table_view', icC: '#475467', icBg: 'var(--sf2,#F2F4F7)', sub: ls.length + (ls.length === 1 ? ' contato' : ' contatos'), w: '100%', barC: '#12B76A', st: 'Importada', stBg: 'rgba(18,183,106,0.12)', stC: '#067647', found: brl(ls.length) + ' na lista', phones: brl(sent) + ' abordados', dup: brl(ls.filter(l => l.stage === 'saiu').length) + ' saíram', done: true, see: () => this.setState({ prTab: 'leads', prLf: n }) }; });
+    // Leads
+    const lf = [['all', 'Todos', L.length]].concat(listNames.map(n => [n, n, lists[n]])).map(([k, l, n]) => { const on = (S.prLf || 'all') === k; return { l, n, bd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', bg: on ? 'rgba(70,95,255,0.08)' : 'var(--sf,#fff)', c: on ? '#3538CD' : 'var(--tx,#101828)', pick: () => this.setState({ prLf: k }) }; });
+    const q = (S.prQ || '').toLowerCase(), lfk = listNames.includes(S.prLf) ? S.prLf : 'all';
+    const vis = L.filter(l => (lfk === 'all' || l.list_name === lfk) && (!q || [l.name, l.company, l.segment, l.phone].join(' ').toLowerCase().includes(q))).slice(0, 500);
+    const sel = S.prSel || {}, selIds = Object.keys(sel).filter(k => sel[k]), allOn = vis.length > 0 && vis.every(l => sel[l.id]);
+    const leads = vis.map(l => { const on = !!sel[l.id], t = STG[l.stage] || STG.novo, c = avC[ci(l.id)]; return { n: nm(l), seg: [l.name && l.company ? l.name : '', l.segment, l.city].filter(Boolean).join(' · ') || (l.error || ''), ini: nm(l).split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), avBg: c + '1F', avC: c,
+      src: l.source === 'colado' ? 'Colado' : 'Planilha', srcIc: 'table_view', srcC: '#475467', ph: fmtPh(l.phone), list: l.list_name, sc: '—', scW: '0%', scC: '#98A2B3', st: t[0], stBg: t[1] + '1F', stC: t[1],
+      rowBg: on ? 'rgba(70,95,255,0.04)' : 'transparent', mark: on ? '✓' : '', cbBd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', cbBg: on ? '#465FFF' : 'transparent', toggle: () => this.setState(s => ({ prSel: Object.assign({}, s.prSel, { [l.id]: !(s.prSel || {})[l.id] }) })) }; });
+    const toCad = async () => { try { const r = await SP.api('/api/prospect/leads', { method: 'PATCH', body: { agency_id: this.spAg, ids: selIds, acao: 'fila' } }); this.setState({ prSel: {} }); await this.spPrLoad(); this.toastMsg(r.queued + (r.queued === 1 ? ' lead na fila' : ' leads na fila') + (C.running ? '' : ' · ligue a cadência para começar')); } catch (e) { this.spErr(e); } };
+    // Cadência
+    const steps = C.steps, si = Math.min(S.prStep || 0, steps.length - 1), cs = steps[si] || steps[0];
+    const sample = L[0] || { name: 'Ana Lima', company: 'Studio Ana', segment: 'estúdios de pilates', city: 'Curitiba' };
+    const fill = t => String(t || '').replace(/\{(nome|empresa|segmento|cidade)\}/g, (a, k) => (k === 'nome' ? (sample.name || '').split(' ')[0] || sample.company : k === 'empresa' ? sample.company || sample.name : k === 'segmento' ? sample.segment : sample.city) || 'você');
+    const saveSteps = (list, msg) => { clearTimeout(this._prStT); this._prStT = setTimeout(() => this.spPrCfg({ steps: list }, msg), msg ? 0 : 900); };
+    const setStep = patch => { const list = steps.map((x, i) => i === si ? Object.assign({}, x, patch) : x); C.steps = list; this.setState({ real: Date.now() }); saveSteps(list); };
+    const tplOf = (cur, title, ok) => this.fm({ title, desc: 'Nome exato do modelo aprovado no WhatsApp Manager da Meta. As variáveis {{1}}, {{2}}… do modelo recebem {nome}, {empresa}, {segmento} e {cidade} na ordem em que aparecem no texto.', icon: 'verified', fields: [{ k: 'tpl', l: 'Nome do modelo', ph: 'ex.: primeiro_contato', req: 1, check: s => /^[a-z0-9_]+$/.test(s) ? '' : 'Letras minúsculas, números e _' }], init: { tpl: cur || '' }, okL: 'Salvar', ok: v => ok(v.tpl.trim()) });
+    // Disparos
+    const vars = C.variations || [], active = vars.filter(v => v.on);
+    const hasLink = /https?:\/\/|bit\.ly|tinyurl/i.test(steps.map(s => s.text).concat(active.map(v => v.text)).join(' '));
+    const dl = listNames.includes(S.prDList) ? S.prDList : listNames[0], aud = L.filter(l => l.list_name === dl && l.stage === 'novo').length;
+    const lastOpt = /sair|parar/i.test((steps[steps.length - 1] || {}).text || '');
+    const checks = [
+      [aud > 0, 'Público com leads novos', aud ? brl(aud) + ' leads novos em “' + dl + '”' : 'Importe uma lista ou escolha outra'],
+      [!!conn, 'WhatsApp oficial conectado', conn ? conn.label + ' · API da Meta' : 'Conecte o número em Integrações'],
+      [steps.every(s => s.template) && active.every(v => v.template), 'Modelos aprovados pela Meta', steps.every(s => s.template) ? 'Cada passo tem o seu modelo' : 'Falta o nome do modelo em algum passo da cadência'],
+      [!hasLink, 'Sem link na primeira mensagem', hasLink ? 'Tire o link: mande só depois que o lead responder' : 'Links aumentam bloqueios e denúncias'],
+      [lastOpt, 'Saída fácil para quem não quer', lastOpt ? 'A última mensagem oferece responder SAIR · bloqueio automático' : 'A última mensagem precisa oferecer “responda SAIR”'],
+      [true, 'Horário comercial', 'Envios de seg a sex, 9h às 18h, até ' + C.daily_limit + ' por dia'],
+    ].map(([ok, l, d]) => ({ l, d, icon: ok ? 'check' : 'close', bg: ok ? 'rgba(18,183,106,0.14)' : 'rgba(240,68,56,0.12)', c: ok ? '#067647' : '#B42318', ok }));
+    const ready = checks.every(c => c.ok), days = aud ? Math.ceil(aud / C.daily_limit) : 0;
+    const editVar = i => { const v = vars[i]; this.fm({ title: 'Variação ' + (i + 1), desc: 'Cada lead recebe uma das variações ativas no primeiro contato. Cada uma é um modelo aprovado pela Meta.', icon: 'edit', fields: [{ k: 'style', l: 'Estilo', req: 1 }, { k: 'text', l: 'Texto do modelo', type: 'area', req: 1, min: 5 }, { k: 'tpl', l: 'Nome do modelo na Meta', req: 1, check: s => /^[a-z0-9_]+$/.test(s) ? '' : 'Letras minúsculas, números e _' }], init: { style: v.style, text: v.text, tpl: v.template || '' }, okL: 'Salvar',
+      ok: x => this.spPrCfg({ variations: vars.map((y, j) => j === i ? { style: x.style.trim(), text: x.text.trim(), template: x.tpl.trim(), on: y.on } : y) }, 'Variação salva') }); };
+    const vstat = i => (D.variations || []).find(x => x.variation === i);
+    const d = {
+      audL: aud ? brl(aud) + ' leads novos' : 'Sem leads novos', lists: listNames.map(n => { const on = n === dl, k = L.filter(l => l.list_name === n && l.stage === 'novo').length; return { l: n, n: brl(k), hasN: true, bd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', bg: on ? 'rgba(70,95,255,0.08)' : 'var(--sf,#fff)', c: on ? '#3538CD' : 'var(--tx,#101828)', pick: () => this.setState({ prDList: n }) }; }),
+      paste: S.prPaste || '', onPaste: e => this.setState({ prPaste: e.target.value, prPasteRes: null }), checkL: 'Validar números',
+      check: async () => { if (!(S.prPaste || '').trim()) { this.toastMsg('Cole ao menos um número'); return; } try { const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list: 'Números colados', source: 'colado', consent: true, text: S.prPaste, dry_run: true } }); this.setState({ prPasteRes: r }); } catch (e) { this.spErr(e); } },
+      hasRes: !!S.prPasteRes, res: S.prPasteRes ? { ok: S.prPasteRes.added + ' novos', noWa: S.prPasteRes.blocked + ' bloqueados', dup: S.prPasteRes.dup + ' repetidos', bad: S.prPasteRes.bad + ' inválidos' } : {},
+      canAdd: !!(S.prPasteRes && S.prPasteRes.added),
+      addPaste: () => this.fm({ title: 'Salvar números colados', desc: 'Confirme a origem antes de salvar: só contatos que podem receber mensagem da agência.', icon: 'playlist_add', fields: [{ k: 'ok', l: 'Origem dos contatos', type: 'pick', opts: ['Sim: são contatos da agência (clientes, eventos, indicações) e podem receber mensagem'], req: 1, reqMsg: 'Confirme a origem da lista' }], okL: 'Salvar',
+        ok: async () => { try { const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list: 'Números colados', source: 'colado', consent: true, text: S.prPaste } }); this.setState({ prPaste: '', prPasteRes: null, prDList: 'Números colados' }); await this.spPrLoad(); this.toastMsg(r.added + ' números salvos em “Números colados”'); } catch (e) { this.spErr(e); } } }),
+      base: steps[0].text, onBase: e => { const list = steps.map((x, i) => i === 0 ? Object.assign({}, x, { text: e.target.value }) : x); C.steps = list; this.setState({ real: Date.now() }); saveSteps(list); },
+      comboL: steps[0].template ? 'Modelo: ' + steps[0].template : 'Sem modelo aprovado ainda',
+      gen: () => this.fm({ title: 'Nova variação', desc: 'Teste outra abertura no primeiro contato. Cada variação precisa ser um modelo aprovado pela Meta.', icon: 'add', fields: [{ k: 'style', l: 'Estilo', ph: 'ex.: Pergunta primeiro', req: 1 }, { k: 'text', l: 'Texto do modelo', type: 'area', req: 1, min: 5 }, { k: 'tpl', l: 'Nome do modelo na Meta', req: 1, check: s => /^[a-z0-9_]+$/.test(s) ? '' : 'Letras minúsculas, números e _' }], init: { text: steps[0].text }, okL: 'Adicionar',
+        ok: v => this.spPrCfg({ variations: vars.concat([{ style: v.style.trim(), text: v.text.trim(), template: v.tpl.trim(), on: true }]).slice(0, 8) }, 'Variação adicionada') }),
+      genL: vars.length ? 'Nova variação' : 'Criar variações', genOp: 1, hasVars: vars.length > 0,
+      varSum: active.length + ' de ' + vars.length + ' ativas · cada lead recebe uma delas',
+      vars: vars.map((v, i) => { const s = vstat(i), rate = s && s.sent ? Math.round(s.replied / s.sent * 100) : null; return Object.assign({ k: String(i + 1), text: fill(v.text), style: v.style + (v.template ? ' · ' + v.template : ' · sem modelo'), diffW: (rate || 0) + '%', diffC: '#12B76A', diffL: s ? rate + '% de resposta (' + s.replied + ' de ' + s.sent + ')' : 'Ainda sem envios', share: v.on ? 'ativa' : 'desligada', op: v.on ? 1 : 0.5, redo: () => editVar(i) },
+        swv(v.on, () => this.spPrCfg({ variations: vars.map((y, j) => j === i ? Object.assign({}, y, { on: !y.on }) : y) }))); }),
+      capL: 'Até ' + C.daily_limit + ' envios por dia',
+      conns: [['api', 'API oficial da Meta']].map(([k, l]) => ({ l, bg: 'var(--sf,#fff)', fw: '600', sh: '0 1px 2px rgba(16,24,40,.08)', pick: () => {} })),
+      connNote: 'O primeiro contato e os follow-ups saem como modelos aprovados pela Meta. Quem responde entra em Conversas, onde a equipe responde em até 24 horas. A qualidade do número cai com bloqueios e denúncias: envie só para quem conhece a agência.',
+      nums: conns.map(c => { const on = c.id === C.connection_id, okc = c.status === 'active'; return Object.assign({ name: c.label, ph: c.external_account || '', health: okc ? 'Conectado · API da Meta' : 'Com problema: ' + (c.last_error || c.status), hc: okc ? '#067647' : '#B42318', dot: okc ? '#12B76A' : '#F04438', bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.03)' : 'var(--sf,#fff)',
+        warmL: 'Hoje', warmW: Math.min(100, st.sent_today / C.daily_limit * 100) + '%', warmC: '#465FFF', sentL: on ? st.sent_today + ' de ' + C.daily_limit : '—' }, swv(on, () => this.spPrCfg({ connection_id: on ? null : c.id }, on ? 'Número desligado da prospecção' : 'Prospecção vai usar ' + c.label))); }),
+      addNum: () => this.go('integrations'),
+      checks, sum: [['Leads', brl(aud)], ['Por dia', brl(C.daily_limit)], ['Termina em', days ? days + (days === 1 ? ' dia útil' : ' dias úteis') : '—']].map(x => ({ l: x[0], v: x[1] })),
+      planL: ready ? 'Os ' + brl(aud) + ' leads entram na fila e a cadência começa ' + (st.in_window ? 'agora' : 'no próximo horário comercial') + '. Quem responder sai da cadência e vai para Conversas.' : 'Resolva os itens da checagem para agendar.',
+      launchOp: ready ? 1 : 0.5,
+      launch: async () => { if (!ready) { this.toastMsg('Falta resolver a checagem antes de enviar'); return; } try { const ids = L.filter(l => l.list_name === dl && l.stage === 'novo').map(l => l.id); const r = await SP.api('/api/prospect/leads', { method: 'PATCH', body: { agency_id: this.spAg, ids, acao: 'fila' } }); await this.spPrCfg({ running: true }); this.setState({ prTab: 'fun' }); this.toastMsg('Disparo agendado para ' + brl(r.queued) + ' leads'); } catch (e) { this.spErr(e); } },
+    };
+    // Conversas
+    const conv = L.filter(l => l.last_out_at || l.last_in_at || l.stage === 'saiu');
+    const cf = S.prCf || 'all', cq = (S.prCq || '').toLowerCase(), meId = this.R.me.user_id;
+    const flt = l => cf === 'all' ? true : cf === 'unread' ? unreadL(l) : cf === 'resp' ? !!l.last_in_at && l.stage !== 'saiu' : cf === 'mine' ? l.owner_user === meId : l.stage === 'saiu';
+    const cnt = k => conv.filter(l => k === 'unread' ? unreadL(l) : k === 'resp' ? !!l.last_in_at && l.stage !== 'saiu' : k === 'out' ? l.stage === 'saiu' : true).length;
+    const cvis = conv.filter(l => flt(l) && (!cq || nm(l).toLowerCase().includes(cq))).sort((a, b) => (unreadL(b) ? 1 : 0) - (unreadL(a) ? 1 : 0) || String(b.last_in_at || b.last_out_at || '').localeCompare(String(a.last_in_at || a.last_out_at || '')));
+    const csel = conv.find(l => l.id === S.prChat);
+    const open = l => { this.setState({ prChat: l.id }); this.spPrMsgs(l.id).catch(e => this.spErr(e)); };
+    const c = {
+      q: S.prCq || '', onQ: e => this.setState({ prCq: e.target.value }),
+      filters: [['all', 'Todas', conv.length], ['unread', 'Não lidas', cnt('unread')], ['resp', 'Responderam', cnt('resp')], ['mine', 'Minhas', null], ['out', 'Saíram', cnt('out')]].map(([k, l, n]) => { const on = cf === k; return { l, n: n == null ? '' : String(n), hasN: n != null && n > 0, bg: on ? '#101828' : 'var(--sf2,#F2F4F7)', c: on ? '#fff' : 'var(--tx,#344054)', pick: () => this.setState({ prCf: k }) }; }),
+      list: cvis.slice(0, 300).map(l => { const t = STG[l.stage] || STG.novo, col = avC[ci(l.id)], un = unreadL(l); return { n: nm(l), ini: nm(l).split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), avBg: col + '1F', avC: col, last: l.last_text || '', time: this.spWhen(l.last_in_at || l.last_out_at || l.created_at), tc: un ? '#25D366' : 'var(--tx2,#667085)', st: t[0], stDot: t[1], unread: un, un: '1', fw: un ? '600' : '500', bg: csel && csel.id === l.id ? 'rgba(70,95,255,0.06)' : 'transparent', open: () => open(l), srcIc: 'table_view', srcC: '#475467' }; }),
+      has: !!csel, none: !csel, empty: !cvis.length,
+      modes: [['msg', 'Mensagem'], ['note', 'Nota interna']].map(([k, l]) => { const on = (S.prMode || 'msg') === k; return { l, bg: on ? 'var(--sf,#fff)' : 'transparent', fw: on ? '600' : '500', sh: on ? '0 1px 2px rgba(16,24,40,.08)' : 'none', pick: () => this.setState({ prMode: k }) }; }),
+      draft: S.prDraft || '', onDraft: e => this.setState({ prDraft: e.target.value }),
+      onKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); c.send(); } },
+      send: async () => { const t = (S.prDraft || '').trim(); if (!csel || !t || this._prSending) return; this._prSending = 1; try { await this.spPrLead(csel.id, S.prMode === 'note' ? { acao: 'nota', text: t } : { acao: 'responder', text: t }); this.setState({ prDraft: '' }); } finally { this._prSending = 0; } },
+      ph: S.prMode === 'note' ? 'Escreva uma nota para a equipe…' : 'Digite uma mensagem', inBd: S.prMode === 'note' ? '#F5C04B' : 'var(--bd,#D0D5DD)', inBg: S.prMode === 'note' ? '#FFFBEB' : 'var(--sf,#fff)', sendBg: S.prMode === 'note' ? '#B54708' : '#25D366',
+      quick: [],
+    };
+    if (csel) {
+      const t = STG[csel.stage] || STG.novo, col = avC[ci(csel.id)], blocked = csel.stage === 'saiu', ms = (this.PRM && this.PRM[csel.id]) || [];
+      const ORDER = ['fila', 'abordado', 'respondeu', 'qualificado', 'reuniao', 'crm'], pos = ORDER.indexOf(csel.stage);
+      const within = csel.last_in_at && Date.now() - Date.parse(csel.last_in_at) < 864e5;
+      c.s = { n: nm(csel), ini: nm(csel).split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), avBg: col + '1F', avC: col, sub: fmtPh(csel.phone) + (csel.segment ? ' · ' + csel.segment : ''), via: conn ? conn.label : 'WhatsApp oficial',
+        msgs: ms.map(m => ({ isSys: m.dir === 'sys', isIn: m.dir === 'in', isOut: m.dir === 'out', isNote: m.dir === 'note', t: m.text, time: this.spWhen(m.created_at), hasTag: m.step != null || m.dir === 'note', tag: m.dir === 'note' ? 'Nota · ' + (m.author_name || 'equipe') : 'Cadência · passo ' + (m.step + 1) + (m.variation != null ? ' · variação ' + (m.variation + 1) : '') })),
+        typing: false, blocked, canSend: !blocked && (S.prMode === 'note' || !!within), hasSug: !blocked && !!csel.last_in_at && !within, sug: 'Passou a janela de 24 horas do WhatsApp: só dá para responder quando o lead escrever de novo. Notas internas continuam liberadas.', useSug: () => this.setState({ prMode: 'note' }),
+        st: t[0], stC: t[1],
+        steps: [['Na fila', 'fila'], ['Abordado', 'abordado'], ['Respondeu', 'respondeu'], ['Qualificado', 'qualificado'], ['Reunião', 'reuniao'], ['Cliente', 'crm']].map(([l, k], i) => { const sc = (STG[k] || STG.novo)[1], on = i <= pos, cur = i === pos; return { l, bg: on ? sc : 'var(--sf2,#E4E7EC)', bd: cur ? sc : 'var(--bd,#E4E7EC)', chipBg: cur ? sc + '1F' : 'transparent', c: cur ? sc : 'var(--tx2,#667085)',
+          pick: () => { if (blocked || cur) return; if (k === 'crm') return this.spPrLead(csel.id, { acao: 'crm' }, nm(csel) + ' agora é uma oportunidade no CRM'); if (['respondeu', 'qualificado', 'reuniao'].includes(k)) return this.spPrLead(csel.id, { acao: 'etapa', stage: k }); this.toastMsg('Essa etapa é da cadência'); } }; }),
+        owners: team.map(p => { const on = p.user_id === csel.owner_user; return { l: p.name.split(' ')[0], bd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', bg: on ? 'rgba(70,95,255,0.08)' : 'var(--sf,#fff)', c: on ? '#3538CD' : 'var(--tx,#344054)', pick: () => this.spPrLead(csel.id, { acao: 'dono', owner_user: on ? null : p.user_id }, on ? 'Conversa sem responsável' : 'Conversa com ' + p.name) }; }),
+        tags: [],
+        fields: [['Origem', csel.source === 'colado' ? 'Números colados' : 'Planilha'], ['Lista', csel.list_name], ['WhatsApp', fmtPh(csel.phone)], ['Contato', csel.name || '—'], ['Primeira mensagem', csel.variation != null ? 'Variação ' + (csel.variation + 1) : 'Mensagem base'], ['Respondeu', csel.last_in_at ? this.spWhen(csel.last_in_at) : '—']].map((f, i) => ({ l: f[0], v: f[1], line: i ? 'var(--bd,#E4E7EC)' : 'transparent' })),
+        crmL: csel.deal_id ? 'Já está no CRM' : 'Mover para o CRM', toCrm: () => { if (blocked) return; if (csel.deal_id) return this.go('crm'); this.spPrLead(csel.id, { acao: 'crm' }, nm(csel) + ' agora é uma oportunidade no CRM'); },
+        block: () => { if (blocked) return; this.spPrLead(csel.id, { acao: 'parar' }, nm(csel) + ' bloqueado. Não recebe mais mensagens.'); } };
+    }
+    // Funil
+    const FUN = [['fila', 'Na fila'], ['abordado', 'Abordado'], ['respondeu', 'Respondeu'], ['qualificado', 'Qualificado'], ['reuniao', 'Reunião'], ['crm', 'Cliente']];
+    const note = l => ({ fila: 'Entra na próxima janela de envio', abordado: 'Passo ' + l.step + ' de ' + steps.length + ' enviado' + (l.next_at ? ' · próximo ' + this.spWhen(l.next_at) : ''), respondeu: '“' + String(l.last_text || '').slice(0, 60) + '”', qualificado: 'Qualificado pela equipe', reuniao: 'Reunião combinada', crm: 'No CRM como oportunidade' })[l.stage];
+    const cols = FUN.map(([k, n]) => { const all = L.filter(l => l.stage === k); return { n, dot: STG[k][1], k: String(all.length), more: all.length > 4, moreL: '+' + (all.length - 4) + ' leads',
+      cards: all.slice(0, 4).map(l => ({ n: nm(l), srcIc: 'table_view', srcC: '#475467', note: note(l), hasAct: ['respondeu', 'qualificado', 'reuniao'].includes(k), actL: k === 'respondeu' ? 'Qualificar' : k === 'qualificado' ? 'Agendar reunião' : 'Mover para o CRM',
+        act: () => k === 'reuniao' ? this.spPrLead(l.id, { acao: 'crm' }, nm(l) + ' agora está no CRM como oportunidade') : this.spPrLead(l.id, { acao: 'etapa', stage: k === 'respondeu' ? 'qualificado' : 'reuniao' }, k === 'respondeu' ? nm(l) + ' qualificado' : 'Reunião registrada com ' + nm(l)) })) }; });
+    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+    return { pr: {
+      tabs, isCap: tab === 'cap', isLeads: tab === 'leads', isCad: tab === 'cad', isFun: tab === 'fun', isDisp: tab === 'disp', isChat: tab === 'chat', d, c,
+      chipDot: C.running ? '#12B76A' : '#98A2B3', chipL: C.running ? (st.in_window ? 'Cadência enviando' : 'Cadência ligada · volta no horário comercial') : conn ? 'WhatsApp ' + conn.label + ' conectado' : 'WhatsApp oficial não conectado',
+      newCapture: () => this.spPrImport(), sources, src: { n: 'Planilha', hint: 'Até 10 mil linhas', isIg: false, isWa: false, isMaps: false, isCnpj: false, isCsv: true },
+      groups: [], igHandle: '', onIg: () => {}, igModes: [], igBiz: swv(false, () => {}), mapsQ: '', mapsC: '', onMapsQ: () => {}, onMapsC: () => {}, cnaes: [], ufs: [],
+      csvL: 'Clique para escolher o arquivo CSV', fakeCsv: () => this.spPrImport(S.prList),
+      listName: S.prList || 'Planilha importada', onList: e => this.setState({ prList: e.target.value }), est: 'Só contatos da agência: clientes, eventos, indicações', start: () => this.spPrImport(S.prList), jobs, noJobs: !jobs.length,
+      lf, q: S.prQ || '', onQ: e => this.setState({ prQ: e.target.value }), leads, noLeads: !leads.length,
+      hasSel: selIds.length > 0, selL: selIds.length + (selIds.length === 1 ? ' lead selecionado' : ' leads selecionados'), clearSel: () => this.setState({ prSel: {} }), toCad,
+      selAll: () => this.setState(s => { const n = Object.assign({}, s.prSel); vis.forEach(l => n[l.id] = !allOn); return { prSel: n }; }), allMark: allOn ? '✓' : '', allBd: allOn ? '#465FFF' : 'var(--bd,#D0D5DD)', allBg: allOn ? '#465FFF' : 'transparent',
+      steps: steps.map((x, i) => { const on = i === si; return { k: String(i + 1), t: x.t + (x.template ? '' : ' · sem modelo'), when: x.day === 0 ? 'No dia da entrada' : 'Dia ' + x.day + ' · se não responder', prev: x.text, bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', dotBg: on ? '#465FFF' : 'var(--sf2,#F2F4F7)', dotC: on ? '#fff' : 'var(--tx,#344054)', lineVis: i < steps.length - 1 ? 'block' : 'none', pick: () => this.setState({ prStep: i }) }; }),
+      cur: { t: cs.t, text: cs.text, onText: e => setStep({ text: e.target.value }), sample: nm(sample), preview: fill(cs.text), day: { v: cs.day === 0 ? 'Dia 0' : 'Dia ' + cs.day, dec: () => setStep({ day: Math.max(si === 0 ? 0 : (steps[si - 1].day + 1), cs.day - 1) }), inc: () => setStep({ day: Math.min(30, cs.day + 1) }) } },
+      vars: ['{nome}', '{empresa}', '{segmento}', '{cidade}'].map(v => ({ l: v, add: () => setStep({ text: cs.text + ' ' + v }) })).concat([{ l: cs.template ? 'Modelo: ' + cs.template : 'Definir modelo da Meta', add: () => tplOf(cs.template, 'Modelo do passo ' + (si + 1), t => { const list = steps.map((x, i) => i === si ? Object.assign({}, x, { template: t }) : x); saveSteps(list, 'Modelo salvo'); }) }]),
+      lim: { v: C.daily_limit + '/dia', dec: () => this.spPrCfg({ daily_limit: Math.max(10, C.daily_limit - 10) }), inc: () => this.spPrCfg({ daily_limit: Math.min(250, C.daily_limit + 10) }) },
+      gap: { v: 'a cada 15 min', dec: () => this.toastMsg('Os envios saem em lotes a cada 15 minutos, no horário comercial'), inc: () => this.toastMsg('Os envios saem em lotes a cada 15 minutos, no horário comercial') },
+      guards: [['Opt-out automático', 'Quem responder SAIR ou PARAR é bloqueado para sempre', true], ['Parar quando o lead responder', 'Os próximos passos são cancelados para ele', true], ['Xodó qualifica as respostas', 'Por enquanto a equipe qualifica em Conversas', false]].map(([l, dd, on]) => Object.assign({ l, d: dd }, swv(on, () => this.toastMsg(on ? 'Essa proteção fica sempre ligada' : 'Em breve')))),
+      cadSum: steps.length + ' mensagens · ' + st.queued + ' leads na fila · até ' + C.daily_limit + ' envios por dia', goFunnel: () => this.setState({ prTab: 'fun' }),
+      toggleRun: () => { if (!C.running && !st.queued && !L.some(l => l.stage === 'abordado' && l.next_at)) { this.toastMsg('Fila vazia. Adicione leads em Leads → Adicionar à cadência.'); return; } this.spPrCfg({ running: !C.running }, C.running ? 'Cadência pausada' : 'Cadência ligada'); },
+      runL: C.running ? 'Pausar cadência' : 'Disparar cadência', runIc: C.running ? 'pause' : 'play_arrow', runBg: C.running ? '#101828' : '#465FFF',
+      runSub: (C.running ? 'Enviando · ' : '') + st.queued + ' na fila · janela seg a sex, 9h às 18h',
+      dayW: Math.min(100, st.sent_today / C.daily_limit * 100) + '%', dayL: st.sent_today + ' de ' + C.daily_limit,
+      kpis: [['Abordados', String(st.contacted), st.queued + ' na fila', 'var(--tx2,#667085)'], ['Responderam', String(st.replied), pct(st.replied, st.contacted) + ' de resposta', '#079455'], ['Qualificados', String(st.qualified), 'pela equipe', 'var(--tx2,#667085)'], ['Reuniões', String(st.meetings), 'combinadas', 'var(--tx2,#667085)'], ['No CRM', String(st.crm), 'viraram oportunidade', '#079455'], ['Saíram da lista', String(st.opted_out), 'pediram para parar', st.opted_out ? '#B54708' : 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
+      cols,
+    } };
+  }
   vProspect() {
+    if (this.R) return this.vProspectReal();
     const S = this.state;
     if (!S.prLeads) { this.state.prLeads = prSeed(); this.state.prJobs = [{ id: 1, src: 'ig', label: 'Seguidores de @studiofitcuritiba', list: 'Academias · Curitiba', total: 2840, phones: 312, dup: 41, p: 1, done: true, when: 'ontem' }, { id: 2, src: 'wa', label: 'Grupo Empreendedores Fitness PR', list: 'Grupo Empreendedores Fitness', total: 487, phones: 471, dup: 12, p: 1, done: true, when: 'ontem' }]; this.state.prSteps = PR_STEPS0.map(x => Object.assign({}, x)); }
     if (!this._prT) this._prT = setInterval(() => { if (this.state.view === 'prospect') { this.prJobTick(); this.prTickFn(); } }, 1600);

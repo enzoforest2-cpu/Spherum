@@ -1,8 +1,9 @@
 import { z, ZodError } from "zod";
 import { IntegrationError } from "../integrations/http";
 import { metaGraph } from "../integrations/oauth-providers";
-import { loadConnection, readSecret, saveConnection, type IntegrationDeps } from "../integrations/store";
+import { access, loadConnection, readSecret, saveConnection, type IntegrationDeps } from "../integrations/store";
 import type { Sql } from "../xodos/db";
+import { prospectInbound } from "../core/prospect";
 import { channelConnection, decideFromChannel, receiveMessage, seenBefore, sendDirect } from "./core";
 import { identityFor } from "./pairing";
 import { randomToken, safeEqual } from "./security";
@@ -375,7 +376,12 @@ export async function handleWhatsappCloud(
         direct: true,
       };
       let result: InboundResult;
-      if (event.kind === "text") {
+      // Resposta a uma prospecção da agência: vai para Conversas em Prospecção, não para o xodó.
+      const prospect = event.kind === "decision" ? null
+        : await prospectInbound(deps.sql, hook.agencyId, event.from, event.kind === "text" ? event.text : `(${event.type})`, event.eventId, new Date(sentAt));
+      if (prospect) {
+        result = { status: prospect.status === "duplicate" ? "duplicate" : "ignored", detail: `prospeccao:${prospect.status}` };
+      } else if (event.kind === "text") {
         result = await receiveMessage(deps, adapters, msg);
       } else if (await seenBefore(deps.sql, source, event.eventId)) {
         result = { status: "duplicate" };
@@ -471,3 +477,37 @@ export const whatsappCloudAdapter: ChannelAdapter = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// Envio fora das conversas do xodó (prospecção)
+// ---------------------------------------------------------------------------
+
+export type WhatsappOutbound =
+  | { kind: "template"; name: string; lang: string; params: string[] }
+  | { kind: "text"; text: string };
+
+/**
+ * Manda uma mensagem pela conexão oficial da agência. Primeiro contato e retomada fora das 24
+ * horas só com modelo aprovado pela Meta; texto livre só dentro da janela (quem chama confere).
+ */
+export async function sendWhatsappCloud(deps: IntegrationDeps, agencyId: string, connectionId: string, to: string, message: WhatsappOutbound) {
+  if (!WA_ID.test(to)) throw new ChannelError("Número de WhatsApp inválido.");
+  const a = await access(deps, agencyId, connectionId);
+  if (a.connection.provider !== PROVIDER) throw new ChannelError("A prospecção usa a conexão do WhatsApp oficial (API da Meta).", 400);
+  const phoneNumberId = String(a.connection.metadata.phone_number_id ?? a.connection.external_account ?? "");
+  if (!PHONE_NUMBER_ID.test(phoneNumberId)) throw new ChannelError("A conexão do WhatsApp está sem o ID do número.");
+  const base = { messaging_product: "whatsapp", recipient_type: "individual", to };
+  const payload =
+    message.kind === "text"
+      ? { ...base, type: "text", text: { body: clip(message.text, 4096), preview_url: false } }
+      : {
+          ...base,
+          type: "template",
+          template: {
+            name: message.name,
+            language: { code: message.lang },
+            ...(message.params.length ? { components: [{ type: "body", parameters: message.params.map((text) => ({ type: "text", text: clip(text || "-", 200) })) }] } : {}),
+          },
+        };
+  await postMessage({ deps, access: a, target: {}, xodoName: null }, phoneNumberId, payload);
+}
