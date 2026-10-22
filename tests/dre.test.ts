@@ -32,8 +32,9 @@ test("DRE: receita das faturas pagas, impostos, despesas recorrentes, custo dos 
   await addEntry(sql, agencyId, dona, { kind: "receita", category: "Bonificação", description: "Meta", amount: 200, month: "2026-10" });
 
   const now = new Date("2026-10-21T15:00:00Z");
-  let { months, tax_pct } = await dreReport(sql, agencyId, 3, now);
-  assert.equal(tax_pct, 10);
+  const first = await dreReport(sql, agencyId, 3, now);
+  assert.equal(first.tax_pct, 10);
+  let months = first.months;
   assert.deepEqual(months.map((m) => m.month), ["2026-08", "2026-09", "2026-10"]);
   const out = months[2];
   assert.deepEqual([out.fees, out.avulsos, out.outras, out.gross, out.tax], [5000, 1800, 200, 7000, 700]);
