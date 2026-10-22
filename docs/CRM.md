@@ -50,3 +50,28 @@ A chance de fechar em cada etapa é usada na previsão:
 - `POST /api/deals/:id/win` fecha o negócio, com `{ contract?, billing_day?, onboarding?, invite? }`.
 
 O funil também chega em `crm` dentro de `/api/portal/agencia`.
+
+## Pontuação de leads
+
+Código em `src/lib/core/scoring.ts`.
+
+- **Nota**: soma dos pontos dos critérios ativos que o negócio atende, de 0 a 100. Cada critério
+  conta uma vez.
+- **Faixas**: quente a partir de `hot` e morno a partir de `warm` (padrão: 70 e 40).
+- **Tipos de critério**:
+  - `manual`: marcado pela equipe em cada lead (`deals.score_flags`);
+  - `valor`: valor mensal a partir de X reais;
+  - `origem`: origem igual a X;
+  - `segmento`: segmento contém X;
+  - `resposta`: as respostas do formulário (nas observações) contêm X;
+  - `email`: o lead deixou o e-mail;
+  - `telefone`: o lead deixou o WhatsApp.
+
+  As comparações de texto ignoram maiúsculas e acentos.
+- **Na leitura**: o CRM devolve `score`, `temp` e `reasons` em cada negócio, e `scoring` com os
+  critérios.
+- **Na tela**: a fila de triagem são os negócios em "Novo lead". "Mandar para o CRM" leva o lead
+  para "Contato realizado"; "Descartar" marca como perdido.
+- **API**:
+  - `PATCH /api/agencies/:id/lead-scoring` (CAN_MANAGE), com `{ hot, warm, rules }`;
+  - `PATCH /api/deals/:id/score` (CAN_USE), com `{ flags }`.

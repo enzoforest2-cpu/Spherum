@@ -5,6 +5,7 @@ import { audit } from "./audit";
 import { createClient } from "./clients";
 import { createContract } from "./contracts";
 import { createProject } from "./projects";
+import { getScoring, scoreDeal } from "./scoring";
 
 /**
  * CRM: negócios (leads) no funil de vendas. Negócio ganho vira cliente: cria o cliente com o
@@ -159,11 +160,11 @@ export async function crmBoard(sql: Sql, agencyId: string, now = new Date()) {
   const deals = await sql.query<{
     id: string; company: string; contact_name: string | null; email: string | null; phone: string | null; segment: string | null; website: string | null; source: string | null;
     value_cents: number; stage: string; owner_user: string | null; owner_name: string | null; next_action: string | null; next_action_date: string | null;
-    last_contact_at: string | null; stage_changed_at: string; notes: string | null; lost_reason: string | null; won_at: string | null; lost_at: string | null; client_id: string | null; created_at: string;
+    last_contact_at: string | null; stage_changed_at: string; notes: string | null; lost_reason: string | null; won_at: string | null; lost_at: string | null; client_id: string | null; created_at: string; score_flags: string[];
   }>(
     `select d.id, d.company, d.contact_name, d.email, d.phone, d.segment, d.website, d.source, d.value_cents::float8 as value_cents, d.stage,
             d.owner_user, coalesce(p.full_name, u.email) as owner_name, d.next_action, d.next_action_date::text, d.last_contact_at::text, d.stage_changed_at::text,
-            d.notes, d.lost_reason, d.won_at::text, d.lost_at::text, d.client_id, d.created_at::text
+            d.notes, d.lost_reason, d.won_at::text, d.lost_at::text, d.client_id, d.created_at::text, d.score_flags
        from deals d left join profiles p on p.id = d.owner_user left join auth.users u on u.id = d.owner_user
       where d.agency_id = $1 and (d.stage not in ('ganho', 'perdido') or coalesce(d.won_at, d.lost_at) > $2::timestamptz - interval '90 days')
       order by d.stage_changed_at desc`,
@@ -173,8 +174,10 @@ export async function crmBoard(sql: Sql, agencyId: string, now = new Date()) {
   const won = deals.filter((d) => d.won_at && Date.parse(d.won_at) > since);
   const lost = deals.filter((d) => d.lost_at && Date.parse(d.lost_at) > since);
   const open = deals.filter((d) => (OPEN_STAGES as readonly string[]).includes(d.stage));
+  const scoring = await getScoring(sql, agencyId);
   return {
-    deals: deals.map((d) => ({ ...d, days_in_stage: Math.max(0, Math.floor((now.getTime() - Date.parse(d.stage_changed_at)) / 864e5)) })),
+    scoring,
+    deals: deals.map((d) => ({ ...d, ...scoreDeal(scoring, d), days_in_stage: Math.max(0, Math.floor((now.getTime() - Date.parse(d.stage_changed_at)) / 864e5)) })),
     stats: {
       pipeline_cents: open.reduce((t, d) => t + d.value_cents, 0),
       forecast_cents: Math.round(open.filter((d) => d.stage === "proposta" || d.stage === "negociacao").reduce((t, d) => t + d.value_cents * STAGE_PROB[d.stage], 0)),
