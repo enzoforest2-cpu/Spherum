@@ -8,6 +8,7 @@ import { crmBoard } from "./crm";
 import { listMeetings } from "./meetings";
 import { listForms } from "./forms";
 import { listProposals } from "./proposals";
+import { riskBoard } from "./risk";
 import { ticketBoard } from "./tickets";
 import { listProjects, teamLoad } from "./projects";
 import { listDocuments } from "./documents";
@@ -220,6 +221,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     };
   });
   const goalOf = new Map(clientRows.map((c) => [c.id, c.goal_metric !== "ROAS" ? c.goal_value : null]));
+  const risk = await riskBoard(sql, agencyId, clients.map((c) => ({ id: c.id, name: c.name, mrr: c.mrr, fin: c.fin, gap: goalGap(c.cur === null ? null : c.gt, c.goal, c.cur) })), now);
 
   const camps = campRows.map((r, i) => {
     const spend = num(r.spend);
@@ -340,5 +342,6 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     tickets,
     proposals,
     forms,
+    risk,
   };
 }
