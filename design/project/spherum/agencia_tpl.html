@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { studio: ['auto_awesome', 'Criativos gerados por IA.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'] };
+const SP_SOON = { app: ['smartphone', 'App de celular para aprovar e acompanhar.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -6202,7 +6202,91 @@ class Component extends DCLogic {
       togglePowered: () => { if (rank < 2) { this.toastMsg('Remover “Desenvolvido com Spherum” a partir do plano Escala'); return; } this.setState(s => ({ powered: s.powered === false })); },
     }) };
   }
+  // Estúdio (modo real): criativos na conta da agência (fal.ai ou Replicate), com o kit da marca.
+  async spStLoad(cid) { const r = await SP.api('/api/studio?agency_id=' + this.spAg + '&client_id=' + cid); this.STD = Object.assign({}, this.STD, { [cid]: r }); this.setState({ real: Date.now() }); }
+  async spStPost(cid, body) { return SP.api('/api/studio', { method: 'POST', body: Object.assign({ agency_id: this.spAg, client_id: cid }, body) }); }
+  vStudioReal() {
+    const T = this.state, cl = this.D.clients, cid = cl.some(c => c.id === T.stC) ? T.stC : (cl[0] || {}).id, B = cid && this.STD && this.STD[cid];
+    if (cid && !B) this.spLazy('st' + cid, 'studio', () => this.spStLoad(cid));
+    const D = B || { client: '', kit: null, config: null, usage: { images: 0, videos: 0, image_limit: 0, video_limit: 0, plan: '' }, messages: [], urls: {}, pending_videos: 0 };
+    const k = D.kit || {}, cname = (cl.find(c => c.id === cid) || {}).name || '', ini = cname.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), c1 = k.color1 || '#465FFF', c2 = k.color2 || '#F2F4F7';
+    const tab = T.stTab || 'create', cfg = D.config, U = D.usage, fmt0 = T.stFmt && T.stFmt !== 'video' ? T.stFmt : 'feed';
+    const IMG_M = { 'fal-ai/qwen-image': ['Qwen-Image', 'Melhor com produto, luz e texto', 'APACHE 2.0'], 'fal-ai/flux/schnell': ['FLUX.1 schnell', 'Mais rápido e barato', 'APACHE 2.0'], 'fal-ai/hidream-i1-full': ['HiDream-I1', 'Forte em foto de produto', 'MIT'] };
+    const VID_M = { 'fal-ai/wan/v2.2-a14b/image-to-video': ['Wan 2.2', 'Anima a imagem por 5 s, sem som', 'APACHE 2.0', 1], 'fal-ai/ltxv-13b-098-distilled/image-to-video': ['LTX-Video', 'Vídeo rápido a partir da imagem', 'OPEN WEIGHTS', 0] };
+    const PROV = { fal: ['fal.ai', 'Usa a conta da agência e cobra por imagem gerada', 'CHAVE DE API', 'Chave de API da fal.ai', 'fal_••••••••••••'], replicate: ['Replicate', 'Usa a conta da agência no Replicate (só imagem)', 'CHAVE DE API', 'Token do Replicate', 'r8_••••••••••••'] };
+    const prov = PROV[T.stProv] ? T.stProv : 'fal', imgM = IMG_M[T.stImgM] ? T.stImgM : 'fal-ai/qwen-image', vidM = VID_M[T.stVidM] ? T.stVidM : 'fal-ai/wan/v2.2-a14b/image-to-video';
+    const radio = on => ({ bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.05)' : 'var(--sf,#fff)', ring: on ? '#465FFF' : 'var(--bd,#D0D5DD)', dot: on ? 'radial-gradient(circle,#465FFF 0 4px,transparent 5px)' : 'transparent' });
+    const short = m => m ? (IMG_M[m] || VID_M[m] || [m.split('/').pop()])[0] : '';
+    const isBoss = ['owner', 'admin'].includes(this.R.me.role);
+    const connect = async () => { if (T.stConnBusy) return; if (!isBoss) return this.toastMsg('Só o dono ou um admin conecta a IA'); if (!(T.connKey || '').trim()) { this.setState({ stConnErr: 'Preencha o campo ' + PROV[prov][3].toLowerCase() + '.' }); return; }
+      this.setState({ stConnBusy: true, stConnErr: '' }); try { await SP.api('/api/studio/connect', { method: 'POST', body: { agency_id: this.spAg, provider: prov, key: T.connKey.trim(), image_model: prov === 'fal' ? imgM : undefined, video_model: prov === 'fal' ? vidM : null } }); this.setState({ stConnBusy: false, connKey: '', stTab: 'create' }); await this.spStLoad(cid); this.toastMsg('IA conectada'); } catch (e) { this.setState({ stConnBusy: false, stConnErr: e.message || 'Não deu para conectar' }); } };
+    const scroll = () => setTimeout(() => { const el = this._stFeed && this._stFeed.current; if (el) el.scrollTop = el.scrollHeight; }, 60);
+    const send = async txt => { const text = (txt != null ? txt : T.stDraft || '').trim(); if (!text || T.stBusy || !cid) return; if (!cfg) { this.setState({ stTab: 'usage' }); return this.toastMsg('Conecte a fal.ai ou o Replicate primeiro'); }
+      const low = text.toLowerCase(), fmt = /stor(y|ies)|9:16|vertical/.test(low) ? 'story' : /feed|1:1|quadrad/.test(low) ? 'feed' : fmt0;
+      this.setState({ stDraft: '', stBusy: 'gen', stFmt: fmt }); scroll();
+      try { await this.spStPost(cid, { acao: 'gerar', text, format: fmt, count: 4 }); await this.spStLoad(cid); } catch (e) { this.spErr(e); await this.spStLoad(cid).catch(() => {}); } finally { this.setState({ stBusy: null }); scroll(); } };
+    const urlOf = id => D.urls[id];
+    const imgBox = (id, fmt) => ({ bg: urlOf(id) ? 'url("' + urlOf(id) + '") center/cover no-repeat' : 'var(--sf2,#F2F4F7)', ink: '#101828', c1: 'transparent', c2: 'transparent', pl: '0%', pt: '0%', pw: '0%', ph: '0%', lw: '0%', th: fmt === 'feed' ? '112px' : '150px' });
+    const open = T.stOpen && T.stOpen.c === cid ? T.stOpen : null;
+    const msgs = D.messages.map(m => { const v = { isSys: m.role === 'sys', isMe: m.role === 'me', isAi: m.role === 'ai', isTyping: false, t: m.text, hasImgs: m.document_ids.length > 0, hasSugs: false };
+      if (v.hasImgs) { v.minW = m.format === 'feed' ? '112px' : '86px'; v.imgs = m.document_ids.map((id, i) => Object.assign(imgBox(id, m.format), { name: 'Opção ' + (i + 1), tag: m.format === 'video' ? 'Vídeo' : 'Opção ' + (i + 1), isVid: m.format === 'video', bd: open && open.id === id ? '#465FFF' : 'transparent', stL: '', stC: '#067647', open: () => this.setState({ stOpen: { id, c: cid, fmt: m.format || 'feed' } }) })); }
+      return v; });
+    if (!D.messages.length && B) msgs.push({ isSys: false, isMe: false, isAi: true, isTyping: false, t: cfg ? 'Descreva a cena do criativo da ' + cname + '. Logo, preço e texto entram depois, por cima, a partir do kit da marca.' : 'Conecte a fal.ai ou o Replicate em “Conexão e pacote” para gerar criativos.', hasImgs: false, hasSugs: !!cfg, sugs: cfg ? [k.product ? k.product + ' em fundo claro, luz suave' : 'Produto em fundo claro, luz suave', 'Versão para Stories'].map(l => ({ l, pick: () => send(l) })) : [] });
+    if (T.stBusy === 'gen') msgs.push({ isTyping: true, t: 'Gerando com ' + short(cfg && cfg.image_model) + '…' });
+    if (D.pending_videos) msgs.push({ isSys: true, isMe: false, isAi: false, isTyping: false, t: D.pending_videos + (D.pending_videos === 1 ? ' vídeo na fila' : ' vídeos na fila') + ' · aparece aqui quando ficar pronto', hasImgs: false, hasSugs: false });
+    const tx = Object.assign({ h: k.headline || cname, p: k.price || '', cta: k.cta || 'Saiba mais' }, (T.stTx || {})[cid] || {});
+    const setTx = (key, v) => this.setState(s => ({ stTx: Object.assign({}, s.stTx, { [cid]: Object.assign({}, (s.stTx || {})[cid] || {}, { [key]: v }) }) }));
+    let cv = { title: '', status: '', dot: '', sceneL: '' }, out = { title: '', model: '', note: '', isFinal: false, acts: [] };
+    if (open) {
+      const story = open.fmt !== 'feed', isVid = open.fmt === 'video', f = story ? 220 / 260 : 280 / 380, W = story ? 260 : 380, H = story ? 462 : 380, px = v => Math.round(v * f) + 'px', hide = T.stHide || {};
+      cv = { w: px(W), h: px(H), bg: urlOf(open.id) ? 'url("' + urlOf(open.id) + '") center/cover no-repeat' : '#101828', ink: '#FFFFFF', c1, c1fg: stFg(c1), c2, c2fg: stFg(c2), ini, brand: cname, prod: k.product || '', prodTag: '',
+        hy: px(story ? 62 : 60), hw: px(story ? 220 : 340), hs: px(story ? 25 : 31), px: '0px', py: '0px', pw: '0px', ph: '0px', prx: '0px', pry: '0px',
+        headline: tx.h, price: tx.p, cta: tx.cta, ctaBg: '#FFFFFF', ctaFg: '#101828', showProduct: false, showLogo: !hide.logo, showHeadline: !hide.headline, showPrice: !hide.price && !!tx.p, showCta: !hide.cta, isVideo: isVid, final: true, busy: false, busyL: '',
+        title: (isVid ? 'Vídeo' : 'Criativo') + ' · ' + ST_FMT[open.fmt], status: 'Gerado', dot: '#12B76A', sceneL: 'Prévia com as camadas do kit · a imagem vai sem texto para o cliente' };
+      const next = new Date(Date.now() + 864e5); next.setHours(18, 0, 0, 0);
+      out = { title: isVid ? 'Vídeo pronto' : 'Criativo gerado', model: short(isVid ? cfg && cfg.video_model : cfg && cfg.image_model), note: 'Salvo em Documentos (Criativos) da ' + cname + '.', isFinal: true,
+        acts: [spAct('Enviar para o cliente aprovar', 1, async () => { try { const r = await this.spStPost(cid, { acao: 'conteudo', document_ids: [open.id], title: tx.h || 'Criativo', caption: [tx.h, tx.cta].filter(Boolean).join(' · '), publish_at: next.toISOString() }); await SP.api('/api/content/' + r.post.id, { method: 'PATCH', body: { acao: 'aprovacao' } }); this.CTD = null; this.toastMsg('Enviado para ' + cname + ' aprovar no portal'); } catch (e) { this.spErr(e); } }),
+          spAct('Abrir o arquivo', 0, () => urlOf(open.id) ? (window.top || window).open(urlOf(open.id), '_blank') : this.toastMsg('Arquivo indisponível')),
+          isVid ? spAct('Ver em Conteúdo', 0, () => this.go('content')) : spAct('Animar em vídeo de 5 s', 0, () => this.fm({ title: 'Animar em vídeo', desc: 'Usa ' + short(cfg && cfg.video_model) + ' a partir desta imagem. Fica na fila do provedor por alguns minutos.', icon: 'movie', fields: [{ k: 't', l: 'Movimento', req: 1, min: 3 }], init: { t: 'Movimento suave de câmera' }, okL: 'Animar',
+            ok: async v => { try { await this.spStPost(cid, { acao: 'animar', document_id: open.id, text: v.t.trim() }); await this.spStLoad(cid); this.toastMsg('Vídeo na fila'); } catch (e) { this.spErr(e); } } }))] };
+    }
+    const allImgs = D.messages.filter(m => m.role === 'ai').flatMap(m => m.document_ids.map(id => ({ id, fmt: m.format || 'feed', at: m.created_at })));
+    const lib = allImgs.slice().reverse().map(x => Object.assign(imgBox(x.id, x.fmt), { th: x.fmt === 'feed' ? '170px' : '210px', title: cname, meta: ST_FMT[x.fmt] + ' · ' + this.spWhen(x.at), stL: 'Gerado', stBg: 'rgba(18,183,106,0.12)', stC: '#067647', live: false, cpl: '', ctr: '', win: false, isVideo: x.fmt === 'video', vary: () => this.setState({ stTab: 'create', stOpen: { id: x.id, c: cid, fmt: x.fmt } }) }));
+    const lim = [U.image_limit, U.video_limit];
+    const editKit = () => this.fm({ title: 'Kit da marca · ' + cname, desc: 'Entra no prompt de cada criativo e nas camadas (título, preço e botão).', icon: 'palette', fields: [{ k: 'prod', l: 'Produto ou serviço em destaque' }, { k: 'style', l: 'Estilo das cenas', type: 'area' }, { k: 'c1', l: 'Cor principal (#RRGGBB)' }, { k: 'c2', l: 'Cor de apoio (#RRGGBB)' }, { k: 'font', l: 'Fonte' }, { k: 'h', l: 'Título padrão' }, { k: 'p', l: 'Preço' }, { k: 'cta', l: 'Botão' }],
+        init: { prod: k.product || '', style: k.style || '', c1: k.color1 || '', c2: k.color2 || '', font: k.font || '', h: k.headline || '', p: k.price || '', cta: k.cta || '' }, okL: 'Salvar kit',
+        ok: async v => { const hex = s => /^#[0-9A-Fa-f]{6}$/.test((s || '').trim()) ? s.trim() : null; try { await this.spStPost(cid, { acao: 'kit', kit: { product: v.prod.trim() || null, style: (v.style || '').trim() || null, color1: hex(v.c1), color2: hex(v.c2), font: (v.font || '').trim() || null, headline: (v.h || '').trim() || null, price: (v.p || '').trim() || null, cta: (v.cta || '').trim() || null } }); await this.spStLoad(cid); this.toastMsg('Kit salvo'); } catch (e) { this.spErr(e); } } });
+    if (!this._stFeed) this._stFeed = React.createRef();
+    return { st: {
+      tabs: this.tabsOf([['create', 'Chat'], ['lib', 'Biblioteca'], ['usage', 'Conexão e pacote']], tab, v => this.setState({ stTab: v })),
+      isCreate: tab === 'create', isLib: tab === 'lib', isUsage: tab === 'usage', needConn: !cfg, hasConn: !!cfg,
+      packL: lim[0] === 0 ? 'Estúdio fora do plano atual' : lim[0] === null ? U.images + ' imagens este mês' : U.images + ' de ' + lim[0] + ' imagens no mês', packW: (lim[0] ? Math.min(100, U.images / lim[0] * 100) : lim[0] === null ? 10 : 0) + '%',
+      provs: Object.keys(PROV).map(id => Object.assign({ n: PROV[id][0], d: PROV[id][1], tag: PROV[id][2], pick: () => this.setState({ stProv: id, stConnErr: '' }) }, radio(prov === id))),
+      prov: { needsKey: true, fieldL: PROV[prov][3], ph: PROV[prov][4] }, connKey: T.connKey || '', onKey: e => this.setState({ connKey: e.target.value, stConnErr: '' }),
+      imgModels: Object.keys(IMG_M).map(id => Object.assign({ n: IMG_M[id][0], d: IMG_M[id][1], lic: IMG_M[id][2], lb: 'rgba(18,183,106,0.12)', lc: '#067647', pick: () => this.setState({ stImgM: id }) }, radio(imgM === id))),
+      vidModels: Object.keys(VID_M).map(id => Object.assign({ n: VID_M[id][0], d: VID_M[id][1], lic: VID_M[id][2], lb: VID_M[id][3] ? 'rgba(18,183,106,0.12)' : 'rgba(247,144,9,0.14)', lc: VID_M[id][3] ? '#067647' : '#B54708', pick: () => this.setState({ stVidM: id }) }, radio(vidM === id))),
+      connect, connL: T.stConnBusy ? 'Conectando…' : 'Conectar', connMsg: T.stConnErr || (T.stConnBusy ? 'Conferindo a chave…' : 'A chave fica cifrada no Spherum; os créditos são cobrados direto pelo provedor.'), connMsgC: T.stConnErr ? '#D92D20' : 'var(--tx2,#667085)',
+      conn: { model: short(cfg && cfg.image_model), vmodel: cfg && cfg.video_model ? short(cfg.video_model) : 'sem vídeo', prov: cfg ? PROV[cfg.provider][0] : '' }, changeConn: () => this.setState({ stTab: 'usage', stOpen: null }),
+      connCard: cfg ? { t: short(cfg.image_model) + ' · via ' + PROV[cfg.provider][0], s: (cfg.video_model ? 'Vídeo com ' + short(cfg.video_model) + '. ' : 'Sem vídeo neste provedor. ') + 'Os créditos são cobrados direto pelo provedor.', btn: 'Trocar IA', bg: '#465FFF' } : { t: 'Nenhuma IA conectada', s: 'Conecte a fal.ai ou o Replicate para usar o chat do Estúdio.', btn: 'Conectar', bg: '#98A2B3' },
+      threads: cl.slice(0, 20).map(c => { const on = c.id === cid, b = this.STD && this.STD[c.id], lastM = b && b.messages.filter(m => m.role !== 'sys').slice(-1)[0], i2 = c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), cc = (b && b.kit && b.kit.color1) || '#465FFF';
+        return { n: c.name, ini: i2, c1: cc, fg: stFg(cc), last: lastM ? (lastM.role === 'me' ? 'Você: ' : '') + lastM.text : 'Kit da marca', bg: on ? 'rgba(70,95,255,0.06)' : 'transparent', sh: on ? 'inset 3px 0 0 #465FFF' : 'none', fw: on ? '600' : '500', pick: () => on ? editKit() : this.setState({ stC: c.id, stOpen: null }) }; }),
+      kit: { name: cname, ini, c1, c2, c1fg: stFg(c1), font: k.font || '—', photos: [[k.product || 'Produto', c1], ['Toque no cliente para editar o kit', c2]].map(x => ({ l: x[0].toUpperCase(), bg: x[1], c: stFg(x[1]) })) },
+      fmts: [['feed', 'Feed 1:1'], ['story', 'Stories 9:16']].map(f => Object.assign({ l: f[1], pick: () => this.setState({ stFmt: f[0] }) }, spChip(fmt0 === f[0]))),
+      msgs, feedRef: this._stFeed, draft: T.stDraft || '', onDraft: e => this.setState({ stDraft: e.target.value }), onEnter: e => { if (e.key === 'Enter') send(); }, send: () => send(),
+      ph: 'Descreva o criativo para a ' + cname + '…', attached: false, attachL: '', attach: () => this.toastMsg('Em breve: usar foto real do produto como base'), unattach: () => {},
+      hasOpen: !!open, noOpen: !open, cv, out,
+      layerChips: [['logo', 'Logo'], ['headline', 'Título'], ['price', 'Preço'], ['cta', 'Botão']].map(l => { const on = !(T.stHide || {})[l[0]]; return Object.assign({ l: (on ? '✓ ' : '') + l[1], pick: () => this.setState(s => ({ stHide: Object.assign({}, s.stHide, { [l[0]]: !(s.stHide || {})[l[0]] }) })) }, spChip(on)); }),
+      fields: [['h', 'Título'], ['p', 'Preço'], ['cta', 'Botão']].map(f => ({ l: f[1], v: tx[f[0]], on: e => setTx(f[0], e.target.value) })),
+      lib, libF: [Object.assign({ l: 'Todas', pick: () => {} }, spChip(true))],
+      kpis: [['Imagens no mês', lim[0] === null ? String(U.images) : lim[0] ? U.images + ' de ' + lim[0] : '—', lim[0] === 0 ? 'Disponível a partir do Agência' : 'Renova no dia 1º'], ['Vídeos', lim[1] === null ? String(U.videos) : lim[1] ? U.videos + ' de ' + lim[1] : '—', lim[1] === 0 ? 'Disponível a partir do Escala' : 'Clipes de 5 s'], ['Criativos deste cliente', String(allImgs.length), 'em Documentos'], ['Provedor', cfg ? PROV[cfg.provider][0] : '—', cfg ? 'conta da agência' : 'conecte em Conexão']].map(x => ({ l: x[0], v: x[1], s: x[2] })),
+      plans: SP_PLANS.map(pp => { const l = ST_PL[pp.id] || [null, null], cur = pp.id === U.plan; return { n: pp.n, cur, bg: cur ? 'rgba(70,95,255,0.04)' : 'transparent', f: l[0] === 0 ? 'Sem Estúdio' : l[0] === null ? 'Sob medida' : l[0] + ' imagens', v: l[1] === 0 ? 'Sem vídeo' : l[1] === null ? 'Sob medida' : l[1] + ' vídeos' }; }),
+      models: [['Imagem', 'Qwen-Image · FLUX.1 schnell · HiDream-I1', 'Escolha ao conectar', 'APACHE / MIT'], ['Vídeo', 'Wan 2.2 · LTX-Video', 'Anima a imagem (fal.ai)', 'OPEN WEIGHTS']].map(m => ({ t: m[0], n: m[1], d: m[2], l: m[3] })),
+      rules: ['Logo, preço e textos nunca são desenhados pela IA: vêm do kit da marca, como camadas.', 'Toda imagem gerada fica em Documentos do cliente, com o nome do modelo.', 'O Estúdio só lista modelos com licença liberada para uso comercial.', 'Ao subir no Meta Ads, marque a peça como feita com IA.'],
+      buy: () => this.toastMsg('Para gerar mais, mude de plano ou fale com o Spherum'),
+    } };
+  }
   vStudio() {
+    if (this.R) return this.vStudioReal();
     if (this.state.stTab == null) Object.assign(this.state, { stTab: 'create', stC: 'verano', stFmt: 'feed', stTx: {}, stBusy: null, stHide: {}, stUsedF: 37, stUsedV: 6, stDrafts: 412, stLib: [], stLibF: 'all', stConn: null, stProv: 'fal', stImgM: 'qwen', stVidM: 'wan', connKey: '', stConnBusy: false, stConnErr: '', stMsgs: {}, stImgSt: {}, stOpen: null, stDraft: '', stAttach: false, stN: 0 });
     const T = this.state, plan = this.xoPlan(), lim = ST_PL[plan.id] || ST_PL.escala, cid = T.stC, k = ST_KIT[cid];
     const contact = SP_CONTACT[cid] || 'o cliente';
