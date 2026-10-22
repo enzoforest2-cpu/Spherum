@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -5517,7 +5517,60 @@ class Component extends DCLogic {
     }
     return { xv: { opts: [sw('auto', 'Mostrar as ações dos xodós sozinho', 'Desligado: cada ação passa por você antes de aparecer'), sw('week', 'Resumo semanal no WhatsApp', 'Toda segunda às 9h: 3 números, a melhor ação e o link do portal'), sw('ask', '“Pergunte ao xodó” no portal', 'Responde só com os dados do cliente. Assunto comercial vai para o responsável.')] } };
   }
+  // Retorno (modo real): vendas do cliente contra o investimento em anúncio, por mês.
+  async spRoiLoad(cid, month) { const r = await SP.api('/api/clients/' + cid + '/roi' + (month ? '?month=' + month : '')); this.ROI = Object.assign({}, this.ROI, { [cid]: r }); this.setState({ real: Date.now() }); return r; }
+  spRoiSale(cid, camps) {
+    this.fm({ title: 'Lançar venda', desc: 'Entra no retorno do mês da venda. Ligue à campanha quando souber de onde veio o cliente.', icon: 'point_of_sale', fields: [{ k: 'd', l: 'Dia da venda', type: 'date', req: 1 }, { k: 'v', l: 'Valor (R$)', req: 1, check: s => parseFloat(String(s).replace(/\./g, '').replace(',', '.')) > 0 ? '' : 'Valor inválido' }, { k: 'n', l: 'Cliente final (opcional)' },
+      { k: 'c', l: 'Campanha', type: 'pick', opts: [['-', 'Não sei']].concat((camps || []).map(c => [c.id, c.name])) }, { k: 'l', l: 'Dia em que virou lead (opcional)', type: 'date' }], init: { d: this.spIso(new Date()), c: '-' }, okL: 'Lançar',
+      ok: async v => { try { await SP.api('/api/clients/' + cid + '/roi', { method: 'POST', body: { acao: 'venda', sale: { sold_on: v.d, amount: parseFloat(String(v.v).replace(/\./g, '').replace(',', '.')), customer: (v.n || '').trim() || null, campaign_id: v.c && v.c !== '-' ? v.c : null, lead_on: v.l || null } } }); await this.spRoiLoad(cid, (this.ROI[cid] || {}).month); this.toastMsg('Venda lançada'); } catch (e) { this.spErr(e); } } });
+  }
+  spRoiCsv(cid) {
+    this.fm({ title: 'Importar vendas', desc: 'CSV com as colunas data (AAAA-MM-DD ou DD/MM/AAAA) e valor; opcionais: cliente, pedido (evita duplicar) e campanha (o id da campanha).', icon: 'table_view', fields: [{ k: 'f', l: 'Arquivo CSV', type: 'file', req: 1, maxMb: 5 }], okL: 'Importar',
+      ok: async v => { try { const lines = (await v.f.text()).replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim()); const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+        const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(), head = lines[0].split(sep).map(norm), col = re => head.findIndex(h => re.test(h));
+        const ix = { d: col(/^data|dia|date/), v: col(/valor|total|amount/), n: col(/cliente|nome|customer/), p: col(/pedido|codigo|id|order/), c: col(/campanha|campaign/) };
+        if (ix.d < 0 || ix.v < 0) { this.toastMsg('A planilha precisa das colunas data e valor'); return; }
+        const day = s => { const t = (s || '').trim(); let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[0]; m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : t; };
+        const money = s => parseFloat(String(s || '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+        const rows = lines.slice(1).map(l => l.split(sep).map(x => x.replace(/^"|"$/g, '').trim())).map(c => ({ sold_on: day(c[ix.d]), amount: money(c[ix.v]), customer: ix.n >= 0 ? c[ix.n] || null : null, external_id: ix.p >= 0 ? c[ix.p] || null : null, campaign_id: ix.c >= 0 ? c[ix.c] || null : null }));
+        const r = await SP.api('/api/clients/' + cid + '/roi', { method: 'POST', body: { acao: 'planilha', rows: rows.slice(0, 5000) } }); await this.spRoiLoad(cid, (this.ROI[cid] || {}).month);
+        this.toastMsg(r.added + ' vendas importadas' + (r.duplicate ? ' · ' + r.duplicate + ' repetidas' : '') + (r.failed ? ' · ' + r.failed + ' com erro (linha ' + r.errors[0].line + ': ' + r.errors[0].error + ')' : '')); } catch (e) { this.spErr(e); } } });
+  }
+  vRoiReal() {
+    const S = this.state, cl = this.D.clients, cid = cl.some(c => c.id === S.roiC) ? S.roiC : (cl[0] || {}).id, d = cid && this.ROI && this.ROI[cid];
+    if (cid && !d) this.spLazy('roi' + cid, 'roi', () => this.spRoiLoad(cid));
+    const cname = id => (cl.find(c => c.id === id) || {}).name || '', brl = v => 'R$ ' + Math.round(v / 100).toLocaleString('pt-BR'), x2 = v => v == null ? '—' : v.toFixed(2).replace('.', ',') + 'x';
+    const SRC = { manual: 'lançamento da equipe', planilha: 'planilha', portal: 'portal do cliente', crm: 'CRM' };
+    const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const menu = () => { const now = new Date(), months = Array.from({ length: 12 }, (_, i) => { const m = new Date(now.getFullYear(), now.getMonth() - i, 1); return [m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0'), MN[m.getMonth()] + ' ' + m.getFullYear()]; });
+      this.fm({ title: 'Retorno da ' + cname(cid), icon: 'paid', fields: [{ k: 'a', l: 'O que fazer', type: 'pick', opts: [['venda', 'Lançar uma venda'], ['csv', 'Importar planilha de vendas'], ['mes', 'Ver outro mês']], req: 1 }, { k: 'm', l: 'Mês', type: 'pick', opts: months }], init: { a: 'venda', m: d ? d.month : months[1][0] }, okL: 'Continuar',
+        ok: v => v.a === 'venda' ? this.spRoiSale(cid, d && d.campaigns) : v.a === 'csv' ? this.spRoiCsv(cid) : this.spRoiLoad(cid, v.m).catch(e => this.spErr(e)) }); };
+    const hasData = !!d && (d.sales > 0 || d.spend_cents > 0);
+    const out = { cn: cname(cid), has: hasData, wait: !!d && !hasData && !!d.source, none: !!d && !hasData && !d.source, src: d && d.source ? SRC[d.source] : '',
+      clients: cl.slice(0, 12).map(c => { const r = this.ROI && this.ROI[c.id]; return Object.assign({ l: c.name, dot: r && r.sales ? '#12B76A' : r && r.source ? '#F79009' : 'var(--bd,#D0D5DD)', pick: () => c.id === cid ? menu() : this.setState({ roiC: c.id }) }, spChip(cid === c.id)); }),
+      opts: [['Lançar venda', 'A equipe registra cada venda e de qual campanha veio', 'add_card', () => this.spRoiSale(cid, d && d.campaigns)], ['Planilha', 'Suba um CSV com as vendas do mês (data e valor)', 'table_view', () => this.spRoiCsv(cid)],
+        ['Cliente marca no portal', 'O cliente registra as vendas pelo portal dele', 'touch_app', () => this.toastMsg('O cliente lança as vendas pelo portal; elas aparecem aqui assim que entram')], ['Ver outro mês', 'Escolha o mês do retorno', 'calendar_month', menu]].map(o => ({ n: o[0], d: o[1], icon: o[2], pick: o[3] })) };
+    if (!hasData) return { ro: out };
+    const sales = d.sales, top = d.top, pl = d.platform;
+    out.hero = 'Em ' + d.month_label + ', cada R$ 1 investido virou R$ ' + (d.roi == null ? '—' : d.roi.toFixed(2).replace('.', ',')) + ' em vendas para a ' + d.client + '.';
+    out.heroSub = brl(d.revenue_cents) + ' em vendas com ' + brl(d.spend_cents) + ' de anúncio · ' + sales + (sales === 1 ? ' venda' : ' vendas') + (d.match_pct != null ? ' · ' + d.match_pct + '% ligadas a uma campanha' : '') + (d.cycle_days != null ? ' · ciclo médio de ' + d.cycle_days + ' dias' : '') + '. Toque no nome do cliente para lançar vendas ou trocar o mês.';
+    out.plat = d.ecom ? 'A plataforma diz ROAS ' + x2(pl.roas) + '. Pelas vendas lançadas, ' + x2(d.roi) + '.' : pl.cpl_cents ? 'A plataforma mostra CPL de R$ ' + (pl.cpl_cents / 100).toFixed(2).replace('.', ',') + '. O que importa para o cliente: custo por venda de ' + (d.cost_per_sale_cents ? brl(d.cost_per_sale_cents) : '—') + '.' : 'Sem leads registrados pela plataforma neste mês.';
+    out.kpis = spK([['Investimento', brl(d.spend_cents)], [top.label, top.value.toLocaleString('pt-BR')], ['Vendas', String(sales), 'lançadas no mês'], ['Receita', brl(d.revenue_cents), '', '#079455'], ['Custo por venda', d.cost_per_sale_cents ? brl(d.cost_per_sale_cents) : '—'], ['Retorno', x2(d.roi), 'receita ÷ investimento', d.roi >= 1 ? '#079455' : '#B42318']]);
+    const steps = [[top.label, top.value], ['Conversões na plataforma', pl.conversions], ['Vendas', sales]], mx = Math.max(1, steps[0][1]);
+    out.funnel = steps.map((s, i) => ({ l: s[0], v: Number(s[1]).toLocaleString('pt-BR'), rate: i && steps[i - 1][1] ? '· ' + Math.round(s[1] / steps[i - 1][1] * 1000) / 10 + '%' : '', w: Math.max(2, s[1] / mx * 100) + '%', c: ['#B2BBFF', '#7A8CFF', '#465FFF'][i] }));
+    const hm = Math.max(1, ...d.history.map(h => Math.max(h.spend_cents, h.revenue_cents)));
+    out.hist = d.history.map(h => ({ m: MN[+h.month.slice(5) - 1], ih: Math.max(2, h.spend_cents / hm * 120) + 'px', rh: Math.max(2, h.revenue_cents / hm * 120) + 'px', x: h.spend_cents ? x2(h.revenue_cents / h.spend_cents) : '—' }));
+    out.leadsL = top.label;
+    out.camp = d.campaigns.map(r => { const x = r.spend_cents ? r.revenue_cents / r.spend_cents : 0; return { n: r.name, s: brl(r.spend_cents), l: d.ecom ? '—' : String(r.leads), v: String(r.sales), r: brl(r.revenue_cents), x: x2(x), c: x >= 3 ? '#067647' : x >= 1 ? '#B54708' : '#B42318' }; });
+    const dm = s => +s.slice(8) + ' ' + MN[+s.slice(5, 7) - 1];
+    out.recent = d.recent.slice(0, 8).map(r => ({ n: r.customer || 'Venda', c: r.campaign_name || 'sem campanha', t: r.lead_on ? 'lead em ' + dm(r.lead_on) + ', venda em ' + dm(r.sold_on) : 'venda em ' + dm(r.sold_on), v: brl(r.amount_cents) }));
+    out.matchL = (d.match_pct == null ? 0 : d.match_pct) + '%'; out.matchW = (d.match_pct || 0) + '%';
+    out.off = spSw(false, () => this.toastMsg('Em breve: devolver as vendas para Meta e Google (conversões offline)'));
+    out.publish = async () => { try { await SP.api('/api/clients/' + cid + '/roi', { method: 'POST', body: { acao: 'publicar', month: d.month } }); this.toastMsg('Retorno de ' + d.month_label + ' publicado no portal da ' + d.client); } catch (e) { this.spErr(e); } };
+    return { ro: out };
+  }
   vRoi() {
+    if (this.R) return this.vRoiReal();
     const S = this.state, cname = id => (this.exCl().find(c => c.id === id) || {}).name || id, brl = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR'), x2 = v => v.toFixed(2).replace('.', ',') + 'x';
     const cl = this.exCl().slice(0, 10), cid = S.roiC, d = ROI_D[cid], extra = S.roiSrc[cid];
     const out = { cn: cname(cid), has: !!d, wait: !d && !!extra, none: !d && !extra, src: d ? d.src : extra || '',
