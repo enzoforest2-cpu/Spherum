@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], forms: ['dynamic_form', 'Formulários que alimentam o CRM e os clientes.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { score: ['speed', 'Pontuação automática dos leads do funil.'], prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], risk: ['monitor_heart', 'Radar com os clientes em risco de cancelar.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], profit: ['percent', 'Rentabilidade de cada cliente.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], dre: ['table_chart', 'DRE da agência com receitas e despesas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -3826,10 +3826,11 @@ class Component extends DCLogic {
     // Listas de exemplo dos módulos sem backend ficam vazias na conta real.
     this.D.today = []; this.D.deals = []; this.D.projects = []; this.D.threads = []; this.D.invoices = [];
     const invs = (R.invoices || []).map(i => this.spInv(i)), projects = (R.projects || []).map(p => this.spProj(p)), deals = ((R.crm && R.crm.deals) || []).map(d => this.spDeal(d));
+    const foList = (R.forms || []).map(r => this.spFoRow(r)); this._foSaved = {};
     const PR = R.proposals || { proposals: [], catalog: null, stats: {} }, ppList = PR.proposals.map(r => this.spPpFromRow(r)), ppCat = Array.isArray(PR.catalog) ? PR.catalog : (this.state.ppCat || PP2_CAT.map(c => Object.assign({}, c)));
     this._ppSaved = {}; ppList.forEach(p => { this._ppSaved[p.id] = JSON.stringify(this.spPpPayload(p)); }); if (Array.isArray(PR.catalog)) this._ppCatSaved = JSON.stringify(ppCat);
-    if (init) { Object.assign(this.state, { deals, projects, invs, ppList, ppCat, checks: this.state.checks.map(() => false) }); return; }
-    this.setState({ invs, projects, deals, ppList, ppCat });
+    if (init) { Object.assign(this.state, { deals, projects, invs, ppList, ppCat, foList, checks: this.state.checks.map(() => false) }); return; }
+    this.setState({ invs, projects, deals, ppList, ppCat, foList });
     const has = id => R.clients.some(c => c.id === id), first = R.clients.length ? R.clients[0].id : null;
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
@@ -6395,7 +6396,44 @@ class Component extends DCLogic {
           del: () => { const old = sel.nodes; upd(sel.id, a => Object.assign({}, a, { nodes: a.nodes.filter((x, j) => j !== i) })); this.toastMsg('Passo removido', () => upd(sel.id, a => Object.assign({}, a, { nodes: old }))); } }; }) } : { nodes: [] },
       queue: [['10:42', 'Boas-vindas ao lead', 'WhatsApp para Rafael Couto', 'Enviado'], ['10:41', 'Boas-vindas ao lead', 'Condição: investimento R$ 8 mil', 'Passou'], ['09:30', 'Lembrete de reunião', 'WhatsApp para Fernanda Luz', 'Enviado'], ['09:12', 'Lembrete de reunião', 'Esperando 1 hora antes', 'Aguardando'], ['08:00', 'Boas-vindas ao lead', 'Criar tarefa para Marina', 'Feito']].map(q => ({ t: q[0], a: q[1], s: q[2], st: q[3], bg: q[3] === 'Aguardando' ? 'rgba(247,144,9,.14)' : 'rgba(18,183,106,.12)', c: q[3] === 'Aguardando' ? '#B54708' : '#067647' })) }) };
   }
-  vForms() {
+  vForms() { if (!this.R) return this.vFormsBase(); this.spFoPrep(); return this.spFoPost(this.vFormsBase()); }
+  // Formulários de verdade (/api/forms): o editor do design, salvo sozinho; as respostas viram negócios no CRM.
+  spFoRow(r) {
+    const who = a => a.emp || a.empresa || a.nome || Object.values(a)[0] || 'Lead';
+    return { id: r.id, real: 1, x: r, code: r.code, name: r.name, views: r.views, fields: r.fields || [], cta: r.cta, deal_stage: r.deal_stage, notify: r.notify,
+      subs: (r.submissions || []).map(s0 => [who(s0.answers), s0.answers.seg || s0.answers.segmento || '—', s0.answers.inv || '—', this.spWhen(s0.created_at), s0.deal_id]) };
+  }
+  spFoPrep() {
+    const L = this.state.foList || [];
+    if (!L.length) this.state.foList = [{ id: '_vazio', name: 'Nenhum formulário ainda', views: 0, fields: [], subs: [], empty: 1 }];
+    if (!this.state.foSel || !this.state.foList.some(f => f.id === this.state.foSel)) this.state.foSel = this.state.foList[0].id;
+    Object.assign(this.state, { foTab: this.state.foTab || 'edit', foPrev: this.state.foPrev || {}, foErr: this.state.foErr || {}, foNotify: this.state.foNotify || {} });
+    // Salva sozinho o que mudou no editor.
+    this._foSaved = this._foSaved || {}; this._foT = this._foT || {};
+    this.state.foList.forEach(f => { if (!f.real) return; const body = { name: f.name, fields: f.fields.map(x => { const o = { id: String(x.id).replace(/[^a-z0-9_]/gi, '').slice(0, 40) || 'c', t: x.t, l: x.l, req: !!x.req }; if (x.opts) o.opts = x.opts; if (x.cond) o.cond = x.cond; return o; }), deal_stage: f.deal_stage, notify: f.notify, cta: f.cta || 'Enviar' }, key = JSON.stringify(body);
+      if (this._foSaved[f.id] === undefined) { this._foSaved[f.id] = key; return; }
+      if (this._foSaved[f.id] === key) return;
+      clearTimeout(this._foT[f.id]); this._foT[f.id] = setTimeout(async () => { try { await SP.api('/api/forms/' + f.id, { method: 'PATCH', body }); this._foSaved[f.id] = key; } catch (e) { this.spErr(e); } }, 900); });
+  }
+  spFoPost(r) {
+    const fo = r.fo, S = this.state, f = S.foList.find(x => x.id === S.foSel) || S.foList[0], url = location.origin + '/f/' + (f.code || ''), upd = patch => this.setState(s => ({ foList: s.foList.map(x => x.id === f.id ? Object.assign({}, x, patch) : x) }));
+    const STG = [['novo', 'Novo lead'], ['contato', 'Contato realizado'], ['diagnostico', 'Diagnóstico']], subs = f.subs || [], cutoff = Date.now() - 30 * 864e5;
+    fo.hdr = [{ l: 'Novo formulário', icon: 'add', st: this.bP(), run: () => { if (fo.rk === 0 && S.foList.filter(x => x.real).length >= 1) return this.toastMsg('No plano Solo é 1 formulário. A partir do Agência são ilimitados.');
+      this.fm({ title: 'Novo formulário', desc: 'Começa com nome, empresa e WhatsApp. As respostas entram no CRM.', icon: 'dynamic_form', fields: [{ k: 'n', l: 'Nome', req: 1, min: 4, ph: 'Ex.: Orçamento de site' }], okL: 'Criar',
+        ok: async v => { try { const res = await SP.api('/api/forms', { method: 'POST', body: { agency_id: this.spAg, name: v.n.trim(), fields: [{ id: 'nome', t: 'text', l: 'Seu nome', req: true }, { id: 'emp', t: 'text', l: 'Nome da empresa', req: true }, { id: 'wa', t: 'phone', l: 'WhatsApp', req: true }] } });
+          await this.spLoad(); this.setState({ foSel: res.form.id, foTab: 'edit' }); this.toastMsg('Formulário criado'); } catch (e) { this.spErr(e); } } }); } }];
+    if (f.empty) { fo.title = 'Nenhum formulário ainda'; fo.url = 'crie um formulário para ter o link'; fo.copyLink = fo.copyEmbed = () => this.toastMsg('Crie um formulário primeiro'); fo.addField = () => this.toastMsg('Crie um formulário primeiro'); }
+    else { fo.url = url.replace(/^https?:\/\//, ''); fo.cta = f.cta || 'Enviar'; fo.copyLink = () => this.copyTxt(url, 'Link do formulário copiado');
+      fo.embed = '<iframe src="' + url + '" style="width:100%;min-height:640px;border:0" title="' + f.name.replace(/"/g, '') + '"></iframe>'; fo.copyEmbed = () => this.copyTxt(fo.embed, 'Código copiado · cole onde o formulário deve aparecer no site'); }
+    fo.submit = () => this.toastMsg('É só uma prévia. As respostas de verdade chegam pelo link.'); fo.sent = false;
+    const n30 = subs.length;
+    fo.kpis = [['Visitas', String(f.views || 0), 'desde a criação'], ['Respostas', String(n30), 'últimos 90 dias'], ['Conversão', f.views ? (n30 / f.views * 100).toFixed(1).replace('.', ',') + '%' : '—', 'visitas que responderam'], ['Pontuação média', '—', 'chega com a pontuação de leads']].map(k => ({ l: k[0], v: k[1], s: k[2], c: 'var(--tx,#101828)' }));
+    fo.subs = subs.map(x => ({ n: x[0], seg: x[1], inv: x[2], when: x[3], score: '—', sBg: '#F2F4F7', sC: '#475467', crm: () => this.go('crm') })); void cutoff;
+    fo.stages = STG.map(x => Object.assign({ l: x[1], pick: () => !f.empty && upd({ deal_stage: x[0] }) }, spChip(f.deal_stage === x[0])));
+    fo.notify = [Object.assign({ l: (f.notify ? '✓ ' : '') + 'Aviso no Spherum', pick: () => !f.empty && upd({ notify: !f.notify }) }, spChip(!!f.notify))];
+    return r;
+  }
+  vFormsBase() {
     if (this.state.foList == null) Object.assign(this.state, { foSel: 'f1', foTab: 'edit', foPrev: {}, foErr: {}, foSent: null, foStage: 'Novo lead', foNotify: { wa: true, mail: true },
       foList: [{ id: 'f1', name: 'Diagnóstico gratuito', views: 1284, fields: [{ id: 'nome', t: 'text', l: 'Seu nome', req: true }, { id: 'wa', t: 'phone', l: 'WhatsApp', req: true }, { id: 'seg', t: 'choice', l: 'Segmento', opts: ['Saúde', 'Varejo', 'Serviços', 'Educação'], req: true }, { id: 'inv', t: 'choice', l: 'Quanto investe em anúncios por mês?', opts: ['Até R$ 2 mil', 'R$ 2–5 mil', 'R$ 5–20 mil', 'Mais de R$ 20 mil'], req: true }, { id: 'ja', t: 'choice', l: 'Já anuncia hoje?', opts: ['Sim', 'Não'], req: false }, { id: 'canal', t: 'text', l: 'Em quais canais?', req: false, cond: ['ja', 'Sim'] }],
         subs: [['Rafael Couto', 'Saúde', 'R$ 5–20 mil', 'há 12 min'], ['Juliana Prado', 'Varejo', 'Mais de R$ 20 mil', 'há 2 h'], ['Marcos Teles', 'Serviços', 'Até R$ 2 mil', 'ontem'], ['Bruna Lemos', 'Educação', 'R$ 2–5 mil', 'ontem']] },
