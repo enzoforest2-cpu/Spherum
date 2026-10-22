@@ -11,6 +11,8 @@ import { sweepComputers } from "@/lib/computer/lifecycle";
 import { automationSweep } from "@/lib/core/automations";
 import { automationDeps } from "@/lib/core/automations-deps";
 import { publishSweep } from "@/lib/core/content";
+import { fiscalSweep } from "@/lib/core/fiscal";
+import { fiscalDeps } from "@/lib/core/fiscal-focus";
 import { contentDeps } from "@/lib/core/content-meta";
 import { prospectSweep } from "@/lib/core/prospect";
 import { whatsappSender } from "@/lib/core/prospect-wa";
@@ -61,6 +63,8 @@ export async function GET(request: Request) {
     const cleanup = await sweep(deps, { deadline });
     const routines = Date.now() < deadline - 30_000 ? await runDueRoutines(deps, 5, { deadline }) : [];
     const email = await pollEmailTriggers(channelDeps);
+    // Notas fiscais (emissão pela regra da agência e consulta na prefeitura) e régua de cobrança.
+    const fiscal = await fiscalSweep(await fiscalDeps(deps.sql), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // Automações: eventos novos dos gatilhos e execuções cuja espera terminou.
     const automations = await automationSweep(await automationDeps(deps.sql, { background: true }), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // Conteúdo: posts na fila que já passaram da hora (Instagram e Facebook).
@@ -69,7 +73,7 @@ export async function GET(request: Request) {
     const prospect = await prospectSweep(deps.sql, whatsappSender(integrations), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, channels, delivered: { antes: queued, depois: delivered } });
+    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }
