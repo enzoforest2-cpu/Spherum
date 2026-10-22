@@ -26,6 +26,7 @@ export type AppId =
   | "google_ads"
   | "ga4"
   | "meta_ads"
+  | "meta_social"
   | "tiktok_ads"
   | "slack"
   | "notion"
@@ -51,6 +52,12 @@ export const APPS: Record<AppId, AppInfo> = {
   google_ads: { label: "Google Ads", providers: ["google"], scopes: [`${G}adwords`] },
   ga4: { label: "Google Analytics 4", providers: ["google"], scopes: [`${G}analytics.readonly`] },
   meta_ads: { label: "Meta Ads", providers: ["meta"], scopes: ["ads_read", "ads_management", "business_management"] },
+  // Publicar nos perfis dos clientes (Conteúdo e Publicar).
+  meta_social: {
+    label: "Instagram e Facebook",
+    providers: ["meta"],
+    scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_content_publish", "business_management"],
+  },
   tiktok_ads: { label: "TikTok Ads", providers: ["tiktok"], scopes: [] },
   slack: { label: "Slack", providers: ["slack"], scopes: [] },
   notion: { label: "Notion", providers: ["notion"], scopes: [] },

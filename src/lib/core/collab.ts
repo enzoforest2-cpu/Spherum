@@ -226,6 +226,8 @@ export async function decideApproval(sql: Sql, userId: string, id: string, raw: 
   if (!ap) throw new XodoError("Aprovação não encontrada.", 404);
   if (ap.status !== "pendente") throw new XodoError("Essa aprovação já foi decidida.", 409);
   await sql.query(`update client_approvals set status = $2, comment = $3, decided_by = $4, decided_at = now() where id = $1`, [id, input.decision, input.comment ?? null, userId]);
+  // Post do calendário de Conteúdo ligado a esta aprovação (import tardio: content usa collab).
+  await (await import("./content")).onApprovalDecided(sql, id, input.decision, input.comment, userId);
   await notifyAgency(sql, ap.agency_id, input.decision === "aprovado" ? "aprovado_pelo_cliente" : "ajuste_pedido_pelo_cliente",
     `${input.decision === "aprovado" ? "Aprovado" : "Ajustes pedidos"} pelo cliente: ${ap.title}`, { client_id: ap.client_id, approval_id: id });
 }

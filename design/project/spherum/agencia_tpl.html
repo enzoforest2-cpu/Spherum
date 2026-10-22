@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -5017,7 +5017,7 @@ class Component extends DCLogic {
 
   inStatus(id) { if (this.R) return this.spInSt(id); return this.state.inSt[id] || IN_PROV.find(p => p.id === id).st; }
   inAlertN() { return IN_PROV.filter(p => ['warn', 'err'].includes(this.inStatus(p.id))).length || null; }
-  ctWaitN() { const P = this.state.ctPosts; return (P ? P.filter(p => p.st === 'wait').length : CT0.filter(p => p[6] === 'wait').length) || null; }
+  ctWaitN() { if (this.R) return ((this.CTD && this.CTD.posts) || []).filter(p => p.status === 'wait' || p.status === 'fix').length || null; const P = this.state.ctPosts; return (P ? P.filter(p => p.st === 'wait').length : CT0.filter(p => p[6] === 'wait').length) || null; }
   vInteg() {
     if (this.R) return this.vIntegReal();
     const S = this.state, st = id => this.inStatus(id);
@@ -5213,7 +5213,123 @@ class Component extends DCLogic {
       signed, sigs: [{ n: 'João Silva', r: 'Marketing Pro', w: 'Assinado em ' + (p.signed || '') }, { n: p.contact, r: p.who, w: 'Assinado em ' + (p.signed || '') }], code: 'SPH-' + (4096 + p.id * 2731).toString(16).toUpperCase() + '-' + (7 + p.id * 13) };
     return { pp: out };
   }
+  // Conteúdo e Publicar (modo real): a mesma fila de posts, com aprovação do cliente pelo portal e publicação pela Meta.
+  async spCtLoad() { this.CTD = await SP.api('/api/content?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
+  async spCtAct(id, body, msg) { try { const r = await SP.api('/api/content/' + id, { method: 'PATCH', body }); await this.spCtLoad(); if (msg) this.toastMsg(msg); return r; } catch (e) { this.spErr(e); this.spCtLoad().catch(() => {}); } }
+  spCtColor(clientId) { const P = [['#F4D3C4', '#5A2E1F'], ['#FFD86B', '#3D2A00'], ['#BFE3F2', '#0B3B52'], ['#C8F04B', '#1E2A00'], ['#5B3A29', '#FFF4E6'], ['#E8E1D5', '#2E2A24'], ['#D9D6FE', '#2D1F7A'], ['#FECDCA', '#6A1A12']]; const i = Math.max(0, this.D.clients.findIndex(c => c.id === clientId)); return P[i % P.length]; }
+  spCtMedia(clientId) { return (this.R.documents || []).filter(d => (!clientId || d.client_id === clientId || !d.client_id) && /^(image|video)\//.test(d.mime || '')).map(d => [d.id, d.name, (d.client_name || 'Agência') + ' · ' + (/^video/.test(d.mime) ? 'vídeo' : 'imagem')]); }
+  spCtForm(p, schedule) {
+    const iso = d => d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), hm = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const at = p ? new Date(p.publish_at) : new Date(Date.now() + 864e5), cl = p ? p.client_id : (this.state.ctC && this.state.ctC !== 'all' ? this.state.ctC : (this.D.clients[0] || {}).id);
+    if (!cl) { this.toastMsg('Cadastre um cliente primeiro'); return; }
+    const media = this.spCtMedia(p ? p.client_id : null);
+    this.fm({ title: p ? 'Editar post' : schedule ? 'Novo post agendado' : 'Novo post', desc: schedule ? 'Entra na fila e sai sozinho no horário, sem passar pelo cliente.' : 'Fica como rascunho até você mandar para o cliente aprovar.', icon: schedule ? 'send' : 'edit_calendar',
+      fields: (p ? [] : [{ k: 'cl', l: 'Cliente', type: 'pick', opts: this.D.clients.map(c => [c.id, c.name]), req: 1 }]).concat([{ k: 't', l: 'Título interno', req: 1, min: 3 }, { k: 'kind', l: 'Formato', type: 'pick', opts: [['post', 'Post'], ['carrossel', 'Carrossel'], ['reels', 'Reels'], ['story', 'Story']], req: 1 },
+        { k: 'nets', l: 'Onde publicar', type: 'multi', opts: [['IG', 'Instagram'], ['FB', 'Facebook']], req: 1, reqMsg: 'Escolha pelo menos uma rede' }, { k: 'd', l: 'Dia', type: 'date', req: 1 }, { k: 'h', l: 'Hora (ex.: 18:00)', req: 1, check: s => /^([01]?\d|2[0-3]):[0-5]\d$/.test(s) ? '' : 'Use HH:MM' },
+        { k: 'cap', l: 'Legenda', type: 'area', check: s => (s || '').length > 2200 ? 'O Instagram aceita até 2.200 caracteres' : ((s || '').match(/#/g) || []).length > 30 ? 'Use no máximo 30 hashtags' : '' },
+        { k: 'm', l: media.length ? 'Arquivos (de Documentos)' : 'Arquivos: suba as imagens ou vídeos em Documentos', type: 'multi', opts: media }]),
+      init: { cl, t: p ? p.title : '', kind: p ? p.kind : 'post', nets: p ? p.nets : ['IG'], d: iso(at), h: p ? hm(at) : '18:00', cap: p ? p.caption : '', m: p ? p.media_ids : [] }, okL: p ? 'Salvar' : schedule ? 'Agendar post' : 'Criar rascunho',
+      ok: async v => { const body = { title: v.t.trim(), kind: v.kind, nets: v.nets, caption: v.cap || '', media_ids: v.m || [], publish_at: v.d + 'T' + v.h.padStart(5, '0') + ':00-03:00' };
+        try { if (p) { await SP.api('/api/content/' + p.id, { method: 'PATCH', body: { acao: 'editar', post: body } }); } else { const r = await SP.api('/api/content', { method: 'POST', body: Object.assign({ agency_id: this.spAg, client_id: v.cl, schedule: !!schedule }, body) }); this.setState({ ctSel: r.post.id }); }
+          await this.spCtLoad(); this.toastMsg(p ? 'Post salvo' : schedule ? 'Post agendado' : 'Rascunho criado'); } catch (e) { this.spErr(e); } } });
+  }
+  spCtActs(p) {
+    const cn = (this.D.clients.find(c => c.id === p.client_id) || {}).name || 'o cliente', A = (l, prim, run, dz) => spAct(l, prim, run, dz);
+    const ver = () => this.fm({ title: 'Subir nova versão', desc: cn + ' recebe a versão ' + (p.version + 1) + ' no portal para aprovar.', icon: 'upload', fields: [{ k: 'cap', l: 'Legenda', type: 'area' }, { k: 'm', l: 'Arquivos', type: 'multi', opts: this.spCtMedia(p.client_id) }, { k: 'n', l: 'Recado para o cliente', ph: 'Ex.: aumentei o texto da arte' }], init: { cap: p.caption, m: p.media_ids }, okL: 'Enviar versão',
+      ok: async v => { try { if (p.status !== 'wait') await SP.api('/api/content/' + p.id, { method: 'PATCH', body: { acao: 'editar', post: { caption: v.cap || '', media_ids: v.m || [] } } }); await this.spCtAct(p.id, { acao: 'versao', note: (v.n || '').trim() || undefined }, 'Versão ' + (p.version + 1) + ' enviada para ' + cn); } catch (e) { this.spErr(e); } } });
+    const del = A('Excluir', 0, () => this.fm({ title: 'Excluir “' + p.title + '”?', desc: p.status === 'wait' ? 'O pedido de aprovação no portal também é cancelado.' : 'O post sai do calendário.', icon: 'delete', fields: [], okL: 'Excluir', ok: async () => { try { await SP.api('/api/content/' + p.id, { method: 'DELETE' }); this.setState({ ctSel: null }); await this.spCtLoad(); this.toastMsg('Post excluído'); } catch (e) { this.spErr(e); } } }), 1);
+    const edit = A('Editar', 0, () => this.spCtForm(p));
+    const now = A('Publicar agora', 1, () => this.spCtAct(p.id, { acao: 'publicar' }, 'Publicado no ' + p.nets.map(n => n === 'IG' ? 'Instagram' : 'Facebook').join(' e no ')));
+    return ({ draft: [A('Enviar para aprovação', 1, () => this.spCtAct(p.id, { acao: 'aprovacao' }, 'Enviado para ' + cn + ' aprovar no portal')), A('Agendar sem aprovação', 0, () => this.spCtAct(p.id, { acao: 'agendar' }, 'Na fila: sai sozinho no horário')), edit, del],
+      wait: [A('Lembrar cliente', 1, () => this.spOpenThread(p.client_id)), A('Subir nova versão', 0, ver), del],
+      fix: [A('Subir nova versão', 1, ver), edit, del],
+      appr: [A('Agendar', 1, () => this.spCtAct(p.id, { acao: 'agendar' }, 'Na fila: sai sozinho no horário')), now, edit],
+      sched: [now, A('Tirar da fila', 0, () => this.spCtAct(p.id, { acao: 'desagendar' }, 'Tirado da fila')), edit],
+      publishing: [],
+      fail: [A('Tentar de novo', 1, () => this.spCtAct(p.id, { acao: 'publicar' }, 'Publicado')), A('Marcar como publicado', 0, () => this.fm({ title: 'Saiu por fora do Spherum?', icon: 'check_circle', fields: [{ k: 'u', l: 'Link do post (opcional)', ph: 'https://instagram.com/p/…' }], okL: 'Marcar como publicado', ok: v => this.spCtAct(p.id, { acao: 'publicado', url: (v.u || '').trim() || undefined }, 'Marcado como publicado') })), edit, del],
+      pub: Object.values(p.results || {}).filter(r => r && r.url).map((r, i) => A(i ? 'Ver no Facebook' : 'Ver o post', !i, () => (window.top || window).open(r.url, '_blank'))) })[p.status] || [];
+  }
+  vContentReal() {
+    const S = this.state, C = this.CTD;
+    if (!C) this.spLazy('ct', 'content', () => this.spCtLoad());
+    const posts = (C && C.posts) || [], cname = id => (this.D.clients.find(c => c.id === id) || {}).name || 'Cliente';
+    const ST = { draft: ['Rascunho', '#98A2B3'], wait: ['Em aprovação', '#F79009'], fix: ['Ajustes pedidos', '#F04438'], appr: ['Aprovado', '#12B76A'], sched: ['Na fila', '#7A5AF8'], publishing: ['Saindo agora', '#7A5AF8'], pub: ['Publicado', '#465FFF'], fail: ['Não saiu', '#D92D20'] };
+    const NET = { IG: 'Instagram', FB: 'Facebook' }, KIND = { post: 'Post', carrossel: 'Carrossel', reels: 'Reels', story: 'Story' };
+    const dayOf = iso => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), today = dayOf(new Date().toISOString());
+    const vis = posts.filter(x => !S.ctC || S.ctC === 'all' || x.client_id === S.ctC);
+    // Calendário: 5 semanas a partir da segunda da semana do dia 1 do mês escolhido.
+    const month = S.ctMonth || today.slice(0, 7), first = new Date(month + '-01T12:00:00-03:00'), off = (first.getUTCDay() + 6) % 7, start = new Date(first.getTime() - off * 864e5);
+    const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const days = Array.from({ length: 35 }, (_, i) => { const d = new Date(start.getTime() + i * 864e5), iso = d.toISOString().slice(0, 10), isT = iso === today, other = iso.slice(0, 7) !== month;
+      return { n: String(+iso.slice(8)), fw: isT ? '600' : '500', numBg: isT ? '#465FFF' : 'transparent', numC: isT ? '#fff' : other ? 'var(--tx2,#98A2B3)' : 'var(--tx,#344054)', bg: other ? 'var(--sf2,#FAFAFB)' : 'var(--sf,#fff)',
+        posts: vis.filter(x => dayOf(x.publish_at) === iso).map(x => { const on = S.ctSel === x.id; return { title: x.title, net: x.nets.join('+'), dot: (ST[x.status] || ST.draft)[1], bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.06)' : 'var(--sf,#fff)', pick: () => this.setState({ ctSel: x.id, ctDraft: '' }) }; }) }; });
+    const sel = posts.find(x => x.id === S.ctSel);
+    const waitN = posts.filter(x => x.status === 'wait').length, fixN = posts.filter(x => x.status === 'fix').length;
+    const tabs = this.tabsOf([['cal', 'Calendário'], ['appr', 'Aprovações']], S.ctTab || 'cal', v => this.setState({ ctTab: v })).map(t => Object.assign(t, { hasN: t.id === 'appr' && waitN + fixN > 0, n: String(waitN + fixN) }));
+    const sendC = async () => { const t = (S.ctDraft || '').trim(); if (!t || !sel) return; this.setState({ ctDraft: '' }); await this.spCtAct(sel.id, { acao: 'comentar', text: t }); };
+    const st = (C && C.stats) || {}, isBoss = ['owner', 'admin'].includes(this.R.me.role);
+    const used = [...new Set(posts.map(p => p.client_id))].filter(id => this.D.clients.some(c => c.id === id));
+    const lastC = p => p.comments[p.comments.length - 1];
+    const who = (p, m) => m.side === 'cliente' ? cname(p.client_id) : m.side === 'sistema' ? 'Spherum' : (m.author_name || 'Equipe');
+    const out = { tabs, isCal: (S.ctTab || 'cal') === 'cal', isAppr: S.ctTab === 'appr',
+      clients: [['all', 'Todos']].concat(used.map(id => [id, cname(id)])).map(([id, l]) => Object.assign({ l, dot: id === 'all' ? 'transparent' : this.spCtColor(id)[0], dotVis: id === 'all' ? 'none' : 'block', pick: () => this.setState({ ctC: id }) }, spChip((S.ctC || 'all') === id))),
+      legend: ['draft', 'wait', 'fix', 'appr', 'sched', 'pub', 'fail'].map(k => ({ l: ST[k][0], c: ST[k][1] })), wd: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], days,
+      noSel: !sel, hasSel: !!sel, draft: S.ctDraft || '', onDraft: e => this.setState({ ctDraft: e.target.value }), onKey: e => { if (e.key === 'Enter') sendC(); }, sendC,
+      newPost: () => this.spCtForm(null, false),
+      kpis: spK([['Esperando o cliente', String(waitN), 'no portal do cliente'], ['Com ajustes pedidos', String(fixN), fixN ? 'responda o cliente' : 'nenhum', fixN ? '#D92D20' : 'var(--tx2,#667085)'],
+        ['Tempo médio de aprovação', st.approval_hours == null ? '—' : st.approval_hours < 24 ? st.approval_hours + ' h' : (st.approval_hours / 24).toFixed(1).replace('.', ',') + ' dia', 'últimos 30 dias'], ['Aprovados de primeira', st.first_try_pct == null ? '—' : st.first_try_pct + '%', 'sem pedido de ajuste', '#079455']]),
+      auto: spSw(!!(C && C.auto_publish), () => { if (!isBoss) return this.toastMsg('Só o dono ou um admin muda isso'); SP.api('/api/content', { method: 'PATCH', body: { agency_id: this.spAg, auto_publish: !C.auto_publish } }).then(() => this.spCtLoad()).then(() => this.toastMsg(C.auto_publish ? 'Aprovado pelo cliente entra na fila sozinho' : 'Aprovado espera você agendar')).catch(e => this.spErr(e)); }) };
+    const pend = posts.filter(x => (x.status === 'wait' || x.status === 'fix') && (!S.ctC || S.ctC === 'all' || x.client_id === S.ctC)).sort((a, b) => (b.status === 'fix') - (a.status === 'fix'));
+    out.noPend = !pend.length;
+    out.pend = pend.map(x => { const last = lastC(x), t = ST[x.status], col = this.spCtColor(x.client_id), d = new Date(x.publish_at); return { title: x.title, cbg: col[0], cfg: col[1], st: t[0], stBg: t[1] + '1F', stC: t[1],
+      meta: cname(x.client_id) + ' · ' + KIND[x.kind] + ' · ' + d.getDate() + ' ' + MN[d.getMonth()] + ' · ' + this.spWhen(x.updated_at) + ' · v' + x.version, hasLast: !!last, lastWho: last ? who(x, last) : '', lastT: last ? last.text : '', lastBg: last && last.side === 'cliente' ? 'rgba(247,144,9,0.10)' : 'var(--sf2,#F2F4F7)',
+      acts: this.spCtActs(x).concat([spAct('Abrir', 0, () => this.setState({ ctTab: 'cal', ctSel: x.id }))]), open: () => this.setState({ ctTab: 'cal', ctSel: x.id }) }; });
+    if (sel) { const t = ST[sel.status] || ST.draft, col = this.spCtColor(sel.client_id), d = new Date(sel.publish_at), hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      out.s = { title: sel.title, client: cname(sel.client_id).toUpperCase(), kind: KIND[sel.kind].toUpperCase(), v: String(sel.version), cbg: col[0], cfg: col[1], h: sel.kind === 'reels' || sel.kind === 'story' ? '300px' : '230px',
+        meta: sel.nets.map(n => NET[n]).join(' e ') + ' · ' + KIND[sel.kind] + ' · ' + d.getDate() + ' ' + MN[d.getMonth()] + ', ' + hm + ' · ' + sel.media_ids.length + (sel.media_ids.length === 1 ? ' arquivo' : ' arquivos'), st: t[0], stBg: t[1] + '1F', stC: t[1], cap: sel.caption || '(sem legenda)',
+        isPub: sel.status === 'pub', metrics: sel.status === 'pub' ? [['Saiu', sel.published_at ? this.spWhen(sel.published_at) : '—'], ['Redes', sel.nets.join(' + ')]].map(m => ({ l: m[0], v: m[1] })) : [],
+        hasNote: ['appr', 'sched', 'fail'].includes(sel.status), note: sel.status === 'fail' ? 'Não saiu: ' + (sel.error || 'erro na Meta') : sel.status === 'sched' ? 'Na fila · sai sozinho em ' + d.getDate() + ' ' + MN[d.getMonth()] + ' às ' + hm : 'Aprovado pelo cliente · agende ou publique agora',
+        comments: sel.comments.map(m => ({ who: who(sel, m), t: m.text, when: this.spWhen(m.created_at), bg: m.side === 'cliente' ? 'rgba(247,144,9,0.10)' : 'var(--sf2,#F2F4F7)' })), acts: this.spCtActs(sel) }; }
+    return { ct: out };
+  }
+  spPbLink(clientId) {
+    const metas = (this.R.connections || []).filter(c => c.provider === 'meta' && c.status !== 'revoked'), cn = (this.D.clients.find(c => c.id === clientId) || {}).name || 'o cliente';
+    if (!metas.length) { this.toastMsg('Conecte a Meta (Instagram e Facebook) em Integrações'); this.go('integrations'); return; }
+    const pick = async connId => { try { const r = await SP.api('/api/content/social?agency_id=' + this.spAg + '&connection_id=' + connId); if (!r.pages.length) { this.toastMsg('Essa conta não administra nenhuma página'); return; }
+      this.fm({ title: 'Perfis de ' + cn, desc: 'A página do Facebook e o Instagram profissional ligado a ela.', icon: 'link', fields: [{ k: 'p', l: 'Página', type: 'pick', opts: r.pages.map(p => [p.page_id, p.page_name, p.ig_username ? 'Instagram @' + p.ig_username : 'sem Instagram ligado']), req: 1 }], okL: 'Ligar',
+        ok: async v => { const p = r.pages.find(x => x.page_id === v.p); try { await SP.api('/api/content/social/' + clientId, { method: 'PUT', body: Object.assign({ agency_id: this.spAg, connection_id: connId }, p) }); await this.spCtLoad(); this.toastMsg('Perfis de ' + cn + ' ligados'); } catch (e) { this.spErr(e); } } }); } catch (e) { this.spErr(e); } };
+    if (metas.length === 1) return pick(metas[0].id);
+    this.fm({ title: 'Qual conta da Meta?', icon: 'link', fields: [{ k: 'c', l: 'Conta', type: 'pick', opts: metas.map(c => [c.id, c.label]), req: 1 }], okL: 'Continuar', ok: v => pick(v.c) });
+  }
+  vPubReal() {
+    const S = this.state, C = this.CTD;
+    if (!C) this.spLazy('ct', 'publish', () => this.spCtLoad());
+    const g = this.gate(1, 'Publicação direta no Meta', null), posts = (C && C.posts) || [], social = (C && C.social) || [];
+    const cn = id => (this.D.clients.find(c => c.id === id) || {}).name || 'Cliente', soc = id => social.find(s => s.client_id === id);
+    const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], fmtD = iso => { const d = new Date(iso); return d.getDate() + ' ' + MN[d.getMonth()] + ', ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); };
+    const tab = S.pbTab || 'sched', inTab = p => tab === 'sched' ? ['sched', 'publishing', 'appr'].includes(p.status) : tab === 'fail' ? p.status === 'fail' : p.status === 'pub';
+    const cnt = k => posts.filter(p => k === 'sched' ? ['sched', 'publishing', 'appr'].includes(p.status) : p.status === k).length;
+    const rows = posts.filter(inTab).sort((a, b) => tab === 'pub' ? b.publish_at.localeCompare(a.publish_at) : a.publish_at.localeCompare(b.publish_at)).slice(0, 60).map(p => ({ client: cn(p.client_id), nets: p.nets, kind: ({ post: 'Post', carrossel: 'Carrossel', reels: 'Reels', story: 'Story' })[p.kind], cap: p.caption || p.title, tileBg: this.spCtColor(p.client_id)[0],
+      meta: p.status === 'pub' ? 'Publicado ' + this.spWhen(p.published_at || p.publish_at) : p.status === 'appr' ? 'Aprovado · ainda fora da fila · ' + fmtD(p.publish_at) : (p.status === 'fail' ? 'Era para ' : 'Sai ') + fmtD(p.publish_at),
+      stL: p.status === 'sched' ? 'Agendado' : p.status === 'publishing' ? 'Saindo' : p.status === 'appr' ? 'Aprovado' : p.status === 'fail' ? 'Falhou' : 'Publicado', stBg: p.status === 'fail' ? 'rgba(240,68,56,.1)' : p.status === 'pub' ? 'rgba(18,183,106,.12)' : 'rgba(70,95,255,.1)', stC: p.status === 'fail' ? '#B42318' : p.status === 'pub' ? '#067647' : '#3538CD',
+      hasErr: !!p.error && p.status !== 'pub', err: p.error || '', acts: this.spCtActs(p).filter(a => a.l !== 'Excluir').map(a => this.p2Act(a.l, a.run)) }));
+    const withSoc = this.D.clients.filter(c => soc(c.id)), list = withSoc.concat(this.D.clients.filter(c => !soc(c.id))).slice(0, 12);
+    const pf = S.pbProf && this.D.clients.some(c => c.id === S.pbProf) ? S.pbProf : (list[0] || {}).id, ps = pf && soc(pf), mine = posts.filter(p => p.client_id === pf);
+    const feed = mine.filter(p => p.status !== 'pub' && p.status !== 'draft').concat(mine.filter(p => p.status === 'pub').reverse()).slice(0, 9);
+    const shade = (hex, i) => { const n = parseInt(hex.slice(1), 16), k = [1, .82, .66, .9, .74, .58][i % 6]; return 'rgb(' + Math.round((n >> 16) * k) + ',' + Math.round(((n >> 8) & 255) * k) + ',' + Math.round((n & 255) * k) + ')'; };
+    const ini = n => n.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), bad = s => !s || s.status !== 'active' || !!s.last_error;
+    return { pub: Object.assign({}, g, { addL: 'Novo post', add: () => this.spCtForm(null, true),
+      kpis: [['Agendados', String(cnt('sched')), 'na fila', 'var(--tx,#101828)'], ['Publicados', String(posts.filter(p => p.status === 'pub' && p.published_at && new Date(p.published_at).getMonth() === new Date().getMonth()).length), 'neste mês', 'var(--tx,#101828)'], ['Falharam', String(cnt('fail')), cnt('fail') ? 'precisam de você' : 'tudo certo', cnt('fail') ? '#D92D20' : '#079455'], ['Perfis conectados', withSoc.length + ' de ' + this.D.clients.length, 'Instagram e Facebook', 'var(--tx,#101828)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
+      tabs: [['sched', 'Agendados'], ['fail', 'Falharam'], ['pub', 'Publicados']].map(o => Object.assign({ l: o[1] + ' · ' + cnt(o[0]), pick: () => this.setState({ pbTab: o[0] }) }, spSeg(tab === o[0]))),
+      rows, empty: !rows.length, emptyL: tab === 'fail' ? 'Nenhuma falha. Tudo saiu no horário.' : 'Nada por aqui ainda.',
+      profiles: list.map(c => { const s = soc(c.id); return { n: s && s.ig_username ? '@' + s.ig_username : s ? s.page_name || c.name : c.name + ' · ligar', ini: ini(c.name), col: this.spCtColor(c.id)[0], dot: bad(s) ? '#F04438' : '#12B76A', bd: pf === c.id ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: pf === c.id ? 'rgba(70,95,255,.06)' : 'var(--sf,#fff)', pick: () => s ? this.setState({ pbProf: c.id }) : this.spPbLink(c.id) }; }),
+      f: { handle: ps && ps.ig_username ? '@' + ps.ig_username : pf ? cn(pf) : '—', ini: pf ? ini(cn(pf)) : '', col: pf ? this.spCtColor(pf)[0] : '#E4E7EC', ring: mine.some(p => p.status === 'sched') ? '#465FFF' : 'var(--bd,#E4E7EC)', net: ps ? 'Instagram · como vai aparecer' : 'Perfis não ligados', expired: !!pf && bad(ps), reconnect: () => pf && this.spPbLink(pf),
+        stats: [[String(mine.filter(p => p.status === 'pub').length), 'pelo Spherum'], [String(mine.filter(p => p.status === 'sched').length), 'na fila'], [String(mine.filter(p => ['wait', 'fix'].includes(p.status)).length), 'com o cliente']].map(s => ({ v: s[0], l: s[1] })),
+        tiles: feed.map((p, i) => ({ t: p.caption || p.title, bg: shade(this.spCtColor(pf)[0], i), isReel: p.kind === 'reels', hasBadge: p.status !== 'pub', badge: p.status === 'fail' ? 'FALHOU' : p.status === 'sched' ? 'AGENDADO · ' + fmtD(p.publish_at).toUpperCase() : (p.status === 'appr' ? 'APROVADO' : p.status === 'wait' ? 'COM O CLIENTE' : 'AJUSTES'), bBg: p.status === 'fail' ? '#F04438' : '#FFFFFF', bC: p.status === 'fail' ? '#FFFFFF' : '#101828', ol: p.status === 'sched' ? '2px dashed rgba(255,255,255,.9)' : 'none' })),
+        best: [] } }) };
+  }
   vContent() {
+    if (this.R) return this.vContentReal();
     const S = this.state; if (!S.ctPosts) this.state.ctPosts = CT0.map(r => ({ id: r[0], c: r[1], d: r[2], net: r[3], kind: r[4], title: r[5], st: r[6], v: r[7], cap: r[8], comments: r[9].map(m => ({ who: m[0], t: m[1], when: m[2], cl: !!m[3] })) }));
     const P = this.state.ctPosts, cname = id => (this.exCl().find(c => c.id === id) || {}).name || id;
     const upd = (id, f) => this.setState(s => ({ ctPosts: s.ctPosts.map(x => x.id === id ? Object.assign({}, x, f(x)) : x) }));
@@ -6139,8 +6255,9 @@ class Component extends DCLogic {
     let n = 0; Object.keys(pubCaps).forEach(cl => pubCaps[cl].forEach((cap, i) => L.push({ id: 'p' + (++n), cl, st: 'pub', when: i === 0 ? 'Ontem, 18:00' : 'há ' + (i * 2 + 1) + ' dias', kind: i % 3 === 1 ? 'Reels' : i % 3 === 2 ? 'Carrossel' : 'Post', nets: i % 2 ? ['IG'] : ['IG', 'FB'], cap, likes: 120 + ((n * 137) % 900), reach: 2100 + ((n * 811) % 9000) })));
     Object.assign(this.state, { pbList: L, pbProf: 'aurora', pbTab: 'sched', pbCol: C, pbExp: { odonto: true } });
   }
-  pbFailN() { this.pbInit(); return this.state.pbList.filter(p => p.st === 'fail').length; }
+  pbFailN() { if (this.R) return ((this.CTD && this.CTD.posts) || []).filter(p => p.status === 'fail').length; this.pbInit(); return this.state.pbList.filter(p => p.st === 'fail').length; }
   vPub() {
+    if (this.R) return this.vPubReal();
     this.pbInit();
     const S = this.state, rk0 = this.gate(1, 'Publicação direta no Meta', null).rk, g = this.gate(1, 'Publicação direta no Meta', rk0 === 1 ? 'No plano Agência: até 10 perfis conectados e 60 posts agendados por mês.' : null);
     const cls = ['aurora', 'verano', 'pulse', 'grao', 'odonto', 'horizonte'], cn = id => (this.exCl().find(c => c.id === id) || {}).name || id;
