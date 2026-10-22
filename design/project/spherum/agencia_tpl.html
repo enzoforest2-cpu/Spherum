@@ -3475,7 +3475,7 @@ const IN_PROV = [
 ];
 const SP_IN = { meta: ['meta', 'meta_ads', 'ads_read', 'meta'], gads: ['google', 'google_ads', 'adwords', 'google'], ga4: ['google', 'ga4', 'analytics.readonly', 'ga4'], tiktok: ['tiktok', 'tiktok_ads', '', 'tiktok'], cal: ['google', 'calendar', 'calendar.events', null] };
 // Módulos que ainda não têm backend: na conta real abrem a tela "chegando".
-const SP_SOON = { prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], chat: ['chat', 'Chat interno da equipe.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
+const SP_SOON = { prospect: ['person_search', 'Listas de prospecção e mensagens em sequência.'], sched: ['event_available', 'Página de agendamento com a sua agenda.'], content: ['calendar_month', 'Calendário de conteúdo com aprovação do cliente.'], publish: ['send', 'Publicação no Instagram e no Facebook dos clientes.'], studio: ['auto_awesome', 'Criativos gerados por IA.'], auto: ['account_tree', 'Automações entre os módulos.'], fiscal: ['receipt_long', 'Notas fiscais emitidas a partir das faturas pagas.'], academy: ['school', 'Trilhas de treinamento para a equipe.'], badges: ['military_tech', 'Metas e conquistas da equipe.'], roi: ['paid', 'Retorno dos anúncios até a venda do cliente, com as vendas ligadas ao CRM ou à loja.'], app: ['smartphone', 'App de celular para aprovar e acompanhar.'], aivis: ['travel_explore', 'Como os clientes aparecem nas buscas por IA.'] };
 const IN_COLS = [['meta', 'Meta Ads'], ['gads', 'Google Ads'], ['ga4', 'GA4'], ['tiktok', 'TikTok'], ['sales', 'Vendas']];
 const IN_SEED = { meta: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'grao', 'lumen', 'moraes'], gads: ['aurora', 'verano', 'odonto', 'horizonte', 'pulse', 'moraes'], ga4: ['aurora', 'verano', 'odonto', 'grao', 'lumen'], tiktok: ['verano', 'pulse'], sales: { verano: 'Shopify', aurora: 'RD Station', odonto: 'RD Station', horizonte: 'RD Station' } };
 const IN_LOG0 = [['há 2 dias', 'Google Ads perdeu o acesso', 'rafael@marketingpro.com removeu a permissão do Spherum', '#F04438'], ['há 2 dias', 'Imobiliária Horizonte · GA4 desvinculado', 'Por Rafael Lima', '#F79009'], ['ontem', 'RD Station CRM conectado', 'Por Bia Nunes · 3 contas de clientes', '#12B76A'], ['ontem', 'Shopify · 612 pedidos importados', 'Loja Verano · setembro', '#465FFF'], ['há 5 dias', 'WhatsApp Comercial 2 conectado', 'Por Ana · QR Code', '#12B76A']];
@@ -6004,7 +6004,7 @@ class Component extends DCLogic {
         'cl-verano': [['day', 'Segunda'], ['Pedro Rocha', 'Fotos novas da coleção chegaram no Drive.', '15:30']],
         'dm-marina': [['day', 'Hoje'], ['Marina Alves', 'Consegue revisar a verba da Black Friday da Verano antes das 15h?', '11:40']], 'dm-pedro': [], 'dm-carla': [], 'dm-faisca': [['Faísca', 'Oi! Me chama aqui ou com @Faísca em qualquer canal.', '08:00']] } });
   }
-  tchUnN() { this.tchInit(); return Object.values(this.state.tchUn).reduce((a, b) => a + b, 0) || null; }
+  tchUnN() { if (this.R) return (this.R.teamChat || []).reduce((t, c) => t + (c.unread || 0), 0) || null; this.tchInit(); return Object.values(this.state.tchUn).reduce((a, b) => a + b, 0) || null; }
   tchScroll() { setTimeout(() => { const el = this._tchRef && this._tchRef.current; if (el) el.scrollTop = el.scrollHeight; }, 30); }
   tchSend() {
     const S = this.state, t = (S.tchDraft || '').trim(), ch = S.tchCh;
@@ -6018,7 +6018,73 @@ class Component extends DCLogic {
       this._tchT = setTimeout(() => { this.setState({ tchBusy: false }); add(['Faísca', /relat/i.test(t) ? 'Combinado. Começo agora e aviso aqui quando o relatório estiver pronto para revisão.' : 'Anotado! Vou preparar e te peço aprovação antes de mandar qualquer coisa para o cliente.', hm]); this.tchScroll(); }, 1300);
     }
   }
+  // Chat da equipe (modo real): canais, conversas diretas e @xodó. Atualiza a cada 8 s enquanto a tela está aberta.
+  async spTchLoad(id, read) {
+    const r = await SP.api('/api/team-chat/' + id + '/messages' + (read === false ? '?read=0' : ''));
+    this.TCM = Object.assign({}, this.TCM, { [id]: r.messages });
+    if (read !== false) { const c = (this.R.teamChat || []).find(x => x.id === id); if (c) c.unread = 0; }
+    this.setState({ real: Date.now() }); this.tchScroll();
+  }
+  async spTchBoard() { const r = await SP.api('/api/team-chat?agency_id=' + this.spAg); this.R.teamChat = r.channels; this.setState({ real: Date.now() }); }
+  spTchPoll() {
+    if (this._tchP) return;
+    this._tchP = setInterval(() => { if (document.hidden || this.state.view !== 'chat' || !this.R) return; const id = this._tchCur; this.spTchBoard().catch(() => {}); if (id) this.spTchLoad(id).catch(() => {}); }, 8000);
+  }
+  async spTchSend(id) {
+    const t = (this.state.tchDraft || '').trim();
+    if (!t) { this.setState({ tchErr: 'Escreva uma mensagem antes de enviar' }); return; }
+    if (t.length > 4000) { this.setState({ tchErr: 'Mensagem longa demais (máximo 4.000 caracteres)' }); return; }
+    if (this._tchSending) return; this._tchSending = 1;
+    try { const r = await SP.api('/api/team-chat/' + id + '/messages', { method: 'POST', body: { text: t } }); this.setState({ tchDraft: '', tchErr: '' }); await this.spTchLoad(id); if (r.runs && r.runs.length) this.spXoLoad().catch(() => {}); }
+    catch (e) { this.setState({ tchErr: e.message || 'Não deu para enviar agora' }); } finally { this._tchSending = 0; }
+  }
+  async spTchDm(userId) {
+    try { const r = await SP.api('/api/team-chat', { method: 'POST', body: { agency_id: this.spAg, dm_user: userId } }); await this.spTchBoard(); this.setState({ tchCh: r.channel.id, tchErr: '' }); await this.spTchLoad(r.channel.id); } catch (e) { this.spErr(e); }
+  }
+  vTchReal() {
+    this.spTchPoll();
+    const S = this.state, rk = this.gate(1, 'Chat da equipe', null).rk, g = this.gate(1, 'Chat da equipe', rk === 1 ? 'No plano Agência: até 10 canais e 90 dias de histórico.' : null);
+    const all = this.R.teamChat || [], meId = this.R.me.user_id, team = this.D.team || [];
+    const sel = all.find(c => c.id === S.tchCh) || all[0] || null, cur = sel ? sel.id : null;
+    if (cur && this._tchCur !== cur) { this._tchCur = cur; if (!(this.TCM && this.TCM[cur])) this.spTchLoad(cur).catch(e => this.spErr(e)); }
+    const pick = id => { this.setState({ tchCh: id, tchErr: '' }); this.spTchLoad(id).catch(e => this.spErr(e)); };
+    const row = c => ({ hasUn: c.unread > 0 && cur !== c.id, un: String(c.unread || 0), bg: cur === c.id ? 'rgba(70,95,255,.08)' : 'transparent', fw: c.unread || cur === c.id ? '600' : '500', pick: () => pick(c.id) });
+    const cname = c => c.client_id ? ((this.D.clients.find(x => x.id === c.client_id) || {}).name || c.name) : c.name;
+    const chans = all.filter(c => c.kind !== 'direta').map(c => Object.assign({ n: c.name }, row(c)));
+    const dmRows = all.filter(c => c.kind === 'direta'), withDm = dmRows.map(c => c.other);
+    const dms = dmRows.map(c => Object.assign({ n: c.other_name || 'Pessoa da equipe', dot: '#12B76A' }, row(c), this.p2Av(c.other_name || '?')))
+      .concat(team.filter(t => t.user_id !== meId && !withDm.includes(t.user_id)).map(t => Object.assign({ n: t.name, dot: '#98A2B3', hasUn: false, un: '0', bg: 'transparent', fw: '500', pick: () => this.spTchDm(t.user_id) }, this.p2Av(t.name))));
+    const isDm = sel && sel.kind === 'direta';
+    const title = !sel ? 'Chat da equipe' : isDm ? (sel.other_name || 'Mensagem direta') : '# ' + sel.name;
+    const desc = !sel ? '' : isDm ? 'Mensagem direta' : sel.kind === 'cliente' ? (sel.description || 'Tudo sobre ' + cname(sel)) : (sel.description || 'Canal da equipe');
+    const members = (isDm ? [this.R.me.name, sel.other_name || ''] : team.map(t => t.name)).filter(Boolean).slice(0, 8).map(n => Object.assign({ n }, this.p2Av(n)));
+    const xs = ((this.XR && this.XR.xodos) || []).map(x => x.name), bot = n => xs.includes(n);
+    const msgs = [], list = (this.TCM && cur && this.TCM[cur]) || [];
+    let lastDay = '';
+    list.forEach(m => {
+      const d = new Date(m.created_at), dk = d.toLocaleDateString('en-CA');
+      if (dk !== lastDay) { lastDay = dk; const w = this.spWhen(m.created_at); msgs.push({ isDay: true, isMsg: false, isTyping: false, t: w.startsWith('hoje') ? 'Hoje' : w === 'ontem' ? 'Ontem' : w }); }
+      const who = m.system ? 'Spherum' : (m.author_name || 'Alguém');
+      msgs.push(Object.assign({ isDay: false, isMsg: true, isTyping: false, who, t: m.text, time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), isBot: bot(who), hasRef: false, ref: '',
+        pinL: sel.pinned_text === m.text ? 'Fixada' : 'Fixar',
+        pin: async () => { try { await SP.api('/api/team-chat/' + cur, { method: 'PATCH', body: { pinned_text: m.text } }); sel.pinned_text = m.text; this.setState({ real: Date.now() }); this.toastMsg('Mensagem fixada'); } catch (e) { this.spErr(e); } },
+        task: () => this.fm({ title: 'Virar tarefa', desc: 'A mensagem de ' + who + ' vira uma tarefa em Projetos (Combinados da equipe).', icon: 'task_alt', fields: [{ k: 't', l: 'Tarefa', req: 1, min: 3 }, { k: 'who', l: 'Responsável', type: 'pick', opts: this.spTeamOpts(), req: 1 }, { k: 'due', l: 'Prazo', type: 'date', req: 1 }],
+          init: { t: m.text.slice(0, 90), who: (m.author_user && team.some(t => t.user_id === m.author_user) ? m.author_user : meId), due: this.spIso(new Date(Date.now() + 3 * 864e5)) }, okL: 'Criar tarefa',
+          ok: async v => { try { await SP.api('/api/team-chat/' + cur + '/task', { method: 'POST', body: { title: v.t.trim(), assignee_user: v.who, due_date: v.due } }); await this.spLoad(); this.toastMsg('Tarefa criada para ' + ((team.find(t => t.user_id === v.who) || {}).name || 'a equipe')); } catch (e) { this.spErr(e); } } }) }, m.system ? { ini: 'Sp', avBg: 'rgba(70,95,255,.12)', avC: '#465FFF' } : this.p2Av(who)));
+    });
+    if (!this._tchRef) this._tchRef = React.createRef();
+    const xn = xs[0];
+    return { tchat: Object.assign({}, g, { addL: 'Novo canal',
+      add: () => this.fm({ title: 'Novo canal', desc: 'Canais organizam a conversa por assunto ou por cliente.', icon: 'tag', fields: [{ k: 'n', l: 'Nome do canal', ph: 'ex.: black-friday', req: 1, min: 2 }, { k: 'd', l: 'Sobre o que é' }, { k: 'c', l: 'Cliente (opcional)', type: 'pick', opts: [['-', 'Nenhum']].concat(this.D.clients.map(c => [c.id, c.name])) }], init: { c: '-' }, okL: 'Criar canal',
+        ok: async v => { try { const r = await SP.api('/api/team-chat', { method: 'POST', body: { agency_id: this.spAg, name: v.n.trim(), description: (v.d || '').trim() || undefined, client_id: v.c && v.c !== '-' ? v.c : null } }); await this.spTchBoard(); this.setState({ tchCh: r.channel.id }); await this.spTchLoad(r.channel.id); this.toastMsg('Canal criado'); } catch (e) { this.spErr(e); } } }),
+      chans, dms, title, desc, members, msgs, hasPin: !!(sel && sel.pinned_text), pin: (sel && sel.pinned_text) || '',
+      unpin: async () => { try { await SP.api('/api/team-chat/' + cur, { method: 'PATCH', body: { pinned_text: null } }); sel.pinned_text = null; this.setState({ real: Date.now() }); } catch (e) { this.spErr(e); } }, feedRef: this._tchRef,
+      draft: S.tchDraft || '', onDraft: e => this.setState({ tchDraft: e.target.value, tchErr: '' }), onKey: e => { if (e.key === 'Enter' && cur) this.spTchSend(cur); }, send: () => cur && this.spTchSend(cur),
+      ph: !sel ? 'Mensagem' : isDm ? 'Mensagem para ' + (sel.other_name || '') : 'Mensagem em #' + sel.name, hasErr: S.tchErr ? 'true' : 'false', inBd: S.tchErr ? '#F04438' : 'var(--bd,#D0D5DD)',
+      hint: S.tchErr || (xn ? 'Enter envia. Use @' + xn.split(' ')[0] + ' para pedir algo ao xodó.' : 'Enter envia.'), hintC: S.tchErr ? '#B42318' : 'var(--tx2,#667085)' }) };
+  }
   vTch() {
+    if (this.R) return this.vTchReal();
     this.tchInit();
     const S = this.state, rk = this.gate(1, 'Chat da equipe', null).rk, g = this.gate(1, 'Chat da equipe', rk === 1 ? 'No plano Agência: até 10 canais e 90 dias de histórico.' : null);
     const CH = (S.tchExtra || []).length ? [['geral', 'geral', 'Avisos e combinados da equipe'], ['criacao', 'criação', 'Peças, versões e revisões'], ['trafego', 'tráfego', 'Campanhas e verbas']].concat(S.tchExtra) : [['geral', 'geral', 'Avisos e combinados da equipe'], ['criacao', 'criação', 'Peças, versões e revisões'], ['trafego', 'tráfego', 'Campanhas e verbas']];

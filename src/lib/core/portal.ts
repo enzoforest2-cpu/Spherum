@@ -11,6 +11,7 @@ import { listForms } from "./forms";
 import { profitBoard } from "./profit";
 import { listProposals } from "./proposals";
 import { riskBoard } from "./risk";
+import { chatBoard } from "./team-chat";
 import { ticketBoard } from "./tickets";
 import { listProjects, teamLoad } from "./projects";
 import { listDocuments } from "./documents";
@@ -81,7 +82,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 
-  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab, projects, load, contracts, crm, meetings, tickets, proposals, forms, dre, profit] = await Promise.all([
+  const [me, clientRows, metricRows, campRows, dailyRows, clientDailyRows, reportRows, memberRows, inviteRows, connections, accounts, pending, documents, invoices, recurrences, paymentAccounts, collab, projects, load, contracts, crm, meetings, tickets, proposals, forms, dre, profit, teamChat] = await Promise.all([
     one<{ full_name: string | null; role: string; email: string | null }>(
       sql,
       `select p.full_name, m.role, u.email from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
@@ -170,6 +171,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     listForms(sql, agencyId, now),
     dreReport(sql, agencyId, 3, now),
     profitBoard(sql, agencyId, now),
+    chatBoard(sql, agencyId, userId),
   ]);
 
   const totals = new Map<string, { cur: Totals; prev: Totals }>();
@@ -349,5 +351,6 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     risk,
     dre,
     profit,
+    teamChat,
   };
 }

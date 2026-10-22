@@ -74,3 +74,10 @@ export function clientIp(request: Request): string | null {
 export function leadSalt(): string {
   return process.env.LEADS_SALT?.trim() || process.env.XODOS_ENCRYPTION_KEY?.trim() || "spherum-leads";
 }
+
+/** Agência dona do canal do chat. */
+export async function channelAgency(sql: Sql, channelId: string): Promise<string> {
+  const row = await one<{ agency_id: string }>(sql, `select agency_id from team_channels where id = $1`, [channelId]);
+  if (!row) throw new XodoError("Canal não encontrado.", 404);
+  return row.agency_id;
+}
