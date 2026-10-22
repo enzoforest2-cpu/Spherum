@@ -25,7 +25,8 @@ test("chamado: cliente abre, prazo pela prioridade, primeira resposta, resolver,
   await sql.query(`insert into client_portal_users (client_id, agency_id, user_id) values ($1, $2, $3)`, [c.id, agencyId, cli]);
   const mails: string[] = [];
   const deps = { sql, mail: async (m: { subject: string }) => { mails.push(m.subject); return true; } };
-  const t0 = new Date("2026-10-21T12:00:00Z");
+  // Uma hora atrás: a primeira resposta usa o relógio de verdade e precisa cair dentro do prazo.
+  const t0 = new Date(Date.now() - 3_600_000);
 
   await assert.rejects(openTicket(sql, agencyId, cli, "cliente", { client_id: c.id, subject: "Anúncio reprovado" }, t0), /Conte o que está acontecendo/);
   const k = await openTicket(sql, agencyId, cli, "cliente", { client_id: c.id, subject: "Anúncio reprovado", text: "O Meta reprovou o anúncio.", priority: "alta" }, t0);
