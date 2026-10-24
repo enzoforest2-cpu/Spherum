@@ -57,9 +57,19 @@ export const agencyPatch = z
       .pipe(z.string().regex(/^\d{14}$/, "CNPJ precisa ter 14 dígitos"))
       .nullable(),
     brand_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable(),
-    timezone: z.string().trim().min(1).max(60),
+    timezone: z.string().trim().min(1).max(60).refine(validTimezone, "Fuso horário desconhecido. Use um nome como America/Sao_Paulo."),
   })
   .partial();
+
+/** Só fusos que o Node conhece: um nome inválido derrubaria toda data calculada no fuso da agência. */
+export function validTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Endereço curto e único (minúsculas, sem acento), usado no portal do cliente. */
 export function slugify(name: string): string {

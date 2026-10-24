@@ -119,22 +119,24 @@ const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 864e5).toLoca
 /** Negócio fechado: vira cliente, com o contato, o onboarding e o contrato com a mensalidade. */
 export async function winDeal(sql: Sql, agencyId: string, userId: string, id: string, raw: unknown, now = new Date()) {
   const input = winInput.parse(raw);
-  const d = await dealOf(sql, agencyId, id);
+  // Cliente, onboarding, contrato e o negócio ganho nascem juntos: uma falha no meio não deixa cliente solto.
+  return sql.transaction(async (tx) => {
+  const d = await dealOf(tx, agencyId, id);
   if (d.stage === "ganho") throw new XodoError("Esse negócio já virou cliente.", 409);
   const today = addDays(now, 0);
-  const client = await createClient(sql, agencyId, userId, {
+  const client = await createClient(tx, agencyId, userId, {
     name: d.company, segment: d.segment, website: d.website, status: "onboarding", started_on: today,
     monthly_fee: d.value_cents ? d.value_cents / 100 : null, owner_user_id: d.owner_user,
   });
   if (d.contact_name) {
-    await sql.query(
+    await tx.query(
       `insert into client_contacts (agency_id, client_id, name, email, phone, is_primary) values ($1, $2, $3, $4, $5, true)`,
       [agencyId, client.id, d.contact_name, d.email, d.phone],
     );
   }
   let projectId: string | null = null;
   if (input.onboarding) {
-    projectId = (await createProject(sql, agencyId, userId, {
+    projectId = (await createProject(tx, agencyId, userId, {
       name: `Onboarding · ${d.company}`.slice(0, 160), client_id: client.id, owner_user: d.owner_user, priority: "alta", tags: ["Onboarding"],
       start_date: today, due_date: addDays(now, 9), playbook: "onboarding",
     }, now)).id;
@@ -142,17 +144,19 @@ export async function winDeal(sql: Sql, agencyId: string, userId: string, id: st
   let contractId: string | null = null;
   if (input.contract && d.value_cents >= 100) {
     const end = new Date(now); end.setFullYear(end.getFullYear() + 1);
-    contractId = (await createContract(sql, agencyId, userId, {
+    contractId = (await createContract(tx, agencyId, userId, {
       client_id: client.id, monthly_fee: d.value_cents / 100, start_date: today, end_date: addDays(end, 0), billing: "nova", billing_day: input.billing_day,
     }, now)).id;
   }
-  await sql.query(
+  const won = await one(tx,
     `update deals set stage = 'ganho', won_at = now(), stage_changed_at = now(), lost_at = null, lost_reason = null, client_id = $3,
-            next_action = 'Convertido em cliente', next_action_date = null where id = $1 and agency_id = $2`,
+            next_action = 'Convertido em cliente', next_action_date = null where id = $1 and agency_id = $2 and stage <> 'ganho' returning id`,
     [id, agencyId, client.id],
   );
-  await audit(sql, { agencyId, actor: userId, action: "negocio_ganho", targetType: "deal", targetId: id });
+  if (!won) throw new XodoError("Esse negócio já virou cliente.", 409);
+  await audit(tx, { agencyId, actor: userId, action: "negocio_ganho", targetType: "deal", targetId: id });
   return { client_id: client.id, project_id: projectId, contract_id: contractId, email: d.email };
+  });
 }
 
 /** Negócios da agência e os números do funil (previsão, taxa de fechamento e ciclo nos últimos 90 dias). */

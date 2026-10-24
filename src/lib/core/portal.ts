@@ -1,4 +1,5 @@
 import { num, one, type Sql } from "../xodos/db";
+import { dayIn } from "../xodos/budget";
 import { XodoError } from "../xodos/errors";
 import { listConnections } from "../integrations/store";
 import { listAccounts, listInvoices, listRecurrences } from "../billing";
@@ -79,7 +80,8 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     [agencyId],
   );
   if (!agency) throw new XodoError("Não encontrado", 404);
-  const end = addDays(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())), -1);
+  // Ontem no calendário de Brasília: as janelas de 30 dias seguem o dia das agências, não o UTC.
+  const end = addDays(new Date(`${dayIn("America/Sao_Paulo", now)}T00:00:00Z`), -1);
   const cur = { from: day(addDays(end, -29)), to: day(end) };
   const prev = { from: day(addDays(end, -59)), to: day(addDays(end, -30)) };
 

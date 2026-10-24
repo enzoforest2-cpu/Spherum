@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dayIn } from "../xodos/budget";
 import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 
@@ -28,7 +29,7 @@ export async function riskBoard(sql: Sql, agencyId: string, clients: RiskClient[
       `select distinct on (client_id) client_id, created_at::text, note from risk_actions where agency_id = $1 order by client_id, created_at desc`, [agencyId]),
     sql.query<{ client_id: string; requested_at: string }>(`select client_id, requested_at::text from nps_requests where agency_id = $1 and answered_at is null`, [agencyId]),
   ]);
-  const today = now.toISOString().slice(0, 10);
+  const today = dayIn("America/Sao_Paulo", now);
   const by = <T extends { client_id: string }>(rows: T[]) => new Map(rows.map((r) => [r.client_id, r]));
   const K = by(contracts), L = by(late), C = by(changes), N = by(nps), A = by(actions), O = by(open);
   const rows = clients.map((c) => {
@@ -52,6 +53,15 @@ export async function riskBoard(sql: Sql, agencyId: string, clients: RiskClient[
     return { client_id: c.id, name: c.name, mrr: c.mrr, score, level: score >= 60 ? "alto" : score >= 30 ? "medio" : "baixo", signals: sig.map((x) => x.l),
       nps: n ? { score: n.score, comment: n.comment, at: n.created_at } : null, nps_pending: !!O.get(c.id), action: recent ? { at: act!.created_at, note: act!.note } : null };
   }).sort((a, b) => b.score - a.score);
+  // A saúde do cliente (0 a 100) é o espelho do risco; fica gravada para a lista de clientes e o portal.
+  if (rows.length) {
+    await sql.query(
+      `update clients c set health_score = v.score, health_reason = v.reason, health_updated_at = now()
+         from unnest($1::uuid[], $2::int[], $3::text[]) as v(id, score, reason)
+        where c.id = v.id and c.agency_id = $4 and (c.health_score is distinct from v.score or c.health_reason is distinct from v.reason)`,
+      [rows.map((r) => r.client_id), rows.map((r) => 100 - r.score), rows.map((r) => (r.signals.length ? r.signals.slice(0, 3).join("; ") : "Sem sinais de risco").slice(0, 300)), agencyId],
+    ).catch((error) => console.error("[risco] saúde do cliente não gravada", error));
+  }
   const all = nps.filter((n) => clients.some((c) => c.id === n.client_id));
   const prom = all.filter((n) => n.score >= 9).length, det = all.filter((n) => n.score <= 6).length;
   return {
@@ -90,10 +100,13 @@ export const npsAnswer = z.object({ score: z.number().int().min(0).max(10), comm
 
 export async function answerNps(sql: Sql, agencyId: string, clientId: string, userId: string, raw: unknown) {
   const input = npsAnswer.parse(raw);
-  const req = await openNps(sql, clientId);
+  // Só com pergunta aberta, e cada pergunta é respondida uma vez: fecha o pedido antes de gravar (duas abas não dobram a resposta).
+  const req = await one<{ id: string }>(sql,
+    `update nps_requests set answered_at = now() where id = (select id from nps_requests where client_id = $1 and answered_at is null order by requested_at desc limit 1) and answered_at is null returning id`,
+    [clientId]);
+  if (!req) throw new XodoError("Essa pesquisa já foi respondida. Obrigado!", 409);
   await sql.query(`insert into nps_responses (agency_id, client_id, request_id, user_id, score, comment) values ($1, $2, $3, $4, $5, $6)`,
-    [agencyId, clientId, req?.id ?? null, userId, input.score, input.comment || null]);
-  if (req) await sql.query(`update nps_requests set answered_at = now() where id = $1`, [req.id]);
+    [agencyId, clientId, req.id, userId, input.score, input.comment || null]);
   const c = await one<{ name: string }>(sql, `select name from clients where id = $1`, [clientId]);
   await sql.query(`insert into notifications (agency_id, kind, title, data) values ($1, 'nps', $2, $3::jsonb)`,
     [agencyId, `NPS ${input.score} de ${c?.name ?? "cliente"}`, json({ client_id: clientId, score: input.score })]);

@@ -131,7 +131,7 @@ export async function submitForm(sql: Sql, formCode: string, raw: unknown, ip: s
     if (x.cond && (body[x.cond[0]] ?? "") !== x.cond[1]) continue;
     const v = (body[x.id] ?? "").trim();
     if (!v) { if (x.req) errors[x.id] = "Campo obrigatório"; continue; }
-    if (x.t === "email" && !/^\S+@\S+\.\S+$/.test(v)) errors[x.id] = "E-mail inválido";
+    if ((x.t === "email" || roleOf(x) === "email") && !z.email().safeParse(v).success) errors[x.id] = "E-mail inválido";
     else if (x.t === "phone" && v.replace(/\D/g, "").length < 10) errors[x.id] = "Telefone incompleto";
     else if (x.t === "choice" && x.opts && !x.opts.includes(v)) errors[x.id] = "Escolha uma das opções";
     else answers[x.id] = v;
@@ -141,10 +141,13 @@ export async function submitForm(sql: Sql, formCode: string, raw: unknown, ip: s
   const get = (role: string) => { const x = by(role); return x ? answers[x.id] : null; };
   const company = get("empresa") ?? get("contato") ?? "Lead do formulário";
   const notes = [`Formulário "${f.name}"`, ...f.fields.filter((x) => answers[x.id]).map((x) => `${x.l}: ${answers[x.id]}`)].join("\n").slice(0, 4000);
-  const actor = f.owner_user ?? (await one<{ user_id: string }>(sql, `select user_id from agency_members where agency_id = $1 and role = 'owner' limit 1`, [f.agency_id]))!.user_id;
+  // Dono do formulário que saiu da equipe não pode ser responsável pelo negócio: cai para o dono da agência.
+  const ownerStill = f.owner_user ? await one(sql, `select 1 from agency_members where agency_id = $1 and user_id = $2`, [f.agency_id, f.owner_user]) : null;
+  const owner: string = ownerStill && f.owner_user ? f.owner_user : (await one<{ user_id: string }>(sql, `select user_id from agency_members where agency_id = $1 and role = 'owner' order by created_at limit 1`, [f.agency_id]))!.user_id;
+  const actor = owner;
   const deal = await createDeal(sql, f.agency_id, actor, {
     company: company.slice(0, 160), contact_name: get("contato")?.slice(0, 120) ?? null, email: get("email"), phone: get("telefone")?.slice(0, 40) ?? null,
-    segment: get("segmento")?.slice(0, 80) ?? null, website: get("site")?.slice(0, 200) ?? null, source: "Formulário", stage: f.deal_stage, owner_user: f.owner_user, notes,
+    segment: get("segmento")?.slice(0, 80) ?? null, website: get("site")?.slice(0, 200) ?? null, source: "Formulário", stage: f.deal_stage, owner_user: owner, notes,
     next_action: "Responder o lead do formulário", next_action_date: now.toISOString().slice(0, 10),
   });
   await sql.query(`insert into form_submissions (form_id, agency_id, answers, deal_id, ip_hash) values ($1, $2, $3::jsonb, $4, $5)`, [f.id, f.agency_id, json(answers), deal.id, ipHash]);

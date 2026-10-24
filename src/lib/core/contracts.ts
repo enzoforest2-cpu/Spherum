@@ -128,7 +128,8 @@ export async function renewContract(sql: Sql, agencyId: string, userId: string, 
     [id, agencyId, input.end_date, fee],
   );
   await setRecurrenceAmount(sql, c.recurrence_id, fee);
-  if (c.recurrence_id && c.status === "aviso" && fee >= 100) await sql.query(`update invoice_recurrences set active = true where id = $1`, [c.recurrence_id]);
+  // A mensalidade volta a valer com a renovação, inclusive se tinha sido desligada por valor abaixo do mínimo.
+  if (c.recurrence_id && fee >= 100) await sql.query(`update invoice_recurrences set active = true where id = $1 and not active`, [c.recurrence_id]);
   await audit(sql, { agencyId, actor: userId, action: "contrato_renovado", targetType: "contract", targetId: id, summary: `até ${input.end_date} · reajuste de ${input.adjust_percent}%` });
   return { monthly_fee_cents: fee };
 }
@@ -141,6 +142,7 @@ export async function pauseContract(sql: Sql, agencyId: string, userId: string, 
   if (length <= 0) throw new XodoError("A volta vem depois do início da pausa.", 400);
   if (length > 90) throw new XodoError("Pausas vão até 90 dias. Acima disso, encerre o contrato.", 400);
   if (input.to <= (await agencyToday(sql, agencyId, now))) throw new XodoError("A volta precisa ser depois de hoje.", 400);
+  if (input.to > c.end_date) throw new XodoError("A pausa não pode passar do fim do contrato. Renove antes ou encerre.", 400);
   await sql.query(
     `update client_contracts set pause_from = $3, pause_to = $4, pause_reason = $5, pause_billing = $6 where id = $1 and agency_id = $2`,
     [id, agencyId, input.from, input.to, input.reason, input.billing],
@@ -195,7 +197,10 @@ export async function updateContract(sql: Sql, agencyId: string, userId: string,
       where id = $1 and agency_id = $2`,
     [id, agencyId, fee, input.document_id !== undefined, input.document_id ?? null, input.notes !== undefined, input.notes ?? null],
   );
-  if (fee !== null) await setRecurrenceAmount(sql, c.recurrence_id, fee);
+  if (fee !== null) {
+    await setRecurrenceAmount(sql, c.recurrence_id, fee);
+    if (c.recurrence_id && fee >= 100) await sql.query(`update invoice_recurrences set active = true where id = $1 and not active`, [c.recurrence_id]);
+  }
   await audit(sql, { agencyId, actor: userId, action: "contrato_editado", targetType: "contract", targetId: id });
 }
 

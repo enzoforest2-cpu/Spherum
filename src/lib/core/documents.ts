@@ -139,8 +139,9 @@ export async function updateDocument(sql: Sql, agencyId: string, id: string, raw
 export async function deleteDocument(sql: Sql, store: ComputerStorage | null, agencyId: string, userId: string, id: string) {
   const doc = await one<{ storage_path: string }>(sql, `select storage_path from documents where id = $1 and agency_id = $2`, [id, agencyId]);
   if (!doc) throw new XodoError("Documento não encontrado.", 404);
-  await need(store).remove(doc.storage_path);
+  // Primeiro o registro, depois o arquivo: se o arquivo falhar ao sumir, não sobra registro apontando para o nada.
   await sql.query(`delete from documents where id = $1`, [id]);
+  await need(store).remove(doc.storage_path).catch((error) => console.error("[documentos] arquivo não removido", doc.storage_path, error));
   await audit(sql, { agencyId, actor: userId, action: "documento_apagado", targetType: "document", targetId: id });
 }
 
@@ -160,4 +161,14 @@ export async function downloadUrl(sql: Sql, store: ComputerStorage | null, userI
   if (!doc || !(doc.member || (doc.shared && doc.client_user))) throw new XodoError("Documento não encontrado.", 404);
   const url = await need(store).signedDownloadUrl(doc.storage_path, DOWNLOAD_SECONDS);
   return `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(doc.name)}`;
+}
+
+/** Uploads que o navegador começou e nunca concluiu: some com o registro (e o arquivo, se chegou a subir) depois de um dia. */
+export async function cleanupPendingUploads(sql: Sql, store: ComputerStorage | null, now = new Date()) {
+  const rows = await sql.query<{ id: string; storage_path: string }>(
+    `delete from documents where status = 'pending' and created_at < $1::timestamptz - interval '1 day' returning id, storage_path`,
+    [now.toISOString()],
+  );
+  if (store) for (const r of rows) await store.remove(r.storage_path).catch(() => undefined);
+  return rows.length;
 }

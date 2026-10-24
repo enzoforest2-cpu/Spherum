@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { json, one, type Sql } from "../xodos/db";
+import { dayIn } from "../xodos/budget";
 import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
 import { createClient } from "./clients";
@@ -52,13 +53,21 @@ async function checkRefs(sql: Sql, agencyId: string, input: { deal_id?: string |
 export async function createProposal(sql: Sql, agencyId: string, userId: string, raw: unknown) {
   const input = proposalInput.parse(raw);
   await checkRefs(sql, agencyId, input);
-  const row = await one<{ id: string; number: number }>(
-    sql,
-    `insert into proposals (agency_id, number, company, contact_name, email, phone, source, deal_id, client_id, doc, monthly_cents, one_time_cents, term_months, created_by)
-     values ($1, coalesce((select max(number) + 1 from proposals where agency_id = $1), 1), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13) returning id, number`,
-    [agencyId, input.company, input.contact_name ?? null, input.email ?? null, input.phone ?? null, input.source ?? null, input.deal_id ?? null, input.client_id ?? null,
-      json(input.doc), input.monthly_cents, input.one_time_cents, input.term_months, userId],
-  );
+  // O número é o maior + 1; duas propostas criadas ao mesmo tempo colidem na chave única, e a segunda tenta de novo.
+  let row: { id: string; number: number } | null = null;
+  for (let attempt = 0; attempt < 3 && !row; attempt++) {
+    try {
+      row = await one<{ id: string; number: number }>(
+        sql,
+        `insert into proposals (agency_id, number, company, contact_name, email, phone, source, deal_id, client_id, doc, monthly_cents, one_time_cents, term_months, created_by)
+         values ($1, coalesce((select max(number) + 1 from proposals where agency_id = $1), 1), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13) returning id, number`,
+        [agencyId, input.company, input.contact_name ?? null, input.email ?? null, input.phone ?? null, input.source ?? null, input.deal_id ?? null, input.client_id ?? null,
+          json(input.doc), input.monthly_cents, input.one_time_cents, input.term_months, userId],
+      );
+    } catch (error) {
+      if (attempt === 2 || (error as { code?: string }).code !== "23505") throw error;
+    }
+  }
   // Proposta de um negócio leva o funil para "proposta".
   if (input.deal_id) await sql.query(`update deals set stage = 'proposta', stage_changed_at = now() where id = $1 and stage in ('novo', 'contato', 'diagnostico')`, [input.deal_id]);
   return row!;
@@ -110,7 +119,7 @@ export async function setCatalog(sql: Sql, agencyId: string, raw: unknown) {
 }
 
 export async function listProposals(sql: Sql, agencyId: string, now = new Date()) {
-  const today = now.toISOString().slice(0, 10);
+  const today = dayIn("America/Sao_Paulo", now);
   const [rows, cat] = await Promise.all([
     sql.query<{ id: string; number: number; deal_id: string | null; client_id: string | null; company: string; contact_name: string | null; email: string | null; phone: string | null; source: string | null; status: string; doc: Record<string, unknown>;
       monthly_cents: number; one_time_cents: number; term_months: number; valid_until: string | null; sent_at: string | null; views: number; first_viewed_at: string | null; last_viewed_at: string | null;
@@ -155,7 +164,7 @@ async function byToken(sql: Sql, token: string) {
 export async function viewProposal(sql: Sql, token: string, now = new Date(), count = true) {
   const p = await byToken(sql, token);
   if (!p) throw new XodoError("Proposta não encontrada. Peça um link novo para a agência.", 404);
-  const expired = p.status === "enviada" && !!p.valid_until && p.valid_until < now.toISOString().slice(0, 10);
+  const expired = p.status === "enviada" && !!p.valid_until && p.valid_until < dayIn("America/Sao_Paulo", now);
   if (count && p.status === "enviada") {
     await sql.query(`update proposals set views = views + 1, first_viewed_at = coalesce(first_viewed_at, $2), last_viewed_at = $2 where id = $1`, [p.id, now.toISOString()]);
     if ((await one<{ views: number }>(sql, `select views from proposals where id = $1`, [p.id]))?.views === 1) {
@@ -169,6 +178,15 @@ export async function viewProposal(sql: Sql, token: string, now = new Date(), co
   };
 }
 
+/** Soma meses a uma data AAAA-MM-DD sem o estouro do JavaScript (31/01 + 1 mês = 28/02, não 03/03). */
+export function addMonths(day: string, months: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  const total = y * 12 + (m - 1) + months;
+  const yy = Math.floor(total / 12), mm = total % 12;
+  const last = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
+  return `${yy}-${String(mm + 1).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+}
+
 export const acceptInput = z.object({ name: z.string().trim().min(3).max(120), email: z.email().trim().toLowerCase().max(254), agree: z.literal(true) });
 
 /** Aceite: grava quem, quando e de onde; cria o cliente e o contrato. */
@@ -178,34 +196,43 @@ export async function acceptProposal(sql: Sql, token: string, raw: unknown, ip: 
   if (!p) throw new XodoError("Proposta não encontrada.", 404);
   if (p.status === "aceita") throw new XodoError("Essa proposta já foi aceita.", 409);
   if (p.status !== "enviada") throw new XodoError("Essa proposta não está mais aberta. Fale com a agência.", 409);
-  if (p.valid_until && p.valid_until < now.toISOString().slice(0, 10)) throw new XodoError("A validade da proposta acabou. Peça uma nova para a agência.", 409);
+  if (p.valid_until && p.valid_until < dayIn("America/Sao_Paulo", now)) throw new XodoError("A validade da proposta acabou. Peça uma nova para a agência.", 409);
   const actor = p.created_by ?? (await one<{ user_id: string }>(sql, `select user_id from agency_members where agency_id = $1 and role = 'owner' limit 1`, [p.agency_id]))!.user_id;
-  let clientId = p.client_id, contractId: string | null = null;
   const monthly = p.monthly_cents / 100;
-  if (p.deal_id && (await one(sql, `select 1 from deals where id = $1 and stage <> 'ganho'`, [p.deal_id]))) {
-    // Valor do negócio passa a ser o da proposta; o ganho cria cliente, onboarding e contrato.
-    await sql.query(`update deals set value_cents = $2 where id = $1`, [p.deal_id, p.monthly_cents]);
-    const won = await winDeal(sql, p.agency_id, actor, p.deal_id, { contract: monthly >= 1, onboarding: true }, now);
-    clientId = won.client_id;
-    contractId = won.contract_id;
-  } else {
-    if (!clientId) {
-      clientId = (await createClient(sql, p.agency_id, actor, { name: p.company, status: "onboarding", monthly_fee: monthly || null, started_on: now.toISOString().slice(0, 10) })).id;
-      if (p.contact_name) {
-        await sql.query(`insert into client_contacts (agency_id, client_id, name, email, is_primary) values ($1, $2, $3, $4, true)`, [p.agency_id, clientId, p.contact_name, p.email ?? input.email]);
+  const payDay = Math.min(28, Math.max(1, Number((p.doc as { payDay?: number }).payDay) || 10));
+  // Tudo numa transação, com a proposta travada: dois cliques (ou uma falha no meio) não deixam cliente sem proposta aceita.
+  const { clientId, contractId } = await sql.transaction(async (tx) => {
+    const locked = await one<{ status: string }>(tx, `select status from proposals where id = $1 for update`, [p.id]);
+    if (locked?.status !== "enviada") throw new XodoError("Essa proposta já foi aceita.", 409);
+    let clientId = p.client_id, contractId: string | null = null;
+    const deal = p.deal_id ? await one<{ stage: string; client_id: string | null }>(tx, `select stage, client_id from deals where id = $1`, [p.deal_id]) : null;
+    if (deal && deal.stage !== "ganho") {
+      // Valor do negócio passa a ser o da proposta; o ganho cria cliente, onboarding e contrato.
+      await tx.query(`update deals set value_cents = $2 where id = $1`, [p.deal_id, p.monthly_cents]);
+      const won = await winDeal(tx, p.agency_id, actor, p.deal_id!, { contract: monthly >= 1, onboarding: true, billing_day: payDay }, now);
+      clientId = won.client_id;
+      contractId = won.contract_id;
+    } else {
+      // Negócio já fechado à mão no CRM: o cliente é o dele, não um segundo com o mesmo nome.
+      if (!clientId && deal?.client_id) clientId = deal.client_id;
+      if (!clientId) {
+        clientId = (await createClient(tx, p.agency_id, actor, { name: p.company, status: "onboarding", monthly_fee: monthly || null, started_on: dayIn("America/Sao_Paulo", now) })).id;
+        if (p.contact_name) {
+          await tx.query(`insert into client_contacts (agency_id, client_id, name, email, is_primary) values ($1, $2, $3, $4, true)`, [p.agency_id, clientId, p.contact_name, p.email ?? input.email]);
+        }
+      }
+      const open = await one(tx, `select 1 from client_contracts where client_id = $1 and status <> 'encerrado'`, [clientId]);
+      if (!open && monthly >= 1) {
+        const start = dayIn("America/Sao_Paulo", now);
+        contractId = (await createContract(tx, p.agency_id, actor, { client_id: clientId, monthly_fee: monthly, start_date: start, end_date: addMonths(start, p.term_months), billing: "nova", billing_day: payDay }, now)).id;
       }
     }
-    const open = await one(sql, `select 1 from client_contracts where client_id = $1 and status <> 'encerrado'`, [clientId]);
-    if (!open && monthly >= 1) {
-      const start = now.toISOString().slice(0, 10), end = new Date(now); end.setMonth(end.getMonth() + p.term_months);
-      const payDay = Math.min(28, Math.max(1, Number((p.doc as { payDay?: number }).payDay) || 10));
-      contractId = (await createContract(sql, p.agency_id, actor, { client_id: clientId, monthly_fee: monthly, start_date: start, end_date: end.toISOString().slice(0, 10), billing: "nova", billing_day: payDay }, now)).id;
-    }
-  }
-  await sql.query(
-    `update proposals set status = 'aceita', accepted_at = $2, accepted_name = $3, accepted_email = $4, accepted_ip = $5, client_id = $6, contract_id = $7 where id = $1`,
-    [p.id, now.toISOString(), input.name, input.email, ip, clientId, contractId],
-  );
+    await tx.query(
+      `update proposals set status = 'aceita', accepted_at = $2, accepted_name = $3, accepted_email = $4, accepted_ip = $5, client_id = $6, contract_id = $7 where id = $1`,
+      [p.id, now.toISOString(), input.name, input.email, ip, clientId, contractId],
+    );
+    return { clientId, contractId };
+  });
   await sql.query(`insert into notifications (agency_id, kind, title, data) values ($1, 'proposta_aceita', $2, $3::jsonb)`, [p.agency_id, `${p.company} aceitou a proposta`, json({ proposal_id: p.id, client_id: clientId })]);
   await audit(sql, { agencyId: p.agency_id, actor: null, action: "proposta_aceita", targetType: "proposal", targetId: p.id, summary: `aceite de ${input.name}` });
   return { client_id: clientId, contract_id: contractId };

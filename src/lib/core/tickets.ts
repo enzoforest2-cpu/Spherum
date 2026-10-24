@@ -39,14 +39,17 @@ const dueFrom = (from: Date, hours: number) => new Date(from.getTime() + hours *
 
 export async function setSla(sql: Sql, agencyId: string, raw: unknown) {
   const sla = slaInput.parse(raw);
-  await sql.query(`update agencies set ticket_sla = $2::jsonb where id = $1`, [agencyId, json(sla)]);
-  // Os abertos sem resposta passam a seguir o prazo novo.
-  for (const p of PRIORITIES) {
-    await sql.query(
-      `update tickets set due_at = created_at + make_interval(secs => $3 * 3600) where agency_id = $1 and priority = $2 and status = 'aberto' and first_response_at is null`,
-      [agencyId, p, sla[p]],
-    );
-  }
+  // Tudo junto: o prazo novo só fica salvo se os chamados abertos também forem reajustados.
+  await sql.transaction(async (tx) => {
+    await tx.query(`update agencies set ticket_sla = $2::jsonb where id = $1`, [agencyId, json(sla)]);
+    // Os abertos sem resposta passam a seguir o prazo novo (horas podem ser quebradas: 0,5 h).
+    for (const p of PRIORITIES) {
+      await tx.query(
+        `update tickets set due_at = created_at + make_interval(secs => $3::float8 * 3600) where agency_id = $1 and priority = $2 and status = 'aberto' and first_response_at is null`,
+        [agencyId, p, sla[p]],
+      );
+    }
+  });
   return sla;
 }
 

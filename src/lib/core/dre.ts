@@ -58,7 +58,7 @@ export async function dreReport(sql: Sql, agencyId: string, months = 3, now = ne
     one<{ dre_tax_pct: number }>(sql, `select dre_tax_pct::float8 as dre_tax_pct from agencies where id = $1`, [agencyId]),
     sql.query<{ m: string; recurring: boolean; cents: number }>(
       `select to_char(paid_at at time zone 'America/Sao_Paulo', 'YYYY-MM') as m, recurrence_id is not null as recurring, sum(coalesce(paid_cents, amount_cents))::float8 as cents
-         from invoices where agency_id = $1 and status = 'pago' and paid_at >= $2::date and paid_at < $3::date group by 1, 2`,
+         from invoices where agency_id = $1 and status = 'pago' and paid_at >= ($2::date::timestamp at time zone 'America/Sao_Paulo') and paid_at < ($3::date::timestamp at time zone 'America/Sao_Paulo') group by 1, 2`,
       [agencyId, from, to],
     ),
     sql.query<{ id: string; kind: string; category: string; description: string; amount_cents: number; month: string; recurring: boolean; ended_month: string | null }>(
@@ -71,7 +71,7 @@ export async function dreReport(sql: Sql, agencyId: string, months = 3, now = ne
       [agencyId, from, to],
     ),
     sql.query<{ m: string; brl: number }>(
-      `select to_char(started_at at time zone 'America/Sao_Paulo', 'YYYY-MM') as m, coalesce(sum(cost_brl), 0)::float8 as brl from computer_sessions where agency_id = $1 and started_at >= $2::date and started_at < $3::date group by 1`,
+      `select to_char(started_at at time zone 'America/Sao_Paulo', 'YYYY-MM') as m, coalesce(sum(cost_brl), 0)::float8 as brl from computer_sessions where agency_id = $1 and started_at >= ($2::date::timestamp at time zone 'America/Sao_Paulo') and started_at < ($3::date::timestamp at time zone 'America/Sao_Paulo') group by 1`,
       [agencyId, from, to],
     ),
   ]);

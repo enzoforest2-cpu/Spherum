@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { num, one, type Sql } from "../xodos/db";
+import { dayIn } from "../xodos/budget";
 import { XodoError } from "../xodos/errors";
 
 /**
@@ -47,7 +48,7 @@ export async function setCostPerHour(sql: Sql, agencyId: string, value: number) 
 }
 
 export async function profitBoard(sql: Sql, agencyId: string, now = new Date()) {
-  const since = new Date(now.getTime() - 30 * 864e5).toISOString().slice(0, 10);
+  const since = dayIn("America/Sao_Paulo", new Date(now.getTime() - 30 * 864e5));
   const [agency, clients, hours, actions, ai, mine] = await Promise.all([
     one<{ cost_per_hour: number }>(sql, `select cost_per_hour::float8 as cost_per_hour from agencies where id = $1`, [agencyId]),
     sql.query<{ id: string; name: string; fee: number }>(
