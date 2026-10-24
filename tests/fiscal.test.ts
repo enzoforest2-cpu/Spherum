@@ -28,7 +28,7 @@ test("notas: emite pela regra do pagamento, consulta, envia PDF e XML; régua de
 
   const inv = (await one<{ id: string }>(sql, `insert into invoices (agency_id, client_id, description, amount_cents, due_date) values ($1, $2, 'Mensalidade', 250000, '2026-10-10') returning id`, [agencyId, c.id]))!.id;
   await assert.rejects(emitForInvoice(deps, agencyId, inv, dona), /Complete as configurações fiscais/);
-  await setConfig(sql, agencyId, { connection_id: conn, cnpj: "12.345.678/0001-90", inscricao_municipal: "123", codigo_municipio: "4106902", aliquota: 2, accountant_email: "xml@contabil.com", emit_when: "pay" }, new Date("2026-10-01T12:00:00Z"));
+  await setConfig(sql, agencyId, { connection_id: conn, cnpj: "12.345.678/0001-90", inscricao_municipal: "123", codigo_municipio: "4106902", aliquota: 2, accountant_email: "xml@contabil.com", emit_when: "pay", environment: "producao" }, new Date("2026-10-01T12:00:00Z"));
   await assert.rejects(emitForInvoice(deps, agencyId, inv, dona), /CPF ou CNPJ de Clínica Aurora/);
   await setClientTax(sql, agencyId, c.id, { cnpj: "98.765.432/0001-10", legal_name: "Clínica Aurora Ltda" });
 

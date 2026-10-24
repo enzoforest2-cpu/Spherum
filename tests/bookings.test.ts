@@ -59,7 +59,7 @@ test("agendamentos: horários livres, Google ocupado, marcar com Meet e CRM, con
 
   // A agência cancela outra; o convidado recebe e-mail.
   const b2 = await book(deps, t.code, { start: "2026-10-23T11:00:00-03:00", name: "Juliana", email: "ju@x.com" }, "2.2.2.2", "s", now);
-  await assert.rejects(deleteType(sql, agencyId, t.id), /marcada/);
+  await assert.rejects(deleteType(sql, agencyId, t.id, now), /marcada/);
   await cancelBooking(deps, agencyId, b2.id, "Imprevisto");
   assert.match(mails[mails.length - 1].subject, /Cancelada/);
   assert.match(mails[mails.length - 1].text, /Motivo: Imprevisto/);

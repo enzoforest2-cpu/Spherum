@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { serverIntegrations } from "@/lib/integrations";
+import { IntegrationError } from "@/lib/integrations/http";
 import { finishOAuth } from "@/lib/integrations/oauth";
+import { XodoError } from "@/lib/xodos/errors";
 import { serverSql } from "@/lib/xodos/db";
 
 /** Volta do login na plataforma. Termina sempre num redirecionamento para o Spherum, com o resultado na URL. */
@@ -21,6 +23,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     return back(result.returnTo, { status: "ok", conexao: result.connectionId });
   } catch (error) {
     console.error("[integrações] login falhou", provider, error);
-    return back("/agencia", { status: "erro", mensagem: error instanceof Error ? error.message.slice(0, 200) : "erro" });
+    // Só a mensagem de erros esperados (IntegrationError) volta na URL; o resto fica no log.
+    const known = error instanceof IntegrationError || error instanceof XodoError;
+    if (!known) console.error("[oauth] retorno falhou", error);
+    return back("/agencia", { status: "erro", mensagem: known ? error.message.slice(0, 200) : "Não consegui concluir a conexão. Tente de novo." });
   }
 }

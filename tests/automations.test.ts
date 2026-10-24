@@ -33,12 +33,12 @@ test("automações: lembrete de reunião espera, confere e envia; condição fal
   await sql.query(`insert into bookings (agency_id, type_id, name, email, start_at, end_at, cancel_hash, meet_link, created_at) values ($1, $2, 'Rafael Couto', 'rafa@x.com', '2026-10-23T18:00:00Z', '2026-10-23T18:30:00Z', 'h1', 'https://meet.google.com/x', '2026-10-22T12:05:00Z')`, [agencyId, bt]);
 
   const s1 = await automationSweep(deps, new Date("2026-10-22T12:10:00Z"));
-  assert.deepEqual(s1, { started: 1, advanced: 1 });
+  assert.deepEqual(s1, { started: 1, advanced: 1, stuck: 0, errors: 0 });
   let run = (await automationBoard(sql, agencyId)).runs[0];
   assert.equal(run.status, "esperando");
   assert.equal(run.resume_at!.slice(0, 16), "2026-10-22 18:00");
   assert.equal(mails.length, 0);
-  assert.deepEqual(await automationSweep(deps, new Date("2026-10-22T12:20:00Z")), { started: 0, advanced: 0 }, "não dispara de novo nem antes da hora");
+  assert.deepEqual(await automationSweep(deps, new Date("2026-10-22T12:20:00Z")), { started: 0, advanced: 0, stuck: 0, errors: 0 }, "não dispara de novo nem antes da hora");
 
   await automationSweep(deps, new Date("2026-10-22T18:01:00Z"));
   run = (await automationBoard(sql, agencyId)).runs[0];

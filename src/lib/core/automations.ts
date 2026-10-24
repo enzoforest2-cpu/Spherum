@@ -125,29 +125,29 @@ export async function deleteAutomation(sql: Sql, agencyId: string, id: string) {
 // ---------------------------------------------------------------------------
 
 /** Eventos do gatilho entre `from` e `to` (cada um com uma chave única e o contexto). */
-async function events(sql: Sql, agencyId: string, t: z.infer<typeof trigger>, from: string, to: string, now: Date): Promise<{ key: string; ctx: Ctx }[]> {
+async function events(sql: Sql, agencyId: string, t: z.infer<typeof trigger>, from: string, to: string, now: Date): Promise<{ key: string; ctx: Ctx; at: string | null }[]> {
   if (t.type === "formulario") {
-    const rows = await sql.query<{ id: string; deal_id: string | null; form_name: string; company: string | null; name: string | null; email: string | null; phone: string | null; value_cents: number | null }>(
-      `select s.id, s.deal_id, f.name as form_name, d.company, d.contact_name as name, d.email, d.phone, d.value_cents::float8 as value_cents
+    const rows = await sql.query<{ id: string; deal_id: string | null; form_name: string; company: string | null; name: string | null; email: string | null; phone: string | null; value_cents: number | null; at: string }>(
+      `select s.id, s.deal_id, f.name as form_name, d.company, d.contact_name as name, d.email, d.phone, d.value_cents::float8 as value_cents, s.created_at::text as at
          from form_submissions s join forms f on f.id = s.form_id left join deals d on d.id = s.deal_id
         where s.agency_id = $1 and s.created_at > $2 and s.created_at <= $3 and ($4::uuid is null or s.form_id = $4) order by s.created_at`,
       [agencyId, from, to, t.form_id ?? null]);
-    return rows.map((r) => ({ key: `form:${r.id}`, ctx: { kind: "formulario", name: r.name, email: r.email, phone: r.phone, company: r.company, deal_id: r.deal_id, value_cents: r.value_cents, form_name: r.form_name } }));
+    return rows.map((r) => ({ key: `form:${r.id}`, at: r.at, ctx: { kind: "formulario", name: r.name, email: r.email, phone: r.phone, company: r.company, deal_id: r.deal_id, value_cents: r.value_cents, form_name: r.form_name } }));
   }
   if (t.type === "reuniao") {
-    const rows = await sql.query<{ id: string; name: string; email: string; phone: string | null; start_at: string; meet_link: string | null; type_name: string; deal_id: string | null; client_id: string | null }>(
-      `select b.id, b.name, b.email, b.phone, b.start_at::text, b.meet_link, t.name as type_name, b.deal_id, b.client_id
+    const rows = await sql.query<{ id: string; name: string; email: string; phone: string | null; start_at: string; meet_link: string | null; type_name: string; deal_id: string | null; client_id: string | null; at: string }>(
+      `select b.id, b.name, b.email, b.phone, b.start_at::text, b.meet_link, t.name as type_name, b.deal_id, b.client_id, b.created_at::text as at
          from bookings b join booking_types t on t.id = b.type_id
         where b.agency_id = $1 and b.created_at > $2 and b.created_at <= $3 and b.status = 'confirmada' and ($4::uuid is null or b.type_id = $4) order by b.created_at`,
       [agencyId, from, to, t.booking_type_id ?? null]);
-    return rows.map((r) => ({ key: `booking:${r.id}`, ctx: { kind: "reuniao", name: r.name, email: r.email, phone: r.phone, booking_id: r.id, start_at: r.start_at, meet: r.meet_link, type_name: r.type_name, deal_id: r.deal_id, client_id: r.client_id } }));
+    return rows.map((r) => ({ key: `booking:${r.id}`, at: r.at, ctx: { kind: "reuniao", name: r.name, email: r.email, phone: r.phone, booking_id: r.id, start_at: r.start_at, meet: r.meet_link, type_name: r.type_name, deal_id: r.deal_id, client_id: r.client_id } }));
   }
   if (t.type === "etapa_crm") {
     const rows = await sql.query<{ id: string; company: string; contact_name: string | null; email: string | null; phone: string | null; value_cents: number; stage_changed_at: string }>(
       `select id, company, contact_name, email, phone, value_cents::float8 as value_cents, stage_changed_at::text from deals
         where agency_id = $1 and stage = $4 and stage_changed_at > $2 and stage_changed_at <= $3 order by stage_changed_at`,
       [agencyId, from, to, t.stage]);
-    return rows.map((r) => ({ key: `deal:${r.id}:${t.stage}:${r.stage_changed_at}`, ctx: { kind: "etapa_crm", name: r.contact_name, email: r.email, phone: r.phone, company: r.company, deal_id: r.id, value_cents: r.value_cents } }));
+    return rows.map((r) => ({ key: `deal:${r.id}:${t.stage}:${r.stage_changed_at}`, at: r.stage_changed_at, ctx: { kind: "etapa_crm", name: r.contact_name, email: r.email, phone: r.phone, company: r.company, deal_id: r.id, value_cents: r.value_cents } }));
   }
   if (t.type === "fatura_vence") {
     // A fatura "entra" no gatilho quando faltam N dias para vencer.
@@ -159,15 +159,15 @@ async function events(sql: Sql, agencyId: string, t: z.infer<typeof trigger>, fr
          left join lateral (select email, phone, name from client_contacts where client_id = i.client_id order by is_primary desc, created_at limit 1) cc on true
         where i.agency_id = $1 and i.status = 'pendente' and i.due_date <= $2::date and i.due_date >= ($3::timestamptz at time zone 'America/Sao_Paulo')::date`,
       [agencyId, target, from]);
-    return rows.map((r) => ({ key: `invoice:${r.id}:${t.days}`, ctx: { kind: "fatura_vence", name: r.contact, email: r.email, phone: r.phone, company: r.client_name, client_id: r.client_id, client_name: r.client_name, invoice_id: r.id, due_date: r.due_date, amount_cents: r.amount_cents, payment_url: r.payment_url } }));
+    return rows.map((r) => ({ key: `invoice:${r.id}:${t.days}`, at: null, ctx: { kind: "fatura_vence", name: r.contact, email: r.email, phone: r.phone, company: r.client_name, client_id: r.client_id, client_name: r.client_name, invoice_id: r.id, due_date: r.due_date, amount_cents: r.amount_cents, payment_url: r.payment_url } }));
   }
-  const rows = await sql.query<{ id: string; title: string; client_id: string; client_name: string; email: string | null; phone: string | null; contact: string | null }>(
-    `select r.id, r.title, r.client_id, c.name as client_name, cc.email, cc.phone, cc.name as contact
+  const rows = await sql.query<{ id: string; title: string; client_id: string; client_name: string; email: string | null; phone: string | null; contact: string | null; at: string }>(
+    `select r.id, r.title, r.client_id, c.name as client_name, cc.email, cc.phone, cc.name as contact, r.published_at::text as at
        from reports r join clients c on c.id = r.client_id
        left join lateral (select email, phone, name from client_contacts where client_id = r.client_id order by is_primary desc, created_at limit 1) cc on true
       where r.agency_id = $1 and r.status = 'published' and r.published_at > $2 and r.published_at <= $3`,
     [agencyId, from, to]);
-  return rows.map((r) => ({ key: `report:${r.id}`, ctx: { kind: "relatorio_publicado", name: r.contact, email: r.email, phone: r.phone, company: r.client_name, client_id: r.client_id, client_name: r.client_name, report_id: r.id, report_title: r.title } }));
+  return rows.map((r) => ({ key: `report:${r.id}`, at: r.at, ctx: { kind: "relatorio_publicado", name: r.contact, email: r.email, phone: r.phone, company: r.client_name, client_id: r.client_id, client_name: r.client_name, report_id: r.id, report_title: r.title } }));
 }
 
 // ---------------------------------------------------------------------------
@@ -317,19 +317,32 @@ async function advance(deps: AutoDeps, runId: string, now: Date) {
 /** Cron: dispara os eventos novos de cada automação ligada e anda com as execuções vencidas. */
 export async function automationSweep(deps: AutoDeps, now = new Date(), opts: { deadline?: number } = {}) {
   const { sql } = deps;
-  const out = { started: 0, advanced: 0 };
+  const out = { started: 0, advanced: 0, stuck: 0, errors: 0 };
+  // Execução que ficou "rodando" por mais de 30 minutos: o processo caiu no meio de uma ação. Vira falha, com registro.
+  out.stuck = (await sql.query(`update automation_runs set status = 'falhou', error = 'A execução parou no meio (o processo caiu). Confira o que já saiu antes de rodar de novo.' where status = 'rodando' and updated_at < $1::timestamptz - interval '30 minutes' returning id`, [now.toISOString()])).length;
   const autos = await sql.query<{ id: string; agency_id: string; trigger: z.infer<typeof trigger>; cursor_at: string }>(
     `select id, agency_id, trigger, coalesce(cursor_at, now())::text as cursor_at from automations where enabled`);
   for (const a of autos) {
     if (opts.deadline && Date.now() > opts.deadline) break;
-    const evs = await events(sql, a.agency_id, a.trigger, a.cursor_at, now.toISOString(), now);
-    for (const e of evs.slice(0, 200)) {
-      const ins = await one<{ id: string }>(sql, `insert into automation_runs (automation_id, agency_id, event_key, context, resume_at) values ($1, $2, $3, $4::jsonb, $5) on conflict do nothing returning id`,
-        [a.id, a.agency_id, e.key, json(e.ctx), now.toISOString()]);
-      if (ins) { out.started++; await sql.query(`update automations set runs = runs + 1, last_run_at = $2 where id = $1`, [a.id, now.toISOString()]); }
+    // Uma automação com gatilho quebrado não para as outras agências.
+    try {
+      const evs = await events(sql, a.agency_id, a.trigger, a.cursor_at, now.toISOString(), now);
+      const batch = evs.slice(0, 200);
+      for (const e of batch) {
+        const ins = await one<{ id: string }>(sql, `insert into automation_runs (automation_id, agency_id, event_key, context, resume_at) values ($1, $2, $3, $4::jsonb, $5) on conflict do nothing returning id`,
+          [a.id, a.agency_id, e.key, json(e.ctx), now.toISOString()]);
+        if (ins) { out.started++; await sql.query(`update automations set runs = runs + 1, last_run_at = $2 where id = $1`, [a.id, now.toISOString()]); }
+      }
+      // Fatura: o gatilho olha a data de vencimento, não um instante; o cursor só avança nos outros. Num pico com mais de
+      // 200 eventos, o cursor para no último lido, e o resto entra no próximo ciclo.
+      if (a.trigger.type !== "fatura_vence") {
+        const cursor = evs.length > batch.length && batch[batch.length - 1].at ? batch[batch.length - 1].at! : now.toISOString();
+        await sql.query(`update automations set cursor_at = $2 where id = $1`, [a.id, cursor]);
+      }
+    } catch (error) {
+      out.errors++;
+      console.error("[automacoes] gatilho falhou", a.id, error);
     }
-    // Fatura: o gatilho olha a data de vencimento, não um instante; o cursor só avança nos outros.
-    if (a.trigger.type !== "fatura_vence") await sql.query(`update automations set cursor_at = $2 where id = $1`, [a.id, now.toISOString()]);
   }
   const due = await sql.query<{ id: string }>(`select r.id from automation_runs r join automations a on a.id = r.automation_id where a.enabled and r.status in ('pendente', 'esperando') and r.resume_at <= $1 order by r.resume_at limit 200`, [now.toISOString()]);
   for (const d of due) {

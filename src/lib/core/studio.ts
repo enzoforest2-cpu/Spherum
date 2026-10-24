@@ -51,7 +51,8 @@ export async function setKit(sql: Sql, agencyId: string, clientId: string, raw: 
   if (keys.length) await sql.query(`update client_brand_kits set ${keys.map((k, n) => `${k} = $${n + 2}`).join(", ")}, updated_at = now() where client_id = $1`, [clientId, ...keys.map((k) => i[k] ?? null)]);
 }
 
-export const configInput = z.object({ provider: z.enum(["fal", "replicate"]), connection_id: z.uuid(), image_model: z.string().trim().regex(/^[\w.-]+\/[\w./:-]+$/).optional(), video_model: z.string().trim().regex(/^[\w.-]+\/[\w./:-]+$/).nullable().optional() });
+const modelId = z.string().trim().regex(/^[\w.-]+\/[\w./:-]+$/).refine((m) => !m.includes(".."), "Nome de modelo inválido.");
+export const configInput = z.object({ provider: z.enum(["fal", "replicate"]), connection_id: z.uuid(), image_model: modelId.optional(), video_model: modelId.nullable().optional() });
 
 export async function getConfig(sql: Sql, agencyId: string): Promise<GenConfig | null> {
   const c = (await one<{ c: Partial<GenConfig> }>(sql, `select studio_config as c from agencies where id = $1`, [agencyId]))?.c;
@@ -81,14 +82,18 @@ export function buildPrompt(text: string, client: { name: string; segment: strin
 }
 
 async function usage(sql: Sql, agencyId: string, now: Date) {
-  const plan = (await one<{ plan: string | null }>(sql, `select plan from agencies where id = $1`, [agencyId]))?.plan ?? "agencia";
-  const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const a = await one<{ plan: string | null; plan_status: string | null }>(sql, `select plan, plan_status from agencies where id = $1`, [agencyId]);
+  const plan = a?.plan ?? "agencia";
+  // O mês vira à meia-noite de Brasília, não às 21h.
+  const month = `${new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(now)}-01T00:00:00-03:00`;
   const r = await one<{ img: number; vid: number }>(
     sql,
     `select coalesce(sum(cardinality(document_ids)) filter (where format <> 'video'), 0)::int as img,
             (select count(*)::int from studio_jobs where agency_id = $1 and created_at >= $2 and status <> 'falhou') as vid
        from studio_messages where agency_id = $1 and role = 'ai' and created_at >= $2`, [agencyId, month]);
-  const lim = PLAN_LIMITS[plan] ?? PLAN_LIMITS.agencia;
+  let lim = PLAN_LIMITS[plan] ?? PLAN_LIMITS.agencia;
+  // No teste grátis o plano é o que a pessoa escolheu no cadastro, sem pagar: a cota fica a do plano Agência.
+  if (a?.plan_status === "trial") lim = [Math.min(lim[0] ?? Infinity, PLAN_LIMITS.agencia[0]!), Math.min(lim[1] ?? Infinity, PLAN_LIMITS.agencia[1]!)];
   return { plan, images: r!.img, videos: r!.vid, image_limit: lim[0], video_limit: lim[1] };
 }
 

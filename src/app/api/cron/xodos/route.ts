@@ -17,6 +17,7 @@ import { fiscalSweep } from "@/lib/core/fiscal";
 import { fiscalDeps } from "@/lib/core/fiscal-focus";
 import { contentDeps } from "@/lib/core/content-meta";
 import { prospectSweep } from "@/lib/core/prospect";
+import { cleanupPendingUploads, documentsStorage } from "@/lib/core/documents";
 import { pushSweep } from "@/lib/core/push";
 import { webPushSender } from "@/lib/core/push-web";
 import { videoSweep } from "@/lib/core/studio";
@@ -49,44 +50,54 @@ export async function GET(request: Request) {
     const channelDeps = deps as ChannelDeps;
     // Prazo interno abaixo do maxDuration: a fila não começa entregas que não dariam tempo de terminar.
     const deadline = Date.now() + 240_000;
+    // Cada etapa é isolada: uma que falhe vira "falhou: …" na resposta e as outras rodam do mesmo jeito.
+    const step = async <T>(name: string, fn: () => Promise<T>): Promise<T | string> => {
+      try {
+        return await fn();
+      } catch (error) {
+        console.error(`[cron] ${name} falhou`, error);
+        return `falhou: ${error instanceof Error ? error.message : error}`;
+      }
+    };
     // Primeiro o que é rápido e pendente desde o último ciclo: entregas dos canais e faxina.
-    const channels = await cleanupChannels(deps.sql, new Date());
-    const queued = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
+    const channels = await step("canais", () => cleanupChannels(deps.sql, new Date()));
+    const queued = await step("fila", () => flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline }));
     // Cotação falhando não impede o resto: o gasto usa a última conhecida.
-    const fx = await refreshFx(deps.sql, new Date()).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const fx = await step("cotacao", () => refreshFx(deps.sql, new Date()));
     const integrations = { sql: deps.sql, ...deps.integrations! };
-    const ads = await syncDueAccounts(integrations);
-    const expiring = await warnExpiringConnections(integrations);
+    const ads = await step("anuncios", () => syncDueAccounts(integrations));
+    const expiring = await step("logins", () => warnExpiringConnections(integrations));
     // Cobrança: faturas vencidas, mensalidades do mês e conferência das cobranças sem aviso (Itaú).
-    const billing = await billingSweep({ ...billingDepsFromEnv(deps.sql, integrations.masterKey) }, { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const billing = await step("cobranca", () => billingSweep({ ...billingDepsFromEnv(deps.sql, integrations.masterKey) }, { deadline }));
     // Computador antes das retomadas (é rápido e fecha sessões que estão contando custo): dá como
     // pausadas as máquinas vencidas e pausa sessões longas; depois vence o controle de quem passou
     // do prazo (a execução retoma com "expired", até o prazo do cron).
     const machines = { ...withEngine(computerDeps(deps.sql), deps), deadline };
-    const swept = await sweepComputers(machines);
-    const computers = { controls: await expireControls(machines), ...swept };
+    const computers = await step("computador", async () => ({ controls: await expireControls(machines), ...(await sweepComputers(machines)) }));
     // Retomadas, fatias e rotinas param de começar perto do prazo; o resto fica para o próximo ciclo.
-    const cleanup = await sweep(deps, { deadline });
-    const routines = Date.now() < deadline - 30_000 ? await runDueRoutines(deps, 5, { deadline }) : [];
-    const email = await pollEmailTriggers(channelDeps);
+    const cleanup = await step("execucoes", () => sweep(deps, { deadline }));
+    const routines = Date.now() < deadline - 30_000 ? await step("rotinas", () => runDueRoutines(deps, 5, { deadline })) : [];
+    const email = await step("email", () => pollEmailTriggers(channelDeps));
     // Notas fiscais (emissão pela regra da agência e consulta na prefeitura) e régua de cobrança.
-    const fiscal = await fiscalSweep(await fiscalDeps(deps.sql), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const fiscal = await step("fiscal", async () => fiscalSweep(await fiscalDeps(deps.sql), new Date(), { deadline }));
     // Busca por IA: checagem semanal (segunda-feira) das perguntas de cada cliente.
-    const aivis = Date.now() < deadline - 60_000 ? await weeklyChecks(aivisDeps(deps.sql), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`) : "sem tempo";
+    const aivis = Date.now() < deadline - 60_000 ? await step("busca_ia", () => weeklyChecks(aivisDeps(deps.sql), new Date(), { deadline })) : "sem tempo";
     // Estúdio: vídeos que ficaram prontos na fila do provedor.
-    const studio = await videoSweep(await studioDeps(deps.sql), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const studio = await step("estudio", async () => videoSweep(await studioDeps(deps.sql), { deadline }));
     // Automações: eventos novos dos gatilhos e execuções cuja espera terminou.
-    const automations = await automationSweep(await automationDeps(deps.sql, { background: true }), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const automations = await step("automacoes", async () => automationSweep(await automationDeps(deps.sql, { background: true }), new Date(), { deadline }));
     // Conteúdo: posts na fila que já passaram da hora (Instagram e Facebook).
-    const posts = await publishSweep(await contentDeps(deps.sql), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const posts = await step("posts", async () => publishSweep(await contentDeps(deps.sql), new Date(), { deadline }));
     // Prospecção: passos vencidos da cadência (seg a sex, 9h às 18h, até o limite do dia).
-    const prospect = await prospectSweep(deps.sql, whatsappSender(integrations), new Date(), { deadline }).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`);
+    const prospect = await step("prospeccao", () => prospectSweep(deps.sql, whatsappSender(integrations), new Date(), { deadline }));
     // App de celular: os avisos novos viram notificação nos aparelhos (se as chaves VAPID estiverem configuradas).
     const sender = webPushSender();
-    const push = sender ? await pushSweep(deps.sql, sender, new Date()).catch((error) => `falhou: ${error instanceof Error ? error.message : error}`) : "sem VAPID";
+    const push = sender ? await step("push", () => pushSweep(deps.sql, sender, new Date(), { deadline })) : "sem VAPID";
+    // Uploads que o navegador começou e nunca terminou.
+    const uploads = await step("uploads", () => cleanupPendingUploads(deps.sql, documentsStorage(), new Date()));
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
-    const delivered = await flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline });
-    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, channels, delivered: { antes: queued, depois: delivered } });
+    const delivered = await step("fila", () => flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline }));
+    return NextResponse.json({ fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, uploads, channels, delivered: { antes: queued, depois: delivered } });
   } catch (error) {
     return fail(error);
   }

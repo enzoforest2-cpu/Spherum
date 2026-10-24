@@ -262,7 +262,8 @@ export async function replyLead(sql: Sql, senderFor: SenderFor, agencyId: string
  */
 export async function prospectInbound(sql: Sql, agencyId: string, waId: string, text: string, eventId: string, at: Date) {
   const lead = await one<{ id: string; phone: string; stage: string }>(
-    sql, `select id, phone, stage from prospect_leads where agency_id = $1 and phone = any($2::text[]) and last_out_at is not null order by last_out_at desc limit 1`,
+    // Só leads ainda na prospecção: quem virou cliente ou foi para o CRM conversa com a agência pelo canal normal.
+    sql, `select id, phone, stage from prospect_leads where agency_id = $1 and phone = any($2::text[]) and last_out_at is not null and stage in ('fila', 'abordado', 'respondeu', 'erro') order by last_out_at desc limit 1`,
     [agencyId, phoneKeys(waId)]);
   if (!lead) return null;
   const ins = await one<{ id: number }>(
@@ -325,6 +326,10 @@ export async function prospectSweep(sql: Sql, senderFor: SenderFor, now = new Da
     const send = senderFor(a.id, cfg.connection_id);
     for (const l of due) {
       if (opts.deadline && Date.now() > opts.deadline) break;
+      // Reserva o lead por 10 minutos: outra varredura ao mesmo tempo não manda a mesma mensagem.
+      const lease = await one(sql, `update prospect_leads set next_at = $2::timestamptz + interval '10 minutes' where id = $1 and next_at <= $2 returning id`, [l.id, now.toISOString()]);
+      if (!lease) continue;
+      const restore = () => sql.query(`update prospect_leads set next_at = $2 where id = $1`, [l.id, now.toISOString()]);
       const step = cfg.steps[l.step];
       if (!step) { await sql.query(`update prospect_leads set next_at = null where id = $1`, [l.id]); continue; }
       const vars = l.step === 0 ? cfg.variations.filter((v) => v.on) : [];
@@ -339,8 +344,9 @@ export async function prospectSweep(sql: Sql, senderFor: SenderFor, now = new Da
         await send(l.phone, { kind: "template", name: msg.template, lang: cfg.lang, params: templateParams(msg.text, l) });
       } catch (error) {
         const status = (error as { status?: number }).status;
-        // Limite da Meta: para a agência neste ciclo, sem marcar o lead.
-        if (status === 429) break;
+        const text = error instanceof Error ? error.message : String(error);
+        // Limite da Meta (vem como 429 ou como 400 com os códigos 130429, 131056 e 131048): para a agência neste ciclo, sem marcar o lead.
+        if (status === 429 || /\b(130429|131056|131048|80007)\b|rate limit|throttl|too many/i.test(text)) { await restore(); break; }
         await sql.query(`update prospect_leads set stage = 'erro', next_at = null, error = $2 where id = $1`, [l.id, (error instanceof Error ? error.message : String(error)).slice(0, 400)]);
         out.failed++;
         continue;

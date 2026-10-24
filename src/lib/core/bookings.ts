@@ -95,9 +95,9 @@ export async function updateType(sql: Sql, agencyId: string, id: string, raw: un
   if (sets.length) await sql.query(`update booking_types set ${sets.join(", ")} where id = $1`, vals);
 }
 
-export async function deleteType(sql: Sql, agencyId: string, id: string) {
+export async function deleteType(sql: Sql, agencyId: string, id: string, now = new Date()) {
   await typeOf(sql, agencyId, id);
-  const future = await one<{ n: number }>(sql, `select count(*)::int as n from bookings where type_id = $1 and status = 'confirmada' and start_at > now()`, [id]);
+  const future = await one<{ n: number }>(sql, `select count(*)::int as n from bookings where type_id = $1 and status = 'confirmada' and start_at > $2::timestamptz`, [id, now.toISOString()]);
   if (future!.n) throw new XodoError(`Esse tipo tem ${future!.n} reunião(ões) marcada(s). Cancele antes ou desative o tipo.`, 409);
   await sql.query(`delete from booking_types where id = $1`, [id]);
 }
@@ -191,13 +191,13 @@ export async function book(deps: BookingDeps, typeCode: string, raw: unknown, ip
     const recent = await one<{ n: number }>(sql, `select count(*)::int as n from bookings where type_id = $1 and ip_hash = $2 and created_at > $3::timestamptz - interval '1 hour'`, [t.id, ipHash, now.toISOString()]);
     if ((recent?.n ?? 0) >= 5) throw new XodoError("Muitos agendamentos seguidos. Tente de novo mais tarde.", 429);
   }
-  // O horário precisa estar entre os livres (agenda do Google incluída).
-  const free = await availableSlots(deps, t, now, { fromDay: dayOf(start), days: 1 });
-  if (!free.some((d) => d.day === dayOf(start) && d.slots.includes(hhmm(start)))) throw new XodoError("Esse horário não está mais livre. Escolha outro.", 409);
   const token = randomBytes(24).toString("base64url");
   const booking = await sql.transaction(async (tx) => {
-    // Duas pessoas no mesmo horário ao mesmo tempo: só a primeira fica.
+    // Duas pessoas no mesmo horário ao mesmo tempo: só a primeira fica. A consulta à agenda do Google também
+    // acontece com a trava, para dois tipos de reunião na mesma agenda não passarem juntos.
     await tx.query(`select pg_advisory_xact_lock(hashtext($1))`, [`agenda:${t.owner_user ?? t.id}`]);
+    const free = await availableSlots({ ...deps, sql: tx }, t, now, { fromDay: dayOf(start), days: 1 });
+    if (!free.some((d) => d.day === dayOf(start) && d.slots.includes(hhmm(start)))) throw new XodoError("Esse horário não está mais livre. Escolha outro.", 409);
     const clash = await takenFor(tx, t, start, end);
     if (clash.length) throw new XodoError("Esse horário acabou de ser marcado. Escolha outro.", 409);
     return (await one<{ id: string }>(

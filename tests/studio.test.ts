@@ -45,6 +45,9 @@ test("estúdio: prompt com o kit, limite do plano, imagens em Documentos, vídeo
   let b = await studioBoard(deps, agencyId, c.id);
   assert.deepEqual(b.messages.map((m) => m.role), ["me", "ai"]);
   assert.equal(b.urls[g.document_ids[0]], `https://signed/${g.document_ids[0]}`);
+  assert.deepEqual([b.usage.images, b.usage.image_limit], [4, 40], "no teste grátis a cota é a do plano Agência");
+  await sql.query(`update agencies set plan_status = 'active' where id = $1`, [agencyId]);
+  b = await studioBoard(deps, agencyId, c.id);
   assert.deepEqual([b.usage.images, b.usage.image_limit], [4, 150]);
 
   await animate(deps, agencyId, dona, c.id, g.document_ids[0], "Vestido balançando com o vento");

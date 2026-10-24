@@ -64,18 +64,22 @@ export async function setClientSettings(sql: Sql, agencyId: string, clientId: st
 }
 
 /** Checa as perguntas do cliente em cada modelo disponível (ou só nas que nunca foram checadas). */
-export async function runChecks(deps: AivisDeps, agencyId: string, clientId: string, opts: { onlyNew?: boolean } = {}) {
+export async function runChecks(deps: AivisDeps, agencyId: string, clientId: string, opts: { onlyNew?: boolean; onlyStale?: boolean; deadline?: number } = {}) {
   const { sql } = deps;
   const c = await clientOf(sql, agencyId, clientId);
   const engines = await deps.engines(agencyId);
   if (!engines.length) throw new XodoError("Cadastre uma chave de IA (OpenAI, Google, Anthropic…) em Xodós para checar.", 400);
   const s = await one<{ aliases: string[]; competitors: string[] }>(sql, `select aliases, competitors from aivis_clients where client_id = $1`, [clientId]);
   const names = [c.name, ...(s?.aliases ?? [])], comps = s?.competitors ?? [];
-  const qs = await sql.query<{ id: string; question: string }>(
-    `select q.id, q.question from aivis_queries q where q.client_id = $1 ${opts.onlyNew ? "and not exists (select 1 from aivis_checks k where k.query_id = q.id)" : ""} order by q.created_at`, [clientId]);
+  // onlyStale: só o que não foi checado nos últimos 6 dias (a varredura semanal não refaz o que já está em dia).
+  const filter = opts.onlyNew ? "and not exists (select 1 from aivis_checks k where k.query_id = q.id)"
+    : opts.onlyStale ? "and not exists (select 1 from aivis_checks k where k.query_id = q.id and k.checked_at > now() - interval '6 days')" : "";
+  const qs = await sql.query<{ id: string; question: string }>(`select q.id, q.question from aivis_queries q where q.client_id = $1 ${filter} order by q.created_at`, [clientId]);
   let done = 0, failed = 0;
   for (const q of qs) {
     for (const e of engines) {
+      // Cada chamada de IA pode levar um minuto: perto do prazo do cron, o resto fica para o próximo ciclo.
+      if (opts.deadline && Date.now() > opts.deadline - 60_000) return { checked: done, failed, engines, partial: true };
       try {
         const r = await deps.ask(agencyId, e, q.question);
         const a = analyze(r.answer, names, comps);
@@ -88,7 +92,7 @@ export async function runChecks(deps: AivisDeps, agencyId: string, clientId: str
       }
     }
   }
-  return { checked: done, failed, engines };
+  return { checked: done, failed, engines, partial: false };
 }
 
 /** Cron semanal: checa de novo os clientes com perguntas (segunda-feira, uma vez por semana). */
@@ -101,7 +105,7 @@ export async function weeklyChecks(deps: AivisDeps, now = new Date(), opts: { de
   let n = 0;
   for (const d of due) {
     if (opts.deadline && Date.now() > opts.deadline) break;
-    await runChecks(deps, d.agency_id, d.client_id).catch(() => null);
+    await runChecks(deps, d.agency_id, d.client_id, { onlyStale: true, deadline: opts.deadline }).catch(() => null);
     n++;
   }
   return { clients: n };

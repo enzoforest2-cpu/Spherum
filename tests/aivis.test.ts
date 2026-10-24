@@ -29,7 +29,12 @@ test("busca por IA: perguntas checadas em cada modelo, participação e tarefa",
   await setClientSettings(sql, agencyId, c.id, { competitors: ["Instituto Belle", "Dermacare"] });
   const q = await addQuery(sql, agencyId, dona, c.id, "melhor clínica de harmonização em Curitiba");
   await assert.rejects(addQuery(sql, agencyId, dona, c.id, "Melhor clínica de harmonização em Curitiba"), /já está/);
-  assert.deepEqual(await runChecks(deps, agencyId, c.id), { checked: 2, failed: 0, engines: ["openai", "google"] });
+  assert.deepEqual(await runChecks(deps, agencyId, c.id), { checked: 2, failed: 0, engines: ["openai", "google"], partial: false });
+  // A varredura semanal não refaz o que foi checado há menos de 6 dias.
+  assert.equal((await runChecks(deps, agencyId, c.id, { onlyStale: true })).checked, 0);
+  await sql.query(`update aivis_checks set checked_at = checked_at - interval '7 days' where query_id = $1`, [q.id]);
+  assert.equal((await runChecks(deps, agencyId, c.id, { onlyStale: true, deadline: Date.now() + 10 })).partial, true, "sem prazo, nada é checado");
+  assert.equal((await runChecks(deps, agencyId, c.id, { onlyStale: true })).checked, 2);
 
   let b = await aivisBoard(sql, agencyId, c.id, ["openai", "google"]);
   assert.deepEqual(b.engines.map((e) => e.name), ["ChatGPT", "Gemini"]);

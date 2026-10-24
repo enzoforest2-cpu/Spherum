@@ -36,12 +36,15 @@ export async function addDevice(sql: Sql, agencyId: string, userId: string, raw:
   const row = await one<{ id: string }>(
     sql,
     `insert into push_devices (agency_id, user_id, endpoint, p256dh, auth, label) values ($1, $2, $3, $4, $5, $6)
-     on conflict (endpoint) do update set agency_id = excluded.agency_id, user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth,
+     on conflict (endpoint) do update set agency_id = excluded.agency_id, p256dh = excluded.p256dh, auth = excluded.auth,
        label = coalesce(excluded.label, push_devices.label), last_seen_at = now(), last_error = null
+     where push_devices.user_id = excluded.user_id
      returning id`,
     [agencyId, userId, i.endpoint, i.keys.p256dh, i.keys.auth, i.label ?? null],
   );
-  return row!;
+  // A mesma inscrição do navegador pertence a outra pessoa: ninguém toma o aparelho de outro usuário.
+  if (!row) throw new XodoError("Esse aparelho já está ligado a outra conta. Saia dela e ative de novo.", 409);
+  return row;
 }
 
 export async function removeDevice(sql: Sql, userId: string, id: string) {
@@ -81,12 +84,15 @@ const urlFor = (kind: string, data: Record<string, unknown>) => {
 };
 
 /** Cron: entrega os avisos novos (dos últimos 2 dias) por push. No silêncio ou com a categoria desligada, a pessoa não recebe (o aviso continua no app). */
-export async function pushSweep(sql: Sql, send: PushSender, now = new Date()) {
+export async function pushSweep(sql: Sql, send: PushSender, now = new Date(), opts: { deadline?: number } = {}) {
   const rows = await sql.query<{ id: number; agency_id: string; user_id: string | null; kind: string; title: string; body: string; data: Record<string, unknown> }>(
     `select id, agency_id, user_id, kind, title, body, data from notifications where pushed_at is null and created_at > $1::timestamptz - interval '2 days' order by id limit 300`,
     [now.toISOString()]);
   const out = { sent: 0, skipped: 0, quiet: 0, gone: 0 };
   for (const n of rows) {
+    if (opts.deadline && Date.now() > opts.deadline) break;
+    // Marca antes de mandar: duas varreduras juntas não entregam o mesmo aviso duas vezes.
+    if (!(await one(sql, `update notifications set pushed_at = $2 where id = $1 and pushed_at is null returning id`, [n.id, now.toISOString()]))) continue;
     const cat = categoryOf(n.kind);
     const targets = cat ? await sql.query<{ user_id: string; categories: Cat[] | null; quiet_start: number | null; quiet_end: number | null }>(
       `select m.user_id, p.categories, p.quiet_start, p.quiet_end from agency_members m left join push_prefs p on p.agency_id = m.agency_id and p.user_id = m.user_id
@@ -108,7 +114,6 @@ export async function pushSweep(sql: Sql, send: PushSender, now = new Date()) {
       }
     }
     if (!targets.length || !cat) out.skipped++;
-    await sql.query(`update notifications set pushed_at = $2 where id = $1`, [n.id, now.toISOString()]);
   }
   return out;
 }

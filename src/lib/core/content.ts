@@ -18,7 +18,7 @@ const TZ = "America/Sao_Paulo";
 const MAX_ATTEMPTS = 3;
 
 export type Media = { id: string; url: string; mime: string };
-export type PublishArgs = { agencyId: string; connectionId: string; pageId: string; igUserId: string | null; net: "IG" | "FB"; kind: string; caption: string; media: Media[] };
+export type PublishArgs = { agencyId: string; connectionId: string; pageId: string; igUserId: string | null; net: "IG" | "FB"; kind: string; caption: string; media: Media[]; deadline?: number };
 export type Publisher = (a: PublishArgs) => Promise<{ id: string; url: string | null }>;
 /** URL temporária (pública, assinada) de um arquivo de Documentos, para a Meta baixar. */
 export type MediaUrls = (agencyId: string, ids: string[]) => Promise<Media[]>;
@@ -174,13 +174,13 @@ export function validateForPublish(p: { caption: string; kind: string; nets: str
 }
 
 /** Publica agora (botão) ou pelo cron. Cada rede que já saiu não sai de novo. */
-export async function publishPost(deps: ContentDeps, agencyId: string, id: string, now = new Date()) {
+export async function publishPost(deps: ContentDeps, agencyId: string, id: string, now = new Date(), opts: { deadline?: number } = {}) {
   const { sql } = deps;
   // Pega o post para publicar (só um processo por vez); prev_status diz se veio da fila.
   const claimed = await one<PostRow & { prev_status: string; results: Record<string, { id: string; url: string | null }> }>(
     sql,
     `with prev as (select status from content_posts where id = $1 and agency_id = $2)
-     update content_posts set status = 'publishing', attempts = attempts + 1 where id = $1 and agency_id = $2 and status in ('appr', 'sched', 'fail', 'draft')
+     update content_posts set status = 'publishing', attempts = attempts + 1, prev_status = (select status from prev) where id = $1 and agency_id = $2 and status in ('appr', 'sched', 'fail', 'draft')
      returning id, agency_id, client_id, title, caption, kind, nets, publish_at::text, status, version, media_ids, approval_id, attempts, results, (select status from prev) as prev_status`,
     [id, agencyId],
   );
@@ -194,7 +194,7 @@ export async function publishPost(deps: ContentDeps, agencyId: string, id: strin
     const media = claimed.media_ids.length ? await deps.mediaUrls(agencyId, claimed.media_ids) : [];
     for (const net of claimed.nets as ("IG" | "FB")[]) {
       if (results[net]) continue;
-      results[net] = await deps.publish({ agencyId, connectionId: social.connection_id, pageId: social.page_id, igUserId: social.ig_user_id, net, kind: claimed.kind, caption: claimed.caption, media });
+      results[net] = await deps.publish({ agencyId, connectionId: social.connection_id, pageId: social.page_id, igUserId: social.ig_user_id, net, kind: claimed.kind, caption: claimed.caption, media, deadline: opts.deadline });
       await sql.query(`update content_posts set results = $2::jsonb where id = $1`, [id, json(results)]);
     }
     await sql.query(`update content_posts set status = 'pub', published_at = $2, error = null where id = $1`, [id, now.toISOString()]);
@@ -221,11 +221,13 @@ export async function publishSweep(deps: ContentDeps, now = new Date(), opts: { 
   );
   const out = { published: 0, failed: 0 };
   for (const p of due) {
-    if (opts.deadline && Date.now() > opts.deadline) break;
-    try { await publishPost(deps, p.agency_id, p.id, now); out.published++; } catch { out.failed++; }
+    // Um vídeo pode levar minutos para processar: não começa um post com menos de um minuto de prazo.
+    if (opts.deadline && Date.now() > opts.deadline - 60_000) break;
+    try { await publishPost(deps, p.agency_id, p.id, now, { deadline: opts.deadline }); out.published++; } catch { out.failed++; }
   }
-  // Publicação que travou no meio (processo caiu): volta para a fila.
-  await deps.sql.query(`update content_posts set status = 'sched' where status = 'publishing' and updated_at < $1::timestamptz - interval '15 minutes'`, [now.toISOString()]);
+  // Publicação que travou no meio (processo caiu): a da fila volta para a fila; a manual fica como falha para a agência decidir.
+  await deps.sql.query(`update content_posts set status = 'sched' where status = 'publishing' and prev_status = 'sched' and updated_at < $1::timestamptz - interval '15 minutes'`, [now.toISOString()]);
+  await deps.sql.query(`update content_posts set status = 'fail', error = 'A publicação parou no meio. Confira nas redes antes de tentar de novo.' where status = 'publishing' and updated_at < $1::timestamptz - interval '15 minutes'`, [now.toISOString()]);
   return out;
 }
 

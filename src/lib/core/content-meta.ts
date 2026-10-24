@@ -19,12 +19,13 @@ export function metaPublisher(deps: IntegrationDeps, wait = sleep): Publisher {
   const g = metaGraph();
   const call = <T>(path: string, bearer: string, init: { method?: string; json?: unknown } = {}) => requestJson<T>(deps.fetch, `${g}/${path}`, { ...init, bearer, timeoutMs: 60_000 });
 
-  async function waitReady(container: string, token: string) {
-    // Vídeo processa na Meta antes de poder publicar (até ~3 minutos).
+  async function waitReady(container: string, token: string, deadline?: number) {
+    // Vídeo processa na Meta antes de poder publicar (até ~3 minutos); perto do prazo do cron, fica para o próximo ciclo.
     for (let i = 0; i < 36; i++) {
       const s = await call<{ status_code?: string; status?: string }>(`${container}?fields=status_code,status`, token);
       if (s.status_code === "FINISHED") return;
       if (s.status_code === "ERROR" || s.status_code === "EXPIRED") throw new XodoError(`A Meta não aceitou o vídeo (${s.status ?? s.status_code}).`, 422);
+      if (deadline && Date.now() > deadline - 20_000) break;
       await wait(5000);
     }
     throw new Error("O vídeo ainda está processando na Meta. Tento de novo no próximo ciclo.");
@@ -40,7 +41,7 @@ export function metaPublisher(deps: IntegrationDeps, wait = sleep): Publisher {
       if (a.kind === "carrossel") {
         const children: string[] = [];
         for (const m of a.media) children.push(await item(m, { is_carousel_item: true, ...(isVideo(m) ? { media_type: "VIDEO" } : {}) }));
-        for (const c of children) await waitReady(c, token);
+        for (const c of children) await waitReady(c, token, a.deadline);
         container = (await call<{ id: string }>(`${ig}/media`, token, { method: "POST", json: { media_type: "CAROUSEL", children, caption: a.caption } })).id;
       } else if (a.kind === "reels") {
         if (!isVideo(a.media[0])) throw new XodoError("Reels precisa de um vídeo.", 400);
@@ -50,7 +51,7 @@ export function metaPublisher(deps: IntegrationDeps, wait = sleep): Publisher {
       } else {
         container = await item(a.media[0], isVideo(a.media[0]) ? { media_type: "REELS", caption: a.caption } : { caption: a.caption });
       }
-      await waitReady(container, token);
+      await waitReady(container, token, a.deadline);
       const pub = await call<{ id: string }>(`${ig}/media_publish`, token, { method: "POST", json: { creation_id: container } });
       const link = await call<{ permalink?: string }>(`${pub.id}?fields=permalink`, token).catch(() => ({ permalink: undefined }));
       return { id: pub.id, url: link.permalink ?? null };

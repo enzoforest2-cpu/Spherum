@@ -121,7 +121,9 @@ export async function emitForInvoice(deps: FiscalDeps, agencyId: string, invoice
       simples: cfg.simples,
     });
   } catch (error) {
-    st = { status: "erro", error: error instanceof Error ? error.message : String(error) };
+    // Falha de rede ou do provedor (502): a Focus pode ter recebido a nota. Fica processando, e o cron consulta pela referência.
+    const transport = error instanceof XodoError && error.status === 502;
+    st = { status: transport ? "processando" : "erro", error: error instanceof Error ? error.message : String(error) };
   }
   await applyStatus(deps, note.id, st, now);
   return { id: note.id, status: st.status, error: st.error ?? null };
@@ -135,7 +137,7 @@ async function applyStatus(deps: FiscalDeps, noteId: string, st: NoteStatus, now
   await sql.query(
     `update fiscal_notes set status = $2, number = coalesce($3, number), verification_code = coalesce($4, verification_code), pdf_url = coalesce($5, pdf_url), xml_url = coalesce($6, xml_url),
             error = $7, issued_at = case when $2 = 'emitida' then coalesce(issued_at, $8::timestamptz) else issued_at end where id = $1`,
-    [noteId, st.status, st.number ?? null, st.verification_code ?? null, st.pdf_url ?? null, st.xml_url ?? null, st.status === "erro" ? (st.error ?? "Erro no provedor").slice(0, 1000) : null, now.toISOString()],
+    [noteId, st.status, st.number ?? null, st.verification_code ?? null, st.pdf_url ?? null, st.xml_url ?? null, st.status === "erro" ? (st.error ?? "Erro no provedor").slice(0, 1000) : st.status === "processando" && st.error ? st.error.slice(0, 1000) : null, now.toISOString()],
   );
   if (st.status === "erro" && n.status !== "erro") {
     await sql.query(`insert into notifications (agency_id, kind, title, data) values ($1, 'nota_com_erro', $2, jsonb_build_object('note_id', $3::text))`, [n.agency_id, `Nota fiscal com erro: ${(st.error ?? "").slice(0, 120)}`.slice(0, 200), noteId]);
@@ -146,8 +148,10 @@ async function applyStatus(deps: FiscalDeps, noteId: string, st: NoteStatus, now
       `select c.name as client_name, a.name as agency_name, coalesce(c.billing_email, (select email from client_contacts where client_id = c.id and email is not null order by is_primary desc, created_at limit 1)) as email
          from clients c join agencies a on a.id = c.agency_id where c.id = $1`, [n.client_id]);
     const cfg = await getConfig(sql, n.agency_id);
-    if (info?.email && st.pdf_url) await deps.mailer({ to: info.email, subject: `Nota fiscal ${st.number ?? ""} · ${info.agency_name}`.trim(), text: `Olá! Segue a nota fiscal de ${brl(n.amount_cents)}.\n\nNota: ${st.pdf_url}\n\n${info.agency_name}` }).catch(() => false);
-    if (cfg.accountant_email && st.xml_url) await deps.mailer({ to: cfg.accountant_email, subject: `XML da NFS-e ${st.number ?? ""} · ${info?.client_name ?? ""}`.trim(), text: `XML: ${st.xml_url}\nPDF: ${st.pdf_url ?? "-"}\nValor: ${brl(n.amount_cents)}` }).catch(() => false);
+    // Em homologação a nota é de teste: ninguém de fora recebe.
+    const real = cfg.environment === "producao";
+    if (real && info?.email && st.pdf_url) await deps.mailer({ to: info.email, subject: `Nota fiscal ${st.number ?? ""} · ${info.agency_name}`.trim(), text: `Olá! Segue a nota fiscal de ${brl(n.amount_cents)}.\n\nNota: ${st.pdf_url}\n\n${info.agency_name}` }).catch(() => false);
+    if (real && cfg.accountant_email && st.xml_url) await deps.mailer({ to: cfg.accountant_email, subject: `XML da NFS-e ${st.number ?? ""} · ${info?.client_name ?? ""}`.trim(), text: `XML: ${st.xml_url}\nPDF: ${st.pdf_url ?? "-"}\nValor: ${brl(n.amount_cents)}` }).catch(() => false);
     await sql.query(`update fiscal_notes set sent_at = $2 where id = $1`, [noteId, now.toISOString()]);
   }
 }
@@ -156,9 +160,19 @@ export async function cancelNote(deps: FiscalDeps, agencyId: string, id: string,
   const r = z.string().trim().min(15, "Explique o motivo (mínimo de 15 caracteres, exigência da prefeitura).").max(255).parse(reason);
   const n = await one<{ ref: string; status: string }>(deps.sql, `select ref, status from fiscal_notes where id = $1 and agency_id = $2`, [id, agencyId]);
   if (!n) throw new XodoError("Nota não encontrada.", 404);
-  if (n.status === "erro" || n.status === "pendente") { await deps.sql.query(`update fiscal_notes set status = 'cancelada' where id = $1`, [id]); return; }
-  if (n.status !== "emitida") throw new XodoError("A nota ainda está sendo processada.", 409);
   const cfg = await getConfig(deps.sql, agencyId);
+  if (n.status === "erro" || n.status === "pendente") {
+    // Antes de dar como cancelada só aqui, confere se a prefeitura não autorizou (um erro de rede pode ter sido depois do envio).
+    if (cfg.connection_id) {
+      let remote: NoteStatus | null = null;
+      try { remote = await deps.provider.query(agencyId, cfg.connection_id, cfg.environment, n.ref); } catch { remote = null; }
+      if (remote?.status === "emitida") { await applyStatus(deps, id, remote, now); throw new XodoError("Essa nota foi autorizada pela prefeitura. Confira e cancele de novo, agora pela prefeitura.", 409); }
+      if (remote?.status === "processando" && n.status === "erro") { await applyStatus(deps, id, remote, now); throw new XodoError("A prefeitura ainda está processando essa nota. Tente de novo em alguns minutos.", 409); }
+    }
+    await deps.sql.query(`update fiscal_notes set status = 'cancelada' where id = $1`, [id]);
+    return;
+  }
+  if (n.status !== "emitida") throw new XodoError("A nota ainda está sendo processada.", 409);
   ready(cfg);
   const st = await deps.provider.cancel(agencyId, cfg.connection_id!, cfg.environment, n.ref, r);
   await applyStatus(deps, id, st, now);
@@ -170,7 +184,11 @@ async function eligible(sql: Sql, agencyId: string, cfg: Config, now: Date) {
   const today = now.toLocaleDateString("en-CA", { timeZone: TZ });
   const cond = cfg.emit_when === "pay" ? `i.status = 'pago' and i.paid_at >= $2 and i.paid_at < $3::date + 1` : cfg.emit_when === "due" ? `i.status in ('pendente', 'pago', 'vencido') and i.due_date <= $3::date and i.due_date >= ($2::timestamptz at time zone 'America/Sao_Paulo')::date`
     : `i.status in ('pendente', 'pago', 'vencido') and date_trunc('month', i.due_date) <= date_trunc('month', $3::date) and i.created_at >= $2`;
-  return sql.query<{ id: string }>(`select i.id from invoices i where i.agency_id = $1 and ${cond} and not exists (select 1 from fiscal_notes n where n.invoice_id = i.id) limit 50`, [agencyId, cfg.enabled_at, today]);
+  // Fatura que falhou antes de virar nota (sem CPF/CNPJ, cadastro incompleto) espera um dia antes de nova tentativa; o aviso fica em `notifications`.
+  return sql.query<{ id: string }>(
+    `select i.id from invoices i where i.agency_id = $1 and ${cond} and not exists (select 1 from fiscal_notes n where n.invoice_id = i.id)
+       and not exists (select 1 from notifications x where x.agency_id = i.agency_id and x.kind = 'nota_nao_emitida' and x.data->>'invoice_id' = i.id::text and x.created_at > now() - interval '1 day') limit 50`,
+    [agencyId, cfg.enabled_at, today]);
 }
 
 /** Cron: emite o que a regra pede, consulta as notas em processamento e manda a régua de cobrança. */
@@ -181,11 +199,22 @@ export async function fiscalSweep(deps: FiscalDeps, now = new Date(), opts: { de
   for (const a of agencies) {
     if (opts.deadline && Date.now() > opts.deadline) break;
     const cfg = await getConfig(sql, a.id);
+    const left = () => !opts.deadline || Date.now() < opts.deadline - 30_000;
     if (cfg.connection_id && cfg.cnpj) {
       for (const inv of await eligible(sql, a.id, cfg, now)) {
-        try { const r = await emitForInvoice(deps, a.id, inv.id, null, now); if (r.status === "erro") out.errors++; else out.emitted++; } catch { out.errors++; }
+        if (!left()) break;
+        try {
+          const r = await emitForInvoice(deps, a.id, inv.id, null, now);
+          if (r.status === "erro") out.errors++; else out.emitted++;
+        } catch (error) {
+          // Não virou nota (falta CPF/CNPJ, cadastro incompleto): avisa a agência uma vez por dia e espera.
+          out.errors++;
+          await sql.query(`insert into notifications (agency_id, kind, title, body, data) values ($1, 'nota_nao_emitida', $2, $3, jsonb_build_object('invoice_id', $4::text))`,
+            [a.id, "Nota fiscal não emitida", (error instanceof Error ? error.message : String(error)).slice(0, 300), inv.id]).catch(() => undefined);
+        }
       }
       for (const n of await sql.query<{ id: string; ref: string }>(`select id, ref from fiscal_notes where agency_id = $1 and status = 'processando' order by created_at limit 50`, [a.id])) {
+        if (!left()) break;
         try { await applyStatus(deps, n.id, await deps.provider.query(a.id, cfg.connection_id, cfg.environment, n.ref), now); out.updated++; } catch { out.errors++; }
       }
     }
@@ -198,6 +227,9 @@ export async function fiscalSweep(deps: FiscalDeps, now = new Date(), opts: { de
 async function dunning(deps: FiscalDeps, agencyId: string, cfg: Config, now: Date) {
   const { sql } = deps;
   const today = now.toLocaleDateString("en-CA", { timeZone: TZ });
+  // Lembrete chega em horário comercial, não no primeiro ciclo depois da meia-noite.
+  const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "2-digit", hour12: false }).format(now)) % 24;
+  if (hour < 8 || hour >= 20) return 0;
   const rules = ([["d3", 3], ["d0", 0], ["p3", -3], ["p7", -7]] as const).filter(([k]) => cfg.dunning[k]);
   let sent = 0;
   for (const [kind, offset] of rules) {
