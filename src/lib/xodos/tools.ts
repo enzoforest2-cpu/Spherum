@@ -22,6 +22,8 @@ export type ToolContext = {
   now: Date;
   /** O que disparou a execução (user, channel, routine, event), quando conhecido. */
   trigger?: string;
+  /** A execução já leu conteúdo de fora (página, arquivo baixado, terminal): o que ela escreve na memória pede aprovação. */
+  tainted?: boolean;
   /** Máquina da agência (computador na nuvem); nula quando o motor roda sem ela. */
   computer?: ComputerDeps | null;
   /** Precondição guardada no pedido aprovado (só quando a ação passou por aprovação). */

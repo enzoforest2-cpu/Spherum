@@ -6,7 +6,7 @@ import { IntegrationError } from "../integrations/http";
 import { appToolsFor } from "../integrations/registry";
 import type { IntegrationDeps } from "../integrations/store";
 import type { ComputerDeps } from "../computer/lifecycle";
-import { callWithFallback, loadCandidates, prepare, type BrainDeps } from "./brain";
+import { callWithFallback, loadCandidates, prepare, type BrainDeps, CALL_TIMEOUT_MS } from "./brain";
 import { dayIn, notify } from "./budget";
 import { json, num, one, parseJson, type Sql } from "./db";
 import { usdBrl } from "./fx";
@@ -43,6 +43,8 @@ export const MAX_STEPS_COMPUTER = 40;
  * deps.chainSlice (produção) ou pelo cron.
  */
 export const SLICE_MS = 120_000;
+/** Quanto um passo reserva antes do prazo da fatia (chamada ao modelo mais ferramentas). */
+export const STEP_RESERVE_MS = 30_000;
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 /** Uma execução "running" parada há mais que isso é tratada como travada. */
 export const STALE_RUN_MS = 10 * 60 * 1000;
@@ -256,27 +258,31 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   const now = nowOf(deps);
   const conversationId = input.conversationId ?? null;
   const spoken = input.trigger === "user" || input.trigger === "channel";
-  if (spoken) {
-    // Um pedido por vez em cada conversa (a do app ou a de um canal). Rotinas e gatilhos rodam à parte.
-    const busy = await one(
-      sql,
-      `select 1 from xodo_runs where xodo_id = $1 and status = 'running' and heartbeat_at > $2::timestamptz
-          and trigger in ('user', 'channel') and ${conversationId ? "conversation_id = $3::uuid" : "conversation_id is null"}`,
-      conversationId
-        ? [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString(), conversationId]
-        : [xodo.id, new Date(now.getTime() - STALE_RUN_MS).toISOString()],
+  // Confere e cria na mesma transação, com a conversa travada: dois pedidos ao mesmo tempo não viram duas execuções.
+  const run = await sql.transaction(async (tx) => {
+    if (spoken) {
+      await tx.query(`select pg_advisory_xact_lock(hashtext($1))`, [`xodo-conversa:${xodo.id}:${conversationId ?? "app"}`]);
+      // Um pedido por vez em cada conversa (a do app ou a de um canal). Rotinas e gatilhos rodam à parte. A janela é a
+      // mesma que a faxina usa para dar uma execução como parada (3 × STALE_RUN_MS).
+      const busy = await one(
+        tx,
+        `select 1 from xodo_runs where xodo_id = $1 and status = 'running' and heartbeat_at > $2::timestamptz
+            and trigger in ('user', 'channel') and ${conversationId ? "conversation_id = $3::uuid" : "conversation_id is null"}`,
+        conversationId
+          ? [xodo.id, new Date(now.getTime() - 3 * STALE_RUN_MS).toISOString(), conversationId]
+          : [xodo.id, new Date(now.getTime() - 3 * STALE_RUN_MS).toISOString()],
+      );
+      if (busy) throw new XodoError(`${xodo.name} ainda está trabalhando no pedido anterior.`, 409);
+    }
+    return one<{ id: string }>(
+      tx,
+      `insert into xodo_runs (xodo_id, agency_id, trigger, routine_id, requested_by, provider, model, started_at, heartbeat_at,
+         conversation_id, event_trigger_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $8::timestamptz, $9, $10) returning id`,
+      [xodo.id, xodo.agency_id, input.trigger, input.routineId ?? null, input.userId ?? null, xodo.provider, xodo.model, now.toISOString(),
+        conversationId, input.eventTriggerId ?? null],
     );
-    if (busy) throw new XodoError(`${xodo.name} ainda está trabalhando no pedido anterior.`, 409);
-  }
-
-  const run = await one<{ id: string }>(
-    sql,
-    `insert into xodo_runs (xodo_id, agency_id, trigger, routine_id, requested_by, provider, model, started_at, heartbeat_at,
-       conversation_id, event_trigger_id)
-     values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $8::timestamptz, $9, $10) returning id`,
-    [xodo.id, xodo.agency_id, input.trigger, input.routineId ?? null, input.userId ?? null, xodo.provider, xodo.model, now.toISOString(),
-      conversationId, input.eventTriggerId ?? null],
-  );
+  });
   const runId = run!.id;
 
   if (spoken) await addMessage(sql, xodo, runId, "user", text, input.userId ?? null, { authorLabel: input.authorLabel ?? null });
@@ -324,6 +330,8 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
   if (run.status !== "running") return run.status;
   const cap = await eventCap(sql, run);
   const loaded = await loadXodo(sql, run.xodo_id, run.agency_id);
+  // Pausado no meio: a execução para aqui, sem mais chamadas ao modelo nem ações.
+  if (loaded.status !== "active") return finish(deps, loaded, runId, "failed", { note: `${loaded.name} foi pausado pela equipe; parei por aqui.` });
   const xodo = cap && STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(loaded.autonomy) ? { ...loaded, autonomy: cap } : loaded;
 
   try {
@@ -337,7 +345,8 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
 
     const maxSteps = xodo.computer_mode === "cloud" ? MAX_STEPS_COMPUTER : MAX_STEPS;
     while (true) {
-      if (Date.now() > deadline) {
+      // Um passo precisa de tempo para a chamada ao modelo e para as ferramentas: perto do prazo, nem começa.
+      if (Date.now() > deadline - STEP_RESERVE_MS) {
         await sql.query(`update xodo_runs set slice_due_at = $2::timestamptz, heartbeat_at = $2::timestamptz where id = $1`, [
           runId,
           nowOf(deps).toISOString(),
@@ -366,6 +375,8 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
         step: steps + 1,
         day,
         usdBrl: rate,
+        // A chamada não pode passar do prazo da fatia (a função da Vercel morreria com o passo pela metade).
+        timeoutMs: Math.max(20_000, Math.min(CALL_TIMEOUT_MS, deadline - Date.now() - 10_000)),
         context: { systemPrompt, messages, tools: piTools(tools) },
         candidates,
         startAt: active,
@@ -408,7 +419,7 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
       const tainted = (await one<{ tainted: boolean }>(sql, `select tainted from xodo_runs where id = $1`, [runId]))?.tainted;
       const stepCap = stricter(cap, tainted ? "pergunta_no_que_importa" : null);
       const stepXodo = stepCap && STRICTNESS.indexOf(stepCap) > STRICTNESS.indexOf(xodo.autonomy) ? { ...xodo, autonomy: stepCap } : xodo;
-      const pending = await handleToolCalls(deps, stepXodo, runId, steps, calls, tools, stepCap, run.trigger);
+      const pending = await handleToolCalls(deps, stepXodo, runId, steps, calls, tools, stepCap, run.trigger, !!tainted);
       if (pending.length) {
         await sql.query(`update xodo_runs set status = 'waiting_approval' where id = $1`, [runId]);
         const numbers = await numberChannelActions(sql, runId, pending.map((p) => p.actionId));
@@ -482,6 +493,7 @@ async function handleToolCalls(
   tools: ToolDef[],
   cap: Autonomy | null = null,
   trigger?: string,
+  tainted = false,
 ): Promise<{ actionId: string; summary: string }[]> {
   const { sql } = deps;
   const byName = new Map(tools.map((t) => [t.name, t]));
@@ -508,19 +520,19 @@ async function handleToolCalls(
     let category = tool.category;
     if (tool.categoryFor) {
       try {
-        category = await tool.categoryFor(toolContext(deps, xodo, runId, trigger), parsed.data);
+        category = await tool.categoryFor(toolContext(deps, xodo, runId, trigger, tainted), parsed.data);
       } catch (error) {
         // Sem conseguir ver o destino, fica a categoria declarada (a mais cautelosa).
         console.warn("[xodós] categoria dinâmica falhou", tool.name, error instanceof Error ? error.message : error);
       }
     }
-    const tctx = toolContext(deps, xodo, runId, trigger);
+    const tctx = toolContext(deps, xodo, runId, trigger, tainted);
     const site = tool.siteOf ? await tool.siteOf(tctx, parsed.data).catch(() => null) : null;
     const decision = decideApproval({ toolName: tool.name, category, rules, autonomy: xodo.autonomy, cap, floor: tool.floor, site });
     let reason: string | null = decision.decision === "ask" ? decision.source : null;
     if (!reason && tool.mustAsk) {
       try {
-        const limit = await tool.mustAsk(toolContext(deps, xodo, runId, trigger), parsed.data);
+        const limit = await tool.mustAsk(toolContext(deps, xodo, runId, trigger, tainted), parsed.data);
         if (limit) reason = `limite: ${limit}`;
       } catch (error) {
         const expected = error instanceof ToolError || error instanceof IntegrationError || error instanceof XodoError;
@@ -578,7 +590,7 @@ async function insertAction(
   return row.id;
 }
 
-function toolContext(deps: EngineDeps, xodo: Xodo, runId: string, trigger?: string): ToolContext {
+function toolContext(deps: EngineDeps, xodo: Xodo, runId: string, trigger?: string, tainted = false): ToolContext {
   const integrations = integrationDeps(deps);
   return {
     sql: deps.sql,
@@ -586,6 +598,7 @@ function toolContext(deps: EngineDeps, xodo: Xodo, runId: string, trigger?: stri
     runId,
     now: nowOf(deps),
     trigger,
+    tainted,
     apps: integrations ? appAccess(integrations, xodo) : null,
     computer: deps.computer ? { ...deps.computer, sql: deps.sql, now: deps.now } : null,
   };
@@ -752,6 +765,17 @@ async function finish(
     `update xodo_runs set status = $2, final_text = coalesce($3, final_text), error = $4, finished_at = now() where id = $1`,
     [runId, status, out.text ?? out.note ?? null, out.error ?? null],
   );
+  // Execução encerrada não deixa pedido de aprovação pendurado (ele rodaria sem a execução para receber o resultado).
+  if (status === "failed" || status === "completed") {
+    await sql.query(`update xodo_actions set status = 'expired' where run_id = $1 and status = 'pending'`, [runId]);
+  }
+  // Rotina com continuidade guarda o resumo do que saiu, inclusive quando a execução terminou numa fatia do cron.
+  if (status === "completed" && out.text) {
+    await sql.query(
+      `update xodo_routines set last_summary = left($2, 2000) where continuity and id = (select routine_id from xodo_runs where id = $1 and routine_id is not null)`,
+      [runId, out.text],
+    );
+  }
   if (out.text) await addMessage(sql, xodo, runId, "assistant", out.text, null);
   if (out.note) await addMessage(sql, xodo, runId, "note", out.note, null);
   if (out.error) await addMessage(sql, xodo, runId, "note", `Não consegui terminar: ${out.error}`, null);

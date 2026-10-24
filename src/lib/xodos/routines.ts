@@ -92,8 +92,12 @@ export async function runDueRoutines(deps: EngineDeps, limit = 5, opts: { deadli
         routineId: routine.id,
       });
       status = await continueRun(deps, runId, { deadline: opts.deadline });
-      const run = await one<{ final_text: string | null }>(sql, `select final_text from xodo_runs where id = $1`, [runId]);
-      summary = run?.final_text?.slice(0, SUMMARY_MAX_CHARS) ?? null;
+      // Só o que terminou vira resumo; uma pausa por teto ou uma falha não vale como "última execução" (e a fatia
+      // que termina depois no cron grava o resumo por conta própria, em finish()).
+      if (status === "completed") {
+        const run = await one<{ final_text: string | null }>(sql, `select final_text from xodo_runs where id = $1`, [runId]);
+        summary = run?.final_text?.slice(0, SUMMARY_MAX_CHARS) ?? null;
+      }
     } catch (error) {
       const message = error instanceof XodoError ? error.message : "erro interno";
       if (!(error instanceof XodoError)) console.error("[xodos] rotina falhou", routine.id, error);

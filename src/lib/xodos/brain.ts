@@ -14,7 +14,7 @@ import type { Xodo } from "./types";
  */
 
 export const MAX_TOKENS_PER_STEP = 8_000;
-const CALL_TIMEOUT_MS = 180_000;
+export const CALL_TIMEOUT_MS = 180_000;
 
 export type CredentialSecret = { provider: string; apiKey: string; baseUrl: string | null };
 
@@ -133,27 +133,37 @@ export async function callWithFallback(deps: BrainDeps, input: CallInput): Promi
     if (!reservation.ok) return { ok: false, reason: "budget", cap: reservation.cap ?? 0 };
 
     calls += 1;
-    const message = await llm.complete(ready.model, context, {
-      apiKey: ready.apiKey,
-      maxTokens,
-      signal: AbortSignal.timeout(input.timeoutMs ?? CALL_TIMEOUT_MS),
-    });
+    let message: AssistantMessage;
+    try {
+      message = await llm.complete(ready.model, context, {
+        apiKey: ready.apiKey,
+        maxTokens,
+        signal: AbortSignal.timeout(input.timeoutMs ?? CALL_TIMEOUT_MS),
+      });
+    } catch (error) {
+      // A reserva do pior caso não pode ficar presa no dia: devolve antes de propagar o erro.
+      await settleBudget(sql, xodo, input.day, estimateBrl, 0);
+      throw error;
+    }
     const failed = message.stopReason === "error" || message.stopReason === "aborted";
     const costUsd = round6(costOf(ready.model, message));
     const costBrl = input.usdBrl === null ? null : round6(costUsd * input.usdBrl);
     const known = hasKnownPrice(ready.model) && !isSelfHosted(candidate.provider);
-    await sql.query(
-      `insert into ai_usage (agency_id, xodo_id, run_id, provider, model, input_tokens, output_tokens,
-         cache_read_tokens, cache_write_tokens, cost_usd, cost_source, usd_brl, cost_brl, attempt, error, call_id, day, purpose)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::date, $18)
-       on conflict (call_id) do nothing`,
-      [xodo.agency_id, xodo.id, input.runId, candidate.provider, message.responseModel ?? ready.model.id,
-        message.usage?.input ?? 0, message.usage?.output ?? 0, message.usage?.cacheRead ?? 0, message.usage?.cacheWrite ?? 0,
-        costUsd, known ? "catalog" : "unknown", input.usdBrl, costBrl, candidate.attempt,
-        failed ? (message.errorMessage ?? message.stopReason).slice(0, 500) : null,
-        `${input.callKey ?? `${input.runId}:${input.step}`}:${candidate.attempt}:${calls}`, input.day, input.purpose ?? "execucao"],
-    );
-    await settleBudget(sql, xodo, input.day, estimateBrl, costBrl ?? 0);
+    try {
+      await sql.query(
+        `insert into ai_usage (agency_id, xodo_id, run_id, provider, model, input_tokens, output_tokens,
+           cache_read_tokens, cache_write_tokens, cost_usd, cost_source, usd_brl, cost_brl, attempt, error, call_id, day, purpose)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::date, $18)
+         on conflict (call_id) do nothing`,
+        [xodo.agency_id, xodo.id, input.runId, candidate.provider, message.responseModel ?? ready.model.id,
+          message.usage?.input ?? 0, message.usage?.output ?? 0, message.usage?.cacheRead ?? 0, message.usage?.cacheWrite ?? 0,
+          costUsd, known ? "catalog" : "unknown", input.usdBrl, costBrl, candidate.attempt,
+          failed ? (message.errorMessage ?? message.stopReason).slice(0, 500) : null,
+          `${input.callKey ?? `${input.runId}:${input.step}`}:${candidate.attempt}:${calls}`, input.day, input.purpose ?? "execucao"],
+      );
+    } finally {
+      await settleBudget(sql, xodo, input.day, estimateBrl, costBrl ?? 0);
+    }
 
     if (!failed) return { ok: true, message, index };
     lastFailure = message;

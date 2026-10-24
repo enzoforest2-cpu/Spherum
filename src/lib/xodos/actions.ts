@@ -37,6 +37,11 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
   const { sql } = deps;
   const now = (deps.now ? deps.now() : new Date()).toISOString();
   const wantsAlways = input.approve && input.scope === "always";
+  // Xodó pausado não executa nada, nem o que já tinha pedido: a decisão espera a equipe reativar.
+  if (input.approve) {
+    const owner = await one<{ status: string; name: string }>(sql, `select x.status, x.name from xodo_actions a join xodos x on x.id = a.xodo_id where a.id = $1 and a.agency_id = $2`, [input.actionId, input.agencyId]);
+    if (owner && owner.status !== "active") throw new XodoError(`${owner.name} está pausado. Reative para aprovar e executar este pedido.`, 409);
+  }
 
   const action = await sql.transaction(async (tx) => {
     const current = await one<ActionRow>(

@@ -160,7 +160,13 @@ const memoryFields = {
 export const xodoPatch = z
   .object(xodoFields)
   .omit({ timezone: true, client_ids: true })
-  .extend({ status: z.enum(["active", "paused"]), ...memoryFields })
+  .extend({
+    status: z.enum(["active", "paused"]),
+    /** Limites das ações em campanhas: variação máxima de verba por ajuste (%) e teto diário em reais (nulo: sem teto). */
+    campaign_max_change_pct: z.number().int().min(1).max(1000),
+    campaign_max_daily_brl: z.number().positive().max(10_000_000).nullable(),
+    ...memoryFields,
+  })
   .partial();
 
 /** A chave precisa ser desta agência, do mesmo provedor, e o modelo precisa existir no catálogo. */
@@ -281,12 +287,13 @@ export async function updateXodo(sql: Sql, llm: LlmClient, agencyId: string, xod
       `update xodos set name = $3, species = $4, color = $5, personality = $6, role = $7, instructions = $8, autonomy = $9,
               provider = $10, model = $11, credential_id = $12, daily_budget_brl = $13, warn_at_percent = $14, status = $15,
               routine_provider = $16, routine_model = $17, routine_credential_id = $18, memory_enabled = $19, memory_capture = $20,
-              memory_capture_channels = $21, memory_tidy = $22, memory_core_chars = $23, updated_at = now()
+              memory_capture_channels = $21, memory_tidy = $22, memory_core_chars = $23, campaign_max_change_pct = $24,
+              campaign_max_daily_brl = $25, updated_at = now()
         where id = $1 and agency_id = $2 returning *`,
       [xodoId, agencyId, next.name, next.species, next.color, next.personality, next.role, next.instructions, next.autonomy,
         next.provider, next.model, next.credential_id, next.daily_budget_brl, next.warn_at_percent, next.status,
         routine.provider, routine.model, routine.credential_id, next.memory_enabled, next.memory_capture,
-        next.memory_capture_channels, next.memory_tidy, next.memory_core_chars],
+        next.memory_capture_channels, next.memory_tidy, next.memory_core_chars, next.campaign_max_change_pct, next.campaign_max_daily_brl],
     );
     if (patch.backup_models) await saveBackups(tx, agencyId, xodoId, patch.backup_models);
     if (patch.apps) await saveApps(tx, agencyId, xodoId, patch.apps);

@@ -60,6 +60,8 @@ async function noteByN(ctx: ToolContext, n: number): Promise<MemoryItem | null> 
 /** Motivo para sempre pedir aprovação, ou nulo. */
 async function guard(ctx: ToolContext, n: number | null): Promise<string | null> {
   if (ctx.trigger === "event") return "execução disparada por evento externo";
+  // Uma página ou arquivo lido pode conter instruções plantadas; nada disso vira memória permanente sem uma pessoa ver.
+  if (ctx.tainted) return "a execução leu conteúdo de fora (página, arquivo ou terminal)";
   if (n === null) return null;
   const note = await noteByN(ctx, n);
   if (note && (note.source === "equipe" || note.pinned)) return "nota escrita ou fixada pela equipe";
