@@ -37,3 +37,9 @@ dispara uma vez só por automação.
 - `POST /api/automations` (CAN_USE), com `{ agency_id, name, trigger, steps? }`.
 - `PATCH /api/automations/:id` (CAN_USE), com `{ acao: "editar", automation }`, `{ acao: "ligar", on }` ou `{ acao: "testar" }`.
 - `DELETE /api/automations/:id` (CAN_USE).
+
+## Regras que valem sempre
+
+- Execução "rodando" há mais de 30 minutos (o processo caiu no meio de uma ação) vira **falhou**, com a mensagem no registro.
+- Um gatilho que estoure (JSON inválido, erro de SQL) não derruba a varredura: a automação é pulada e as outras agências seguem.
+- Num pico com mais de 200 eventos num ciclo, o cursor para no último evento lido; o resto entra no ciclo seguinte. Nenhum evento se perde.

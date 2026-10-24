@@ -50,3 +50,8 @@ As duas telas usam a mesma fila de posts. Código em `src/lib/core/content.ts` (
 - `DELETE /api/content/:id`.
 - `GET /api/content/social?agency_id=&connection_id=`: páginas que a conexão administra.
 - `PUT` e `DELETE /api/content/social/:clientId`: liga ou desliga os perfis do cliente.
+
+## Regras que valem sempre
+
+- A publicação respeita o prazo do cron: a espera pelo processamento do vídeo na Meta para antes do prazo e o post volta para a fila; um post não começa com menos de um minuto de prazo.
+- Post travado em "publicando" há 15 minutos: se veio da fila automática volta para a fila; se foi um "publicar agora" vira **falhou**, para a agência conferir nas redes antes de tentar de novo (coluna `prev_status`).

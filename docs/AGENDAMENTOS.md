@@ -45,3 +45,7 @@ Tipo com reunião futura marcada não pode ser apagado (desative ou cancele as r
 - `DELETE /api/bookings/:id` (CAN_USE), com `{ reason? }`.
 - Público: `GET` e `POST /api/public/bookings/:code` (`{ start, name, email, phone?, notes? }`);
   `POST /api/public/bookings/cancel/:token`.
+
+## Regras que valem sempre
+
+- A consulta à agenda do Google acontece dentro da trava do dono: dois tipos de reunião na mesma agenda não passam juntos.

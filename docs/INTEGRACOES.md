@@ -150,3 +150,9 @@ Para escolher os apps de um xodó, use `apps` em `POST /api/xodos` ou `PATCH /ap
 - `client_ad_accounts`: contas de anúncio e propriedades do GA4 de cada cliente, com a conexão usada, a última sincronização e o último aviso.
 - `analytics_daily`: números diários do GA4 por cliente, propriedade e canal.
 - Em `xodos`: `campaign_max_change_pct` e `campaign_max_daily_brl` (limites de campanha).
+
+## Sincronização de anúncios: quando tenta de novo
+
+- Cada conta tem `next_sync_at`: 6 h depois de uma sincronização que deu certo; 1 h depois de uma falha; 24 h se a plataforma recusou o login (a conexão passa a `expired` e a tela pede para reconectar).
+- A janela de dias usa o calendário de Brasília. Conta em dólar sem cotação do dia guarda o valor sem conversão e registra o aviso.
+- Reconectar a Meta zera o aviso de "login vencendo", para o próximo vencimento avisar de novo.

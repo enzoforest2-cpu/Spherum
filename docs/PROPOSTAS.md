@@ -41,3 +41,8 @@ página pública em `src/app/proposta/[token]`.
 - Assinatura digital com certificado (Clicksign, D4Sign). Hoje o registro é o aceite eletrônico.
 - Envio pelo WhatsApp.
 - PDF da proposta (a tela baixa um HTML simples).
+
+## Regras que valem sempre
+
+- O aceite é uma transação com a proposta travada: dois cliques não criam dois clientes. Se o negócio já foi fechado à mão no CRM, o aceite usa o cliente dele.
+- A validade é contada pelo dia de Brasília. O fim do contrato soma meses sem estourar o mês (31/01 + 1 mês = 28/02).

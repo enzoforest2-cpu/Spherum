@@ -27,3 +27,7 @@ Ainda não: o painel no portal do cliente (a flag `published` já existe) e o Re
 - `POST /api/aivis` (CAN_USE), com `{ agency_id, client_id, acao }`: `pergunta { question }`,
   `checar { only_new? }`, `config { aliases?, competitors?, published? }`, `tarefa { title, assignee_user?, due_date }`.
 - `DELETE /api/aivis/queries/:id` (CAN_USE).
+
+## Regras que valem sempre
+
+- A checagem semanal (segunda-feira) refaz só as perguntas sem resultado nos últimos 6 dias e para perto do prazo do cron; o que ficar entra no ciclo seguinte.

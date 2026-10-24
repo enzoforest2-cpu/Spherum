@@ -27,3 +27,7 @@ Código em `src/lib/core/tickets.ts`, tabelas em `supabase/migrations/2026102214
   (em horas).
 - No portal do cliente: `tipo: chamado` com `{ subject, text, priority? }` e `tipo: chamado_resposta`
   com `{ item_id, text }`. Os chamados chegam em `tickets` dentro de `/api/portal/cliente`.
+
+## Regras que valem sempre
+
+- O SLA aceita horas quebradas (0,5 h). Alterar o SLA reajusta os chamados abertos sem resposta na mesma transação.

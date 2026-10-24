@@ -250,3 +250,12 @@ São 435 testes com `node:test`, PGlite (Postgres em memória, sem precisar de D
 - **Limites por plano** (Agência: 1 xodó e 5 rotinas; Escala: 3 e 30; Rede: 5 e ilimitadas; Empresarial: 10), quando a cobrança existir.
 - **Tela de Xodós:** ligada (criar em 3 passos, conversar, aprovar pedidos, teto do dia, chaves conferidas no provedor ao guardar, rotinas, editar a memória, pausar e excluir) e o card do computador (configurar, ligar, ver ao vivo, assumir e devolver o controle). Ainda faltam na tela: editar gatilhos e canais, e o resumo "feito pela agência" no portal do cliente.
 - Atualização em tempo real (Supabase Realtime em `xodo_messages`) no lugar de consultar a rota de tempos em tempos.
+
+## Regras que valem sempre (revisão de 24/10)
+
+- **Memória depois de ler conteúdo de fora:** se a execução leu uma página, um arquivo ou o terminal, `lembrar`, `corrigir_memoria` e `esquecer` pedem aprovação. Instruções plantadas numa página não viram memória permanente sem uma pessoa ver.
+- **Pausar vale de verdade:** a execução em andamento é encerrada no próximo passo e os pedidos de aprovação pendentes não podem ser aprovados até reativar.
+- **Orçamento:** a reserva do pior caso é devolvida mesmo quando a chamada ao modelo ou o registro de uso falham.
+- **Fatia:** nenhum passo começa a menos de 30 s do prazo, e a chamada ao modelo é limitada ao tempo que resta.
+- Dois pedidos ao mesmo tempo na mesma conversa viram uma execução só. Execução encerrada expira os pedidos pendentes. Rotina com continuidade guarda o resumo também quando termina numa fatia do cron.
+- `campaign_max_change_pct` e `campaign_max_daily_brl` podem ser ajustados pelo PATCH do xodó.

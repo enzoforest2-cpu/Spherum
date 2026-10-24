@@ -36,3 +36,11 @@ Ainda não: Pix Automático e pausar xodós por atraso.
 - `POST /api/fiscal/connect`, com `{ agency_id, token, environment }`.
 - `POST /api/fiscal/notes`, com `{ agency_id, invoice_ids }`; `DELETE /api/fiscal/notes/:id`, com `{ reason }`.
 - `PATCH /api/clients/:id/tax`, com `{ cnpj?, legal_name?, billing_email? }`.
+
+## Regras que valem sempre
+
+- **Erro de rede na emissão não vira "erro".** A Focus pode ter recebido a nota; ela fica "processando" e o cron consulta pela referência. Só a recusa da prefeitura (ou do token) vira erro.
+- **Cancelar uma nota com erro** consulta a Focus antes: se a prefeitura autorizou, a nota passa a "emitida" e o cancelamento precisa ser feito pela prefeitura.
+- **Homologação:** nenhum e-mail sai para o cliente nem para a contabilidade; as notas são de teste.
+- **Fatura que não vira nota** (cliente sem CPF/CNPJ, cadastro incompleto) gera um aviso `nota_nao_emitida` para a agência e espera um dia antes de nova tentativa.
+- **Régua de cobrança** só dispara entre 8h e 20h de Brasília.

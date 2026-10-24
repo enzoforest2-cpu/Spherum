@@ -32,3 +32,12 @@ Pontos de atenção:
 ## Variáveis
 
 Nada novo além de `XODOS_ENCRYPTION_KEY` (cofre), `APP_URL` (endereço dos avisos e da volta do pagamento) e `CRON_SECRET` (agendador). O agendador de `/api/cron/xodos` já roda a cobrança (`billing` na resposta).
+
+## Regras que valem sempre
+
+- **Mensalidade não pula mês.** O ponteiro da próxima fatura só avança se ainda está onde a varredura leu (e na mesma transação da fatura). Duas varreduras ao mesmo tempo geram uma fatura só. Religar uma mensalidade parada há meses pula para o próximo vencimento, sem gerar as faturas do período parado. O dia do mês é preservado (vencimento no 31 vira 28 e fica no 28).
+- **Aviso do provedor só conta depois de confirmado.** O evento é registrado em `payment_events` ao fim do tratamento; se a consulta ao provedor falhar, a repetição que o provedor manda ainda vale. Reconectar a conta mantém o token do aviso (as cobranças antigas do Mercado Pago apontam para ele).
+- **Stripe:** o aviso traz o PaymentIntent e ele é consultado direto (a busca por metadados pode demorar minutos). A sessão de checkout fica guardada na fatura e é reaproveitada enquanto estiver aberta; cancelar a fatura expira a sessão.
+- **Reenviar** cancela a cobrança anterior no provedor antes de criar outra. **Marcar como pago** cancela a cobrança no provedor (o boleto que já está com o cliente deixa de ser pagável).
+- **Dia de Brasília:** vencido, geração da mensalidade e régua usam o calendário de Brasília, não o UTC.
+- Itaú: o token de acesso fica em cache até vencer. Asaas: a data de pagamento (só dia) é guardada ao meio-dia de Brasília.

@@ -499,7 +499,7 @@ a:hover{color:#3346D3;text-decoration:underline}
             <section data-screen-label="Primeiro acesso" style="max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
               <div>
                 <div style="font-size:12.5px;color:var(--tx2,#667085);margin-bottom:6px">Configuração inicial · leva cerca de 8 minutos</div>
-                <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Bem-vindo ao Spherum, João.</h1>
+                <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Bem-vindo ao Spherum, {{ meFirst }}.</h1>
                 <p style="margin:6px 0 0;color:var(--tx2,#667085);font-size:15px;max-width:560px">Vamos montar sua operação em sete passos. Cada um destrava uma parte do sistema — você pode pular e voltar quando quiser.</p>
               </div>
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
@@ -3772,7 +3772,7 @@ class Component extends DCLogic {
     document.body.style.background = T.bg;
   }
   go(view, extra) { this.setState(Object.assign({ view, cmd: false, drawer: null, ws: false, filterOpen: false, rowMenu: null, cdMenu: false, menuOpen: false }, extra || {})); }
-  closeAll() { this.setState({ cmd: false, drawer: null, dialog: null, formErr: {}, ws: false, filterOpen: false, rowMenu: null, cdMenu: false, menuOpen: false }); }
+  closeAll() { this.setState({ cmd: false, drawer: null, dialog: null, fmd: null, formErr: {}, ws: false, filterOpen: false, rowMenu: null, cdMenu: false, menuOpen: false }); }
   toastMsg(msg, undo) { clearTimeout(this.tt); this._undo = undo || null; this.setState({ toast: msg, toastU: !!undo }); this.tt = setTimeout(() => this.setState({ toast: null, toastU: false }), undo ? 6000 : 2600); }
   fm(cfg) { this.setState({ fmd: { cfg, v: Object.assign({}, cfg.init || {}), err: {}, tried: false, busy: false } }); }
   fmVal(cfg, v) { const e = {}; (cfg.fields || []).forEach(f => { const x = v[f.k], s = typeof x === 'string' ? x.trim() : x;
@@ -3923,8 +3923,11 @@ class Component extends DCLogic {
     if (goal) { body.goal_metric = g('obj') === 'Vendas' ? 'CPA' : 'CPL'; body.goal_value = goal; }
     try {
       const { client } = await SP.api('/api/clients', { method: 'POST', body });
-      await SP.api('/api/clients/' + client.id + '/contacts', { method: 'POST', body: { name: String(g('contact')).trim(), email: String(g('email')).trim(), phone: g('phone') || null, role: g('role') || null, is_primary: true } });
-      let extra = '';
+      // O cliente já existe a partir daqui: se o contato falhar, avisa e segue (senão a pessoa tenta de novo e duplica o cliente).
+      let contactErr = '';
+      try { await SP.api('/api/clients/' + client.id + '/contacts', { method: 'POST', body: { name: String(g('contact')).trim(), email: String(g('email')).trim(), phone: g('phone') || null, role: g('role') || null, is_primary: true } }); }
+      catch (e) { contactErr = ' · o contato não foi salvo (' + (e && e.message ? e.message : 'erro') + '): cadastre em Contatos'; }
+      let extra = contactErr;
       if (g('portal')) { const r = await SP.api('/api/clients/' + client.id + '/portal', { method: 'POST', body: { email: String(g('email')).trim() } }).catch(() => null); if (r) extra = r.emailed ? ' · convite do portal enviado' : ' · link do portal copiado'; if (r && !r.emailed) try { navigator.clipboard.writeText(r.link); } catch (e) {} }
       this.setState({ dialog: null, formErr: {} });
       await this.spLoad();
@@ -3950,7 +3953,8 @@ class Component extends DCLogic {
   spCc(id) {
     if (this.CC && this.CC[id]) return this.CC[id];
     this._ccL = this._ccL || {};
-    if (!this._ccL[id]) { this._ccL[id] = 1; this.spCcLoad(id).then(() => { this._ccL[id] = 0; }, () => {}); }
+    const l = this._ccL[id];
+    if (!l || (l > 1 && Date.now() > l)) { this._ccL[id] = 1; this.spCcLoad(id).then(() => { this._ccL[id] = 0; }, e => { this._ccL[id] = Date.now() + 30000; this.spErr(e); }); }
     return null;
   }
   async spCcLoad(id, read) {
@@ -4399,8 +4403,8 @@ class Component extends DCLogic {
     const cname = id => (cById[id] || {}).name || 'Interno';
 
     const navItem = ([id, label, icon, badge]) => { const a = act === id; if (this.R && SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
-    const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', 3], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
-      ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', (this.state.tcList || [1, 2, 3, 4]).filter(t => !t.st || t.st === 'open').length]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
+    const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', this.crmDueN()], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
+      ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', this.R ? ((((this.R.tickets || {}).stats || {}).open) || null) : (this.state.tcList || [1, 2, 3, 4]).filter(t => !t.st || t.st === 'open').length]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
       ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', this.R ? this.spUnread() : 4], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
       .map(([label, items]) => { const GI = { Comercial: 'handshake', 'Operação': 'bolt', 'Análise': 'insights', 'Gestão': 'account_balance', Recursos: 'widgets' };
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
@@ -4687,12 +4691,12 @@ class Component extends DCLogic {
       openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => this.setState({ drawer: 'notif' }), openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
       closeAll: () => this.closeAll(),
       toggleTheme: () => this.setState(s => ({ theme: (s.theme || P.theme || 'light') === 'dark' ? 'light' : 'dark' })), themeIcon: (S.theme || P.theme || 'light') === 'dark' ? 'light_mode' : 'dark_mode',
-      is, soon, firstRun: !!P.firstRun || !!(this.R && !this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (this.R && !this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R ? ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '') : 'Proprietário', agIni: this.R ? this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() : 'MP', agSub: this.R ? ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas') : 'Escala · 6 pessoas',
+      is, soon, firstRun: !!P.firstRun || !!(this.R && !this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (this.R && !this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R ? ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '') : 'Proprietário', agIni: this.R ? this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() : 'MP', agSub: this.R ? ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas') : 'Escala · 6 pessoas',
       setup: { steps: setupSteps, doneN: setupN, pctW: setupN / 7 * 100 + '%' }, newClient: () => openForm('cliente'),
       goProjCal: () => this.go('projects', { projView: 'calendar' }), goClientsRisk: () => this.go('clients', { clientsView: 'Em risco' }), goPerf: () => this.go('performance'), goFin: () => this.go('finance'),
       cmd, drawer, notif, ai, help, dlg, toast: { show: !!S.toast, msg: S.toast || '', hasUndo: !!S.toastU, undo: () => { const u = this._undo; this._undo = null; clearTimeout(this.tt); this.setState({ toast: null, toastU: false }); if (u) u(); } }, fm: this.fmV(),
       _x: 0, liveLogo: React.createElement(LiveLogo, { size: 29, ink: '#FFFFFF', bg: '#111318' }), heroLogo: React.createElement(LiveLogo, { size: 50, ink: '#FFFFFF', bg: '#1D2A5C', intro: false })
-    }, this.vXodo(), this.vAuto(), this.vForms(), this.vSched(), this.vTk(), this.vPub(), this.vTch(), this.vAcad(), this.vGam(), this.vDre(), this.vScore(), this.vCtr(), this.vMin(), this.vApp(), this.vBrand(), this.vStudio(), this.vProspect(), this.vInteg(), this.vProp(), this.vContent(), this.vRoi(), this.vMobile(), this.vProfit(), this.vFiscal(), this.vRisk(), this.vAivis(), this.vXv(), this.vClients(ctx), this.vOps ? this.vOps(ctx) : {}, this.vWork ? this.vWork(ctx) : {}, this.vBiz ? this.vBiz(ctx) : {});
+    }, this.spSafe(() => this.vXodo()), this.spSafe(() => this.vAuto()), this.spSafe(() => this.vForms()), this.spSafe(() => this.vSched()), this.spSafe(() => this.vTk()), this.spSafe(() => this.vPub()), this.spSafe(() => this.vTch()), this.spSafe(() => this.vAcad()), this.spSafe(() => this.vGam()), this.spSafe(() => this.vDre()), this.spSafe(() => this.vScore()), this.spSafe(() => this.vCtr()), this.spSafe(() => this.vMin()), this.spSafe(() => this.vApp()), this.spSafe(() => this.vBrand()), this.spSafe(() => this.vStudio()), this.spSafe(() => this.vProspect()), this.spSafe(() => this.vInteg()), this.spSafe(() => this.vProp()), this.spSafe(() => this.vContent()), this.spSafe(() => this.vRoi()), this.spSafe(() => this.vMobile()), this.spSafe(() => this.vProfit()), this.spSafe(() => this.vFiscal()), this.spSafe(() => this.vRisk()), this.spSafe(() => this.vAivis()), this.spSafe(() => this.vXv()), this.vClients(ctx), this.vOps ? this.vOps(ctx) : {}, this.vWork ? this.vWork(ctx) : {}, this.vBiz ? this.vBiz(ctx) : {});
   }
 
 
@@ -4785,9 +4789,10 @@ class Component extends DCLogic {
   async spXoKey(after) {
     let cat; try { cat = await SP.api('/api/xodos/catalog'); } catch (e) { return this.spErr(e); }
     const provs = cat.providers.filter(p => XO_PROV.includes(p.id));
+    const provList = provs.length ? provs : [['openai', 'OpenAI'], ['anthropic', 'Anthropic'], ['google', 'Google'], ['xai', 'xAI'], ['mistral', 'Mistral'], ['deepseek', 'DeepSeek']].map(p => ({ id: p[0], name: p[1] }));
     this.fm({ title: 'Adicionar chave de IA', desc: 'Os xodós usam a IA na conta da sua agência: o provedor cobra direto de vocês. A chave fica cifrada e só os 4 últimos dígitos aparecem.', icon: 'key',
-      fields: [{ k: 'provider', l: 'Provedor', type: 'pick', opts: provs.map(p => [p.id, p.name]), req: 1 }, { k: 'label', l: 'Nome da chave', req: 1, ph: 'Ex.: Chave principal' }, { k: 'key', l: 'Chave de API', req: 1, min: 10 }],
-      init: { provider: provs[0] ? provs[0].id : '', label: 'Chave principal' }, okL: 'Guardar chave', busyL: 'Conferindo…',
+      fields: [{ k: 'provider', l: 'Provedor', type: 'pick', opts: provList.map(p => [p.id, p.name]), req: 1, hint: provs.length ? '' : 'O catálogo de modelos não carregou; a lista mostra os provedores mais comuns.' }, { k: 'label', l: 'Nome da chave', req: 1, ph: 'Ex.: Chave principal' }, { k: 'key', l: 'Chave de API', req: 1, min: 10 }],
+      init: { provider: provList[0] ? provList[0].id : '', label: 'Chave principal' }, okL: 'Guardar chave', busyL: 'Conferindo…',
       ok: async v => { try { const r = await SP.api('/api/xodos/credentials', { method: 'POST', body: { agency_id: this.spAg, provider: v.provider, label: v.label.trim(), api_key: v.key.trim() } }); await this.spXoLoad(); this.toastMsg(r.credential && r.credential.checked ? 'Chave conferida no provedor e guardada' : (r.credential && r.credential.note) || 'Chave guardada'); if (after) after(); } catch (e) { this.spErr(e); } } });
   }
   // Assistente de criação: forma → jeito e função → cérebro e limites.
@@ -5151,7 +5156,8 @@ class Component extends DCLogic {
     const MLAB = { pix: 'Pix Automático', boleto: 'boleto', cartao: 'cartão de crédito recorrente' };
     const conds = ['Fidelidade de ' + p.term + ' meses' + (c.disc ? ', com ' + c.disc + '% de desconto na mensalidade' : '') + '. Depois, renova mês a mês.', 'Pagamento por ' + MLAB[p.method] + ', todo dia ' + p.payDay + '.' + (c.u && p.split > 1 ? ' Pagamentos únicos em ' + p.split + 'x.' : ''), p.reaj === 'none' ? 'Sem reajuste anual.' : 'Reajuste anual pelo ' + p.reaj + '.', 'Multa de ' + p.fine + '% e juros de 1% ao mês por atraso.', 'Cancelamento com ' + p.notice + ' dias de aviso' + (p.exitFee ? '; antes do fim da fidelidade, multa de ' + p.exitFee + '% das mensalidades restantes.' : '.')]
       .concat(p.clauses.ads ? ['Verba de anúncio paga direto às plataformas, fora desta proposta.'] : []).concat(p.clauses.lgpd ? ['Tratamento de dados conforme a LGPD, com a agência como operadora.'] : []).concat(p.clauses.ip ? ['Criativos e páginas passam a ser do cliente após o pagamento.'] : []).concat(p.clauses.sla ? ['Resposta em até 1 dia útil pelo portal e WhatsApp.'] : []).concat(p.clauses.excl ? ['Exclusividade: a agência não atende concorrentes diretos na mesma cidade.'] : []);
-    const signers = [{ n: 'João Silva', r: 'Marketing Pro · sócio', via: 'joao@marketingpro.com.br', done: signed || p.st !== 'draft' }, { n: p.contact, r: p.who, via: p.via === 'wa' ? (p.phone || 'WhatsApp do contato') : (p.email || 'e-mail do contato'), done: signed }].concat(Array.from({ length: p.witness }, (_, i) => ({ n: 'Testemunha ' + (i + 1), r: 'Testemunha', via: 'a definir', done: false })));
+    const meR = this.R ? { n: (this.R.me && this.R.me.name) || this.R.agency.name, r: this.R.agency.name, via: (this.R.me && this.R.me.email) || '' } : { n: 'João Silva', r: 'Marketing Pro · sócio', via: 'joao@marketingpro.com.br' };
+    const signers = [{ n: meR.n, r: meR.r, via: meR.via, done: signed || p.st !== 'draft' }, { n: p.contact, r: p.who, via: p.via === 'wa' ? (p.phone || 'WhatsApp do contato') : (p.email || 'e-mail do contato'), done: signed }].concat(Array.from({ length: p.witness }, (_, i) => ({ n: 'Testemunha ' + (i + 1), r: 'Testemunha', via: 'a definir', done: false })));
     const A2 = S.ppAd2, monthly = p.items.filter(i => i.u === 'mês');
     const a2svcs = A2.type === 'add' ? CAT.filter(x => x.on && x.u === 'mês' && !p.items.some(i => i.cat === x.id)) : monthly.map(i => ({ id: i.cat, n: i.n, p: i.p * i.q }));
     const a2svc = a2svcs.find(x => x.id === A2.svc) || a2svcs[0];
@@ -5182,8 +5188,10 @@ class Component extends DCLogic {
       covers: segOf([['color', 'Cor sólida'], ['photo', 'Foto'], ['plain', 'Simples']], p.cover, 'cover'), coverColor: p.cover === 'color', coverPhoto: p.cover === 'photo', coverPlain: p.cover === 'plain',
       intro: p.intro, onIntro: e => set({ intro: e.target.value }), hasIntro: !!(p.intro || '').trim(),
       secs: [sw('secs', 'proj', 'Projeção da Nina', 'Faixa de leads estimada com a verba sugerida'), sw('secs', 'cases', 'Resultados de outros clientes', 'Três números da carteira, sem nomes'), sw('secs', 'team', 'Quem vai atender', 'Gestor, designer e xodós da conta')],
-      sProj: p.secs.proj, sCases: p.secs.cases, sTeam: p.secs.team, showCl: p.clientLogo, clIni: p.who.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
-      cases: [['5,1x', 'ROAS médio no varejo'], ['−32%', 'CPL em 90 dias'], ['47', 'clientes ativos']].map(x => ({ v: x[0], l: x[1] })), team: ['Rafael Lima · gestor', 'Bia Nunes · design', 'Nina · xodó de otimização'],
+      sProj: p.secs.proj, sCases: p.secs.cases && !this.R, sTeam: p.secs.team, showCl: p.clientLogo, clIni: p.who.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+      // Real: nada de números ou nomes de demonstração na proposta; a equipe vem do cadastro da agência.
+      cases: this.R ? [] : [['5,1x', 'ROAS médio no varejo'], ['−32%', 'CPL em 90 dias'], ['47', 'clientes ativos']].map(x => ({ v: x[0], l: x[1] })),
+      team: this.R ? (this.R.team || []).slice(0, 3).map(m => m.name + (m.role ? ' · ' + m.role : '')) : ['Rafael Lima · gestor', 'Bia Nunes · design', 'Nina · xodó de otimização'],
       methods: segOf([['pix', 'Pix Automático'], ['boleto', 'Boleto'], ['cartao', 'Cartão']], p.method, 'method'),
       payDay: stepper(p.payDay, 'Dia ' + p.payDay, v => ({ payDay: Math.max(1, v - 1) }), v => ({ payDay: Math.min(28, v + 1) })),
       validDays: stepper(p.validDays, p.validDays + ' dias', v => ({ validDays: Math.max(5, v - 5) }), v => ({ validDays: Math.min(60, v + 5) })),
@@ -5210,7 +5218,7 @@ class Component extends DCLogic {
       lines: sel.map(i => { const full = i.p * i.q, v = full * (1 - (i.disc || 0) / 100); return { n: i.n + (i.q > 1 ? ' × ' + i.q : ''), d: i.d, p: price(i), old: brl(full) + (i.u === 'mês' ? '/mês' : ''), hasOld: (i.disc || 0) > 0 && full > 0 }; }).concat((p.adds || []).filter(a => a.st === 'signed').map(a => ({ n: 'Aditivo ' + a.k + ' · ' + a.t, d: 'A partir de ' + a.from, p: a.type === 'ext' ? '+' + a.delta + ' meses' : (a.delta >= 0 ? '+' : '−') + brl(Math.abs(a.delta)) + '/mês', old: '', hasOld: false }))),
       tot: [['Mensalidade', brl(c.m) + '/mês'], c.disc ? ['Desconto de fidelidade (−' + c.disc + '%)', '−' + brl(c.m - c.md) + '/mês', '#067647'] : null, c.add ? ['Aditivos assinados', (c.add > 0 ? '+' : '−') + brl(Math.abs(c.add)) + '/mês'] : null, c.u ? ['Pagamentos únicos', brl(c.u) + (p.split > 1 ? ' em ' + p.split + 'x de ' + brl(c.u / p.split) : '')] : null, ['Total em ' + p.term + ' meses', brl(c.total)]].filter(Boolean).map((x, i, a) => ({ l: x[0], v: x[1], c: x[2] || '#101828', fw: i === a.length - 1 ? '600' : '400' })),
       proj: 'Com ' + brl(p.ad) + '/mês de verba, a Nina estima de ' + Math.round(p.ad / 30) + ' a ' + Math.round(p.ad / 21) + ' leads por mês para a ' + p.who + ', com base em 9 clientes parecidos da carteira.', conds,
-      signed, sigs: [{ n: 'João Silva', r: 'Marketing Pro', w: 'Assinado em ' + (p.signed || '') }, { n: p.contact, r: p.who, w: 'Assinado em ' + (p.signed || '') }], code: 'SPH-' + (4096 + p.id * 2731).toString(16).toUpperCase() + '-' + (7 + p.id * 13) };
+      signed, sigs: [{ n: this.R ? ((this.R.me && this.R.me.name) || this.R.agency.name) : 'João Silva', r: this.R ? this.R.agency.name : 'Marketing Pro', w: 'Assinado em ' + (p.signed || '') }, { n: p.contact, r: p.who, w: 'Assinado em ' + (p.signed || '') }], code: 'SPH-' + (4096 + p.id * 2731).toString(16).toUpperCase() + '-' + (7 + p.id * 13) };
     return { pp: out };
   }
   // Conteúdo e Publicar (modo real): a mesma fila de posts, com aprovação do cliente pelo portal e publicação pela Meta.
@@ -5281,12 +5289,12 @@ class Component extends DCLogic {
       auto: spSw(!!(C && C.auto_publish), () => { if (!isBoss) return this.toastMsg('Só o dono ou um admin muda isso'); SP.api('/api/content', { method: 'PATCH', body: { agency_id: this.spAg, auto_publish: !C.auto_publish } }).then(() => this.spCtLoad()).then(() => this.toastMsg(C.auto_publish ? 'Aprovado pelo cliente entra na fila sozinho' : 'Aprovado espera você agendar')).catch(e => this.spErr(e)); }) };
     const pend = posts.filter(x => (x.status === 'wait' || x.status === 'fix') && (!S.ctC || S.ctC === 'all' || x.client_id === S.ctC)).sort((a, b) => (b.status === 'fix') - (a.status === 'fix'));
     out.noPend = !pend.length;
-    out.pend = pend.map(x => { const last = lastC(x), t = ST[x.status], col = this.spCtColor(x.client_id), d = new Date(x.publish_at); return { title: x.title, cbg: col[0], cfg: col[1], st: t[0], stBg: t[1] + '1F', stC: t[1],
-      meta: cname(x.client_id) + ' · ' + KIND[x.kind] + ' · ' + d.getDate() + ' ' + MN[d.getMonth()] + ' · ' + this.spWhen(x.updated_at) + ' · v' + x.version, hasLast: !!last, lastWho: last ? who(x, last) : '', lastT: last ? last.text : '', lastBg: last && last.side === 'cliente' ? 'rgba(247,144,9,0.10)' : 'var(--sf2,#F2F4F7)',
+    out.pend = pend.map(x => { const last = lastC(x), t = ST[x.status], col = this.spCtColor(x.client_id), d = new Date(x.publish_at); return { title: x.title || '(sem título)', cbg: col[0], cfg: col[1], st: t[0], stBg: t[1] + '1F', stC: t[1],
+      meta: cname(x.client_id) + ' · ' + (KIND[x.kind] || x.kind || '') + (isNaN(d) ? '' : ' · ' + d.getDate() + ' ' + MN[d.getMonth()]) + (x.updated_at ? ' · ' + this.spWhen(x.updated_at) : '') + ' · v' + x.version, hasLast: !!last, lastWho: last ? who(x, last) : '', lastT: last ? last.text : '', lastBg: last && last.side === 'cliente' ? 'rgba(247,144,9,0.10)' : 'var(--sf2,#F2F4F7)',
       acts: this.spCtActs(x).concat([spAct('Abrir', 0, () => this.setState({ ctTab: 'cal', ctSel: x.id }))]), open: () => this.setState({ ctTab: 'cal', ctSel: x.id }) }; });
     if (sel) { const t = ST[sel.status] || ST.draft, col = this.spCtColor(sel.client_id), d = new Date(sel.publish_at), hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-      out.s = { title: sel.title, client: cname(sel.client_id).toUpperCase(), kind: KIND[sel.kind].toUpperCase(), v: String(sel.version), cbg: col[0], cfg: col[1], h: sel.kind === 'reels' || sel.kind === 'story' ? '300px' : '230px',
-        meta: sel.nets.map(n => NET[n]).join(' e ') + ' · ' + KIND[sel.kind] + ' · ' + d.getDate() + ' ' + MN[d.getMonth()] + ', ' + hm + ' · ' + sel.media_ids.length + (sel.media_ids.length === 1 ? ' arquivo' : ' arquivos'), st: t[0], stBg: t[1] + '1F', stC: t[1], cap: sel.caption || '(sem legenda)',
+      out.s = { title: sel.title, client: cname(sel.client_id).toUpperCase(), kind: (KIND[sel.kind] || sel.kind || '').toUpperCase(), v: String(sel.version), cbg: col[0], cfg: col[1], h: sel.kind === 'reels' || sel.kind === 'story' ? '300px' : '230px',
+        meta: (sel.nets || []).map(n => NET[n] || n).join(' e ') + ' · ' + (KIND[sel.kind] || sel.kind || '') + (isNaN(d) ? '' : ' · ' + d.getDate() + ' ' + MN[d.getMonth()] + ', ' + hm) + ' · ' + sel.media_ids.length + (sel.media_ids.length === 1 ? ' arquivo' : ' arquivos'), st: t[0], stBg: t[1] + '1F', stC: t[1], cap: sel.caption || '(sem legenda)',
         isPub: sel.status === 'pub', metrics: sel.status === 'pub' ? [['Saiu', sel.published_at ? this.spWhen(sel.published_at) : '—'], ['Redes', sel.nets.join(' + ')]].map(m => ({ l: m[0], v: m[1] })) : [],
         hasNote: ['appr', 'sched', 'fail'].includes(sel.status), note: sel.status === 'fail' ? 'Não saiu: ' + (sel.error || 'erro na Meta') : sel.status === 'sched' ? 'Na fila · sai sozinho em ' + d.getDate() + ' ' + MN[d.getMonth()] + ' às ' + hm : 'Aprovado pelo cliente · agende ou publique agora',
         comments: sel.comments.map(m => ({ who: who(sel, m), t: m.text, when: this.spWhen(m.created_at), bg: m.side === 'cliente' ? 'rgba(247,144,9,0.10)' : 'var(--sf2,#F2F4F7)' })), acts: this.spCtActs(sel) }; }
@@ -5417,8 +5425,8 @@ class Component extends DCLogic {
   async spFsCfg(body, msg) { try { await SP.api('/api/fiscal', { method: 'PATCH', body: Object.assign({ agency_id: this.spAg }, body) }); await this.spFsLoad(); if (msg) this.toastMsg(msg); } catch (e) { this.spErr(e); } }
   spFsSetup() {
     const c = this.FS.config;
-    this.fm({ title: 'Dados fiscais da agência', desc: 'Vão em toda nota. A Focus NFe emite pelo município e conforme o seu regime.', icon: 'receipt_long', fields: [{ k: 'cnpj', l: 'CNPJ da agência', req: 1 }, { k: 'im', l: 'Inscrição municipal', req: 1 }, { k: 'mun', l: 'Município (ex.: Curitiba, PR)', req: 1 }, { k: 'ibge', l: 'Código IBGE do município (7 dígitos)', req: 1, check: s => /^\d{7}$/.test(s) ? '' : '7 dígitos' },
-      { k: 'item', l: 'Código do serviço (lista da LC 116)', req: 1 }, { k: 'aliq', l: 'ISS (%)', req: 1 }, { k: 'reg', l: 'Regime', type: 'pick', opts: [['1', 'Simples Nacional'], ['0', 'Lucro presumido ou real']], req: 1 }, { k: 'desc', l: 'Descrição na nota ({mes} vira o mês)', req: 1 }, { k: 'acc', l: 'E-mail da contabilidade (recebe o XML)', email: 1 }],
+    this.fm({ title: 'Dados fiscais da agência', desc: 'Vão em toda nota. A Focus NFe emite pelo município e conforme o seu regime.', icon: 'receipt_long', fields: [{ k: 'cnpj', l: 'CNPJ da agência', req: 1, check: v => String(v).replace(/\D/g, '').length === 14 ? '' : 'CNPJ com 14 dígitos' }, { k: 'im', l: 'Inscrição municipal', req: 1 }, { k: 'mun', l: 'Município (ex.: Curitiba, PR)', req: 1 }, { k: 'ibge', l: 'Código IBGE do município (7 dígitos)', req: 1, check: s => /^\d{7}$/.test(s) ? '' : '7 dígitos' },
+      { k: 'item', l: 'Código do serviço (lista da LC 116)', req: 1 }, { k: 'aliq', l: 'ISS (%)', req: 1, check: v => { const n = parseFloat(String(v).replace(',', '.')); return n > 0 && n <= 10 ? '' : 'Entre 0,01 e 10'; } }, { k: 'reg', l: 'Regime', type: 'pick', opts: [['1', 'Simples Nacional'], ['0', 'Lucro presumido ou real']], req: 1 }, { k: 'desc', l: 'Descrição na nota ({mes} vira o mês)', req: 1, min: 5 }, { k: 'acc', l: 'E-mail da contabilidade (recebe o XML)', email: 1 }],
       init: { cnpj: c.cnpj, im: c.inscricao_municipal, mun: c.municipio, ibge: c.codigo_municipio, item: c.item_lista_servico, aliq: String(c.aliquota).replace('.', ','), reg: c.simples ? '1' : '0', desc: c.description, acc: c.accountant_email || '' }, okL: 'Salvar',
       ok: v => this.spFsCfg({ cnpj: v.cnpj, inscricao_municipal: v.im.trim(), municipio: v.mun.trim(), codigo_municipio: v.ibge.trim(), item_lista_servico: v.item.trim(), aliquota: parseFloat(String(v.aliq).replace(',', '.')) || 0, simples: v.reg === '1', description: v.desc.trim(), accountant_email: (v.acc || '').trim() || null }, 'Dados fiscais salvos') });
   }
@@ -5643,7 +5651,7 @@ class Component extends DCLogic {
     const dm = s => +s.slice(8) + ' ' + MN[+s.slice(5, 7) - 1];
     out.recent = d.recent.slice(0, 8).map(r => ({ n: r.customer || 'Venda', c: r.campaign_name || 'sem campanha', t: r.lead_on ? 'lead em ' + dm(r.lead_on) + ', venda em ' + dm(r.sold_on) : 'venda em ' + dm(r.sold_on), v: brl(r.amount_cents) }));
     out.matchL = (d.match_pct == null ? 0 : d.match_pct) + '%'; out.matchW = (d.match_pct || 0) + '%';
-    out.off = spSw(false, () => this.toastMsg('Em breve: devolver as vendas para Meta e Google (conversões offline)'));
+    out.off = spSw(false, () => this.toastMsg('Devolver as vendas para Meta e Google (conversões offline) ainda não está disponível nesta versão'));
     out.publish = async () => { try { await SP.api('/api/clients/' + cid + '/roi', { method: 'POST', body: { acao: 'publicar', month: d.month } }); this.toastMsg('Retorno de ' + d.month_label + ' publicado no portal da ' + d.client); } catch (e) { this.spErr(e); } };
     return { ro: out };
   }
@@ -5794,7 +5802,7 @@ class Component extends DCLogic {
     const toCad = async () => { try { const r = await SP.api('/api/prospect/leads', { method: 'PATCH', body: { agency_id: this.spAg, ids: selIds, acao: 'fila' } }); this.setState({ prSel: {} }); await this.spPrLoad(); this.toastMsg(r.queued + (r.queued === 1 ? ' lead na fila' : ' leads na fila') + (C.running ? '' : ' · ligue a cadência para começar')); } catch (e) { this.spErr(e); } };
     // Cadência
     const steps = C.steps, si = Math.min(S.prStep || 0, steps.length - 1), cs = steps[si] || steps[0];
-    const sample = L[0] || { name: 'Ana Lima', company: 'Studio Ana', segment: 'estúdios de pilates', city: 'Curitiba' };
+    const sample = L[0] || (this.R ? { name: 'Nome do contato', company: 'Empresa do contato', segment: 'segmento', city: 'cidade' } : { name: 'Ana Lima', company: 'Studio Ana', segment: 'estúdios de pilates', city: 'Curitiba' });
     const fill = t => String(t || '').replace(/\{(nome|empresa|segmento|cidade)\}/g, (a, k) => (k === 'nome' ? (sample.name || '').split(' ')[0] || sample.company : k === 'empresa' ? sample.company || sample.name : k === 'segmento' ? sample.segment : sample.city) || 'você');
     const saveSteps = (list, msg) => { clearTimeout(this._prStT); this._prStT = setTimeout(() => this.spPrCfg({ steps: list }, msg), msg ? 0 : 900); };
     const setStep = patch => { const list = steps.map((x, i) => i === si ? Object.assign({}, x, patch) : x); C.steps = list; this.setState({ real: Date.now() }); saveSteps(list); };
@@ -6266,14 +6274,14 @@ class Component extends DCLogic {
       imgModels: Object.keys(IMG_M).map(id => Object.assign({ n: IMG_M[id][0], d: IMG_M[id][1], lic: IMG_M[id][2], lb: 'rgba(18,183,106,0.12)', lc: '#067647', pick: () => this.setState({ stImgM: id }) }, radio(imgM === id))),
       vidModels: Object.keys(VID_M).map(id => Object.assign({ n: VID_M[id][0], d: VID_M[id][1], lic: VID_M[id][2], lb: VID_M[id][3] ? 'rgba(18,183,106,0.12)' : 'rgba(247,144,9,0.14)', lc: VID_M[id][3] ? '#067647' : '#B54708', pick: () => this.setState({ stVidM: id }) }, radio(vidM === id))),
       connect, connL: T.stConnBusy ? 'Conectando…' : 'Conectar', connMsg: T.stConnErr || (T.stConnBusy ? 'Conferindo a chave…' : 'A chave fica cifrada no Spherum; os créditos são cobrados direto pelo provedor.'), connMsgC: T.stConnErr ? '#D92D20' : 'var(--tx2,#667085)',
-      conn: { model: short(cfg && cfg.image_model), vmodel: cfg && cfg.video_model ? short(cfg.video_model) : 'sem vídeo', prov: cfg ? PROV[cfg.provider][0] : '' }, changeConn: () => this.setState({ stTab: 'usage', stOpen: null }),
-      connCard: cfg ? { t: short(cfg.image_model) + ' · via ' + PROV[cfg.provider][0], s: (cfg.video_model ? 'Vídeo com ' + short(cfg.video_model) + '. ' : 'Sem vídeo neste provedor. ') + 'Os créditos são cobrados direto pelo provedor.', btn: 'Trocar IA', bg: '#465FFF' } : { t: 'Nenhuma IA conectada', s: 'Conecte a fal.ai ou o Replicate para usar o chat do Estúdio.', btn: 'Conectar', bg: '#98A2B3' },
+      conn: { model: short(cfg && cfg.image_model), vmodel: cfg && cfg.video_model ? short(cfg.video_model) : 'sem vídeo', prov: cfg ? (PROV[cfg.provider] || [cfg.provider || '—'])[0] : '' }, changeConn: () => this.setState({ stTab: 'usage', stOpen: null }),
+      connCard: cfg ? { t: short(cfg.image_model) + ' · via ' + (PROV[cfg.provider] || [cfg.provider || '—'])[0], s: (cfg.video_model ? 'Vídeo com ' + short(cfg.video_model) + '. ' : 'Sem vídeo neste provedor. ') + 'Os créditos são cobrados direto pelo provedor.', btn: 'Trocar IA', bg: '#465FFF' } : { t: 'Nenhuma IA conectada', s: 'Conecte a fal.ai ou o Replicate para usar o chat do Estúdio.', btn: 'Conectar', bg: '#98A2B3' },
       threads: cl.slice(0, 20).map(c => { const on = c.id === cid, b = this.STD && this.STD[c.id], lastM = b && b.messages.filter(m => m.role !== 'sys').slice(-1)[0], i2 = c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), cc = (b && b.kit && b.kit.color1) || '#465FFF';
         return { n: c.name, ini: i2, c1: cc, fg: stFg(cc), last: lastM ? (lastM.role === 'me' ? 'Você: ' : '') + lastM.text : 'Kit da marca', bg: on ? 'rgba(70,95,255,0.06)' : 'transparent', sh: on ? 'inset 3px 0 0 #465FFF' : 'none', fw: on ? '600' : '500', pick: () => on ? editKit() : this.setState({ stC: c.id, stOpen: null }) }; }),
       kit: { name: cname, ini, c1, c2, c1fg: stFg(c1), font: k.font || '—', photos: [[k.product || 'Produto', c1], ['Toque no cliente para editar o kit', c2]].map(x => ({ l: x[0].toUpperCase(), bg: x[1], c: stFg(x[1]) })) },
       fmts: [['feed', 'Feed 1:1'], ['story', 'Stories 9:16']].map(f => Object.assign({ l: f[1], pick: () => this.setState({ stFmt: f[0] }) }, spChip(fmt0 === f[0]))),
       msgs, feedRef: this._stFeed, draft: T.stDraft || '', onDraft: e => this.setState({ stDraft: e.target.value }), onEnter: e => { if (e.key === 'Enter') send(); }, send: () => send(),
-      ph: 'Descreva o criativo para a ' + cname + '…', attached: false, attachL: '', attach: () => this.toastMsg('Em breve: usar foto real do produto como base'), unattach: () => {},
+      ph: 'Descreva o criativo para a ' + cname + '…', attached: false, attachL: '', attach: () => this.toastMsg('Usar uma foto real do produto como base ainda não está disponível nesta versão'), unattach: () => {},
       hasOpen: !!open, noOpen: !open, cv, out,
       layerChips: [['logo', 'Logo'], ['headline', 'Título'], ['price', 'Preço'], ['cta', 'Botão']].map(l => { const on = !(T.stHide || {})[l[0]]; return Object.assign({ l: (on ? '✓ ' : '') + l[1], pick: () => this.setState(s => ({ stHide: Object.assign({}, s.stHide, { [l[0]]: !(s.stHide || {})[l[0]] }) })) }, spChip(on)); }),
       fields: [['h', 'Título'], ['p', 'Preço'], ['cta', 'Botão']].map(f => ({ l: f[1], v: tx[f[0]], on: e => setTx(f[0], e.target.value) })),
@@ -6738,7 +6746,7 @@ class Component extends DCLogic {
     const max = Math.max(1, ...D.ranking.map(r => r.points)), lbl = {}; D.rules.forEach(r => { lbl[r.key] = r.label; });
     const top = r => { const k = Object.keys(r.counts).sort((a, b) => r.counts[b] * (D.config.points[b] || 0) - r.counts[a] * (D.config.points[a] || 0))[0]; return k && r.counts[k] ? 'Mais pontos em: ' + r.counts[k] + ' × ' + (lbl[k] || '').toLowerCase() : 'Sem pontos no período'; };
     const board = D.ranking.map((r, i) => Object.assign({ pos: String(i + 1), posBg: i === 0 && r.points ? '#FEF0C7' : 'var(--sf2,#F2F4F7)', posC: i === 0 && r.points ? '#B54708' : 'var(--tx2,#667085)', n: r.name, role: r.title || '', pts: r.points.toLocaleString('pt-BR') + ' pts', w: Math.round(r.points / max * 100) + '%', why: top(r) }, this.p2Av(r.name || '?')));
-    const badges = D.badges.map(b => ({ icon: b.icon, n: b.name, d: b.desc, who: b.who.length ? b.who.map(n => n.split(' ')[0]).join(', ') : 'Ninguém ainda', whoC: b.who.length ? '#067647' : 'var(--tx2,#98A2B3)', bg: b.who.length ? '#FEF0C7' : 'var(--sf2,#F2F4F7)', c: b.who.length ? '#B54708' : 'var(--tx2,#98A2B3)', op: b.who.length ? 1 : 0.75 }));
+    const badges = D.badges.map(b => ({ icon: b.icon, n: b.name, d: b.desc, who: (b.who || []).length ? (b.who || []).map(n => String(n && n.name ? n.name : n).split(' ')[0]).join(', ') : 'Ninguém ainda', whoC: (b.who || []).length ? '#067647' : 'var(--tx2,#98A2B3)', bg: (b.who || []).length ? '#FEF0C7' : 'var(--sf2,#F2F4F7)', c: b.who.length ? '#B54708' : 'var(--tx2,#98A2B3)', op: b.who.length ? 1 : 0.75 }));
     const setRule = (k, d) => { if (!boss) return this.toastMsg('Só o dono ou um admin muda os pontos'); const v = Math.max(0, Math.min(100, (D.config.points[k] || 0) + d)); D.config.points[k] = v; this.setState({ real: Date.now() }); clearTimeout(this._gmT); this._gmT = setTimeout(() => this.spGmCfg({ points: { [k]: v } }), 700); };
     const ch = D.challenge, show = !!D.config.show_ranking;
     const kudoPts = D.config.points.kudo || 0;
@@ -6854,7 +6862,25 @@ class Component extends DCLogic {
       scLeads: [{ id: 1, n: 'Renata Albuquerque', co: 'Clínica Bem Viver', src: 'Indicação da Clínica Aurora', f: ['inv', 'ind', 'meet', 'niche', 'boss', 'fast'] }, { id: 2, n: 'Diego Martins', co: 'Martins Imóveis', src: 'Formulário · Diagnóstico gratuito', f: ['inv', 'meet', 'pixel', 'boss'] }, { id: 3, n: 'Paula Siqueira', co: 'Studio Pilates Ser', src: 'Prospecção · Instagram', f: ['niche', 'fast', 'boss'] }, { id: 4, n: 'Henrique Lobo', co: 'Lobo Advocacia', src: 'Formulário · Diagnóstico gratuito', f: ['pixel', 'nobud'] }, { id: 5, n: 'Camila Teixeira', co: 'Doce Teixeira', src: 'Prospecção · WhatsApp', f: ['niche', 'fast', 'nobud', 'boss'] }, { id: 6, n: 'Rafael Nunes', co: 'Nunes Auto Peças', src: 'Agendamento · Reunião de 30 min', f: ['inv', 'meet', 'pixel'] }, { id: 7, n: 'Bruna Costa', co: 'Escola Aprender+', src: 'Indicação da Academia Pulse', f: ['ind', 'niche', 'fast'] }, { id: 8, n: 'Márcio Prado', co: 'Prado Construtora', src: 'Formulário · Orçamento', f: ['nobud'] }] });
   }
   scOf(l) { const on = {}; this.state.scRules.forEach(r => { if (r.on) on[r.k] = r.p; }); return Math.max(0, Math.min(100, l.f.reduce((a, k) => a + (on[k] || 0), 0))); }
-  scHotN() { this.scInit(); const S = this.state; return S.scLeads.filter(l => !S.scGone[l.id] && this.scOf(l) >= S.scHot).length || null; }
+  scHotN() {
+    // Real: negócios abertos com pontuação quente (o servidor calcula a pontuação de cada negócio).
+    if (this.R) { const C = this.R.crm || {}, hot = (C.scoring && C.scoring.hot) || 70; return (C.deals || []).filter(d => d.score != null && d.score >= hot && d.stage !== 'ganho' && d.stage !== 'perdido').length || null; }
+    this.scInit(); const S = this.state; return S.scLeads.filter(l => !S.scGone[l.id] && this.scOf(l) >= S.scHot).length || null;
+  }
+  // Selo do CRM: negócios abertos com próxima ação para hoje ou atrasada (demo: 3).
+  crmDueN() {
+    if (!this.R) return 3;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    return ((this.R.crm || {}).deals || []).filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.next_action_date && d.next_action_date <= today).length || null;
+  }
+  // Uma tela que estoure não derruba o app inteiro: a parte dela fica vazia e um aviso aparece.
+  spSafe(fn) {
+    try { return fn() || {}; } catch (e) {
+      console.error('[tela]', e);
+      if (!this._safeT) { this._safeT = setTimeout(() => { this._safeT = null; this.toastMsg('Uma parte da tela não carregou. Recarregue a página; se continuar, avise o suporte.'); }, 0); }
+      return {};
+    }
+  }
   vScore() {
     if (this.R) return this.vScoreReal();
     this.scInit();
@@ -6883,7 +6909,7 @@ class Component extends DCLogic {
   }
   vScoreReal() {
     const S = this.state, rk = this.gate(1, 'Pontuação de leads', null).rk, g = this.gate(1, 'Pontuação de leads', rk === 1 ? 'No plano Agência: até 8 critérios. Critérios ilimitados a partir do Escala.' : null);
-    const C = this.R.crm || { deals: [], scoring: { hot: 70, warm: 40, rules: [] } }, sc = this._scDraft || C.scoring, F = S.scF || 'all', mng = ['owner', 'admin'].includes(this.R.me.role);
+    const C = this.R.crm || { deals: [], scoring: { hot: 70, warm: 40, rules: [] } }, sc = this._scDraft || C.scoring || { hot: 70, warm: 40, rules: [] }, F = S.scF || 'all', mng = ['owner', 'admin'].includes(this.R.me.role);
     const save = (next, msg) => mng ? this.spScSave(next, msg) : this.toastMsg('Só o dono ou um admin muda os critérios');
     const tempOf = n => n >= sc.hot ? ['Quente', 'rgba(240,68,56,.12)', '#B42318', 'hot'] : n >= sc.warm ? ['Morno', 'rgba(247,144,9,.14)', '#B54708', 'warm'] : ['Frio', 'rgba(70,95,255,.1)', '#3538CD', 'cold'];
     const live = C.deals.filter(d => d.stage === 'novo').sort((a, b) => b.score - a.score), cnt = k => live.filter(d => tempOf(d.score)[3] === k).length;
@@ -7240,10 +7266,10 @@ class Component extends DCLogic {
       list: list0.map(a => { const on = sel && a.id === sel.id; return { name: a.name, sum: a.steps.length + 1 + ' passos · ' + trigL(a.trigger), runs: fmtRuns(a), last: last(a), onA: a.enabled ? 'true' : 'false', swBg: a.enabled ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: a.enabled ? '18px' : '2px', sh: on ? '0 0 0 2px #465FFF' : '0 0 0 1px var(--bd,rgba(16,24,40,.06)),0 10px 26px -18px rgba(16,24,40,.22)', pick: () => this.setState({ auSel: a.id }),
         toggle: () => this.spAuAct(a.id, { acao: 'ligar', on: !a.enabled }, a.name + (a.enabled ? ' desligada' : ' ligada · vale para o que acontecer a partir de agora')) }; }),
       sel: sel ? { name: sel.name, st: (sel.enabled ? 'Ligada' : 'Desligada') + ' · ' + fmtRuns(sel) + ' · última ' + last(sel), testL: 'Testar agora',
-        test: async () => { const r = await this.spAuAct(sel.id, { acao: 'testar' }); if (r) this.fm({ title: 'Teste (nada foi enviado)', desc: 'Com o ' + r.example + ':\n' + r.lines.map(l => (l.ok ? '✓ ' : '✗ ') + l.text).join('\n'), icon: 'science', fields: [], okL: 'Fechar', ok: () => {} }); },
+        test: async () => { const r = await this.spAuAct(sel.id, { acao: 'testar' }); if (!r || !Array.isArray(r.lines)) { if (r) this.toastMsg('Não consegui montar o teste agora.'); return; } this.fm({ title: 'Teste (nada foi enviado)', desc: 'Com o ' + r.example + ':\n' + r.lines.map(l => (l.ok ? '✓ ' : '✗ ') + l.text).join('\n'), icon: 'science', fields: [], okL: 'Fechar', ok: () => {} }); },
         rename: () => this.fm({ title: 'Renomear automação', icon: 'edit', fields: [{ k: 'n', l: 'Nome', req: 1, min: 3 }], init: { n: sel.name }, okL: 'Salvar', ok: v => this.spAuAct(sel.id, { acao: 'editar', automation: { name: v.n.trim() } }) }),
         del: () => this.fm({ title: 'Excluir “' + sel.name + '”?', desc: 'As execuções em andamento param.', icon: 'delete', danger: 1, okL: 'Excluir', ok: async () => { try { await SP.api('/api/automations/' + sel.id, { method: 'DELETE' }); await this.spAuLoad(); this.toastMsg('Automação excluída'); } catch (e) { this.spErr(e); } } }),
-        nodes: [{ kind: 'gatilho', t: [trigL(sel.trigger), ''] }].concat(sel.steps.map(s => ({ kind: s.kind, t: this.spAuText(s) }))).map((n, i, all) => { const k = K[n.kind]; return { icon: k[0], kind: k[1], icC: k[2], ib: k[3], title: n.t[0], detail: n.t[1], bd: 'var(--bd,#E4E7EC)', sh: 'none', done: false, canDel: i > 0, gap: i === all.length - 1 ? '42px' : '46px', tail: i === all.length - 1 ? 'transparent' : 'var(--bd,#E4E7EC)', add: () => this.spAuStepForm(sel, i - 1),
+        nodes: [{ kind: 'gatilho', t: [trigL(sel.trigger), ''] }].concat(sel.steps.map(s => ({ kind: s.kind, t: this.spAuText(s) }))).map((n, i, all) => { const k = K[n.kind] || K.acao; return { icon: k[0], kind: k[1], icC: k[2], ib: k[3], title: n.t[0], detail: n.t[1], bd: 'var(--bd,#E4E7EC)', sh: 'none', done: false, canDel: i > 0, gap: i === all.length - 1 ? '42px' : '46px', tail: i === all.length - 1 ? 'transparent' : 'var(--bd,#E4E7EC)', add: () => this.spAuStepForm(sel, i - 1),
           del: () => this.spAuAct(sel.id, { acao: 'editar', automation: { steps: sel.steps.filter((_, j) => j !== i - 1) } }, 'Passo removido') }; }) } : { nodes: [] },
       queue: ((A && A.runs) || []).slice(0, 8).map(r => { const a = list0.find(x => x.id === r.automation_id) || {}, l = (r.log || []).slice(-1)[0], st = ST[r.status] || ST.pendente; return { t: new Date(r.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), a: a.name || '', s: (r.error || (l && l.text) || (r.context && (r.context.name || r.context.company)) || '').slice(0, 90), st: st[0], bg: st[2], c: st[1] }; }) }) };
   }
@@ -7390,7 +7416,7 @@ class Component extends DCLogic {
       hdr: [{ l: 'Novo tipo de reunião', icon: 'add', st: this.bP(), run: newType }],
       g: gcard,
       types: types.map(t => ({ n: t.name + (t.active ? '' : ' · desativado'), d: t.duration_min + ' min · ' + (t.connection_id ? 'com link do Meet' : 'sem agenda conectada') + (t.upcoming ? ' · ' + t.upcoming + ' marcada' + (t.upcoming > 1 ? 's' : '') : ''), c: t.color, bg: t.id === ty.id ? 'rgba(70,95,255,.05)' : 'transparent', pick: () => this.setState({ scType: t.id, scDay: null }), copy: () => this.copyTxt(link(t), 'Link de “' + t.name + '” copiado') })),
-      days: DAYS.map(d => { const on = ty.days.indexOf(d[0]) >= 0; return Object.assign({ l: d[1], pick: () => { const nd = on ? ty.days.filter(x => x !== d[0]) : ty.days.concat([d[0]]); ty.days = nd; this.setState({ scDay: null }); this.spBkPatch(ty.id, { days: nd }); } }, spChip(on)); }),
+      days: DAYS.map(d => { const on = (ty.days || []).indexOf(d[0]) >= 0; return Object.assign({ l: d[1], pick: () => { const nd = on ? (ty.days || []).filter(x => x !== d[0]) : (ty.days || []).concat([d[0]]); ty.days = nd; this.setState({ scDay: null }); this.spBkPatch(ty.id, { days: nd }); } }, spChip(on)); }),
       hours: [[8, 17], [9, 18], [10, 19], [13, 20]].map(h => Object.assign({ l: h[0] + 'h às ' + h[1] + 'h', pick: () => { ty.from_hour = h[0]; ty.to_hour = h[1]; this.setState({ scDay: null }); this.spBkPatch(ty.id, { from_hour: h[0], to_hour: h[1] }); } }, spChip(ty.from_hour === h[0] && ty.to_hour === h[1]))),
       books: up.slice(0, 30).map(b => { const t = types.find(x => x.id === b.type_id) || {}, d = dayIso(b.start_at); return { mon: MN[+d.slice(5, 7) - 1].toUpperCase(), day: String(+d.slice(8)), who: b.name + (b.client_id ? ' · cliente' : ''), meta: (t.name || '') + ' · ' + tm(b.start_at) + ' · ' + (t.duration_min || 30) + ' min' + (b.calendar_error ? ' · sem evento na agenda' : b.meet_link ? ' · Meet' : ''),
         cancel: () => this.fm({ title: 'Cancelar a reunião com ' + b.name + '?', desc: b.name + ' recebe um e-mail e o evento sai da agenda.', icon: 'event_busy', fields: [{ k: 'r', l: 'Motivo (vai no e-mail)', ph: 'Opcional' }], okL: 'Cancelar reunião', ok: async v => { try { await SP.api('/api/bookings/' + b.id, { method: 'DELETE', body: { reason: (v.r || '').trim() || undefined } }); await Promise.all([this.spBkLoad(), this.spBkSlots(b.type_id)]); this.toastMsg('Reunião cancelada · o convidado foi avisado'); } catch (e) { this.spErr(e); } } }) }; }),

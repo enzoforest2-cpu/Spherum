@@ -28,3 +28,8 @@ página pública em `src/app/f/[code]`.
 - Rotas públicas, sem login:
   - `GET /api/public/forms/:code`;
   - `POST /api/public/forms/:code`, com `{ [campo]: valor }`. Erros por campo vêm em `fields`.
+
+## Regras que valem sempre
+
+- Se o dono do formulário saiu da equipe, o negócio nasce com o dono da agência como responsável (o formulário público continua aceitando respostas).
+- E-mail é validado como no CRM (sem acento no domínio), com mensagem por campo.

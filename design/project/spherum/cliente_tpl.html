@@ -845,7 +845,8 @@ class Component extends DCLogic {
   }
   // Recarrega os dados do portal (depois de responder algo, e de tempos em tempos na conversa).
   async spReload() {
-    try { this.R = this.spFix(await SP.api('/api/portal/cliente?client_id=' + this.R.client.id)); this.setState({ real: Date.now() }); } catch (e) {}
+    try { this.R = this.spFix(await SP.api('/api/portal/cliente?client_id=' + this.R.client.id)); this.setState({ real: Date.now() }); }
+    catch (e) { this.toastMsg('Não consegui atualizar os dados agora. Puxe a página para recarregar.'); }
   }
   spFix(R) { R.collab = R.collab || { updates: [], requests: [], approvals: [], messages: [], unread: 0 }; return R; }
   spCollabPost(body) { return SP.api('/api/portal/cliente/collab', { method: 'POST', body: Object.assign({ client_id: this.R.client.id }, body) }); }

@@ -56,3 +56,9 @@ Erro da Meta no envio marca o lead como "Erro no envio" (pode voltar para a fila
   `nota { text }`, `parar`, `responder { text }` ou `crm`.
 
 O portal da agência traz `prospect_unread`.
+
+## Regras que valem sempre
+
+- **Reserva antes do envio:** a varredura reserva o lead por 10 minutos (`next_at`) antes de mandar a mensagem; duas varreduras ao mesmo tempo não repetem o passo. Se o envio falhar por limite, a reserva é desfeita.
+- **Limite do Meta:** reconhecido tanto como HTTP 429 quanto como HTTP 400 com os códigos 130429, 131056, 131048 e 80007. A agência para neste ciclo sem marcar o lead como erro.
+- **Lead que virou cliente ou foi para o CRM** não é mais tratado pela prospecção: a resposta dele vai para o canal normal (xodó ou conversa).

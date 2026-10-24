@@ -292,7 +292,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
 
   const team = memberRows.map((m) => {
     const name = m.full_name || m.email || "Sem nome";
-    return { user_id: m.user_id, name, ini: initials(name), role: m.title || ROLE_LABEL[m.role] || m.role, perm: ROLE_LABEL[m.role] || m.role, roleKey: m.role, email: m.email, clients: m.clients, projects: load[m.user_id]?.projects ?? 0, tasks: load[m.user_id]?.tasks ?? 0, cap: Math.min(100, (load[m.user_id]?.tasks ?? 0) * 5) };
+    return { user_id: m.user_id, name, ini: initials(name), role: m.title || "Sem cargo definido", perm: ROLE_LABEL[m.role] || m.role, roleKey: m.role, email: m.email, clients: m.clients, projects: load[m.user_id]?.projects ?? 0, tasks: load[m.user_id]?.tasks ?? 0, cap: Math.min(100, (load[m.user_id]?.tasks ?? 0) * 5) };
   });
 
   const attention: Record<string, unknown>[] = [];

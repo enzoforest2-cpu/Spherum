@@ -28,3 +28,7 @@ servidor próprio (ComfyUI).
 - `POST /api/studio` (CAN_USE), com `{ agency_id, client_id, acao }`: `gerar { text, format?, count? }`,
   `animar { document_id, text }`, `conteudo { document_ids, title, caption?, publish_at, nets? }`, `kit { kit }`.
 - `POST /api/studio/connect` (CAN_MANAGE), com `{ agency_id, provider, key, image_model?, video_model? }`.
+
+## Regras que valem sempre
+
+- A cota do mês vira à meia-noite de Brasília. No teste grátis a cota é a do plano Agência, independentemente do plano escolhido no cadastro.

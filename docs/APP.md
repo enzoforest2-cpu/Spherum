@@ -29,3 +29,8 @@ Sem elas, o cron não envia e "Ativar neste aparelho" avisa que não está confi
 - `PATCH /api/app`, com `{ agency_id, categories?, quiet_start?, quiet_end? }`.
 - `POST /api/app/devices`, com `{ agency_id, endpoint, keys: { p256dh, auth }, label? }`; `DELETE /api/app/devices/:id`.
 - `POST /api/app/test`, com `{ agency_id }`: notificação de teste para os seus aparelhos.
+
+## Regras que valem sempre
+
+- A mesma inscrição do navegador (endpoint) só é atualizada pelo mesmo usuário; outra conta recebe 409.
+- O cron marca o aviso como entregue antes de mandar (duas varreduras não repetem) e respeita o prazo.
