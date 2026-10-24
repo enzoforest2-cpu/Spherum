@@ -62,10 +62,11 @@ export async function saveConnection(deps: IntegrationDeps, input: SaveInput): P
   const scopes = [...new Set([...(existing?.scopes ?? []), ...(input.scopes ?? [])])];
   const ciphertext = await sealSecret(JSON.stringify(input.secret), aad(input.agencyId, id), masterKey);
   if (existing) {
+    // Reconectar zera o aviso de vencimento: o próximo login da Meta precisa avisar de novo.
     await sql.query(
       `update integration_connections
           set label = $2, scopes = $3, status = 'active', ciphertext = $4, token_expires_at = $5::timestamptz,
-              metadata = metadata || $6::jsonb, last_error = null, updated_at = now()
+              metadata = (metadata - 'expiry_warned_at') || $6::jsonb, last_error = null, updated_at = now()
         where id = $1`,
       [id, input.label, scopes, ciphertext, input.expiresAt?.toISOString() ?? null, json(input.metadata ?? {})],
     );

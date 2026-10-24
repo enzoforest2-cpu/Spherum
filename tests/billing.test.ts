@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
-import { billingSweep, connectAccount, createInvoice, handleWebhook, listClientInvoices, payInvoice, updateInvoice, type BillingDeps } from "../src/lib/billing";
+import { billingSweep, connectAccount, createInvoice, handleWebhook, listClientInvoices, nextDueFrom, payInvoice, setRecurrenceActive, updateInvoice, type BillingDeps } from "../src/lib/billing";
 import { itau, txidOf } from "../src/lib/billing/providers/itau";
+import { mpDate } from "../src/lib/billing/providers/mercadopago";
 import { createAgency } from "../src/lib/core/agencies";
 import { addContact, createClient } from "../src/lib/core/clients";
 import { inviteMember } from "../src/lib/core/team";
@@ -194,6 +195,66 @@ test("mensalidade: gera a próxima fatura antes do vencimento, uma vez só; venc
   await sql.query(`update invoice_recurrences set active = false where id = $1`, [invoice.recurrence_id]);
   now = new Date("2026-12-10T12:00:00Z");
   assert.equal((await billingSweep(deps)).generated, 0);
+  // Religada meses depois: o ponteiro pula para o próximo vencimento, sem gerar o atrasado.
+  now = new Date("2027-03-20T12:00:00Z");
+  await setRecurrenceActive(sql, s.agencyId, invoice.recurrence_id!, true, now);
+  const after = await one<{ next_due: string }>(sql, `select next_due::text from invoice_recurrences where id = $1`, [invoice.recurrence_id]);
+  assert.equal(after!.next_due, "2027-04-15");
+  assert.equal((await billingSweep(deps)).generated, 0, "abril ainda está a mais de 10 dias");
+  assert.equal(nextDueFrom("2027-03-15", 15), "2027-03-15");
+  assert.equal(nextDueFrom("2026-12-20", 5), "2027-01-05");
+});
+
+test("mensalidade: duas varreduras ao mesmo tempo não pulam um mês; vencimento vira à meia-noite de Brasília", async () => {
+  const s = await setup();
+  const http = fakeHttp({});
+  let now = new Date("2026-10-19T12:00:00Z");
+  const deps: BillingDeps = { sql, masterKey: MASTER, fetch: http.fetch, appUrl: "https://spherum.com.br", now: () => now };
+  const { invoice } = await createInvoice(deps, s.agencyId, s.dona, { client_id: s.client.id, description: "Mensalidade", amount: 1000.005, due_date: "2026-10-31", monthly: true });
+  assert.equal(invoice.amount_cents, 100001, "centavos sem erro de ponto flutuante");
+  const rec = () => one<{ next_due: string }>(sql, `select next_due::text from invoice_recurrences where id = $1`, [invoice.recurrence_id]);
+  assert.equal((await rec())!.next_due, "2026-11-28", "dia 31 vira 28 e fica no 28");
+  // 23h de Brasília do dia 31 ainda é dia 31: a fatura só vence depois da meia-noite daqui.
+  now = new Date("2026-11-01T02:30:00Z");
+  await billingSweep(deps);
+  assert.equal((await listClientInvoices(sql, s.client.id)).find((i) => i.due_date === "2026-10-31")!.status, "pendente");
+  now = new Date("2026-11-01T03:30:00Z");
+  await billingSweep(deps);
+  assert.equal((await listClientInvoices(sql, s.client.id)).find((i) => i.due_date === "2026-10-31")!.status, "vencido");
+  now = new Date("2026-11-20T12:00:00Z");
+  const [a, b] = await Promise.all([billingSweep(deps), billingSweep(deps)]);
+  assert.equal(a.generated + b.generated, 1);
+  assert.equal((await rec())!.next_due, "2026-12-28", "o ponteiro avançou um mês, não dois");
+  assert.equal(mpDate(new Date("2026-10-24T15:00:00.000Z")), "2026-10-24T12:00:00.000-03:00");
+});
+
+test("aviso do provedor: falha na consulta não queima o evento; a repetição confirma o pagamento", async () => {
+  const s = await setup();
+  let fail = true;
+  const http = fakeHttp({
+    "GET /v3/myAccount": () => ({ company: "Agência Cobra LTDA" }),
+    "POST /v3/webhooks": () => ({ id: "wh_1" }),
+    "POST /v3/customers": () => ({ id: "cus_1" }),
+    "POST /v3/payments": () => ({ id: "pay_1", status: "PENDING", value: 500, invoiceUrl: "https://asaas/i/1" }),
+    "GET /v3/payments/pay_1": () => (fail ? new Response("{}", { status: 503 }) : { id: "pay_1", status: "RECEIVED", value: 500, clientPaymentDate: "2026-10-20", billingType: "PIX" }),
+  });
+  const deps: BillingDeps = { sql, masterKey: MASTER, fetch: http.fetch, appUrl: "https://spherum.com.br" };
+  await connectAccount(deps, s.agencyId, s.dona, { provider: "asaas", credentials: { api_key: "$aact_abc" } });
+  const token = (await one<{ webhook_token: string }>(sql, `select webhook_token from payment_accounts where agency_id = $1`, [s.agencyId]))!.webhook_token;
+  const { invoice } = await createInvoice(deps, s.agencyId, s.dona, { client_id: s.client.id, description: "Pix", amount: 500, due_date: "2026-10-30" });
+  const body = { id: `evt_${randomUUID()}`, event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } };
+  const headers = new Headers({ "asaas-access-token": token });
+  await assert.rejects(handleWebhook(deps, "asaas", token, headers, body, new URLSearchParams()));
+  fail = false;
+  const r = await handleWebhook(deps, "asaas", token, headers, body, new URLSearchParams());
+  assert.equal(r.status, "pago");
+  const inv = await one<{ status: string; paid_at: string }>(sql, `select status, paid_at::text from invoices where id = $1`, [invoice.id]);
+  assert.equal(inv!.status, "pago");
+  assert.ok(inv!.paid_at.startsWith("2026-10-20 15:00") || inv!.paid_at.startsWith("2026-10-20T15:00"), `data do Asaas ao meio-dia de Brasília: ${inv!.paid_at}`);
+  assert.deepEqual(await handleWebhook(deps, "asaas", token, headers, body, new URLSearchParams()), { duplicate: true });
+  // Reconectar mantém o token do aviso (as cobranças antigas apontam para ele).
+  await connectAccount(deps, s.agencyId, s.dona, { provider: "asaas", credentials: { api_key: "$aact_outra" } });
+  assert.equal((await one<{ webhook_token: string }>(sql, `select webhook_token from payment_accounts where agency_id = $1`, [s.agencyId]))!.webhook_token, token);
 });
 
 test("papel financeiro na equipe e Itaú: campos obrigatórios e txid do Pix", async () => {

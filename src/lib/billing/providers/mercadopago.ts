@@ -22,6 +22,12 @@ const STATUS: Record<string, ChargeStatus> = {
   charged_back: "estornado",
 };
 
+/** Data no formato que o Mercado Pago aceita (com fuso explícito, não "Z"): 2026-10-24T12:00:00.000-03:00. */
+export function mpDate(d: Date): string {
+  const local = new Date(d.getTime() - 3 * 3_600_000).toISOString();
+  return `${local.slice(0, 23)}-03:00`;
+}
+
 type MpPayment = { id: number; status: string; external_reference?: string | null; transaction_amount: number; date_approved?: string | null; payment_type_id?: string };
 
 function toState(p: MpPayment): ChargeState {
@@ -80,7 +86,7 @@ export const mercadopago: PaymentProvider = {
     // Preferência não se apaga: vence agora, e o link deixa de aceitar pagamento.
     await call(ctx, `/checkout/preferences/${encodeURIComponent(chargeId)}`, {
       method: "PUT",
-      json: { expires: true, expiration_date_to: new Date(Date.now() + 60_000).toISOString() },
+      json: { expires: true, expiration_date_to: mpDate(new Date(Date.now() + 60_000)) },
     });
   },
 

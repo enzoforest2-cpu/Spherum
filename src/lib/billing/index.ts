@@ -5,6 +5,7 @@ import { IntegrationError, type Fetch } from "../integrations/http";
 import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { lastFour, openSecret, sealSecret } from "../xodos/vault";
+import { dayIn } from "../xodos/budget";
 import { asaas } from "./providers/asaas";
 import { itau } from "./providers/itau";
 import { mercadopago } from "./providers/mercadopago";
@@ -22,7 +23,12 @@ export const PROVIDERS: Record<ProviderId, PaymentProvider> = { asaas, mercadopa
 
 export type BillingDeps = { sql: Sql; masterKey: string; fetch: Fetch; appUrl: string; now?: () => Date };
 
-const today = (d: Date) => d.toISOString().slice(0, 10);
+/** Dia de hoje em Brasília: vencimento, mensalidade e régua seguem o calendário daqui, não o UTC. */
+const today = (d: Date) => dayIn("America/Sao_Paulo", d);
+/** Reais → centavos sem o erro clássico de ponto flutuante (1.005 * 100 = 100.4999…). */
+const toCents = (v: number) => Math.round(Number((v * 100).toFixed(4)));
+/** Próximo vencimento da mensalidade: mesmo dia do mês seguinte (o dia já vem limitado a 28). */
+const NEXT_DUE = `(date_trunc('month', next_due::timestamp) + interval '1 month' + (day_of_month - 1) * interval '1 day')::date`;
 const aad = (agencyId: string, accountId: string) => `payment_accounts:${agencyId}:${accountId}`;
 
 // ---------------------------------------------------------------------------
@@ -56,9 +62,9 @@ export async function connectAccount(deps: BillingDeps, agencyId: string, userId
   const ctx: ProviderCtx = { creds, env: input.environment, http: deps.fetch };
   const { label } = await provider.verify(ctx);
 
-  const existing = await one<{ id: string; webhook_id: string | null; ciphertext: string; environment: Environment }>(
+  const existing = await one<{ id: string; webhook_id: string | null; ciphertext: string; environment: Environment; webhook_token: string | null }>(
     deps.sql,
-    `select id, webhook_id, ciphertext, environment from payment_accounts where agency_id = $1 and provider = $2`,
+    `select id, webhook_id, ciphertext, environment, webhook_token from payment_accounts where agency_id = $1 and provider = $2`,
     [agencyId, input.provider],
   );
   if (existing?.webhook_id && provider.removeWebhook) {
@@ -66,7 +72,8 @@ export async function connectAccount(deps: BillingDeps, agencyId: string, userId
     await provider.removeWebhook({ creds: old, env: existing.environment, http: deps.fetch }, existing.webhook_id);
   }
   const id = existing?.id ?? (await one<{ id: string }>(deps.sql, `select gen_random_uuid() as id`))!.id;
-  const token = randomBytes(24).toString("hex");
+  // Reconectar mantém o token: as cobranças já criadas (Mercado Pago) carregam a URL de aviso com ele.
+  const token = existing?.webhook_token ?? randomBytes(24).toString("hex");
   const hookUrl = `${deps.appUrl.replace(/\/+$/, "")}/api/billing/webhooks/${input.provider}/${token}`;
   let webhookId: string | null = null;
   let warning: string | null = null;
@@ -261,14 +268,14 @@ export async function createInvoice(deps: BillingDeps, agencyId: string, userId:
   const input = invoiceInput.parse(raw);
   const client = await one(deps.sql, `select 1 from clients where id = $1 and agency_id = $2 and archived_at is null`, [input.client_id, agencyId]);
   if (!client) throw new XodoError("Cliente não encontrado.", 404);
-  const cents = Math.round(input.amount * 100);
+  const cents = toCents(input.amount);
   let recurrenceId: string | null = null;
   if (input.monthly) {
     const day = Math.min(28, Number(input.due_date.slice(8, 10)));
     recurrenceId = (await one<{ id: string }>(
       deps.sql,
       `insert into invoice_recurrences (agency_id, client_id, description, amount_cents, day_of_month, methods, next_due, created_by)
-       values ($1, $2, $3, $4, $5, $6, ($7::date + interval '1 month')::date, $8) returning id`,
+       values ($1, $2, $3, $4, $5, $6, (date_trunc('month', $7::date::timestamp) + interval '1 month' + ($5::int - 1) * interval '1 day')::date, $8) returning id`,
       [agencyId, input.client_id, input.description, cents, day, input.methods, input.due_date, userId],
     ))!.id;
   }
@@ -281,6 +288,19 @@ export async function createInvoice(deps: BillingDeps, agencyId: string, userId:
   await audit(deps.sql, { agencyId, actor: userId, action: "fatura_criada", targetType: "invoice", targetId: row!.id });
   const warning = await chargeInvoice(deps, agencyId, row!.id);
   return { invoice: await getInvoice(deps.sql, agencyId, row!.id), warning };
+}
+
+/** Cancela a cobrança da fatura no provedor (se houver). Falha vira aviso, não erro: a fatura segue o seu caminho. */
+async function cancelCharge(deps: BillingDeps, invoiceId: string): Promise<string | null> {
+  const acc = await one<{ payment_account_id: string | null; provider_charge_id: string | null }>(deps.sql, `select payment_account_id, provider_charge_id from invoices where id = $1`, [invoiceId]);
+  if (!acc?.payment_account_id || !acc.provider_charge_id) return null;
+  try {
+    const { provider, ctx } = await accountCtx(deps, acc.payment_account_id);
+    await provider.cancel(ctx, acc.provider_charge_id);
+    return null;
+  } catch (error) {
+    return `Não consegui cancelar a cobrança anterior no provedor: ${error instanceof Error ? error.message : error}`.slice(0, 300);
+  }
 }
 
 /** Aplica o status que o provedor confirmou. Fatura paga só volta atrás por estorno. */
@@ -330,13 +350,17 @@ export async function updateInvoice(deps: BillingDeps, agencyId: string, userId:
     await deps.sql.query(`update invoices set status = 'cancelado' where id = $1`, [id]);
   } else if (input.action === "marcar_pago") {
     if (!open) throw new XodoError("Essa fatura não está em aberto.", 409);
+    // A cobrança no provedor é cancelada para o cliente não pagar duas vezes (boleto que já está com ele).
+    warning = await cancelCharge(deps, id);
     await deps.sql.query(
       `update invoices set status = 'pago', paid_manually = true, paid_at = coalesce($2::timestamptz, now()), paid_cents = amount_cents, paid_method = 'manual' where id = $1`,
       [id, input.paid_at ? `${input.paid_at}T12:00:00Z` : null],
     );
   } else if (input.action === "reenviar") {
     if (!open) throw new XodoError("Essa fatura não está em aberto.", 409);
-    warning = await chargeInvoice(deps, agencyId, id);
+    // Cancela a cobrança anterior antes de criar outra: senão as duas ficam pagáveis e a antiga chega como "desconhecida".
+    const cancelWarning = await cancelCharge(deps, id);
+    warning = (await chargeInvoice(deps, agencyId, id)) ?? cancelWarning;
   } else {
     await refreshInvoice(deps, id);
   }
@@ -349,9 +373,9 @@ export async function updateInvoice(deps: BillingDeps, agencyId: string, userId:
  * cria uma sessão nova; os outros usam o link da cobrança.
  */
 export async function payInvoice(deps: BillingDeps, userId: string, invoiceId: string) {
-  const inv = await one<{ agency_id: string; status: string; payment_account_id: string | null; payment_url: string | null; pix_code: string | null; boleto_line: string | null; boleto_url: string | null; can: boolean }>(
+  const inv = await one<{ agency_id: string; status: string; payment_account_id: string | null; provider_charge_id: string | null; payment_url: string | null; pix_code: string | null; boleto_line: string | null; boleto_url: string | null; can: boolean }>(
     deps.sql,
-    `select i.agency_id, i.status, i.payment_account_id, i.payment_url, i.pix_code, i.boleto_line, i.boleto_url,
+    `select i.agency_id, i.status, i.payment_account_id, i.provider_charge_id, i.payment_url, i.pix_code, i.boleto_line, i.boleto_url,
             (exists (select 1 from client_portal_users u where u.client_id = i.client_id and u.user_id = $2)
              or exists (select 1 from agency_members m where m.agency_id = i.agency_id and m.user_id = $2)) as can
        from invoices i where i.id = $1`,
@@ -362,7 +386,11 @@ export async function payInvoice(deps: BillingDeps, userId: string, invoiceId: s
   if (!inv.payment_account_id) throw new XodoError("A agência ainda não ligou o pagamento online. Fale com ela para pagar esta fatura.", 409);
   const { provider, ctx } = await accountCtx(deps, inv.payment_account_id);
   if (provider.payUrl) {
-    const charge = await provider.payUrl(ctx, await chargeInput(deps, invoiceId, inv.payment_account_id), "");
+    const charge = await provider.payUrl(ctx, await chargeInput(deps, invoiceId, inv.payment_account_id), inv.provider_charge_id ?? "");
+    // Guarda a sessão aberta: o próximo clique reaproveita em vez de abrir outra sessão pagável.
+    if (charge.chargeId !== inv.provider_charge_id || charge.paymentUrl !== inv.payment_url) {
+      await deps.sql.query(`update invoices set provider_charge_id = $2, payment_url = $3 where id = $1`, [invoiceId, charge.chargeId, charge.paymentUrl ?? null]);
+    }
     return { url: charge.paymentUrl ?? null, pix_code: null, boleto_line: null, boleto_url: null };
   }
   return { url: inv.payment_url, pix_code: inv.pix_code, boleto_line: inv.boleto_line, boleto_url: inv.boleto_url };
@@ -381,12 +409,9 @@ export async function handleWebhook(deps: BillingDeps, providerId: string, token
   const { provider, ctx } = await accountCtx(deps, acc.id);
   const ev = provider.parseWebhook(body, query);
   if (!ev) return { ignored: true };
-  const fresh = await one(
-    deps.sql,
-    `insert into payment_events (payment_account_id, provider, event_id) values ($1, $2, $3) on conflict (provider, event_id) do nothing returning id`,
-    [acc.id, providerId, ev.eventId],
-  );
-  if (!fresh) return { duplicate: true };
+  // O evento só é dado como tratado no fim: se a consulta ao provedor falhar, a repetição dele ainda vale.
+  const seen = await one(deps.sql, `select 1 from payment_events where provider = $1 and event_id = $2`, [providerId, ev.eventId]);
+  if (seen) return { duplicate: true };
 
   let invoiceId = ev.invoiceId ?? null;
   let state: ChargeState | null = null;
@@ -400,10 +425,15 @@ export async function handleWebhook(deps: BillingDeps, providerId: string, token
     : ev.chargeId
       ? await one<{ id: string; provider_charge_id: string | null }>(deps.sql, `select id, provider_charge_id from invoices where provider = $1 and provider_charge_id = $2 and payment_account_id = $3`, [providerId, ev.chargeId, acc.id])
       : null;
-  if (!inv) return { ignored: true };
-  await deps.sql.query(`update payment_events set invoice_id = $2 where provider = $1 and event_id = $3`, [providerId, inv.id, ev.eventId]);
+  const done = (invoiceId: string | null) =>
+    deps.sql.query(`insert into payment_events (payment_account_id, provider, event_id, invoice_id) values ($1, $2, $3, $4) on conflict (provider, event_id) do nothing`, [acc.id, providerId, ev.eventId, invoiceId]);
+  if (!inv) {
+    await done(null);
+    return { ignored: true };
+  }
   if (!state || state.status !== "pago") state = await provider.status(ctx, inv.provider_charge_id ?? "", inv.id);
   if (state) await applyState(deps.sql, inv.id, state);
+  await done(inv.id);
   return { invoice_id: inv.id, status: state?.status ?? null };
 }
 
@@ -439,7 +469,8 @@ export async function billingSweep(deps: BillingDeps, opts: { deadline?: number 
   );
   for (const r of due) {
     if (!left()) break;
-    const advance = () => deps.sql.query(`update invoice_recurrences set next_due = (next_due + interval '1 month')::date where id = $1`, [r.id]);
+    // Avança o ponteiro só se ele ainda está onde a leitura viu: duas varreduras juntas não pulam um mês.
+    const advance = (q: Sql) => one(q, `update invoice_recurrences set next_due = ${NEXT_DUE} where id = $1 and next_due = $2::date returning id`, [r.id, r.next_due]);
     // O contrato ligado à mensalidade decide: depois da saída não cobra; na pausa, suspende, cobra metade ou mantém.
     const k = await one<{ status: string; notice_end: string | null; pause_from: string | null; pause_to: string | null; pause_billing: string | null }>(
       deps.sql,
@@ -454,16 +485,19 @@ export async function billingSweep(deps: BillingDeps, opts: { deadline?: number 
     const half = paused && k!.pause_billing === "metade";
     const amount = half ? Math.round(r.amount_cents / 2) : r.amount_cents;
     if ((paused && k!.pause_billing === "suspender") || amount < 100) {
-      await advance();
+      await advance(deps.sql);
       continue;
     }
-    const made = await one<{ id: string }>(
-      deps.sql,
-      `insert into invoices (agency_id, client_id, description, amount_cents, due_date, methods, recurrence_id, created_by)
-       values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (recurrence_id, due_date) do nothing returning id`,
-      [r.agency_id, r.client_id, half ? `${r.description} (pausa: 50%)`.slice(0, 200) : r.description, amount, r.next_due, r.methods, r.id, r.created_by],
-    );
-    await advance();
+    // Ponteiro e fatura na mesma transação: quem não conseguiu avançar não cria fatura.
+    const made = await deps.sql.transaction(async (tx) => {
+      if (!(await advance(tx))) return null;
+      return one<{ id: string }>(
+        tx,
+        `insert into invoices (agency_id, client_id, description, amount_cents, due_date, methods, recurrence_id, created_by)
+         values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (recurrence_id, due_date) do nothing returning id`,
+        [r.agency_id, r.client_id, half ? `${r.description} (pausa: 50%)`.slice(0, 200) : r.description, amount, r.next_due, r.methods, r.id, r.created_by],
+      );
+    });
     if (made) {
       generated += 1;
       await chargeInvoice(deps, r.agency_id, made.id);
@@ -483,7 +517,8 @@ export async function billingSweep(deps: BillingDeps, opts: { deadline?: number 
     try {
       await refreshInvoice(deps, inv.id);
     } catch (error) {
-      if (!(error instanceof IntegrationError)) throw error;
+      // Uma fatura com problema (provedor fora, cofre, conta desconectada) não para a conferência das outras.
+      if (!(error instanceof IntegrationError)) console.error("[cobranca] conferência falhou", inv.id, error);
     }
     // Marca que conferiu, para a fila andar.
     await deps.sql.query(`update invoices set updated_at = now() where id = $1`, [inv.id]);
@@ -504,9 +539,22 @@ export async function listRecurrences(sql: Sql, agencyId: string) {
   );
 }
 
-export async function setRecurrenceActive(sql: Sql, agencyId: string, id: string, active: boolean) {
-  const row = await one(sql, `update invoice_recurrences set active = $3 where id = $1 and agency_id = $2 returning id`, [id, agencyId, active]);
+export async function setRecurrenceActive(sql: Sql, agencyId: string, id: string, active: boolean, now = new Date()) {
+  const row = await one<{ next_due: string; day_of_month: number }>(sql, `update invoice_recurrences set active = $3 where id = $1 and agency_id = $2 returning next_due::text, day_of_month`, [id, agencyId, active]);
   if (!row) throw new XodoError("Mensalidade não encontrada.", 404);
+  // Religar depois de meses parada não gera as faturas do período parado: o ponteiro pula para o próximo vencimento.
+  if (active && row.next_due < today(now)) {
+    await sql.query(`update invoice_recurrences set next_due = $2::date where id = $1`, [id, nextDueFrom(today(now), row.day_of_month)]);
+  }
+}
+
+/** Primeiro vencimento no dia do mês a partir de uma data (ela mesma, se cair no dia). */
+export function nextDueFrom(fromDay: string, dayOfMonth: number): string {
+  const [y, m] = fromDay.split("-").map(Number);
+  const at = (yy: number, mm: number) => `${yy}-${String(mm).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+  const same = at(y, m);
+  if (same >= fromDay) return same;
+  return m === 12 ? at(y + 1, 1) : at(y, m + 1);
 }
 
 export function billingDepsFromEnv(sql: Sql, masterKey: string): BillingDeps {

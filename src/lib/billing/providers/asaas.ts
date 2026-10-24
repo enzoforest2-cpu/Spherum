@@ -81,7 +81,9 @@ export const asaas: PaymentProvider = {
     const status = STATUS[p.status] ?? "pendente";
     if (status !== "pago") return { status };
     const method = p.billingType === "PIX" ? "pix" : p.billingType === "BOLETO" ? "boleto" : p.billingType === "CREDIT_CARD" ? "cartao" : p.billingType?.toLowerCase();
-    return { status, paidCents: Math.round(p.value * 100), paidAt: p.clientPaymentDate ?? p.paymentDate ?? p.confirmedDate, method };
+    const when = p.clientPaymentDate ?? p.paymentDate ?? p.confirmedDate;
+    // O Asaas manda só a data; ao meio-dia de Brasília ela fica no dia certo em qualquer tela.
+    return { status, paidCents: Math.round(p.value * 100), paidAt: when && /^\d{4}-\d{2}-\d{2}$/.test(when) ? `${when}T12:00:00-03:00` : when, method };
   },
 
   async cancel(ctx, chargeId) {

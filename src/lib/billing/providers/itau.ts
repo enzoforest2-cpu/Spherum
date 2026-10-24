@@ -45,11 +45,20 @@ function fail(r: Resp): never {
   throw new IntegrationError(String(b?.detail ?? b?.title ?? b?.error_description ?? b?.message ?? `HTTP ${r.status}`).slice(0, 300), r.status >= 400 && r.status < 500 ? r.status : 502, r.status === 401);
 }
 
+/** Tokens por credencial, enquanto valem: o STS do Itaú limita a emissão e cada cobrança conferida pedia um novo. */
+const TOKENS = new Map<string, { token: string; until: number }>();
+
 async function token(ctx: ProviderCtx): Promise<string> {
+  const key = `${ctx.creds.token_url || DEFAULT_TOKEN}|${ctx.creds.client_id}|${ctx.creds.client_secret.slice(-6)}`;
+  const cached = TOKENS.get(key);
+  if (cached && cached.until > Date.now()) return cached.token;
   const body = new URLSearchParams({ grant_type: "client_credentials", client_id: ctx.creds.client_id, client_secret: ctx.creds.client_secret }).toString();
   const r = await mtls(ctx, "POST", ctx.creds.token_url || DEFAULT_TOKEN, body, { "content-type": "application/x-www-form-urlencoded" });
-  const t = (r.body as { access_token?: string }).access_token;
+  const b = r.body as { access_token?: string; expires_in?: number | string };
+  const t = b.access_token;
   if (r.status !== 200 || !t) fail(r);
+  const ttl = Math.max(30, Math.min(3600, Number(b.expires_in) || 300));
+  TOKENS.set(key, { token: t, until: Date.now() + (ttl - 30) * 1000 });
   return t;
 }
 

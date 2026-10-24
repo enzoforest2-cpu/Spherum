@@ -1,4 +1,5 @@
 import { one, parseJson, type Sql } from "../../xodos/db";
+import { dayIn } from "../../xodos/budget";
 import { usdBrl } from "../../xodos/fx";
 import { APPS, missingScopes, type AppId } from "../apps";
 import { IntegrationError } from "../http";
@@ -22,6 +23,9 @@ export const PLATFORM_APP: Record<AccountPlatform, AppId> = { meta: "meta_ads", 
 const RESYNC_DAYS = 3;
 const BACKFILL_DAYS = 30;
 const SYNC_EVERY_MS = 6 * 60 * 60 * 1000;
+/** Depois de uma falha, espera antes de tentar de novo (em vez de a cada ciclo do cron). */
+const RETRY_AFTER_MS = 60 * 60 * 1000;
+const RETRY_AFTER_REAUTH_MS = 24 * 60 * 60 * 1000;
 
 export type AccountRow = {
   id: string;
@@ -36,7 +40,8 @@ export type AccountRow = {
   last_synced_at: Date | string | null;
 };
 
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+/** Dia em Brasília: a janela de sincronização segue o calendário das agências, não o UTC. */
+const isoDay = (d: Date) => dayIn("America/Sao_Paulo", d);
 
 /** Conexão ativa mais recente da agência com as permissões do app. */
 export async function connectionForApp(sql: Sql, agencyId: string, app: AppId): Promise<string> {
@@ -108,11 +113,12 @@ export async function unlinkAccount(sql: Sql, agencyId: string, accountId: strin
 }
 
 /** Converte para reais: contas em BRL ficam como estão; em USD usam a cotação do dia. */
-async function toBrl(sql: Sql, currency: string | null, day: string, value: number, cache: Map<string, number | null>) {
+async function toBrl(sql: Sql, currency: string | null, day: string, value: number, cache: Map<string, number | null>, missing?: Set<string>) {
   if (!currency || currency === "BRL") return value;
   if (currency !== "USD") return value;
   if (!cache.has(day)) cache.set(day, await usdBrl(sql, day));
   const rate = cache.get(day);
+  if (!rate) missing?.add(day);
   return rate ? value * rate : value;
 }
 
@@ -121,6 +127,7 @@ const cents = (v: number) => Math.round(v * 100);
 export async function syncAccount(deps: IntegrationDeps, row: AccountRow, since: string, until: string): Promise<number> {
   const { sql } = deps;
   if (!row.connection_id) throw new IntegrationError("Conta sem conexão. Ligue a conta de novo.", 409);
+  const fxMissing = new Set<string>();
   try {
     const a = await platformAccess(deps, row.agency_id, row.connection_id);
     let count = 0;
@@ -149,24 +156,39 @@ export async function syncAccount(deps: IntegrationDeps, row: AccountRow, since:
                  impressions = excluded.impressions, clicks = excluded.clicks, leads = excluded.leads,
                  conversions = excluded.conversions, revenue_cents = excluded.revenue_cents`,
           [row.agency_id, row.client_id, row.platform, row.external_id, r.campaignId, r.campaignName, r.day,
-            cents(await toBrl(sql, row.currency, r.day, r.spend, fx)), r.impressions, r.clicks, r.leads, r.conversions,
-            cents(await toBrl(sql, row.currency, r.day, r.revenue, fx))],
+            cents(await toBrl(sql, row.currency, r.day, r.spend, fx, fxMissing)), r.impressions, r.clicks, r.leads, r.conversions,
+            cents(await toBrl(sql, row.currency, r.day, r.revenue, fx, fxMissing))],
         );
         count += 1;
       }
     }
-    const note = row.currency && !["BRL", "USD"].includes(row.currency) ? `Valores na moeda da conta (${row.currency}), sem conversão.` : null;
-    await sql.query(`update client_ad_accounts set last_synced_at = $2::timestamptz, last_sync_error = $3 where id = $1`, [
+    const note = row.currency && !["BRL", "USD"].includes(row.currency)
+      ? `Valores na moeda da conta (${row.currency}), sem conversão.`
+      : row.currency === "USD" && fxMissing.size ? "Sem cotação do dólar para alguns dias: valores em USD guardados sem conversão." : null;
+    const at = deps.now ? deps.now() : new Date();
+    await sql.query(`update client_ad_accounts set last_synced_at = $2::timestamptz, next_sync_at = $3::timestamptz, last_sync_error = $4 where id = $1`, [
       row.id,
-      (deps.now ? deps.now() : new Date()).toISOString(),
+      at.toISOString(),
+      new Date(at.getTime() + SYNC_EVERY_MS).toISOString(),
       note,
     ]);
     return count;
   } catch (error) {
-    await sql.query(`update client_ad_accounts set last_sync_error = $2 where id = $1`, [
+    // Falhou: espera uma hora (um dia, se o login foi recusado) para não ocupar o cron a cada 15 minutos.
+    const reauth = error instanceof IntegrationError && error.reauth;
+    const at = deps.now ? deps.now() : new Date();
+    await sql.query(`update client_ad_accounts set last_sync_error = $2, next_sync_at = $3::timestamptz where id = $1`, [
       row.id,
       String(error instanceof Error ? error.message : error).slice(0, 500),
+      new Date(at.getTime() + (reauth ? RETRY_AFTER_REAUTH_MS : RETRY_AFTER_MS)).toISOString(),
     ]);
+    // Login recusado pela plataforma: a conexão vence agora, e a tela pede para reconectar.
+    if (reauth) {
+      await sql.query(`update integration_connections set status = 'expired', last_error = $2, updated_at = now() where id = $1 and status = 'active'`, [
+        row.connection_id,
+        String(error instanceof Error ? error.message : error).slice(0, 300),
+      ]);
+    }
     throw error;
   }
 }
@@ -177,14 +199,14 @@ export function syncWindow(row: Pick<AccountRow, "last_synced_at">, now: Date) {
   return { since: isoDay(new Date(now.getTime() - (days - 1) * 86_400_000)), until: isoDay(now) };
 }
 
-/** Chamado pelo cron: sincroniza as contas que não sincronizam há mais de 6 horas. */
+/** Chamado pelo cron: sincroniza as contas cuja próxima sincronização chegou (6 h depois da última; 1 h depois de uma falha). */
 export async function syncDueAccounts(deps: IntegrationDeps, limit = 20) {
   const now = deps.now ? deps.now() : new Date();
   const due = await deps.sql.query<AccountRow>(
     `select * from client_ad_accounts
-      where connection_id is not null and (last_synced_at is null or last_synced_at < $1::timestamptz)
-      order by last_synced_at nulls first limit $2`,
-    [new Date(now.getTime() - SYNC_EVERY_MS).toISOString(), limit],
+      where connection_id is not null and (next_sync_at is null or next_sync_at <= $1::timestamptz)
+      order by next_sync_at nulls first, last_synced_at nulls first limit $2`,
+    [now.toISOString(), limit],
   );
   const results: { account: string; rows?: number; error?: string }[] = [];
   for (const row of due) {
