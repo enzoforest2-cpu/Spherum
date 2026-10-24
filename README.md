@@ -55,5 +55,5 @@ Execução por API com a chave da própria agência, em qualquer um dos mais de 
 Guias: [`docs/XODOS.md`](docs/XODOS.md), [`docs/INTEGRACOES.md`](docs/INTEGRACOES.md), [`docs/CANAIS.md`](docs/CANAIS.md), [`docs/COMPUTADOR.md`](docs/COMPUTADOR.md), [`docs/COBRANCA.md`](docs/COBRANCA.md), [`docs/COLABORACAO.md`](docs/COLABORACAO.md), [`docs/PROJETOS.md`](docs/PROJETOS.md), [`docs/CONTRATOS.md`](docs/CONTRATOS.md), [`docs/CRM.md`](docs/CRM.md), [`docs/ATAS.md`](docs/ATAS.md), [`docs/CHAMADOS.md`](docs/CHAMADOS.md), [`docs/PROPOSTAS.md`](docs/PROPOSTAS.md), [`docs/FORMULARIOS.md`](docs/FORMULARIOS.md), [`docs/RISCO.md`](docs/RISCO.md), [`docs/DRE.md`](docs/DRE.md), [`docs/RENTABILIDADE.md`](docs/RENTABILIDADE.md), [`docs/CHAT.md`](docs/CHAT.md), [`docs/PROSPECCAO.md`](docs/PROSPECCAO.md), [`docs/AGENDAMENTOS.md`](docs/AGENDAMENTOS.md), [`docs/CONTEUDO.md`](docs/CONTEUDO.md), [`docs/RETORNO.md`](docs/RETORNO.md), [`docs/ACADEMY.md`](docs/ACADEMY.md), [`docs/CONQUISTAS.md`](docs/CONQUISTAS.md), [`docs/AUTOMACOES.md`](docs/AUTOMACOES.md), [`docs/NOTAS.md`](docs/NOTAS.md), [`docs/BUSCA-IA.md`](docs/BUSCA-IA.md), [`docs/ESTUDIO.md`](docs/ESTUDIO.md) e [`docs/APP.md`](docs/APP.md).
 
 ```bash
-npm test   # 435 testes com PGlite, sem precisar de banco
+npm test   # 446 testes com PGlite, sem precisar de banco
 ```
