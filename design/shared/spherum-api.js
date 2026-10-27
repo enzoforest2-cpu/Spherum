@@ -57,6 +57,12 @@ const SP = {
     if (!r.ok) { const e = new Error(j.error || 'Não deu certo agora. Tente de novo em instantes.'); e.status = r.status; e.body = j; throw e; }
     return j;
   },
+  // Os portais só abrem com login: sem sessão, vai para a tela de entrar do site.
+  requireLogin() {
+    if (SP.get()) return true;
+    try { location.replace(location.origin + '/?entrar=1'); } catch (e) {}
+    return false;
+  },
   logout() {
     const s = SP.get();
     SP.save(null);

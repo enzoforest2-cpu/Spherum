@@ -664,7 +664,7 @@ html{scroll-behavior:smooth}
           <div style="font-size:13px;font-weight:600;color:#465FFF;margin-bottom:10px">Portal do cliente</div>
           <h2 style="margin:0;font-size:clamp(30px,3.6vw,40px);line-height:1.1;font-weight:600;letter-spacing:-0.03em;text-wrap:balance">Seu cliente finalmente entende o trabalho que você está fazendo.</h2>
           <p style="margin:16px 0 0;font-size:17px;color:#475467;text-wrap:pretty">O que foi feito, o que aconteceu e o que vem a seguir — com a sua marca, sem expor CRM, tarefas internas ou margem. Comparações honestas: melhorou, piorou ou estável.</p>
-          <a href="javascript:window.__spOpen('cliente')" style="display:inline-flex;margin-top:20px;font-weight:500">Ver o portal de exemplo →</a>
+          <a href="javascript:window.__spSignup()" style="display:inline-flex;margin-top:20px;font-weight:500">Testar grátis por 14 dias →</a>
         </div>
         <div style="border:1px solid #E4E7EC;border-radius:14px;padding:22px;background:#F7F8FA;display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:6px;background:#465FFF;color:#fff;font-size:9px;font-weight:600;display:grid;place-items:center">MP</span><span style="font-size:13px;font-weight:600">Como estão seus resultados</span></div>
@@ -964,14 +964,6 @@ html{scroll-behavior:smooth}
             <sc-if value="{{ hasInfo }}"><div role="status" style="font-size:13px;color:#067647;padding:10px 12px;border-radius:8px;background:rgba(18,183,106,0.08)">{{ info }}</div></sc-if>
             <button sc-camel-on-click="{{ doLogin }}" style="height:46px;border:none;border-radius:10px;background:#465FFF;color:#fff;font-weight:600;font-size:15px;margin-top:4px;opacity:{{ btnOp }}" style-hover="background:#3A51E6">{{ loginBtn }}</button>
             <sc-if value="{{ hasInvite }}"><button sc-camel-on-click="{{ toggleInviteNew }}" style="border:none;background:transparent;padding:0;color:#465FFF;font-weight:500;font-size:13.5px">{{ inviteToggleL }}</button></sc-if>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:center;gap:12px;font-size:12.5px;color:#98A2B3"><span style="flex:1;height:1px;background:#E4E7EC"></span>ou explore uma demonstração<span style="flex:1;height:1px;background:#E4E7EC"></span></div>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-              <sc-for list="{{ demos }}" as="d"><a href="{{ d.href }}" title="{{ d.e }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border:1px solid #E4E7EC;border-radius:12px;background:#fff;color:#101828;text-decoration:none;font-size:13px;font-weight:500;text-align:center" style-hover="border-color:#465FFF;color:#465FFF;text-decoration:none"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:#465FFF">{{ d.i }}</span>{{ d.l }}</a></sc-for>
-            </div>
-            <div style="text-align:center;font-size:12.5px;color:#98A2B3">Senha das demonstrações: <span style="font-family:'Geist Mono',monospace;color:#667085">demo123</span></div>
           </div>
         </div>
       </div>
@@ -1275,6 +1267,12 @@ const SP = {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { const e = new Error(j.error || 'Não deu certo agora. Tente de novo em instantes.'); e.status = r.status; e.body = j; throw e; }
     return j;
+  },
+  // Os portais só abrem com login: sem sessão, vai para a tela de entrar do site.
+  requireLogin() {
+    if (SP.get()) return true;
+    try { location.replace(location.origin + '/?entrar=1'); } catch (e) {}
+    return false;
   },
   logout() {
     const s = SP.get();
@@ -1696,7 +1694,7 @@ class Component extends DCLogic {
   }
   state = { adPlan: 0, adSel: {}, view: 'landing', annual: false, faq: -1, email: '', pass: '', err: '', step: 1, mode: null, ans: {}, cf: {}, cMsg: '', cErr: false, sent: false, wide: true, videoOpen: false, heroTab: 0, heroT: 0, heroManual: false, su: {}, suErr: {}, suStep: 1, suAlt: false, legal: null, legalFrom: null };
   legalRef = React.createRef();
-  componentDidMount() { window.__spOpen = k => { try { localStorage.setItem('spherum.mode', 'demo'); } catch (e) {} this.setState({ portal: k, portalReal: false }); }; this.pm = e => { const d = String(e.data || ''); if (d === 'spherum:close') { if (this.state.portalReal) SP.logout(); this.setState({ portal: null, portalReal: false }); } else if (d.indexOf('spherum:open:') === 0) this.setState({ portal: d.slice(13) }); }; window.addEventListener('message', this.pm); this.ht = setInterval(() => { if (this.state.view !== 'landing' || this.state.videoOpen || this.state.heroManual || document.hidden) return; this.setState(s => { const t = s.heroT + 200; return t >= 7000 ? { heroT: 0, heroTab: (s.heroTab + 1) % 6 } : { heroT: t }; }); }, 200); if (this.props.startView) this.setState({ view: this.props.startView }); this.rs = () => { const w = window.innerWidth >= 1000, x = window.innerWidth >= 1420; if (w !== this.state.wide || x !== this.state.xw) this.setState({ wide: w, xw: x }); }; this.rs(); window.addEventListener('resize', this.rs); this.kh = e => { if (e.key === 'Escape') { if (this.state.legal) this.setState({ legal: null, legalFrom: null }); else if (this.state.videoOpen) this.setState({ videoOpen: false }); } }; window.addEventListener('keydown', this.kh); this.spBoot(); }
+  componentDidMount() { window.__spSignup = () => this.go('signup'); this.pm = e => { const d = String(e.data || ''); if (d === 'spherum:close') { SP.logout(); this.setState({ portal: null }); } else if (d.indexOf('spherum:open:') === 0) this.setState({ portal: d.slice(13) }); }; window.addEventListener('message', this.pm); this.ht = setInterval(() => { if (this.state.view !== 'landing' || this.state.videoOpen || this.state.heroManual || document.hidden) return; this.setState(s => { const t = s.heroT + 200; return t >= 7000 ? { heroT: 0, heroTab: (s.heroTab + 1) % 6 } : { heroT: t }; }); }, 200); if (this.props.startView) this.setState({ view: this.props.startView }); this.rs = () => { const w = window.innerWidth >= 1000, x = window.innerWidth >= 1420; if (w !== this.state.wide || x !== this.state.xw) this.setState({ wide: w, xw: x }); }; this.rs(); window.addEventListener('resize', this.rs); this.kh = e => { if (e.key === 'Escape') { if (this.state.legal) this.setState({ legal: null, legalFrom: null }); else if (this.state.videoOpen) this.setState({ videoOpen: false }); } }; window.addEventListener('keydown', this.kh); this.spBoot(); }
   spBoot() {
     SP.api('/api/site/demo').then(d => { window.__spDemo = d; this.forceUpdate(); }).catch(() => {});
     const q = new URLSearchParams(location.search), invite = q.get('convite'), kind = SP.fromLink();
@@ -1717,8 +1715,8 @@ class Component extends DCLogic {
         try { await SP.api('/api/agencies', { method: 'POST' }); me = await SP.api('/api/me'); }
         catch (x) { if (x.status === 400) { const s = SP.get(); this.setState({ busy: false, view: 'signup', suStep: 2, su: Object.assign({}, this.state.su, { email: s && s.user ? s.user.email : '' }), info: '' }); return; } throw x; }
       }
-      try { localStorage.setItem('spherum.mode', 'real'); localStorage.setItem('spherum.agency', me.agencies.length ? me.agencies[0].agency_id : ''); localStorage.setItem('spherum.client', (me.portals || []).length ? me.portals[0].client_id : ''); } catch (e) {}
-      this.setState({ busy: false, portal: me.home, portalReal: true, info: '' });
+      try { localStorage.setItem('spherum.agency', me.agencies.length ? me.agencies[0].agency_id : ''); localStorage.setItem('spherum.client', (me.portals || []).length ? me.portals[0].client_id : ''); } catch (e) {}
+      this.setState({ busy: false, portal: me.home, info: '' });
     } catch (x) { this.setState({ busy: false, err: x.message }); }
   }
   componentDidUpdate() { if (!this.sc) { this.sc = () => { const v = window.scrollY > 8, p = window.scrollY > 560; if (v !== !!this.state.scrolled || p !== !!this.state.fabPast) this.setState({ scrolled: v, fabPast: p }); }; window.addEventListener('scroll', this.sc, { passive: true }); this.sc(); } }
@@ -1770,11 +1768,11 @@ class Component extends DCLogic {
       showCat: !!fq, cat: (FC.find(c => c[0] === x[0]) || [])[1] || '', hasLink: !!x[3], linkL: x[3] ? x[3][0] : '', go: x[3] ? fLink(x[3][1]) : null, toggle: () => this.setState({ faq: op ? -1 : i }) }; });
     const faqUi = { q: S.faqQ || '', hasQ: !!fq, empty: !fList.length, bd: fq ? 'rgba(70,95,255,.55)' : 'rgba(16,24,40,.08)', onQ: e => this.setState({ faqQ: e.target.value }), clear: () => this.setState({ faqQ: '' }),
       cats: FC.map(c => { const on = fcat === c[0]; return { l: c[1], n: String(c[0] === 'all' ? FAQ.length : FAQ.filter(x => x[0] === c[0]).length), sel: on ? 'true' : 'false', bg: on ? '#101828' : '#FFFFFF', c: on ? '#FFFFFF' : '#344054', sh: on ? 'none' : '0 0 0 1px rgba(16,24,40,.08)', pick: () => this.setState({ faqCat: c[0], faqQ: '', faq: FAQ.findIndex(x => c[0] === 'all' || x[0] === c[0]) }) }; }) };
-    const doLogin = () => { const e = S.email.trim().toLowerCase(); const map = { 'agencia@demo.com': '__sp:agencia', 'cliente@demo.com': '__sp:cliente', 'admin@demo.com': '__sp:admin' };
+    const doLogin = () => { const e = S.email.trim().toLowerCase();
       if (S.busy) return;
       if (S.reset) { if ((S.pass || '').length < 8) return this.setState({ err: 'A nova senha precisa de pelo menos 8 caracteres.' }); this.setState({ busy: true, err: '' }); SP.setPassword(S.pass).then(() => { this.setState({ busy: false, reset: false, pass: '', info: 'Senha alterada.' }); this.spAfterLogin(); }, x => this.setState({ busy: false, err: x.message })); return; }
       if (!e && !S.pass && SP.get()) { this.spAfterLogin(); return; }
-      if (!e || !S.pass) return this.setState({ err: 'Informe e-mail e senha.' }); if (map[e] && S.pass === 'demo123') { window.__spOpen(map[e].replace('__sp:', '')); return; }
+      if (!e || !S.pass) return this.setState({ err: 'Informe e-mail e senha.' });
       this.setState({ busy: true, err: '', info: '' });
       const go = S.inviteNew
         ? ((S.lname || '').trim().length < 2 ? Promise.reject(new Error('Informe o seu nome.')) : S.pass.length < 8 ? Promise.reject(new Error('A senha precisa de pelo menos 8 caracteres.'))
@@ -2021,7 +2019,7 @@ class Component extends DCLogic {
       toggle: () => this.setState(s => ({ hdrOpen: !s.hdrOpen })), video: () => this.setState({ hdrOpen: false, videoOpen: true }), top: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
     const R = window.__resources || {};
     return {
-      portalOpen: !!S.portal, portalSrc: S.portal ? (S.portalReal ? '/' + S.portal : (R[{ agencia: 'pAgencia', cliente: 'pCliente', admin: 'pAdmin' }[S.portal]] || '')) : '', portalKey: S.portal || '',
+      portalOpen: !!S.portal, portalSrc: S.portal ? '/' + S.portal : '', portalKey: S.portal || '',
       videoSrc: R.demoVideo || 'Spherum Video.html',
       hdr, legal, openTerms: openLegal('terms'), openPriv: openLegal('priv'), openLgpd: openLegal('priv', null, 10), openCookies: openLegal('priv', null, 8), openTermsSu: openLegal('terms', 'signup'), openPrivSu: openLegal('priv', 'signup'),
       su, showNav: S.wide !== false, videoOpen: S.videoOpen, openVideo: () => this.setState({ videoOpen: true }), closeVideo: () => this.setState({ videoOpen: false }), stop: e => e.stopPropagation(), is, goLogin: () => this.go('login'), goSignup: () => this.go('signup'), goLanding: () => this.go('landing'), goContact: () => this.go('contact'),
@@ -2081,7 +2079,6 @@ class Component extends DCLogic {
       loginBtn: S.busy ? 'Entrando…' : S.reset ? 'Salvar nova senha' : S.inviteNew ? 'Criar conta e aceitar' : inv ? 'Entrar e aceitar' : 'Entrar', btnOp: S.busy ? 0.7 : 1,
       hasInvite: !!inv && !S.reset, showName: !!S.inviteNew && !S.reset, lname: S.lname || '', onLName: e => this.setState({ lname: e.target.value, err: '' }),
       inviteToggleL: S.inviteNew ? 'Já tenho conta: entrar' : 'Ainda não tenho conta: criar agora', toggleInviteNew: () => this.setState(s => ({ inviteNew: !s.inviteNew, err: '' })),
-      demos: [['domain', 'Agência', 'agencia@demo.com', '__sp:agencia'], ['person', 'Cliente', 'cliente@demo.com', '__sp:cliente'], ['admin_panel_settings', 'Administração', 'admin@demo.com', '__sp:admin']].map(d => ({ i: d[0], l: d[1], e: d[2] + ' · demo123', href: 'javascript:window.__spOpen(\'' + d[3].replace('__sp:', '') + '\')' })),
       stepN: S.step, stepBars: [1, 2, 3].map(i => ({ bg: i <= S.step ? '#465FFF' : '#E4E7EC' })), s1: S.step === 1, s2: S.step === 2, s3: S.step === 3, notLast: S.step < 3,
       modes, qs, nextBg: canNext ? '#465FFF' : '#A4B0FF', next: () => canNext && this.setState(s => ({ step: s.step + 1 })), back: () => S.step === 1 ? this.go('landing') : this.setState(s => ({ step: s.step - 1 })), recPlan,
       guide: [['Cadastre seu primeiro cliente', '1 min'], ['Conecte uma conta de anúncios', 'opcional'], ['Configure um objetivo', '1 min'], ['Crie seu primeiro projeto', '2 min'], ['Configure seu financeiro', '2 min'], ['Convide sua equipe', 'opcional'], ['Envie o portal para o cliente', '1 min']].map((g, i) => ({ n: i + 1, t: g[0], m: g[1] })),
