@@ -24,6 +24,7 @@ import { pausedContract } from "../core/contracts";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
+import { assertAgencyActive, requireFeature } from "../core/platform";
 
 /**
  * O executor dos Xodós: um laço de passos com o modelo, no estilo do Rakazo e do OpenDots.
@@ -239,6 +240,9 @@ export async function startRun(deps: EngineDeps, input: StartInput): Promise<str
   const { sql } = deps;
   const xodo = await loadXodo(sql, input.xodoId, input.agencyId);
   if (xodo.status !== "active") throw new XodoError(`${xodo.name} está pausado.`, 409);
+  // Agência suspensa ou xodós desligados pela equipe do Spherum: nada começa (vale também para rotinas e canais).
+  await assertAgencyActive(sql, input.agencyId);
+  await requireFeature(sql, "xodo");
   const text = input.text.trim();
   if (!text || text.length > 8000) throw new XodoError("Mensagem vazia ou longa demais (máximo de 8000 caracteres).");
 

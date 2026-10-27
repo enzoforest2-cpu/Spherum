@@ -3,6 +3,7 @@ import { z } from "zod";
 import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { createDeal } from "./crm";
+import { platformFlags, requireFeature } from "./platform";
 
 /**
  * Prospecção: listas próprias da agência (planilha ou números colados) e uma cadência pelo
@@ -136,6 +137,7 @@ export const importInput = z.object({
 });
 
 export async function importLeads(sql: Sql, agencyId: string, userId: string, raw: unknown, dryRun = false) {
+  await requireFeature(sql, "prospect");
   const input = importInput.parse(raw);
   const rows = input.rows ?? (input.text ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     const [phone, name, company] = l.split(/[,;\t]/).map((x) => x.trim());
@@ -308,7 +310,9 @@ const pick = (id: string, n: number) => parseInt(createHash("sha256").update(id)
 export async function prospectSweep(sql: Sql, senderFor: SenderFor, now = new Date(), opts: { deadline?: number } = {}) {
   const out = { sent: 0, failed: 0, agencies: 0 };
   if (!inWindow(now)) return out;
-  const agencies = await sql.query<{ id: string }>(`select id from agencies where prospect_config->>'running' = 'true'`);
+  // Desligada pela equipe do Spherum: nenhuma cadência anda. Agência suspensa também não envia.
+  if (!(await platformFlags(sql)).prospect) return out;
+  const agencies = await sql.query<{ id: string }>(`select id from agencies where prospect_config->>'running' = 'true' and suspended_at is null`);
   for (const a of agencies) {
     if (opts.deadline && Date.now() > opts.deadline) break;
     const cfg = await getConfig(sql, a.id);

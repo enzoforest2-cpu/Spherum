@@ -5,6 +5,7 @@ import { clientCollab } from "./collab";
 import { openNps } from "./risk";
 import { clientTickets } from "./tickets";
 import { clientAivis } from "./aivis";
+import { assertAgencyActive } from "./platform";
 import { dayIn } from "../xodos/budget";
 import { listSharedDocuments } from "./documents";
 
@@ -33,6 +34,7 @@ export async function clientAccess(sql: Sql, userId: string, clientId: string) {
     [clientId, userId],
   );
   if (!row || (!row.portal && !row.member)) throw new XodoError("Não encontrado", 404);
+  await assertAgencyActive(sql, row.agency_id);
   return { agencyId: row.agency_id, as: row.portal ? ("cliente" as const) : ("agencia" as const) };
 }
 

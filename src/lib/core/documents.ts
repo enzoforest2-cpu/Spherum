@@ -155,7 +155,7 @@ export async function downloadUrl(sql: Sql, store: ComputerStorage | null, userI
     `select d.storage_path, d.name, d.shared,
             exists (select 1 from agency_members m where m.agency_id = d.agency_id and m.user_id = $2) as member,
             exists (select 1 from client_portal_users u where u.client_id = d.client_id and u.user_id = $2) as client_user
-       from documents d where d.id = $1 and d.status = 'ready'`,
+       from documents d join agencies a on a.id = d.agency_id where d.id = $1 and d.status = 'ready' and a.suspended_at is null`,
     [id, userId],
   );
   if (!doc || !(doc.member || (doc.shared && doc.client_user))) throw new XodoError("Documento não encontrado.", 404);

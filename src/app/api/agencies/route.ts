@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAgency, updateProfile } from "@/lib/core/agencies";
 import { one, serverSql } from "@/lib/xodos/db";
 import { fail, requireAuth } from "@/lib/xodos/http";
+import { requireFeature } from "@/lib/core/platform";
 
 /**
  * POST /api/agencies  { name, website?, phone?, state?, plan?, onboarding? }  cria a agência com
@@ -10,6 +11,8 @@ import { fail, requireAuth } from "@/lib/xodos/http";
 export async function POST(request: Request) {
   try {
     const user = await requireAuth(request);
+    // Cadastros pausados pela equipe do Spherum.
+    await requireFeature(await serverSql(), "signup");
     const text = await request.text();
     const body = text ? JSON.parse(text) : (user.meta.signup ?? {});
     const sql = await serverSql();

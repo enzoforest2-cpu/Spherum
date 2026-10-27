@@ -2,6 +2,7 @@ import { z } from "zod";
 import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { createPost } from "./content";
+import { requireFeature } from "./platform";
 
 /**
  * Estúdio: criativos com IA na conta da própria agência (fal.ai ou Replicate). O pedido da equipe
@@ -107,6 +108,7 @@ export const generateInput = z.object({ text: z.string().trim().min(3).max(1000)
 export async function generate(deps: StudioDeps, agencyId: string, userId: string, clientId: string, raw: unknown, now = new Date()) {
   const { sql } = deps;
   const i = generateInput.parse(raw);
+  await requireFeature(sql, "studio");
   const client = await clientOf(sql, agencyId, clientId);
   const cfg = await getConfig(sql, agencyId);
   if (!cfg) throw new XodoError("Conecte a fal.ai ou o Replicate no Estúdio para gerar imagens.", 400);
@@ -133,6 +135,7 @@ export async function generate(deps: StudioDeps, agencyId: string, userId: strin
 /** Anima uma imagem gerada (vídeo curto). Fica na fila do provedor; o cron busca o resultado. */
 export async function animate(deps: StudioDeps, agencyId: string, userId: string, clientId: string, documentId: string, text: string, now = new Date()) {
   const { sql } = deps;
+  await requireFeature(sql, "studio");
   await clientOf(sql, agencyId, clientId);
   const cfg = await getConfig(sql, agencyId);
   if (!cfg || !cfg.video_model) throw new XodoError("Vídeo precisa da fal.ai com um modelo de vídeo.", 400);

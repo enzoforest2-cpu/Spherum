@@ -34,13 +34,15 @@ export async function requireAuth(request: Request): Promise<AuthUser> {
 }
 
 export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[]): Promise<Role> {
-  const member = await one<{ role: Role }>(
+  const member = await one<{ role: Role; suspended: boolean }>(
     sql,
-    `select role from agency_members where agency_id = $1 and user_id = $2`,
+    `select m.role, a.suspended_at is not null as suspended from agency_members m join agencies a on a.id = m.agency_id where m.agency_id = $1 and m.user_id = $2`,
     [agencyId, userId],
   );
   // Mesmo erro para "não existe" e "não é sua", para não revelar outras agências.
   if (!member) throw new XodoError("Não encontrado", 404);
+  // Suspensa pela equipe do Spherum: ninguém da agência age até a reativação (os dados ficam guardados).
+  if (member.suspended) throw new XodoError("Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).", 403);
   if (!allowed.includes(member.role)) throw new XodoError("Seu papel na agência não permite esta ação.", 403);
   return member.role;
 }
