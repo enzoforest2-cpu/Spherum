@@ -216,7 +216,8 @@ export async function publishPost(deps: ContentDeps, agencyId: string, id: strin
 /** Cron: publica o que está na fila e já passou da hora. */
 export async function publishSweep(deps: ContentDeps, now = new Date(), opts: { deadline?: number; limit?: number } = {}) {
   const due = await deps.sql.query<{ id: string; agency_id: string }>(
-    `select id, agency_id from content_posts where status = 'sched' and publish_at <= $1 order by publish_at limit $2`,
+    `select p.id, p.agency_id from content_posts p join agencies a on a.id = p.agency_id
+      where p.status = 'sched' and p.publish_at <= $1 and a.suspended_at is null order by p.publish_at limit $2`,
     [now.toISOString(), opts.limit ?? 20],
   );
   const out = { published: 0, failed: 0 };

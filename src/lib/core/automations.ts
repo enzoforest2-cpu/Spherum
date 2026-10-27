@@ -321,7 +321,10 @@ export async function automationSweep(deps: AutoDeps, now = new Date(), opts: { 
   // Execução que ficou "rodando" por mais de 30 minutos: o processo caiu no meio de uma ação. Vira falha, com registro.
   out.stuck = (await sql.query(`update automation_runs set status = 'falhou', error = 'A execução parou no meio (o processo caiu). Confira o que já saiu antes de rodar de novo.' where status = 'rodando' and updated_at < $1::timestamptz - interval '30 minutes' returning id`, [now.toISOString()])).length;
   const autos = await sql.query<{ id: string; agency_id: string; trigger: z.infer<typeof trigger>; cursor_at: string }>(
-    `select id, agency_id, trigger, coalesce(cursor_at, now())::text as cursor_at from automations where enabled`);
+    `select au.id, au.agency_id, au.trigger, coalesce(au.cursor_at, now())::text as cursor_at from automations au join agencies ag on ag.id = au.agency_id
+      where au.enabled and ag.suspended_at is null`);
+  // Agência suspensa: os eventos do período não disparam depois, quando ela for reativada.
+  await sql.query(`update automations set cursor_at = $1 where enabled and agency_id in (select id from agencies where suspended_at is not null)`, [now.toISOString()]);
   for (const a of autos) {
     if (opts.deadline && Date.now() > opts.deadline) break;
     // Uma automação com gatilho quebrado não para as outras agências.
@@ -344,7 +347,8 @@ export async function automationSweep(deps: AutoDeps, now = new Date(), opts: { 
       console.error("[automacoes] gatilho falhou", a.id, error);
     }
   }
-  const due = await sql.query<{ id: string }>(`select r.id from automation_runs r join automations a on a.id = r.automation_id where a.enabled and r.status in ('pendente', 'esperando') and r.resume_at <= $1 order by r.resume_at limit 200`, [now.toISOString()]);
+  const due = await sql.query<{ id: string }>(`select r.id from automation_runs r join automations a on a.id = r.automation_id join agencies ag on ag.id = r.agency_id
+      where a.enabled and ag.suspended_at is null and r.status in ('pendente', 'esperando') and r.resume_at <= $1 order by r.resume_at limit 200`, [now.toISOString()]);
   for (const d of due) {
     if (opts.deadline && Date.now() > opts.deadline) break;
     await advance(deps, d.id, now);

@@ -18,8 +18,9 @@ para lá.
   | financeiro | plano e cupons |
   | leitura | só vê |
 
-  A equipe nunca fica sem dono: rebaixar ou remover o último é recusado. Para entrar na equipe, a
-  pessoa já precisa ter conta.
+  A equipe nunca fica sem dono: rebaixar ou remover o último é recusado. A conta é feita com trava,
+  então dois donos rebaixando um ao outro ao mesmo tempo não zeram a equipe. Para entrar na equipe,
+  a pessoa já precisa ter conta.
 
 ## O que cada tela faz
 
@@ -32,8 +33,17 @@ para lá.
   e e-mail para donos e administradores), suspender e reativar.
   - **Saúde**: começa em 100. Tira 40 se o último acesso tem mais de 21 dias, 20 se tem mais de 7 e 8
     se tem mais de 3. Tira 20 sem clientes, 15 sem conexões e 5 sem xodós.
-  - **Suspensa**: a equipe e os clientes da agência perdem o acesso, os xodós e a prospecção param e
-    os links de documentos deixam de abrir. Os dados ficam.
+  - **Suspensa**: a equipe e os clientes da agência perdem o acesso, nas rotas do servidor e nas
+    regras de acesso do banco. Os links de documentos deixam de abrir. Os dados ficam. Também param:
+    - xodós, inclusive retomadas, rotinas, gatilhos de e-mail e aprovações pelos canais;
+    - prospecção, posts agendados, automações e busca por IA. Os eventos de automação do período
+      não disparam depois da reativação.
+
+    A cobrança e as notas dos clientes da agência continuam, porque são dinheiro e obrigação fiscal
+    entre a agência e os clientes dela.
+  - **Estender o teste**: move a data do fim do teste. Só volta a situação para "em teste" se a
+    agência estava em teste ou com pagamento pendente. Quem paga ou cancelou continua como está.
+  - Todas as mudanças de um pedido entram juntas ou nenhuma entra.
 - **Leads e demos**: os formulários do site viram um funil (novo, em contato, demo marcada, em
   teste, ganho, perdido), com responsável e anotação. Dá para cadastrar um lead à mão.
 - **Receita**: estimativa pelos preços de tabela. Faturas e estornos aparecem quando a cobrança do
@@ -44,11 +54,16 @@ para lá.
   agência.
 - **Comunicados**: aviso no app, e-mail ou os dois, para todas, pagantes, em teste, com xodó ou um
   plano. Sai na hora, fica como rascunho ou é agendado; o agendado sai uma vez só, pelo cron.
+  - **Envio**: os avisos no app entram de uma vez. Os e-mails saem um por agência, registrados em
+    `announcement_deliveries`.
+  - **Envio cortado no meio**: se o prazo acabar, o comunicado fica "enviando" e o cron continua de
+    onde parou. Ele só vira "enviado" quando o último e-mail sai.
 - **Status**: incidentes por serviço com atualizações. A disponibilidade de cada serviço vem das
   execuções do cron dos últimos 14 dias (`cron_runs`). Cada execução guarda as etapas que falharam
   e fica 14 dias.
-- **Suporte**: chamados das agências para o Spherum. A resposta chega à agência como aviso e
-  e-mail. Uma resposta da agência reabre o chamado.
+- **Suporte**: chamados das agências para o Spherum. A resposta vai como aviso e e-mail para quem
+  abriu o chamado. Se essa pessoa saiu da agência, vai para os donos e administradores. Uma resposta
+  da agência reabre o chamado.
 - **Auditoria**: as últimas ações das agências e da equipe do Spherum.
 - **Configurações**:
   - Agenda de demonstrações do site (`/api/site/demo`).
@@ -56,7 +71,8 @@ para lá.
     para o recurso na hora, com erro 503 explicando.
   - Preços dos planos: cada plano precisa custar mais que o anterior.
 
-  As chaves e os preços ficam em `site_settings`, com 30 s de cache.
+  As chaves e os preços ficam em `site_settings`, com 30 s de cache. Mudar uma chave grava só ela,
+  mesclando no banco, para que o cache de outro servidor não desfaça a mudança de outra chave.
 
 ## No app da agência
 

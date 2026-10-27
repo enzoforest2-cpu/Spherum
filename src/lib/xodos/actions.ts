@@ -1,5 +1,6 @@
 import { json, one, parseJson } from "./db";
 import { canAlwaysAllow, type Category } from "./policy";
+import { xodoBlocked } from "../core/platform";
 import { addMessage, continueSlice, loadXodo, resumeRun, resumeTakeover, runAction, STALE_RUN_MS, XodoError, type EngineDeps } from "./runner";
 
 /**
@@ -41,6 +42,9 @@ export async function decideAction(deps: EngineDeps, input: DecideInput) {
   if (input.approve) {
     const owner = await one<{ status: string; name: string }>(sql, `select x.status, x.name from xodo_actions a join xodos x on x.id = a.xodo_id where a.id = $1 and a.agency_id = $2`, [input.actionId, input.agencyId]);
     if (owner && owner.status !== "active") throw new XodoError(`${owner.name} está pausado. Reative para aprovar e executar este pedido.`, 409);
+    // Aprovar pelo Slack, Telegram ou WhatsApp não passa pelas rotas do app: confere aqui a suspensão e a chave dos xodós.
+    const blocked = await xodoBlocked(sql, input.agencyId);
+    if (blocked) throw new XodoError(blocked, 403);
   }
 
   const action = await sql.transaction(async (tx) => {

@@ -100,8 +100,8 @@ export async function weeklyChecks(deps: AivisDeps, now = new Date(), opts: { de
   const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short" }).format(now);
   if (weekday !== "Mon") return { clients: 0 };
   const due = await deps.sql.query<{ agency_id: string; client_id: string }>(
-    `select distinct q.agency_id, q.client_id from aivis_queries q
-      where not exists (select 1 from aivis_checks k where k.query_id = q.id and k.checked_at > $1::timestamptz - interval '6 days') limit 20`, [now.toISOString()]);
+    `select distinct q.agency_id, q.client_id from aivis_queries q join agencies a on a.id = q.agency_id
+      where a.suspended_at is null and not exists (select 1 from aivis_checks k where k.query_id = q.id and k.checked_at > $1::timestamptz - interval '6 days') limit 20`, [now.toISOString()]);
   let n = 0;
   for (const d of due) {
     if (opts.deadline && Date.now() > opts.deadline) break;

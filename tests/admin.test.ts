@@ -12,6 +12,10 @@ import { agencyPortal } from "../src/lib/core/portal";
 import type { EmailMessage } from "../src/lib/core/email";
 import { platformFlags, requireFeature, resetPlatformCache, setFlags, setPrices } from "../src/lib/core/platform";
 import { listSupport, openSupport, replySupportAgency } from "../src/lib/core/support";
+import { automationSweep } from "../src/lib/core/automations";
+import { publishSweep } from "../src/lib/core/content";
+import { decideAction } from "../src/lib/xodos/actions";
+import { sendAnnouncement } from "../src/lib/core/admin";
 import { one, type Sql } from "../src/lib/xodos/db";
 import { CAN_READ, requireRole } from "../src/lib/xodos/http";
 import { createTestDb, seedClient } from "./helpers";
@@ -51,7 +55,7 @@ test("admin: agência suspensa perde o acesso da equipe e do portal; plano, test
 
   const b = await adminBoard(sql, s.dono.id, "dono", new Date());
   const a = b.agencies.find((x) => x.id === s.agencyId)!;
-  assert.deepEqual([a.plan, a.plan_status, a.suspended_at, a.clients], ["escala", "trial", null, 1], "estender o teste volta a situação para teste");
+  assert.deepEqual([a.plan, a.plan_status, a.suspended_at, a.clients], ["escala", "active", null, 1], "estender o teste de quem paga não muda a situação");
   assert.ok(b.audit.filter((e) => e.agency_id === s.agencyId).map((e) => e.action).includes("admin_suspensao"));
 
   await messageAgency(s.deps, s.sup, s.agencyId, { subject: "Podemos ajudar?", body: "Vimos que faz tempo que vocês não entram." });
@@ -104,9 +108,9 @@ test("admin: cupons, comunicados com envio único, incidentes e registro do cron
   assert.ok(r.reach >= 1);
   assert.ok(await one(sql, `select 1 from notifications where agency_id = $1 and kind = 'comunicado'`, [s.agencyId]));
   const later = await createAnnouncement(s.deps, s.dono, { title: "Manutenção domingo", body: "O app fica fora das 2h às 3h.", send: "schedule", send_at: "2026-11-01T05:00:00Z" }, new Date("2026-10-27T12:00:00Z"));
-  assert.equal(await announcementSweep(s.deps, new Date("2026-10-30T12:00:00Z")), 0, "ainda não chegou a hora");
-  assert.equal(await announcementSweep(s.deps, new Date("2026-11-01T05:01:00Z")), 1);
-  assert.equal(await announcementSweep(s.deps, new Date("2026-11-01T05:16:00Z")), 0, "não envia de novo");
+  assert.equal((await announcementSweep(s.deps, new Date("2026-10-30T12:00:00Z"))).sent, 0, "ainda não chegou a hora");
+  assert.equal((await announcementSweep(s.deps, new Date("2026-11-01T05:01:00Z"))).sent, 1);
+  assert.equal((await announcementSweep(s.deps, new Date("2026-11-01T05:16:00Z"))).sent, 0, "não envia de novo");
   assert.ok(later.id);
 
   const inc = await createIncident(sql, s.dono, { service: "meta", title: "Atraso na sincronização do Meta", text: "A API da Meta está lenta." });
@@ -174,4 +178,101 @@ test("app da agência: notificações, aviso do topo (manutenção > incidente >
   const P = await agencyPortal(sql, s.agencyId, s.ana);
   assert.deepEqual([P.support.length, P.support[0].subject, P.notice], [1, "Relatório não gera", null]);
   assert.ok(Array.isArray(P.notifications));
+});
+
+// ---------------------------------------------------------------------------
+// Regressões da revisão de 27/10
+// ---------------------------------------------------------------------------
+
+test("revisão: suspensão vale nas regras de acesso do banco, nas aprovações por canal e nas varreduras", async () => {
+  const s = await setup();
+  const c = await seedClient(sql, s.agencyId, "Cliente RLS");
+  const portal = await user(`cli-${randomUUID()}@cliente.com`);
+  await sql.query(`insert into client_portal_users (client_id, agency_id, user_id) values ($1, $2, $3)`, [c, s.agencyId, portal]);
+  const can = async (uid: string) => {
+    await sql.query(`select set_config('request.jwt.claim.sub', $1, false)`, [uid]);
+    const r = (await one<{ m: boolean; cl: boolean }>(sql, `select public.app_is_agency_member($1) as m, public.app_is_client_user($2) as cl`, [s.agencyId, c]))!;
+    await sql.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    return r;
+  };
+  assert.deepEqual([(await can(s.ana)).m, (await can(portal)).cl], [true, true]);
+
+  // Post agendado e automação da agência, antes da suspensão.
+  await sql.query(`insert into content_posts (agency_id, client_id, title, publish_at, status) values ($1, $2, 'Post', '2026-10-27T10:00:00Z', 'sched')`, [s.agencyId, c]);
+  const auto = (await one<{ id: string }>(sql, `insert into automations (agency_id, name, trigger, steps, enabled, cursor_at) values ($1, 'Boas-vindas', '{"type":"formulario"}', '[]', true, '2026-10-01T00:00:00Z') returning id`, [s.agencyId]))!.id;
+
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { suspend: { reason: "Teste de suspensão" } });
+  assert.deepEqual([(await can(s.ana)).m, (await can(portal)).cl], [false, false], "quem é da agência suspensa não lê pela API do Supabase");
+
+  await assert.rejects(decideAction({ sql } as never, { actionId: randomUUID(), agencyId: s.agencyId, userId: s.ana, approve: true, via: "slack" }), /suspensa/);
+
+  const now = new Date("2026-10-27T12:00:00Z");
+  const deps = { sql, publish: async () => { throw new Error("não devia publicar"); }, mediaUrls: async () => [], collab: {} } as never;
+  const r = await publishSweep(deps, now);
+  assert.deepEqual(r, { published: 0, failed: 0 }, "post de agência suspensa não sai");
+  await automationSweep({ sql, mailer: async () => true } as never, now);
+  const a = (await one<{ cursor_at: string; runs: number }>(sql, `select cursor_at::text, runs from automations where id = $1`, [auto]))!;
+  assert.equal(Date.parse(a.cursor_at), now.getTime(), "eventos do período de suspensão não disparam depois");
+  assert.equal(a.runs, 0);
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { reactivate: true });
+});
+
+test("revisão: chaves gravadas sem cache velho; mudanças na agência são tudo ou nada; teste de quem paga", async () => {
+  const s = await setup();
+  await setFlags(sql, s.dono.id, { xodo: true, studio: true, maint: false });
+  await platformFlags(sql); // cache deste servidor
+  // Outro servidor desliga o Estúdio; este ainda tem o valor antigo no cache.
+  await sql.query(`update site_settings set value = value || '{"studio": false}'::jsonb where key = 'flags'`);
+  const next = await setFlags(sql, s.dono.id, { maint: true });
+  assert.deepEqual([next.studio, next.maint], [false, true], "mexer numa chave não religa outra");
+  await setFlags(sql, s.dono.id, { studio: true, maint: false });
+  resetPlatformCache();
+
+  const fin = { id: s.dono.id, role: "financeiro" };
+  await assert.rejects(updateAgencyAdmin(sql, fin, s.agencyId, { plan: "rede", suspend: { reason: "Sem pagamento" } }), /não permite/);
+  assert.equal((await one<{ plan: string }>(sql, `select plan from agencies where id = $1`, [s.agencyId]))!.plan !== "rede", true, "nada foi gravado");
+  await assert.rejects(updateAgencyAdmin(sql, s.dono, s.agencyId, { suspend: { reason: "Teste" }, reactivate: true }), /não os dois/);
+
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { plan_status: "active" });
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { trial_days: 7 });
+  assert.equal((await one<{ st: string }>(sql, `select plan_status as st from agencies where id = $1`, [s.agencyId]))!.st, "active");
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { plan_status: "past_due" });
+  await updateAgencyAdmin(sql, s.dono, s.agencyId, { trial_days: 7 });
+  assert.equal((await one<{ st: string }>(sql, `select plan_status as st from agencies where id = $1`, [s.agencyId]))!.st, "trial");
+});
+
+test("revisão: comunicado interrompido continua de onde parou e só fecha quando todos os e-mails saem", async () => {
+  const s = await setup();
+  const row = await createAnnouncement(s.deps, s.dono, { title: "Novidade por e-mail", body: "Texto do comunicado.", channel: "both", segment: "all", send: "draft" });
+  const first = await sendAnnouncement(s.deps, row.id, new Date(), { deadline: Date.now() - 1 });
+  assert.ok(first.reach >= 1);
+  assert.equal(first.emailed, 0, "o prazo acabou antes dos e-mails");
+  const st = async () => (await one<{ status: string }>(sql, `select status from announcements where id = $1`, [row.id]))!.status;
+  assert.equal(await st(), "sending");
+  assert.ok(await one(sql, `select 1 from notifications where agency_id = $1 and kind = 'comunicado' and data->>'announcement_id' = $2`, [s.agencyId, row.id]), "avisos no app já entraram");
+  await assert.rejects(sendAnnouncement(s.deps, row.id), /já foi enviado/);
+  await announcementSweep(s.deps, new Date());
+  assert.equal(await st(), "sent");
+  assert.equal((await one<{ n: number }>(sql, `select count(*)::int as n from announcement_deliveries where announcement_id = $1 and emailed_at is null`, [row.id]))!.n, 0);
+  assert.equal((await one<{ n: number }>(sql, `select count(*)::int as n from notifications where agency_id = $1 and data->>'announcement_id' = $2`, [s.agencyId, row.id]))!.n, 1, "retomar não duplica o aviso");
+});
+
+test("revisão: resposta do suporte vai aos donos quando quem abriu saiu da agência", async () => {
+  const s = await setup();
+  const bia = await user(`bia-${randomUUID()}@agencia.com`);
+  await sql.query(`insert into agency_members (agency_id, user_id, role) values ($1, $2, 'member')`, [s.agencyId, bia]);
+  const t = await openSupport(sql, s.deps.mail, s.agencyId, bia, { subject: "Dúvida da Bia", text: "Como faço?" });
+  await sql.query(`delete from agency_members where agency_id = $1 and user_id = $2`, [s.agencyId, bia]);
+  s.mails.length = 0;
+  await replySupport(s.deps, s.sup, t.id, { text: "Assim, ó." });
+  const notes = await sql.query<{ user_id: string | null }>(`select user_id from notifications where agency_id = $1 and kind = 'suporte_resposta'`, [s.agencyId]);
+  assert.ok(notes.length >= 1 && notes.every((n) => n.user_id && n.user_id !== bia), "ninguém de fora nem aviso para todos");
+  assert.ok(s.mails.every((m) => !(Array.isArray(m.to) ? m.to : [m.to]).some((x) => x.startsWith("bia-"))));
+});
+
+test("revisão: meses do admin pelo fuso de Brasília", async () => {
+  const s = await setup();
+  const b = await adminBoard(sql, s.dono.id, "dono", new Date("2026-11-01T01:30:00Z")); // 31/10, 22h30 em Brasília
+  assert.equal(b.mrr.series[b.mrr.series.length - 1].m, "2026-10");
+  assert.equal(b.metrics.signups[b.metrics.signups.length - 1].m, "2026-10");
 });

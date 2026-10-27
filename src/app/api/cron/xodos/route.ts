@@ -99,12 +99,12 @@ export async function GET(request: Request) {
     // Uploads que o navegador começou e nunca terminou.
     const uploads = await step("uploads", () => cleanupPendingUploads(deps.sql, documentsStorage(), new Date()));
     // Comunicados do Spherum agendados para agora.
-    const comms = await step("comunicados", () => announcementSweep(adminDeps(deps.sql), new Date()));
+    const comms = await step("comunicados", () => announcementSweep(adminDeps(deps.sql), new Date(), { deadline }));
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
-    const delivered = await step("fila", () => flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline }));
+    const delivered = await step("fila_fim", () => flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline }));
     const result = { fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, uploads, comms, channels, delivered: { antes: queued, depois: delivered } };
     // Registro da execução: o admin mostra a saúde de cada serviço pelas etapas que falharam.
-    const steps: Record<string, unknown> = { canais: channels, fila: queued, cotacao: fx, anuncios: ads, logins: expiring, cobranca: billing, computador: computers, execucoes: cleanup, rotinas: routines, email, fiscal, busca_ia: aivis, estudio: studio, automacoes: automations, posts, prospeccao: prospect, push, uploads, comunicados: comms };
+    const steps: Record<string, unknown> = { canais: channels, fila: queued, cotacao: fx, anuncios: ads, logins: expiring, cobranca: billing, computador: computers, execucoes: cleanup, rotinas: routines, email, fiscal, busca_ia: aivis, estudio: studio, automacoes: automations, posts, prospeccao: prospect, push, uploads, comunicados: comms, fila_fim: delivered };
     await recordCronRun(deps.sql, startedAt, steps).catch((error) => console.error("[cron] registro falhou", error));
     return NextResponse.json(result);
   } catch (error) {

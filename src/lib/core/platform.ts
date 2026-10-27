@@ -53,11 +53,12 @@ export const pricesInput = z.object(Object.fromEntries(PLAN_IDS.map((k) => [k, z
 
 export async function setFlags(sql: Sql, userId: string, raw: unknown) {
   const patch = flagsPatch.parse(raw);
-  const next = { ...(await platformFlags(sql)), ...patch };
-  await sql.query(`insert into site_settings (key, value, updated_by) values ('flags', $1::jsonb, $2)
-    on conflict (key) do update set value = excluded.value, updated_by = excluded.updated_by, updated_at = now()`, [JSON.stringify(next), userId]);
+  // Grava só as chaves alteradas, mesclando no banco: o cache de 30 s de cada servidor não pode
+  // devolver um valor antigo (por exemplo, religar os xodós ao mexer em outra chave).
+  const row = await one<{ value: Partial<Flags> }>(sql, `insert into site_settings (key, value, updated_by) values ('flags', $1::jsonb, $2)
+    on conflict (key) do update set value = site_settings.value || excluded.value, updated_by = excluded.updated_by, updated_at = now() returning value`, [JSON.stringify(patch), userId]);
   resetPlatformCache();
-  return next;
+  return { ...DEFAULT_FLAGS, ...(row?.value ?? {}) };
 }
 
 export async function setPrices(sql: Sql, userId: string, raw: unknown) {
@@ -74,4 +75,12 @@ export async function setPrices(sql: Sql, userId: string, raw: unknown) {
 export async function assertAgencyActive(sql: Sql, agencyId: string) {
   const a = await one<{ suspended_at: string | null }>(sql, `select suspended_at::text from agencies where id = $1`, [agencyId]);
   if (a?.suspended_at) throw new XodoError("Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).", 403);
+}
+
+/** Por que um xodó não pode agir agora nesta agência (suspensa ou xodós desligados), ou null. */
+export async function xodoBlocked(sql: Sql, agencyId: string): Promise<string | null> {
+  const [a, flags] = await Promise.all([one<{ suspended: boolean }>(sql, `select suspended_at is not null as suspended from agencies where id = $1`, [agencyId]), platformFlags(sql)]);
+  if (a?.suspended) return "Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).";
+  if (!flags.xodo) return OFF.xodo;
+  return null;
 }

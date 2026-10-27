@@ -54,10 +54,10 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
   const since30 = daysAgo(now, 29);
   const [me, agencies, leads, coupons, comms, incidents, updates, cron, staff, auditRows, tickets, tmsgs, aiProv, aiTop, signups, leadKinds, flags, prices, aiDays] = await Promise.all([
     one<{ name: string | null; email: string | null }>(sql, `select p.full_name as name, u.email from auth.users u left join profiles p on p.id = u.id where u.id = $1`, [userId]),
-    sql.query<{ id: string; name: string; plan: string; plan_status: string; trial_ends_at: string | null; created_at: string; suspended_at: string | null; suspended_reason: string | null;
+    sql.query<{ id: string; name: string; plan: string; plan_status: string; trial_ends_at: string | null; created_at: string; created_day: string; suspended_at: string | null; suspended_reason: string | null;
       city: string | null; state: string | null; coupon: string | null; owner_name: string | null; owner_email: string | null; members: number; clients: number; xodos: number;
       last_seen: string | null; ai_brl: number; connections: number }>(
-      `select a.id, a.name, a.plan, a.plan_status, a.trial_ends_at::text, a.created_at::text, a.suspended_at::text, a.suspended_reason, a.city, a.state,
+      `select a.id, a.name, a.plan, a.plan_status, a.trial_ends_at::text, a.created_at::text, to_char(a.created_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') as created_day, a.suspended_at::text, a.suspended_reason, a.city, a.state,
               a.onboarding->>'coupon' as coupon, o.full_name as owner_name, ou.email as owner_email,
               (select count(*)::int from agency_members m where m.agency_id = a.id) as members,
               (select count(*)::int from clients c where c.agency_id = a.id and c.archived_at is null) as clients,
@@ -121,14 +121,15 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
   const ag = agencies.map((a) => ({ ...a, ai_brl: num(a.ai_brl), health: agencyHealth(a, now), mrr: a.plan_status === "active" && !a.suspended_at ? priceOf(a.plan) : 0 }));
   // Receita estimada: agências pagantes (marcadas como "active") pelo preço de tabela do plano.
   const months: string[] = [];
-  for (let k = 11; k >= 0; k--) { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - k, 15)); months.push(d.toISOString().slice(0, 7)); }
-  const series = months.map((m) => ({ m, v: ag.filter((a) => a.mrr && a.created_at.slice(0, 7) <= m).reduce((t, a) => t + a.mrr, 0) }));
+  const [cy, cm] = dayIn(TZ, now).split("-").map(Number);
+  for (let k = 11; k >= 0; k--) { const d = new Date(Date.UTC(cy, cm - 1 - k, 15)); months.push(d.toISOString().slice(0, 7)); }
+  const series = months.map((m) => ({ m, v: ag.filter((a) => a.mrr && a.created_day.slice(0, 7) <= m).reduce((t, a) => t + a.mrr, 0) }));
   const byTicket = new Map<string, typeof tmsgs>();
   for (const m of tmsgs) byTicket.set(m.ticket_id, [...(byTicket.get(m.ticket_id) ?? []), m]);
   const byIncident = new Map<string, typeof updates>();
   for (const u of updates) byIncident.set(u.incident_id, [...(byIncident.get(u.incident_id) ?? []), u]);
   // Saúde por serviço pelas etapas do cron nas últimas 24 h.
-  const STEPS: Record<string, string[]> = { app: ["canais", "fila", "uploads"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal"] };
+  const STEPS: Record<string, string[]> = { app: ["canais", "fila", "fila_fim", "uploads", "comunicados"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal"] };
   const day = cron.filter((r) => now.getTime() - Date.parse(r.started_at) < 864e5);
   const services = Object.entries(STEPS).map(([id, steps]) => {
     const bad = day.filter((r) => r.failed.some((f) => steps.includes(f))).length;
@@ -143,7 +144,7 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     metrics: {
       signups: months.map((m) => ({ m, n: signups.find((s) => s.m === m)?.n ?? 0 })),
       leads30: Object.fromEntries(leadKinds.map((k) => [k.kind, k.n])),
-      created30: ag.filter((a) => a.created_at >= since30).length,
+      created30: ag.filter((a) => a.created_day >= since30).length,
       trial: ag.filter((a) => a.plan_status === "trial" && !a.suspended_at).length,
       paying: ag.filter((a) => a.plan_status === "active" && !a.suspended_at).length,
       canceled: ag.filter((a) => a.plan_status === "canceled").length,
@@ -180,39 +181,42 @@ export const agencyAdminInput = z.object({
 
 export async function updateAgencyAdmin(sql: Sql, actor: { id: string; role: string }, agencyId: string, raw: unknown, now = new Date()) {
   const i = agencyAdminInput.parse(raw);
-  const a = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; suspended_at: string | null }>(
-    sql, `select name, plan, plan_status, trial_ends_at::text, suspended_at::text from agencies where id = $1`, [agencyId]);
-  if (!a) throw new XodoError("Agência não encontrada.", 404);
-  const log = (action: string, summary: string) => audit(sql, { agencyId, actor: actor.id, action, targetType: "agency", targetId: agencyId, summary });
-  if (i.plan && i.plan !== a.plan) {
-    staffCan(actor.role, "plan");
-    await sql.query(`update agencies set plan = $2 where id = $1`, [agencyId, i.plan]);
-    await log("admin_plano", `Plano de ${a.name}: ${a.plan} → ${i.plan}`);
-  }
-  if (i.plan_status && i.plan_status !== a.plan_status) {
-    staffCan(actor.role, "plan");
-    await sql.query(`update agencies set plan_status = $2 where id = $1`, [agencyId, i.plan_status]);
-    await log("admin_situacao", `Situação de ${a.name}: ${a.plan_status} → ${i.plan_status}`);
-  }
-  if (i.trial_days) {
-    staffCan(actor.role, "plan");
-    const from = a.trial_ends_at && Date.parse(a.trial_ends_at) > now.getTime() ? new Date(a.trial_ends_at) : now;
-    const until = new Date(from.getTime() + i.trial_days * 864e5).toISOString();
-    await sql.query(`update agencies set trial_ends_at = $2::timestamptz, plan_status = case when plan_status = 'canceled' then plan_status else 'trial' end where id = $1`, [agencyId, until]);
-    await log("admin_teste", `Teste de ${a.name} estendido em ${i.trial_days} dias`);
-  }
-  if (i.suspend) {
-    staffCan(actor.role, "suspend");
-    if (a.suspended_at) throw new XodoError("Essa agência já está suspensa.", 409);
-    await sql.query(`update agencies set suspended_at = $2, suspended_reason = $3 where id = $1`, [agencyId, now.toISOString(), i.suspend.reason]);
-    await log("admin_suspensao", `${a.name} suspensa: ${i.suspend.reason}`);
-  }
-  if (i.reactivate) {
-    staffCan(actor.role, "suspend");
-    if (!a.suspended_at) throw new XodoError("Essa agência não está suspensa.", 409);
-    await sql.query(`update agencies set suspended_at = null, suspended_reason = null where id = $1`, [agencyId]);
-    await log("admin_reativacao", `${a.name} reativada`);
-  }
+  if (i.suspend && i.reactivate) throw new XodoError("Escolha suspender ou reativar, não os dois.", 400);
+  // Todas as permissões antes da primeira gravação: ou tudo entra, ou nada.
+  if (i.plan || i.plan_status || i.trial_days) staffCan(actor.role, "plan");
+  if (i.suspend || i.reactivate) staffCan(actor.role, "suspend");
+  return sql.transaction(async (tx) => {
+    const a = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; suspended_at: string | null }>(
+      tx, `select name, plan, plan_status, trial_ends_at::text, suspended_at::text from agencies where id = $1 for update`, [agencyId]);
+    if (!a) throw new XodoError("Agência não encontrada.", 404);
+    if (i.suspend && a.suspended_at) throw new XodoError("Essa agência já está suspensa.", 409);
+    if (i.reactivate && !a.suspended_at) throw new XodoError("Essa agência não está suspensa.", 409);
+    const log = (action: string, summary: string) => audit(tx, { agencyId, actor: actor.id, action, targetType: "agency", targetId: agencyId, summary });
+    if (i.plan && i.plan !== a.plan) {
+      await tx.query(`update agencies set plan = $2 where id = $1`, [agencyId, i.plan]);
+      await log("admin_plano", `Plano de ${a.name}: ${a.plan} → ${i.plan}`);
+    }
+    const status = i.plan_status ?? a.plan_status;
+    if (status !== a.plan_status) {
+      await tx.query(`update agencies set plan_status = $2 where id = $1`, [agencyId, status]);
+      await log("admin_situacao", `Situação de ${a.name}: ${a.plan_status} → ${status}`);
+    }
+    if (i.trial_days) {
+      const from = a.trial_ends_at && Date.parse(a.trial_ends_at) > now.getTime() ? new Date(a.trial_ends_at) : now;
+      const until = new Date(from.getTime() + i.trial_days * 864e5).toISOString();
+      // Quem paga ou cancelou continua como está; só quem está em teste (ou com pagamento pendente) volta para o teste.
+      await tx.query(`update agencies set trial_ends_at = $2::timestamptz, plan_status = case when plan_status in ('trial', 'past_due') then 'trial' else plan_status end where id = $1`, [agencyId, until]);
+      await log("admin_teste", `Teste de ${a.name} estendido em ${i.trial_days} dias`);
+    }
+    if (i.suspend) {
+      await tx.query(`update agencies set suspended_at = $2, suspended_reason = $3 where id = $1`, [agencyId, now.toISOString(), i.suspend.reason]);
+      await log("admin_suspensao", `${a.name} suspensa: ${i.suspend.reason}`);
+    }
+    if (i.reactivate) {
+      await tx.query(`update agencies set suspended_at = null, suspended_reason = null where id = $1`, [agencyId]);
+      await log("admin_reativacao", `${a.name} reativada`);
+    }
+  });
 }
 
 export const messageInput = z.object({ subject: z.string().trim().min(3).max(160), body: z.string().trim().min(3).max(4000) });
@@ -253,27 +257,34 @@ export async function addStaff(sql: Sql, actor: { id: string; role: string }, ra
   return { user_id: u.id };
 }
 
-async function donos(sql: Sql) {
-  return (await one<{ n: number }>(sql, `select count(*)::int as n from spherum_staff where role = 'dono'`))!.n;
+/** Trava as linhas de dono antes de contar: dois donos rebaixando um ao outro ao mesmo tempo não zeram a equipe. */
+async function donosLocked(tx: Sql) {
+  return (await tx.query<{ user_id: string }>(`select user_id from spherum_staff where role = 'dono' order by user_id for update`)).length;
 }
 
 export async function updateStaff(sql: Sql, actor: { id: string; role: string }, userId: string, raw: unknown) {
   staffCan(actor.role, "staff");
   const role = z.object({ role: z.enum(STAFF_ROLES) }).parse(raw).role;
-  const cur = await one<{ role: string }>(sql, `select role from spherum_staff where user_id = $1`, [userId]);
-  if (!cur) throw new XodoError("Pessoa não encontrada na equipe.", 404);
-  if (cur.role === "dono" && role !== "dono" && (await donos(sql)) <= 1) throw new XodoError("A equipe precisa de pelo menos um dono.", 409);
-  await sql.query(`update spherum_staff set role = $2 where user_id = $1`, [userId, role]);
-  await audit(sql, { agencyId: null, actor: actor.id, action: "admin_equipe", targetType: "staff", targetId: userId, summary: `Papel na equipe: ${cur.role} → ${role}` });
+  await sql.transaction(async (tx) => {
+    const n = await donosLocked(tx);
+    const cur = await one<{ role: string }>(tx, `select role from spherum_staff where user_id = $1 for update`, [userId]);
+    if (!cur) throw new XodoError("Pessoa não encontrada na equipe.", 404);
+    if (cur.role === "dono" && role !== "dono" && n <= 1) throw new XodoError("A equipe precisa de pelo menos um dono.", 409);
+    await tx.query(`update spherum_staff set role = $2 where user_id = $1`, [userId, role]);
+    await audit(tx, { agencyId: null, actor: actor.id, action: "admin_equipe", targetType: "staff", targetId: userId, summary: `Papel na equipe: ${cur.role} → ${role}` });
+  });
 }
 
 export async function removeStaff(sql: Sql, actor: { id: string; role: string }, userId: string) {
   staffCan(actor.role, "staff");
-  const cur = await one<{ role: string }>(sql, `select role from spherum_staff where user_id = $1`, [userId]);
-  if (!cur) throw new XodoError("Pessoa não encontrada na equipe.", 404);
-  if (cur.role === "dono" && (await donos(sql)) <= 1) throw new XodoError("A equipe precisa de pelo menos um dono.", 409);
-  await sql.query(`delete from spherum_staff where user_id = $1`, [userId]);
-  await audit(sql, { agencyId: null, actor: actor.id, action: "admin_equipe", targetType: "staff", targetId: userId, summary: "Saiu da equipe do Spherum" });
+  await sql.transaction(async (tx) => {
+    const n = await donosLocked(tx);
+    const cur = await one<{ role: string }>(tx, `select role from spherum_staff where user_id = $1 for update`, [userId]);
+    if (!cur) throw new XodoError("Pessoa não encontrada na equipe.", 404);
+    if (cur.role === "dono" && n <= 1) throw new XodoError("A equipe precisa de pelo menos um dono.", 409);
+    await tx.query(`delete from spherum_staff where user_id = $1`, [userId]);
+    await audit(tx, { agencyId: null, actor: actor.id, action: "admin_equipe", targetType: "staff", targetId: userId, summary: "Saiu da equipe do Spherum" });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -360,37 +371,76 @@ export async function createAnnouncement(deps: AdminDeps, actor: { id: string; r
   return { id: row.id, reach: 0 };
 }
 
-/** Entrega: um aviso no app de cada agência do segmento e, se pedido, e-mail aos donos e admins. Só uma vez. */
-export async function sendAnnouncement(deps: AdminDeps, id: string, now = new Date()) {
-  const claimed = await one<{ title: string; body: string; channel: string; segment: string; cta_label: string | null; cta_url: string | null }>(deps.sql,
-    `update announcements set status = 'sent', sent_at = $2 where id = $1 and status in ('draft', 'scheduled') returning title, body, channel, segment, cta_label, cta_url`, [id, now.toISOString()]);
-  if (!claimed) throw new XodoError("Esse comunicado já foi enviado.", 409);
-  const [where, params] = segmentWhere(claimed.segment);
-  const targets = await deps.sql.query<{ id: string }>(`select a.id from agencies a where a.suspended_at is null and ${where}`, params);
-  const data = JSON.stringify({ announcement_id: id, cta_label: claimed.cta_label, cta_url: claimed.cta_url });
-  let emailed = 0;
-  for (const t of targets) {
-    if (claimed.channel !== "email") await deps.sql.query(`insert into notifications (agency_id, kind, title, body, data) values ($1, 'comunicado', $2, $3, $4::jsonb)`, [t.id, claimed.title, claimed.body.slice(0, 2000), data]);
-    if (claimed.channel !== "banner") {
-      const to = await leaders(deps.sql, t.id);
-      if (to.length && (await deps.mail({ to, subject: claimed.title, text: `${claimed.body}${claimed.cta_url ? `\n\n${claimed.cta_label || "Saiba mais"}: ${claimed.cta_url}` : ""}\n\nEquipe Spherum` }).catch(() => false))) emailed++;
+/**
+ * Entrega: um aviso no app de cada agência do segmento e, se pedido, e-mail aos donos e admins.
+ * Começar é atômico (só um envio pega o comunicado). Os avisos no app entram de uma vez; os e-mails
+ * saem um por agência, com registro em announcement_deliveries, até o prazo. O que faltar o cron
+ * retoma depois, e só então o comunicado vira "sent".
+ */
+export async function sendAnnouncement(deps: AdminDeps, id: string, now = new Date(), opts: { deadline?: number } = {}) {
+  const reach = await deps.sql.transaction(async (tx) => {
+    const c = await one<{ title: string; body: string; channel: string; segment: string; cta_label: string | null; cta_url: string | null }>(tx,
+      `update announcements set status = 'sending', sent_at = $2 where id = $1 and status in ('draft', 'scheduled') returning title, body, channel, segment, cta_label, cta_url`, [id, now.toISOString()]);
+    if (!c) throw new XodoError("Esse comunicado já foi enviado.", 409);
+    const [where, params] = segmentWhere(c.segment);
+    const n = params.length;
+    const targets = await tx.query<{ agency_id: string }>(
+      `insert into announcement_deliveries (announcement_id, agency_id, emailed_at)
+       select $${n + 1}::uuid, a.id, case when $${n + 2} = 'banner' then now() else null end from agencies a where a.suspended_at is null and ${where}
+       on conflict do nothing returning agency_id`, [...params, id, c.channel]);
+    if (c.channel !== "email") {
+      await tx.query(`insert into notifications (agency_id, kind, title, body, data)
+        select d.agency_id, 'comunicado', $2, $3, $4::jsonb from announcement_deliveries d where d.announcement_id = $1`,
+        [id, c.title, c.body.slice(0, 2000), JSON.stringify({ announcement_id: id, cta_label: c.cta_label, cta_url: c.cta_url })]);
     }
-  }
-  await deps.sql.query(`update announcements set reach = $2 where id = $1`, [id, targets.length]);
-  return { reach: targets.length, emailed };
+    await tx.query(`update announcements set reach = $2 where id = $1`, [id, targets.length]);
+    return targets.length;
+  });
+  const { emailed } = await deliverAnnouncement(deps, id, opts);
+  return { reach, emailed };
 }
 
-/** Cron: comunicados agendados que chegaram na hora. */
-export async function announcementSweep(deps: AdminDeps, now = new Date()) {
+/** E-mails pendentes de um comunicado em envio; fecha como "sent" quando não sobra nenhum. */
+async function deliverAnnouncement(deps: AdminDeps, id: string, opts: { deadline?: number } = {}) {
+  const c = await one<{ title: string; body: string; channel: string; cta_label: string | null; cta_url: string | null }>(deps.sql,
+    `select title, body, channel, cta_label, cta_url from announcements where id = $1 and status = 'sending'`, [id]);
+  if (!c) return { emailed: 0, done: true };
+  const text = `${c.body}${c.cta_url ? `\n\n${c.cta_label || "Saiba mais"}: ${c.cta_url}` : ""}\n\nEquipe Spherum`;
+  let emailed = 0;
+  for (;;) {
+    if (opts.deadline && Date.now() > opts.deadline) return { emailed, done: false };
+    const batch = await deps.sql.query<{ agency_id: string }>(
+      `select agency_id from announcement_deliveries where announcement_id = $1 and emailed_at is null order by agency_id limit 25`, [id]);
+    if (!batch.length) break;
+    for (const d of batch) {
+      if (opts.deadline && Date.now() > opts.deadline) return { emailed, done: false };
+      const to = await leaders(deps.sql, d.agency_id);
+      const ok = to.length ? await deps.mail({ to, subject: c.title, text }).catch(() => false) : false;
+      if (ok) emailed++;
+      await deps.sql.query(`update announcement_deliveries set emailed_at = now(), email_ok = $3 where announcement_id = $1 and agency_id = $2`, [id, d.agency_id, ok]);
+    }
+  }
+  await deps.sql.query(`update announcements set status = 'sent' where id = $1 and status = 'sending'`, [id]);
+  return { emailed, done: true };
+}
+
+/** Cron: comunicados agendados que chegaram na hora e envios interrompidos. Erro de verdade aparece no registro do cron. */
+export async function announcementSweep(deps: AdminDeps, now = new Date(), opts: { deadline?: number } = {}) {
+  const sending = await deps.sql.query<{ id: string }>(`select id from announcements where status = 'sending' order by sent_at limit 10`);
+  for (const d of sending) await deliverAnnouncement(deps, d.id, opts);
   const due = await deps.sql.query<{ id: string }>(`select id from announcements where status = 'scheduled' and send_at <= $1 order by send_at limit 10`, [now.toISOString()]);
   let sent = 0;
-  for (const d of due) { try { await sendAnnouncement(deps, d.id, now); sent++; } catch { /* outra varredura já enviou */ } }
-  return sent;
+  for (const d of due) {
+    if (opts.deadline && Date.now() > opts.deadline) break;
+    try { await sendAnnouncement(deps, d.id, now, opts); sent++; }
+    catch (error) { if (!(error instanceof XodoError && error.status === 409)) throw error; /* outra varredura já pegou */ }
+  }
+  return { sent, resumed: sending.length };
 }
 
 export async function deleteAnnouncement(sql: Sql, actor: { id: string; role: string }, id: string) {
   staffCan(actor.role, "comms");
-  const r = await one(sql, `delete from announcements where id = $1 and status <> 'sent' returning id`, [id]);
+  const r = await one(sql, `delete from announcements where id = $1 and status in ('draft', 'scheduled') returning id`, [id]);
   if (!r) throw new XodoError("Comunicado enviado não pode ser apagado.", 409);
 }
 
@@ -439,10 +489,15 @@ export async function replySupport(deps: AdminDeps, actor: { id: string; role: s
   if (!t) throw new XodoError("Chamado não encontrado.", 404);
   await deps.sql.query(`insert into support_messages (ticket_id, side, author_user, text) values ($1, 'sp', $2, $3)`, [ticketId, actor.id, text]);
   await deps.sql.query(`update support_tickets set updated_at = now() where id = $1`, [ticketId]);
-  await deps.sql.query(`insert into notifications (agency_id, user_id, kind, title, body, data) values ($1, $2, 'suporte_resposta', $3, $4, $5::jsonb)`,
-    [t.agency_id, t.opened_by, `Resposta do suporte: ${t.subject}`.slice(0, 200), text.slice(0, 500), JSON.stringify({ ticket_id: ticketId })]);
-  const opener = t.opened_by ? await one<{ email: string | null }>(deps.sql, `select email from auth.users where id = $1`, [t.opened_by]) : null;
-  if (opener?.email) await deps.mail({ to: opener.email, subject: `Re: ${t.subject} · Suporte Spherum`, text: `${text}\n\nResponda pelo app em Ajuda e suporte.\n\nEquipe Spherum` }).catch(() => false);
+  // A resposta vai para quem abriu, se ainda é da agência; senão, para os donos e admins.
+  const opener = t.opened_by ? await one<{ id: string; email: string | null }>(deps.sql,
+    `select u.id, u.email from agency_members m join auth.users u on u.id = m.user_id where m.agency_id = $1 and m.user_id = $2`, [t.agency_id, t.opened_by]) : null;
+  const to = opener ? [opener] : await deps.sql.query<{ id: string; email: string | null }>(
+    `select u.id, u.email from agency_members m join auth.users u on u.id = m.user_id where m.agency_id = $1 and m.role in ('owner', 'admin')`, [t.agency_id]);
+  const data = JSON.stringify({ ticket_id: ticketId }), title = `Resposta do suporte: ${t.subject}`.slice(0, 200);
+  for (const p of to) await deps.sql.query(`insert into notifications (agency_id, user_id, kind, title, body, data) values ($1, $2, 'suporte_resposta', $3, $4, $5::jsonb)`, [t.agency_id, p.id, title, text.slice(0, 500), data]);
+  const emails = to.map((p) => p.email).filter((e): e is string => !!e);
+  if (emails.length) await deps.mail({ to: emails, subject: `Re: ${t.subject} · Suporte Spherum`, text: `${text}\n\nResponda pelo app em Ajuda e suporte.\n\nEquipe Spherum` }).catch(() => false);
   await audit(deps.sql, { agencyId: t.agency_id, actor: actor.id, action: "admin_suporte", targetType: "support_ticket", targetId: ticketId, summary: `Resposta no chamado "${t.subject}"` });
 }
 

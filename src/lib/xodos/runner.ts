@@ -24,7 +24,7 @@ import { pausedContract } from "../core/contracts";
 import { decideApproval, loadRules } from "./policy";
 import { TOOLS, TOOLS_BY_NAME, ToolError, toolJsonSchema, type ToolContext, type ToolDef } from "./tools";
 import type { Autonomy, RunStatus, ToolCall, ToolResult, Xodo } from "./types";
-import { assertAgencyActive, requireFeature } from "../core/platform";
+import { assertAgencyActive, requireFeature, xodoBlocked } from "../core/platform";
 
 /**
  * O executor dos Xodós: um laço de passos com o modelo, no estilo do Rakazo e do OpenDots.
@@ -336,6 +336,9 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
   const loaded = await loadXodo(sql, run.xodo_id, run.agency_id);
   // Pausado no meio: a execução para aqui, sem mais chamadas ao modelo nem ações.
   if (loaded.status !== "active") return finish(deps, loaded, runId, "failed", { note: `${loaded.name} foi pausado pela equipe; parei por aqui.` });
+  // Agência suspensa ou xodós desligados pelo Spherum: também para aqui (vale para retomadas e o cron).
+  const blocked = await xodoBlocked(sql, run.agency_id);
+  if (blocked) return finish(deps, loaded, runId, "failed", { note: blocked });
   const xodo = cap && STRICTNESS.indexOf(cap) > STRICTNESS.indexOf(loaded.autonomy) ? { ...loaded, autonomy: cap } : loaded;
 
   try {
