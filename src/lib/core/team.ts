@@ -4,6 +4,7 @@ import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import type { Role } from "../xodos/http";
 import { audit } from "./audit";
+import { assertLimit } from "./subscription";
 
 /**
  * Equipe da agência e convites por link. O convite vale para um e-mail: só quem entra com
@@ -102,6 +103,11 @@ async function insertInvite(
   sql: Sql,
   o: { agencyId: string; kind: "equipe" | "cliente"; clientId: string | null; email: string; role: string; actor: string; now?: () => Date },
 ): Promise<CreatedInvite> {
+  // Vaga na equipe: convite pendente conta como pessoa (reenviar para o mesmo e-mail não conta de novo).
+  if (o.kind === "equipe") {
+    const again = await one(sql, `select 1 from invites where agency_id = $1 and kind = 'equipe' and lower(email) = $2 and accepted_at is null and revoked_at is null and expires_at > now()`, [o.agencyId, o.email]);
+    if (!again) await assertLimit(sql, o.agencyId, "seats");
+  }
   const token = randomBytes(24).toString("base64url");
   const now = nowOf(o.now);
   return sql.transaction(async (tx) => {

@@ -79,8 +79,9 @@ export async function assertAgencyActive(sql: Sql, agencyId: string) {
 
 /** Por que um xodó não pode agir agora nesta agência (suspensa ou xodós desligados), ou null. */
 export async function xodoBlocked(sql: Sql, agencyId: string): Promise<string | null> {
-  const [a, flags] = await Promise.all([one<{ suspended: boolean }>(sql, `select suspended_at is not null as suspended from agencies where id = $1`, [agencyId]), platformFlags(sql)]);
+  const [a, flags] = await Promise.all([one<{ suspended: boolean; locked: boolean }>(sql, `select suspended_at is not null as suspended, locked_at is not null as locked from agencies where id = $1`, [agencyId]), platformFlags(sql)]);
   if (a?.suspended) return "Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).";
+  if (a?.locked) return "A assinatura do Spherum está bloqueada (teste acabou, atraso ou cancelamento). Os xodós voltam quando a agência regularizar em Configurações → Plano e cobrança.";
   if (!flags.xodo) return OFF.xodo;
   return null;
 }

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { allowLocked: true });
     return NextResponse.json({ ticket: await openSupport(sql, mailerFromEnv(), agencyId, userId, input) }, { status: 201 });
   } catch (error) {
     return fail(error);

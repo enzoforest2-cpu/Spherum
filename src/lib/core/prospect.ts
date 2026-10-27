@@ -312,7 +312,7 @@ export async function prospectSweep(sql: Sql, senderFor: SenderFor, now = new Da
   if (!inWindow(now)) return out;
   // Desligada pela equipe do Spherum: nenhuma cadência anda. Agência suspensa também não envia.
   if (!(await platformFlags(sql)).prospect) return out;
-  const agencies = await sql.query<{ id: string }>(`select id from agencies where prospect_config->>'running' = 'true' and suspended_at is null`);
+  const agencies = await sql.query<{ id: string }>(`select id from agencies where prospect_config->>'running' = 'true' and suspended_at is null and locked_at is null`);
   for (const a of agencies) {
     if (opts.deadline && Date.now() > opts.deadline) break;
     const cfg = await getConfig(sql, a.id);

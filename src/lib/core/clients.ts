@@ -2,6 +2,7 @@ import { z } from "zod";
 import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
+import { assertLimit } from "./subscription";
 
 /** Clientes da agência e seus contatos. Arquivar esconde; os dados ficam (contratos, relatórios). */
 
@@ -102,6 +103,7 @@ export async function createClient(sql: Sql, agencyId: string, actorId: string, 
   await assertOwner(sql, agencyId, input.owner_user_id);
   const count = await one<{ n: number }>(sql, `select count(*)::int as n from clients where agency_id = $1 and archived_at is null`, [agencyId]);
   if ((count?.n ?? 0) >= 2000) throw new XodoError("Limite de clientes ativos atingido.", 409);
+  if (input.status !== "encerrado") await assertLimit(sql, agencyId, "clients");
   const row = toRow(input);
   const keys = Object.keys(row);
   const created = await one<{ id: string }>(
@@ -116,6 +118,11 @@ export async function createClient(sql: Sql, agencyId: string, actorId: string, 
 export async function updateClient(sql: Sql, agencyId: string, actorId: string, clientId: string, raw: unknown) {
   const input = clientPatch.parse(raw);
   await assertOwner(sql, agencyId, input.owner_user_id);
+  // Voltar um cliente encerrado conta de novo no limite do plano.
+  if (input.status && input.status !== "encerrado") {
+    const cur = await one<{ status: string }>(sql, `select status from clients where id = $1 and agency_id = $2`, [clientId, agencyId]);
+    if (cur?.status === "encerrado") await assertLimit(sql, agencyId, "clients");
+  }
   const row = toRow(input);
   const keys = Object.keys(row);
   if (keys.length) {

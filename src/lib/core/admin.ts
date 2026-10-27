@@ -5,6 +5,7 @@ import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
 import type { Mailer } from "./email";
 import { PLAN_IDS, planPrices, platformFlags, type Prices } from "./platform";
+import { adminInvoices } from "./subscription";
 
 /**
  * Admin do Spherum: a equipe vê todas as agências, leads do site, cupons, comunicados, status da
@@ -26,6 +27,7 @@ const CAN = {
   status: ["dono", "operacao"],
   support: ["dono", "operacao", "suporte"],
   leads: ["dono", "operacao", "suporte"],
+  billing: ["dono", "financeiro"],
 } satisfies Record<string, StaffRole[]>;
 export type StaffAction = keyof typeof CAN;
 
@@ -52,13 +54,16 @@ export function agencyHealth(a: { last_seen: string | null; clients: number; con
 /** Tudo o que as telas do admin mostram, numa leitura. */
 export async function adminBoard(sql: Sql, userId: string, role: string, now = new Date()) {
   const since30 = daysAgo(now, 29);
-  const [me, agencies, leads, coupons, comms, incidents, updates, cron, staff, auditRows, tickets, tmsgs, aiProv, aiTop, signups, leadKinds, flags, prices, aiDays] = await Promise.all([
+  const [me, agencies, leads, coupons, comms, incidents, updates, cron, staff, auditRows, tickets, tmsgs, aiProv, aiTop, signups, leadKinds, flags, prices, aiDays, invoices] = await Promise.all([
     one<{ name: string | null; email: string | null }>(sql, `select p.full_name as name, u.email from auth.users u left join profiles p on p.id = u.id where u.id = $1`, [userId]),
     sql.query<{ id: string; name: string; plan: string; plan_status: string; trial_ends_at: string | null; created_at: string; created_day: string; suspended_at: string | null; suspended_reason: string | null;
       city: string | null; state: string | null; coupon: string | null; owner_name: string | null; owner_email: string | null; members: number; clients: number; xodos: number;
-      last_seen: string | null; ai_brl: number; connections: number }>(
+      last_seen: string | null; ai_brl: number; connections: number; paid_monthly_cents: number | null; locked_reason: string | null; current_period_end: string | null; cancel_at_period_end: boolean; custom_price_cents: number | null; billing_cycle: string }>(
       `select a.id, a.name, a.plan, a.plan_status, a.trial_ends_at::text, a.created_at::text, to_char(a.created_at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') as created_day, a.suspended_at::text, a.suspended_reason, a.city, a.state,
-              a.onboarding->>'coupon' as coupon, o.full_name as owner_name, ou.email as owner_email,
+              coalesce((select r.coupon_code from coupon_redemptions r where r.agency_id = a.id), a.onboarding->>'coupon') as coupon, o.full_name as owner_name, ou.email as owner_email,
+              a.locked_reason, a.current_period_end::text, a.cancel_at_period_end, a.custom_price_cents, a.billing_cycle,
+              (select i.amount_cents::float8 / case when i.cycle = 'anual' then 12 else 1 end from spherum_invoices i
+                where i.agency_id = a.id and i.kind = 'periodo' and i.status = 'pago' order by i.period_start desc limit 1) as paid_monthly_cents,
               (select count(*)::int from agency_members m where m.agency_id = a.id) as members,
               (select count(*)::int from clients c where c.agency_id = a.id and c.archived_at is null) as clients,
               (select count(*)::int from xodos x where x.agency_id = a.id) as xodos,
@@ -115,10 +120,11 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     platformFlags(sql),
     planPrices(sql),
     sql.query<{ day: string; calls: number }>(`select day::text, count(*)::int as calls from ai_usage where day >= $1::date group by day order by day`, [daysAgo(now, 13)]),
+    adminInvoices(sql),
   ]);
 
   const priceOf = (plan: string) => (prices as Prices)[plan as keyof Prices] ?? 0;
-  const ag = agencies.map((a) => ({ ...a, ai_brl: num(a.ai_brl), health: agencyHealth(a, now), mrr: a.plan_status === "active" && !a.suspended_at ? priceOf(a.plan) : 0 }));
+  const ag = agencies.map((a) => ({ ...a, ai_brl: num(a.ai_brl), health: agencyHealth(a, now), mrr: a.plan_status === "active" && !a.suspended_at ? (a.paid_monthly_cents != null ? Math.round(a.paid_monthly_cents) / 100 : a.custom_price_cents ? a.custom_price_cents / 100 : priceOf(a.plan)) : 0 }));
   // Receita estimada: agências pagantes (marcadas como "active") pelo preço de tabela do plano.
   const months: string[] = [];
   const [cy, cm] = dayIn(TZ, now).split("-").map(Number);
@@ -129,7 +135,7 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
   const byIncident = new Map<string, typeof updates>();
   for (const u of updates) byIncident.set(u.incident_id, [...(byIncident.get(u.incident_id) ?? []), u]);
   // Saúde por serviço pelas etapas do cron nas últimas 24 h.
-  const STEPS: Record<string, string[]> = { app: ["canais", "fila", "fila_fim", "uploads", "comunicados"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal"] };
+  const STEPS: Record<string, string[]> = { app: ["canais", "fila", "fila_fim", "uploads", "comunicados"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal", "assinaturas"] };
   const day = cron.filter((r) => now.getTime() - Date.parse(r.started_at) < 864e5);
   const services = Object.entries(STEPS).map(([id, steps]) => {
     const bad = day.filter((r) => r.failed.some((f) => steps.includes(f))).length;
@@ -154,6 +160,7 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     leads,
     coupons,
     comms,
+    invoices,
     incidents: incidents.map((i) => ({ ...i, updates: byIncident.get(i.id) ?? [] })),
     cron: { last: cron[0] ?? null, services },
     staff,
@@ -177,13 +184,15 @@ export const agencyAdminInput = z.object({
   trial_days: z.number().int().min(1).max(90).optional(),
   suspend: z.object({ reason: z.string().trim().min(5).max(500) }).optional(),
   reactivate: z.literal(true).optional(),
+  /** Preço combinado por mês em reais (Empresarial ou negociação); nulo volta ao preço de tabela. */
+  custom_price: z.number().min(1).max(1_000_000).nullable().optional(),
 });
 
 export async function updateAgencyAdmin(sql: Sql, actor: { id: string; role: string }, agencyId: string, raw: unknown, now = new Date()) {
   const i = agencyAdminInput.parse(raw);
   if (i.suspend && i.reactivate) throw new XodoError("Escolha suspender ou reativar, não os dois.", 400);
   // Todas as permissões antes da primeira gravação: ou tudo entra, ou nada.
-  if (i.plan || i.plan_status || i.trial_days) staffCan(actor.role, "plan");
+  if (i.plan || i.plan_status || i.trial_days || i.custom_price !== undefined) staffCan(actor.role, "plan");
   if (i.suspend || i.reactivate) staffCan(actor.role, "suspend");
   return sql.transaction(async (tx) => {
     const a = await one<{ name: string; plan: string; plan_status: string; trial_ends_at: string | null; suspended_at: string | null }>(
@@ -200,6 +209,10 @@ export async function updateAgencyAdmin(sql: Sql, actor: { id: string; role: str
     if (status !== a.plan_status) {
       await tx.query(`update agencies set plan_status = $2 where id = $1`, [agencyId, status]);
       await log("admin_situacao", `Situação de ${a.name}: ${a.plan_status} → ${status}`);
+    }
+    if (i.custom_price !== undefined) {
+      await tx.query(`update agencies set custom_price_cents = $2 where id = $1`, [agencyId, i.custom_price == null ? null : Math.round(i.custom_price * 100)]);
+      await log("admin_preco", i.custom_price == null ? `${a.name} volta ao preço de tabela` : `Preço combinado de ${a.name}: R$ ${i.custom_price.toLocaleString("pt-BR")}/mês`);
     }
     if (i.trial_days) {
       const from = a.trial_ends_at && Date.parse(a.trial_ends_at) > now.getTime() ? new Date(a.trial_ends_at) : now;

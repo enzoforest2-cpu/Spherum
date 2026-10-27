@@ -79,8 +79,8 @@ export async function runDueRoutines(deps: EngineDeps, limit = 5, opts: { deadli
   const results: { routineId: string; runId: string | null; status: string }[] = [];
 
   for (const routine of due) {
-    // Agência suspensa pelo Spherum: a rotina não roda nem avisa; volta a valer quando reativarem.
-    const ag = await one<{ suspended: boolean }>(sql, `select suspended_at is not null as suspended from agencies where id = $1`, [routine.agency_id]);
+    // Agência suspensa ou bloqueada pela cobrança: a rotina não roda nem avisa; volta a valer quando regularizar.
+    const ag = await one<{ suspended: boolean }>(sql, `select (suspended_at is not null or locked_at is not null) as suspended from agencies where id = $1`, [routine.agency_id]);
     if (ag?.suspended) { results.push({ routineId: routine.id, runId: null, status: "suspended" }); continue; }
     // Passado o prazo do cron, a rotina já reivindicada começa e segue em fatias.
     let runId: string | null = null;

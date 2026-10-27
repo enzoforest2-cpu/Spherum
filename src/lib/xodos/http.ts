@@ -33,10 +33,21 @@ export async function requireAuth(request: Request): Promise<AuthUser> {
   return { id: data.user.id, email: data.user.email?.toLowerCase() ?? null, meta: data.user.user_metadata ?? {} };
 }
 
-export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[]): Promise<Role> {
-  const member = await one<{ role: Role; suspended: boolean }>(
+const LOCKED: Record<string, string> = {
+  teste: "O teste grátis acabou. Escolha um plano em Configurações → Plano e cobrança para continuar criando e editando.",
+  atraso: "A fatura do Spherum está em atraso. Pague em Configurações → Plano e cobrança para liberar a agência.",
+  cancelada: "A assinatura terminou. Escolha um plano em Configurações → Plano e cobrança para continuar.",
+};
+
+/**
+ * Papel de quem pede na agência. Agência bloqueada pela cobrança (teste acabou, atraso, cancelada):
+ * ler continua (CAN_READ) e o que tem allowLocked (assinatura, suporte) também; o resto é recusado.
+ */
+export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[], opts: { allowLocked?: boolean } = {}): Promise<Role> {
+  const member = await one<{ role: Role; suspended: boolean; locked: string | null }>(
     sql,
-    `select m.role, a.suspended_at is not null as suspended from agency_members m join agencies a on a.id = m.agency_id where m.agency_id = $1 and m.user_id = $2`,
+    `select m.role, a.suspended_at is not null as suspended, case when a.locked_at is not null then coalesce(a.locked_reason, 'teste') end as locked
+       from agency_members m join agencies a on a.id = m.agency_id where m.agency_id = $1 and m.user_id = $2`,
     [agencyId, userId],
   );
   // Mesmo erro para "não existe" e "não é sua", para não revelar outras agências.
@@ -44,6 +55,7 @@ export async function requireRole(sql: Sql, userId: string, agencyId: string, al
   // Suspensa pela equipe do Spherum: ninguém da agência age até a reativação (os dados ficam guardados).
   if (member.suspended) throw new XodoError("Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).", 403);
   if (!allowed.includes(member.role)) throw new XodoError("Seu papel na agência não permite esta ação.", 403);
+  if (member.locked && allowed !== CAN_READ && !opts.allowLocked) throw new XodoError(LOCKED[member.locked] ?? LOCKED.teste, 402);
   return member.role;
 }
 

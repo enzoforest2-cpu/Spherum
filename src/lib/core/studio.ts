@@ -2,6 +2,7 @@ import { z } from "zod";
 import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { createPost } from "./content";
+import { limitsOf } from "./subscription";
 import { requireFeature } from "./platform";
 
 /**
@@ -95,7 +96,10 @@ async function usage(sql: Sql, agencyId: string, now: Date) {
   let lim = PLAN_LIMITS[plan] ?? PLAN_LIMITS.agencia;
   // No teste grátis o plano é o que a pessoa escolheu no cadastro, sem pagar: a cota fica a do plano Agência.
   if (a?.plan_status === "trial") lim = [Math.min(lim[0] ?? Infinity, PLAN_LIMITS.agencia[0]!), Math.min(lim[1] ?? Infinity, PLAN_LIMITS.agencia[1]!)];
-  return { plan, images: r!.img, videos: r!.vid, image_limit: lim[0], video_limit: lim[1] };
+  // Pacotes extras contratados ("+50 peças", "+10 vídeos") somam à cota do plano.
+  const extra = await limitsOf(sql, agencyId);
+  const add = (base: number | null, n: number) => (base == null ? null : base + n);
+  return { plan, images: r!.img, videos: r!.vid, image_limit: add(lim[0], extra.studio_images), video_limit: add(lim[1], extra.studio_videos) };
 }
 
 const say = (sql: Sql, agencyId: string, clientId: string, role: "me" | "ai" | "sys", text: string, extra: { docs?: string[]; format?: string | null; user?: string | null } = {}) =>

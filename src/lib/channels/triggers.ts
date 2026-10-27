@@ -972,7 +972,7 @@ async function pollEmail(deps: ChannelDeps, t: EmailRow, now: Date, started: str
 export async function pollEmailTriggers(deps: ChannelDeps, opts: { run?: boolean } = {}) {
   const triggers = await deps.sql.query<EmailRow>(
     `select t.*, x.status as xodo_status from event_triggers t join xodos x on x.id = t.xodo_id join agencies a on a.id = t.agency_id
-      where t.kind = 'email' and t.enabled and a.suspended_at is null order by t.created_at`,
+      where t.kind = 'email' and t.enabled and a.suspended_at is null and a.locked_at is null order by t.created_at`,
   );
   const summary = { checked: 0, baseline: 0, skipped: 0, fired: 0, errors: 0 };
   const started: string[] = [];

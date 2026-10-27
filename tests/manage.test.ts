@@ -21,6 +21,8 @@ const publicDns: Resolver = async (host) => [{ address: host.startsWith("interno
 
 async function agencyWithKey() {
   const { agencyId, ownerId } = await seedAgency(sql);
+  // Vários xodós na mesma agência: plano Rede (o teste grátis permite 1).
+  await sql.query(`update agencies set plan = 'rede', plan_status = 'active' where id = $1`, [agencyId]);
   const credential = await createCredential(
     sql,
     llm,

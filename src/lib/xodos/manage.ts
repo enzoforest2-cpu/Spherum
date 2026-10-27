@@ -9,6 +9,7 @@ import { assertPublicUrl, type Resolver } from "./net";
 import { greeting } from "./persona";
 import { addMessage, XodoError } from "./runner";
 import { AUTONOMY, PERSONALITIES, SPECIES, type Xodo } from "./types";
+import { assertLimit } from "../core/subscription";
 import { credentialAad, lastFour, openSecret, sealSecret } from "./vault";
 
 /** Cadastro de chaves de API e de xodós. Toda função recebe agencyId e filtra por ele. */
@@ -235,6 +236,7 @@ export async function createXodo(sql: Sql, llm: LlmClient, agencyId: string, raw
     if (Number(found.n) !== clientIds.length) throw new XodoError("Algum cliente escolhido não é desta agência.");
   }
 
+  await assertLimit(sql, agencyId, "xodos");
   return sql.transaction(async (tx) => {
     await assertNameFree(tx, agencyId, input.name);
     const xodo = await one<Xodo>(

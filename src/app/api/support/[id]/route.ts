@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { allowLocked: true });
     await replySupportAgency(sql, agencyId, userId, uuid.parse((await params).id), input);
     return NextResponse.json({ ok: true });
   } catch (error) {
