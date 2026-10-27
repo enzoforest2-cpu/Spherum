@@ -52,7 +52,7 @@ export function agencyHealth(a: { last_seen: string | null; clients: number; con
 /** Tudo o que as telas do admin mostram, numa leitura. */
 export async function adminBoard(sql: Sql, userId: string, role: string, now = new Date()) {
   const since30 = daysAgo(now, 29);
-  const [me, agencies, leads, coupons, comms, incidents, updates, cron, staff, auditRows, tickets, tmsgs, aiProv, aiTop, signups, leadKinds, flags, prices] = await Promise.all([
+  const [me, agencies, leads, coupons, comms, incidents, updates, cron, staff, auditRows, tickets, tmsgs, aiProv, aiTop, signups, leadKinds, flags, prices, aiDays] = await Promise.all([
     one<{ name: string | null; email: string | null }>(sql, `select p.full_name as name, u.email from auth.users u left join profiles p on p.id = u.id where u.id = $1`, [userId]),
     sql.query<{ id: string; name: string; plan: string; plan_status: string; trial_ends_at: string | null; created_at: string; suspended_at: string | null; suspended_reason: string | null;
       city: string | null; state: string | null; coupon: string | null; owner_name: string | null; owner_email: string | null; members: number; clients: number; xodos: number;
@@ -114,6 +114,7 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     sql.query<{ kind: string; n: number }>(`select kind, count(*)::int as n from site_leads where created_at >= $1::date group by kind`, [since30]),
     platformFlags(sql),
     planPrices(sql),
+    sql.query<{ day: string; calls: number }>(`select day::text, count(*)::int as calls from ai_usage where day >= $1::date group by day order by day`, [daysAgo(now, 13)]),
   ]);
 
   const priceOf = (plan: string) => (prices as Prices)[plan as keyof Prices] ?? 0;
@@ -157,7 +158,10 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     staff,
     audit: auditRows,
     tickets: tickets.map((t) => ({ ...t, messages: byTicket.get(t.id) ?? [] })),
-    ai: { providers: aiProv.map((p) => ({ ...p, brl: num(p.brl), tokens: num(p.tokens) })), top: aiTop.map((t) => ({ ...t, brl: num(t.brl) })) },
+    ai: {
+      providers: aiProv.map((p) => ({ ...p, brl: num(p.brl), tokens: num(p.tokens) })), top: aiTop.map((t) => ({ ...t, brl: num(t.brl) })),
+      days: Array.from({ length: 14 }, (_, k) => { const d = daysAgo(now, 13 - k); return { day: d, calls: aiDays.find((x) => x.day === d)?.calls ?? 0 }; }),
+    },
   };
 }
 
