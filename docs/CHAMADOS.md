@@ -31,3 +31,7 @@ Código em `src/lib/core/tickets.ts`, tabelas em `supabase/migrations/2026102214
 ## Regras que valem sempre
 
 - O SLA aceita horas quebradas (0,5 h). Alterar o SLA reajusta os chamados abertos sem resposta na mesma transação.
+
+## No portal do cliente
+
+O cliente abre chamados em Chamados (assunto, urgência e descrição), acompanha a conversa e responde por ali; responder um chamado resolvido reabre. O selo do menu conta os chamados abertos em que a última mensagem é da agência. Rotas: `POST /api/portal/cliente/collab` com `tipo: "chamado"` ou `"chamado_resposta"`.

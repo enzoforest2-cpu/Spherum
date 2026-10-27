@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { before, test } from "node:test";
 import { createAgency } from "../src/lib/core/agencies";
-import { addQuery, aivisBoard, analyze, runChecks, setClientSettings, tipToTask, type AivisDeps } from "../src/lib/core/aivis";
+import { addQuery, aivisBoard, analyze, clientAivis, runChecks, setClientSettings, tipToTask, type AivisDeps } from "../src/lib/core/aivis";
 import { createClient } from "../src/lib/core/clients";
 import { one, type Sql } from "../src/lib/xodos/db";
 import { createTestDb } from "./helpers";
@@ -49,6 +49,17 @@ test("busca por IA: perguntas checadas em cada modelo, participação e tarefa",
   b = await aivisBoard(sql, agencyId, c.id, ["openai", "google"]);
   assert.equal(b.queries[0].cells.google!.error, "cota");
   assert.equal(b.queries[0].id, q.id);
+
+  // Portal do cliente: só quando a agência publica, e sem as respostas completas nem as dicas internas.
+  assert.equal(await clientAivis(sql, agencyId, c.id), null);
+  await setClientSettings(sql, agencyId, c.id, { published: true });
+  const pub = (await clientAivis(sql, agencyId, c.id))!;
+  assert.deepEqual(pub.engines.map((e) => e.id).sort(), ["google", "openai"]);
+  assert.deepEqual(pub.queries[0].cells.openai, { position: 1, mentioned: true });
+  assert.equal(pub.queries[0].cells.google, null, "checagem com erro não aparece para o cliente");
+  assert.ok(!JSON.stringify(pub).includes("Instituto Belle\n"), "sem o texto das respostas");
+  assert.ok(!("tips" in pub));
+  assert.ok(pub.last_checked);
 
   const t = await tipToTask(sql, agencyId, dona, c.id, { title: "Página de harmonização", due_date: "2026-11-10" }, new Date("2026-10-22T12:00:00Z"));
   assert.ok(t);

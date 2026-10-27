@@ -151,3 +151,22 @@ export async function tipToTask(sql: Sql, agencyId: string, userId: string, clie
   if (i.due_date > p.due_date) await sql.query(`update projects set due_date = $2 where id = $1`, [p.id, i.due_date]);
   return addTask(sql, agencyId, p.id, { title: i.title, assignee_user: i.assignee_user ?? null, due_date: i.due_date });
 }
+
+/**
+ * O que o cliente vê no portal, quando a agência publica: perguntas × modelos (posição ou citação), participação nas
+ * menções e a data da última checagem. Sem as respostas completas e sem as dicas internas da agência.
+ */
+export async function clientAivis(sql: Sql, agencyId: string, clientId: string) {
+  const pub = await one<{ published: boolean }>(sql, `select published from aivis_clients where client_id = $1 and agency_id = $2`, [clientId, agencyId]);
+  if (!pub?.published) return null;
+  const b = await aivisBoard(sql, agencyId, clientId, []);
+  const last = b.queries.flatMap((q) => Object.values(q.cells)).filter((c) => c && !c.error).map((c) => c!.checked_at).sort().pop() ?? null;
+  return {
+    engines: b.engines,
+    queries: b.queries.map((q) => ({
+      id: q.id, question: q.question,
+      cells: Object.fromEntries(Object.entries(q.cells).map(([e, c]) => [e, c && !c.error ? { position: c.position, mentioned: c.mentioned } : null])),
+    })),
+    stats: b.stats, share: b.share, last_checked: last,
+  };
+}

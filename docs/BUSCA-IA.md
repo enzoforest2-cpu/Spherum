@@ -31,3 +31,7 @@ Ainda não: o painel no portal do cliente (a flag `published` já existe) e o Re
 ## Regras que valem sempre
 
 - A checagem semanal (segunda-feira) refaz só as perguntas sem resultado nos últimos 6 dias e para perto do prazo do cron; o que ficar entra no ciclo seguinte.
+
+## No portal do cliente
+
+Com "Mostrar no portal" ligado, o cliente vê a tela Busca por IA: perguntas × assistentes (1º lugar, posição na lista, citada ou não aparece), quantas respostas citam a marca, quantas a colocam em primeiro e a participação nas menções contra os concorrentes acompanhados. As respostas completas, as checagens com erro e as dicas ficam só com a agência (`clientAivis` em `src/lib/core/aivis.ts`). Desligado, o item some do menu do cliente.

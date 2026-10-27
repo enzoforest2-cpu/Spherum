@@ -539,6 +539,55 @@ a:hover{color:#3346D3;text-decoration:underline}
         </section>
       </sc-if>
 
+      <sc-if value="{{ is.tickets }}">
+        <section data-screen-label="Cliente · Chamados" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end"><div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Chamados</h1><p style="margin:4px 0 0;color:#667085">{{ tk.sub }}</p></div><sc-if value="{{ tk.canNew }}"><button sc-camel-on-click="{{ tk.openNew }}" style="height:38px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500;display:flex;gap:6px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1;color:inherit">add</span>Abrir chamado</button></sc-if></div>
+          <sc-if value="{{ tk.newOpen }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <span style="font-size:14.5px;font-weight:600">Novo chamado</span>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#344054">Assunto<input value="{{ tk.subj }}" sc-camel-on-change="{{ tk.onSubj }}" placeholder="Ex.: Formulário do site parou de enviar" aria-label="Assunto" style="height:40px;padding:0 12px;border:1px solid #D0D5DD;border-radius:8px;font-size:14px;outline:none" style-focus="border-color:{{ br.acc }}"></label>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#344054">Urgência<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ tk.prios }}" as="o"><button sc-camel-on-click="{{ o.pick }}" aria-pressed="{{ o.on }}" style="height:32px;padding:0 12px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:13px;font-weight:500">{{ o.l }}</button></sc-for></div><span style="font-size:12px;color:#667085">{{ tk.prioHint }}</span></div>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#344054">O que está acontecendo<textarea value="{{ tk.text }}" sc-camel-on-change="{{ tk.onText }}" rows="4" placeholder="Conte o que viu, desde quando e onde (link, campanha, página)." aria-label="Descrição" style="border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;font:400 14px/1.5 inherit;resize:vertical;outline:none"></textarea></label>
+            <sc-if value="{{ tk.hasErr }}"><span style="font-size:12.5px;color:#D92D20">{{ tk.err }}</span></sc-if>
+            <div style="display:flex;gap:8px"><button sc-camel-on-click="{{ tk.create }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap">{{ tk.createL }}</button><button sc-camel-on-click="{{ tk.closeNew }}" style="height:36px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;background:#fff;color:#101828;font-size:13px;font-weight:500">Cancelar</button></div>
+          </div></sc-if>
+          <sc-if value="{{ tk.empty }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:26px;line-height:1;color:{{ br.acc }}">support_agent</span><span style="font-size:14.5px;font-weight:600">Nenhum chamado ainda</span><span style="font-size:13px;color:#667085;max-width:420px;text-wrap:pretty">Quando algo precisar de atenção (anúncio parado, formulário com problema, um ajuste urgente), abra um chamado. A {{ br.name }} tem prazo para responder.</span></div></sc-if>
+          <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ tk.list }}" as="t"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <button sc-camel-on-click="{{ t.toggle }}" aria-expanded="{{ t.open }}" style="display:flex;width:100%;gap:12px;align-items:center;padding:14px 18px;border:none;background:transparent;text-align:left;font:inherit;color:inherit">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600;text-wrap:pretty">{{ t.subj }}</span><span style="font-size:12.5px;color:#667085">{{ t.meta }}</span></div>
+              <span style="padding:2px 9px;border-radius:99px;font-size:12px;font-weight:500;background:{{ t.bg }};color:{{ t.c }};white-space:nowrap">{{ t.st }}</span>
+              <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:#667085">{{ t.icon }}</span>
+            </button>
+            <sc-if value="{{ t.open }}"><div style="border-top:1px solid #F2F4F7;background:#F9FAFB;padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ t.msgs }}" as="m">
+                <sc-if value="{{ m.them }}"><div style="max-width:80%;align-self:flex-start"><div style="font-size:11.5px;color:#667085;margin-bottom:3px">{{ m.who }} · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 10px 3px;background:#fff;border:1px solid #E4E7EC;font-size:13.5px;white-space:pre-wrap;text-wrap:pretty">{{ m.text }}</div></div></sc-if>
+                <sc-if value="{{ m.me }}"><div style="max-width:80%;align-self:flex-end"><div style="font-size:11.5px;color:#667085;margin-bottom:3px;text-align:right">Você · {{ m.when }}</div><div style="padding:10px 12px;border-radius:10px 10px 3px 10px;background:{{ br.acc }};color:#fff;font-size:13.5px;white-space:pre-wrap;text-wrap:pretty">{{ m.text }}</div></div></sc-if>
+              </sc-for>
+              <div style="display:flex;gap:8px;margin-top:4px"><input value="{{ t.draft }}" sc-camel-on-change="{{ t.onDraft }}" sc-camel-on-key-down="{{ t.onKey }}" placeholder="{{ t.ph }}" aria-label="Responder chamado" style="flex:1;min-width:0;height:40px;padding:0 12px;border:1px solid #E4E7EC;border-radius:8px;outline:none;background:#fff" style-focus="border-color:{{ br.acc }}"><button sc-camel-on-click="{{ t.send }}" style="height:40px;padding:0 16px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">{{ t.sendL }}</button></div>
+            </div></sc-if>
+          </div></sc-for></div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ is.aivis }}">
+        <section data-screen-label="Cliente · Busca por IA" style="display:flex;flex-direction:column;gap:16px">
+          <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Busca por IA</h1><p style="margin:4px 0 0;color:#667085;max-width:640px;text-wrap:pretty">{{ av.sub }}</p></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px"><sc-for list="{{ av.kpis }}" as="k"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:12.5px;color:#667085">{{ k.l }}</span><span style="font-size:24px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ k.v }}</span><span style="font-size:12px;color:#667085;text-wrap:pretty">{{ k.s }}</span></div></sc-for></div>
+          <sc-if value="{{ av.empty }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:26px;line-height:1;color:{{ br.acc }}">travel_explore</span><span style="font-size:14.5px;font-weight:600">A primeira checagem ainda não rodou</span><span style="font-size:13px;color:#667085;max-width:420px;text-wrap:pretty">A {{ br.name }} escolheu as perguntas; os resultados aparecem aqui depois da primeira checagem, que se repete toda segunda-feira.</span></div></sc-if>
+          <sc-if value="{{ av.hasRows }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
+            <div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><span style="font-size:14px;font-weight:600">Pergunta por pergunta</span><span style="font-size:12.5px;color:#667085">{{ av.legend }}</span></div>
+            <div style="overflow-x:auto"><div style="min-width:{{ av.minW }}">
+              <div style="display:grid;grid-template-columns:{{ av.cols }};background:#F9FAFB;border-top:1px solid #F2F4F7"><span style="padding:9px 18px;font-size:12.5px;font-weight:500;color:#667085">Pergunta</span><sc-for list="{{ av.engines }}" as="e"><span style="padding:9px 8px;font-size:12.5px;font-weight:500;color:#667085;text-align:center">{{ e.n }}</span></sc-for></div>
+              <sc-for list="{{ av.rows }}" as="r"><div style="display:grid;grid-template-columns:{{ av.cols }};border-top:1px solid #F2F4F7;align-items:center"><span style="padding:12px 18px;font-size:13.5px;text-wrap:pretty">{{ r.q }}</span><sc-for list="{{ r.cells }}" as="c"><span style="padding:12px 8px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:500;background:{{ c.bg }};color:{{ c.c }};white-space:nowrap">{{ c.l }}</span></span></sc-for></div></sc-for>
+            </div></div>
+          </div></sc-if>
+          <sc-if value="{{ av.hasShare }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">Quem é citado nas respostas</span><span style="font-size:12.5px;color:#667085">Participação de cada marca no total de menções das respostas checadas.</span></div>
+            <sc-for list="{{ av.share }}" as="s"><div style="display:grid;grid-template-columns:minmax(110px,180px) 1fr 44px;gap:10px;align-items:center;font-size:13.5px"><span style="font-weight:{{ s.fw }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.n }}</span><div style="height:8px;border-radius:4px;background:#F2F4F7;overflow:hidden"><div style="height:100%;width:{{ s.w }};background:{{ s.bar }}"></div></div><span style="text-align:right;font-variant-numeric:tabular-nums;color:#475467">{{ s.pct }}</span></div></sc-for>
+          </div></sc-if>
+          <span style="font-size:12.5px;color:#667085;text-wrap:pretty">{{ av.note }}</span>
+        </section>
+      </sc-if>
+
       <sc-if value="{{ is.work }}">
 <section data-screen-label="Cliente · Feito pela agência" style="display:flex;flex-direction:column;gap:16px">
   <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Feito pela agência</h1><p style="margin:4px 0 0;color:#667085">O que a {{ br.name }} e os xodós dela fizeram na sua conta, em português claro.</p></div>
@@ -596,6 +645,27 @@ a:hover{color:#3346D3;text-decoration:underline}
 <sc-if value="{{ out.has }}"><div role="dialog" aria-modal="true" aria-label="Sessão encerrada" style="position:fixed;inset:0;z-index:2000;background:radial-gradient(60% 50% at 50% 42%,#FFFFFF 0%,#F2F4F7 75%);display:grid;place-items:center;padding:24px;font-family:'Geist',system-ui,sans-serif;color:#101828"><div style="width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center"><span style="width:56px;height:56px;border-radius:16px;background:#EEF1FF;color:#465FFF;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:28px;line-height:1">logout</span></span><span style="font-size:22px;font-weight:600;letter-spacing:-0.02em">Você saiu {{ out.where }}</span><span style="font-size:14.5px;color:#667085;text-wrap:pretty">Sua sessão foi encerrada neste navegador.</span><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px"><button sc-camel-on-click="{{ out.home }}" style="height:42px;padding:0 18px;border:none;border-radius:11px;background:#465FFF;color:#fff;font-size:14px;font-weight:600">Voltar para o site</button><button sc-camel-on-click="{{ out.back }}" style="height:42px;padding:0 18px;border:1px solid #D0D5DD;border-radius:11px;background:#fff;color:#101828;font-size:14px;font-weight:600">Entrar de novo</button></div></div></div></sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script="">
+
+// Demonstração de Chamados e Busca por IA (sem sessão).
+const TK_DEMO = [
+  { id: 'k1', subject: 'Formulário do site parou de enviar e-mail', status: 'aberto', created_at: 'ontem', answered: true, msgs: [
+    { side: 'cliente', who: '', text: 'Desde ontem à tarde os contatos do formulário não chegam no nosso e-mail.', at: 'ontem' },
+    { side: 'agencia', who: 'Rafael Lima', text: 'Achamos: a senha do e-mail de envio venceu. Já trocamos e os 6 contatos de ontem foram reenviados para vocês. Confere se chegaram?', at: 'hoje, 08:40' }] },
+  { id: 'k2', subject: 'Trocar o telefone nos anúncios', status: 'resolvido', created_at: '12 set', resolved_at: '12 set', answered: true, msgs: [
+    { side: 'cliente', who: '', text: 'O telefone do stand mudou para (41) 3333-0000.', at: '12 set' },
+    { side: 'agencia', who: 'Bia Nunes', text: 'Atualizado nos 8 anúncios e na página do Vista Parque.', at: '12 set' }] },
+];
+const AV_DEMO = {
+  engines: [{ id: 'openai', name: 'ChatGPT' }, { id: 'google', name: 'Gemini' }, { id: 'anthropic', name: 'Claude' }],
+  queries: [
+    { id: 'q1', question: 'Melhores construtoras de alto padrão em Curitiba', cells: { openai: { position: 2, mentioned: true }, google: { position: 1, mentioned: true }, anthropic: { position: null, mentioned: true } } },
+    { id: 'q2', question: 'Apartamento de 4 quartos no Ecoville, qual construtora?', cells: { openai: { position: null, mentioned: false }, google: { position: 3, mentioned: true }, anthropic: { position: null, mentioned: false } } },
+    { id: 'q3', question: 'Construtora confiável para comprar na planta em Curitiba', cells: { openai: { position: 1, mentioned: true }, google: { position: null, mentioned: true }, anthropic: { position: 4, mentioned: true } } },
+  ],
+  stats: { checked: 9, mentioned: 7, first: 2, share_pct: 38 },
+  share: [{ name: 'Construtora Pilar', pct: 38, mine: true }, { name: 'Grupo Horizonte', pct: 33, mine: false }, { name: 'Alto Vale Incorporadora', pct: 29, mine: false }],
+  last_checked: '20 out 2026',
+};
 
 const CW_FEED = [
   ['opt', 'auto_awesome', 'Pausamos um anúncio que estava caro e passamos a verba para o que traz mais contatos', 'O anúncio “Vista Parque · Carrossel” trazia cada contato a R$ 148. Os R$ 210 por dia foram para o “Vista Parque · Vídeo”, que traz a R$ 81.', 'hoje, 09:12', 'Nina, xodó da Marketing Pro', '−R$ 67 por contato'],
@@ -841,6 +911,8 @@ class Component extends DCLogic {
     o.who = { name: R.me.name, client: R.client.name, ini: (R.me.name || R.client.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() };
     o.hello = (first ? 'Olá, ' + first + ' · ' : '') + 'dados até ' + this.spDate(R.period.to);
     o.msgSub = 'Fale com seu time na ' + nm + (R.owner ? ' · ' + R.owner.name + ' cuida da sua conta' : '');
+    // Chamados e Busca por IA com o nome real da agência.
+    o.tk = this.tkVals(this.spTkList(), true, o.br); o.av = this.avVals(R.aivis, nm);
     return this.spCollab(o, x);
   }
   // Recarrega os dados do portal (depois de responder algo, e de tempos em tempos na conversa).
@@ -858,7 +930,9 @@ class Component extends DCLogic {
   }
   spBadges() {
     const C = this.R.collab, wk = Date.now() - 7 * 864e5;
-    return { work: this.state.workSeen ? 0 : C.updates.filter(u => Date.parse(u.published_at || u.created_at) > wk).length, start: C.requests.filter(r => r.status === 'aberto').length, msgs: C.unread };
+    // Chamados: abertos em que a última palavra foi da agência (esperando você ler ou responder).
+    const tk = (this.R.tickets || []).filter(t => t.status === 'aberto' && t.messages.length && t.messages[t.messages.length - 1].side === 'agencia' && !(this.state.tkSeen || {})[t.id + ':' + t.messages.length]).length;
+    return { work: this.state.workSeen ? 0 : C.updates.filter(u => Date.parse(u.published_at || u.created_at) > wk).length, start: C.requests.filter(r => r.status === 'aberto').length, msgs: C.unread, tickets: tk };
   }
   // Envio de arquivo do cliente: registra, sobe direto para o Storage e confirma.
   async spUpload(f) {
@@ -964,6 +1038,70 @@ class Component extends DCLogic {
     o.send = () => this.spSend(); o.onKey = e => { if (e.key === 'Enter') this.spSend(); };
     return o;
   }
+  // Chamados: lista normalizada (real ou demonstração) e a tela.
+  spTkList() { return (this.R.tickets || []).map(t => ({ id: t.id, subject: t.subject, status: t.status, created_at: t.created_at, resolved_at: t.resolved_at, answered: !!t.first_response_at, msgs: t.messages.map(m => ({ side: m.side, who: m.author_name, text: m.text, at: m.created_at })) })); }
+  tkVals(list, real, br) {
+    const S = this.state, acc = ACC(), mix = c => `color-mix(in srgb, ${c} 10%, transparent)`;
+    const PR = [['alta', 'Urgente', 'Algo parado ou perdendo dinheiro agora.'], ['media', 'Normal', 'Precisa de atenção, mas não para nada.'], ['baixa', 'Pode esperar', 'Ajuste ou dúvida sem pressa.']], prio = S.tkPrio || 'media';
+    const when = t => real ? this.spWhen(t) : t;
+    const items = list.map(t => { const open = S.tkOpen === t.id, last = t.msgs[t.msgs.length - 1], resolved = t.status === 'resolvido', waiting = !resolved && last && last.side === 'agencia';
+      const st = resolved ? ['Resolvido', '#079455', 'rgba(23,178,106,0.12)'] : waiting ? ['Respondido', acc, mix(acc)] : t.answered ? ['Com a agência', '#B54708', 'rgba(247,144,9,0.13)'] : ['Aguardando resposta', '#475467', '#F2F4F7'];
+      const busy = S.tkBusy === t.id;
+      return { subj: t.subject, meta: 'Aberto ' + when(t.created_at) + (last ? ' · última mensagem ' + when(last.at) : ''), st: st[0], c: st[1], bg: st[2], open, icon: open ? 'expand_less' : 'expand_more',
+        toggle: () => this.setState(s => ({ tkOpen: s.tkOpen === t.id ? null : t.id, tkSeen: Object.assign({}, s.tkSeen, { [t.id + ':' + t.msgs.length]: true }) })),
+        msgs: t.msgs.map(m => ({ them: m.side === 'agencia', me: m.side === 'cliente', who: m.who || br.name, when: when(m.at), text: m.text })),
+        draft: (S.tkDrafts || {})[t.id] || '', ph: resolved ? 'Responder reabre o chamado' : 'Escreva sua resposta…', sendL: busy ? 'Enviando…' : 'Enviar',
+        onDraft: e => { const v = e.target.value; this.setState(s => ({ tkDrafts: Object.assign({}, s.tkDrafts, { [t.id]: v }) })); },
+        send: () => this.tkReply(t, real), onKey: e => { if (e.key === 'Enter') this.tkReply(t, real); } }; });
+    return { sub: 'Peça algo à ' + br.name + ' e acompanhe a resposta. Cada chamado tem prazo de primeira resposta conforme a urgência.',
+      canNew: !S.tkNew, newOpen: !!S.tkNew, openNew: () => this.setState({ tkNew: true, tkErr: '' }), closeNew: () => this.setState({ tkNew: false, tkErr: '' }),
+      subj: S.tkSubj || '', onSubj: e => this.setState({ tkSubj: e.target.value }), text: S.tkText || '', onText: e => this.setState({ tkText: e.target.value }),
+      prios: PR.map(p => ({ l: p[1], on: prio === p[0] ? 'true' : 'false', pick: () => this.setState({ tkPrio: p[0] }), bd: prio === p[0] ? acc : '#E4E7EC', bg: prio === p[0] ? mix(acc) : '#fff', c: prio === p[0] ? acc : '#344054' })),
+      prioHint: (PR.find(p => p[0] === prio) || PR[1])[2], hasErr: !!S.tkErr, err: S.tkErr || '', createL: S.tkBusy === 'new' ? 'Abrindo…' : 'Abrir chamado', create: () => this.tkCreate(real),
+      empty: !items.length && !S.tkNew, list: items };
+  }
+  async tkCreate(real) {
+    const S = this.state, subject = (S.tkSubj || '').trim(), text = (S.tkText || '').trim();
+    if (subject.length < 3) return this.setState({ tkErr: 'Escreva o assunto (pelo menos 3 letras).' });
+    if (!text) return this.setState({ tkErr: 'Conte o que está acontecendo.' });
+    if (S.tkBusy) return;
+    if (!real) { const t = { id: 'd' + Date.now(), subject, status: 'aberto', created_at: 'agora', answered: false, msgs: [{ side: 'cliente', who: '', text, at: 'agora' }] };
+      this.setState(s => ({ tkDemo: [t].concat(s.tkDemo || TK_DEMO), tkNew: false, tkSubj: '', tkText: '', tkPrio: 'media', tkErr: '', tkOpen: t.id })); return this.toastMsg('Chamado aberto · a agência foi avisada'); }
+    this.setState({ tkBusy: 'new', tkErr: '' });
+    try { const r = await this.spCollabPost({ tipo: 'chamado', subject, text, priority: S.tkPrio || 'media' }); await this.spReload();
+      this.setState({ tkNew: false, tkSubj: '', tkText: '', tkPrio: 'media', tkOpen: r && r.id ? r.id : null }); this.toastMsg('Chamado aberto · a agência foi avisada'); }
+    catch (e) { this.setState({ tkErr: e.message || 'Não deu certo agora. Tente de novo.' }); } finally { this.setState({ tkBusy: null }); }
+  }
+  async tkReply(t, real) {
+    const text = ((this.state.tkDrafts || {})[t.id] || '').trim();
+    if (!text || this.state.tkBusy) return;
+    const clear = () => this.setState(s => ({ tkDrafts: Object.assign({}, s.tkDrafts, { [t.id]: '' }) }));
+    if (!real) { this.setState(s => ({ tkDemo: (s.tkDemo || TK_DEMO).map(x => x.id === t.id ? Object.assign({}, x, { status: 'aberto', msgs: x.msgs.concat([{ side: 'cliente', who: '', text, at: 'agora' }]) }) : x) })); clear(); return; }
+    this.setState({ tkBusy: t.id });
+    try { await this.spCollabPost({ tipo: 'chamado_resposta', item_id: t.id, text }); clear(); await this.spReload(); if (t.status === 'resolvido') this.toastMsg('Chamado reaberto · a agência foi avisada'); }
+    catch (e) { this.toastMsg(e.message); } finally { this.setState({ tkBusy: null }); }
+  }
+  // Busca por IA (só quando a agência publica no portal).
+  avVals(A, agency) {
+    if (!A) return { sub: '', kpis: [], empty: true, hasRows: false, hasShare: false, rows: [], engines: [], share: [], cols: '1fr', minW: '0', legend: '', note: '' };
+    const acc = ACC(), mix = c => `color-mix(in srgb, ${c} 12%, transparent)`, st = A.stats || {}, eng = A.engines || [];
+    const cell = c => !c ? { l: '—', c: '#98A2B3', bg: 'transparent' } : c.position === 1 ? { l: '1º lugar', c: '#067647', bg: 'rgba(23,178,106,0.14)' } : c.position ? { l: c.position + 'º lugar', c: acc, bg: mix(acc) } : c.mentioned ? { l: 'citada', c: acc, bg: mix(acc) } : { l: 'não aparece', c: '#B42318', bg: 'rgba(240,68,56,0.10)' };
+    const rows = (A.queries || []).map(q => ({ q: q.question, cells: eng.map(e => cell(q.cells[e.id])) }));
+    const checked = rows.some(r => r.cells.some(c => c.l !== '—'));
+    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+    const last = A.last_checked ? (this.R ? this.spDate(A.last_checked) : A.last_checked) : null;
+    return {
+      sub: 'Quando alguém pergunta a um assistente de IA (ChatGPT, Gemini, Claude…) sobre o seu mercado, a sua marca aparece? A ' + agency + ' faz as perguntas toda semana e mostra o resultado aqui.',
+      kpis: [['Respostas checadas', String(st.checked || 0), eng.length + (eng.length === 1 ? ' assistente' : ' assistentes') + ' · ' + rows.length + (rows.length === 1 ? ' pergunta' : ' perguntas')],
+        ['Sua marca citada', pct(st.mentioned || 0, st.checked || 0), (st.mentioned || 0) + ' de ' + (st.checked || 0) + ' respostas'],
+        ['Em 1º lugar', String(st.first || 0), 'respostas com a marca no topo da lista'],
+        ['Participação nas menções', st.share_pct == null ? '—' : st.share_pct + '%', 'contra os concorrentes acompanhados']].map(k => ({ l: k[0], v: k[1], s: k[2] })),
+      empty: !checked, hasRows: checked && rows.length > 0, rows, engines: eng.map(e => ({ n: e.name })),
+      cols: 'minmax(220px, 2fr) repeat(' + Math.max(1, eng.length) + ', minmax(96px, 1fr))', minW: (220 + Math.max(1, eng.length) * 100) + 'px',
+      legend: '1º lugar · posição na lista · citada fora da lista · não aparece',
+      hasShare: checked && (A.share || []).length > 1, share: (A.share || []).map(s => ({ n: s.name, pct: s.pct + '%', w: s.pct + '%', bar: s.mine ? acc : '#D0D5DD', fw: s.mine ? '600' : '400' })),
+      note: (last ? 'Última checagem em ' + last + '. ' : '') + 'As respostas dos assistentes mudam de uma semana para outra; o que importa é a tendência.' };
+  }
   toastMsg(m) { clearTimeout(this.tt); this.setState({ toast: m }); this.tt = setTimeout(() => this.setState({ toast: null }), 2400); }
   cwPendN() { return CW_ITEMS.filter(i => !(this.state.cwDone || {})[i[0]]).length || 0; }
   go(v) { this.setState(v === 'work' ? { view: v, workSeen: true } : { view: v }); if (this.mainRef.current) this.mainRef.current.scrollTop = 0;
@@ -981,7 +1119,7 @@ class Component extends DCLogic {
     const S = this.state; const open = !S.narrow;
     const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const cb = this.R ? this.spBadges() : null;
-    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', cb ? cb.work : S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', cb ? cb.start : this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 1], ['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', cb ? cb.msgs : S.sent.length ? 0 : 1], ['help', 'Ajuda', 'help']];
+    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', cb ? cb.work : S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', cb ? cb.start : this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 1]].concat(this.R && !this.R.aivis ? [] : [['aivis', 'Busca por IA', 'travel_explore']]).concat([['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', cb ? cb.msgs : S.sent.length ? 0 : 1], ['tickets', 'Chamados', 'support_agent', cb ? cb.tickets : 1], ['help', 'Ajuda', 'help']]);
     const nav0 = navDef; const nav = nav0.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
     // Telas que ainda não têm dados de verdade mostram um aviso (hoje todas têm).
     const SOON = {};
@@ -1003,7 +1141,7 @@ class Component extends DCLogic {
     const chat = chatBase.map(c => ({ them: c[0] === 'them', me: c[0] === 'me', who: c[1], when: c[2], text: c[3] })).concat(S.sent.map(t => ({ them: false, me: true, who: '', when: 'agora', text: t })));
     const send = () => { const d = S.draft.trim(); if (!d) return; this.setState(x => ({ draft: '', sent: x.sent.concat([d]) })); };
     const faq = [['O que significa “Melhorou”, “Piorou” e “Estável”?', 'Comparamos cada métrica com o mesmo número de dias imediatamente anterior. Para custos (como custo por lead), cair é melhorar. Variações abaixo de 3% aparecem como estáveis.'],
-      ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.']]
+      ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.'], ['Como peço algo urgente?', 'Em Chamados, abra um chamado e marque a urgência. A agência tem prazo para a primeira resposta, e você acompanha a conversa por ali.']]
       .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
     const out = {
       soon, showAppr: true, nextInv: { v: 'R$ 7.200', d: 'Mensalidade out/26 · vence 05 out · boleto', has1: true, has2: true, b1: 'Ver boleto', b2: 'Copiar linha digitável', act1: () => this.toastMsg('Linha digitável copiada'), act2: () => this.toastMsg('Linha digitável copiada') },
@@ -1065,7 +1203,9 @@ class Component extends DCLogic {
           pixOff: S.pix !== 'on', pixOn: S.pix === 'on', pixL: S.pix === 'wait' ? 'Abrindo o app do banco…' : 'Ativar Pix Automático',
           pixStart: () => { if (S.pix === 'wait') return; this.setState({ pix: 'wait' }); setTimeout(() => { this.setState({ pix: 'on' }); this.toastMsg('Pix Automático autorizado no seu banco'); }, 1800); } };
       })(),
-      toast: { show: !!S.toast, msg: S.toast || '' }
+      toast: { show: !!S.toast, msg: S.toast || '' },
+      tk: this.tkVals(this.R ? this.spTkList() : (S.tkDemo || TK_DEMO), !!this.R, br),
+      av: this.avVals(this.R ? this.R.aivis : AV_DEMO, br.name)
     };
     return this.R ? this.spVals(out, { f, brl, brl2, st }) : out;
   }

@@ -4,6 +4,8 @@ import { listClientInvoices } from "../billing";
 import { clientCollab } from "./collab";
 import { openNps } from "./risk";
 import { clientTickets } from "./tickets";
+import { clientAivis } from "./aivis";
+import { dayIn } from "../xodos/budget";
 import { listSharedDocuments } from "./documents";
 
 /**
@@ -36,11 +38,12 @@ export async function clientAccess(sql: Sql, userId: string, clientId: string) {
 
 export async function clientPortal(sql: Sql, clientId: string, userId: string, now = new Date()) {
   const access = await clientAccess(sql, userId, clientId);
-  const end = addDays(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())), -1);
+  // Ontem no calendário de Brasília (as janelas de 30 e 90 dias seguem o dia daqui, não o UTC).
+  const end = addDays(new Date(`${dayIn("America/Sao_Paulo", now)}T00:00:00Z`), -1);
   const to = day(end);
   const since = (n: number) => day(addDays(end, -(n - 1)));
 
-  const [client, me, dailyRows, campRows, reportRows, documents, invoices, paysOnline, collab, tickets, nps] = await Promise.all([
+  const [client, me, dailyRows, campRows, reportRows, documents, invoices, paysOnline, collab, tickets, nps, aivis] = await Promise.all([
     one<{ name: string; goal_metric: string | null; goal_value: number | null; agency: string; brand_color: string | null; owner: string | null; owner_email: string | null }>(
       sql,
       `select c.name, c.goal_metric, c.goal_value::float8 as goal_value, a.name as agency, a.brand_color, p.full_name as owner, u.email as owner_email
@@ -77,6 +80,7 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
     clientCollab(sql, clientId, "cliente"),
     clientTickets(sql, clientId),
     openNps(sql, clientId),
+    clientAivis(sql, access.agencyId, clientId),
   ]);
 
   // Totais das janelas de 30 e 90 dias (e das anteriores, para comparar) e por plataforma.
@@ -132,5 +136,6 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
     collab,
     tickets,
     nps,
+    aivis,
   };
 }
