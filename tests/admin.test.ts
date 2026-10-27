@@ -7,6 +7,8 @@ import {
 } from "../src/lib/core/admin";
 import { createAgency } from "../src/lib/core/agencies";
 import { clientAccess } from "../src/lib/core/client-portal";
+import { listNotifications, markNotificationsRead, platformNotice } from "../src/lib/core/notifications";
+import { agencyPortal } from "../src/lib/core/portal";
 import type { EmailMessage } from "../src/lib/core/email";
 import { platformFlags, requireFeature, resetPlatformCache, setFlags, setPrices } from "../src/lib/core/platform";
 import { listSupport, openSupport, replySupportAgency } from "../src/lib/core/support";
@@ -137,4 +139,39 @@ test("leads: funil com etapa, responsável e nota; lead manual sem duplicar", as
   await assert.rejects(updateSiteLead(sql, s.sup, l.id, { owner_user: s.ana }), /não é da equipe/);
   const row = await one<{ stage: string; note: string; handled: boolean }>(sql, `select stage, note, handled_at is not null as handled from site_leads where id = $1`, [l.id]);
   assert.deepEqual([row!.stage, row!.note, row!.handled], ["demo", "Três unidades.", true]);
+});
+
+test("app da agência: notificações, aviso do topo (manutenção > incidente > comunicado) e chamados no portal", async () => {
+  const s = await setup();
+  const other = await user(`bia-${randomUUID()}@agencia.com`);
+  await sql.query(`insert into notifications (agency_id, user_id, kind, title) values ($1, $2, 'reconhecimento', 'Só da Bia')`, [s.agencyId, other]);
+  await createAnnouncement(s.deps, s.dono, { title: "Novo: Estúdio com vídeo", body: "Agora dá para animar.", channel: "banner", segment: "all", send: "now", cta_label: "Ver", cta_url: "https://spherum.com.br/novidades" });
+  const mine = await listNotifications(sql, s.agencyId, s.ana);
+  assert.ok(mine.some((n) => n.kind === "comunicado" && !n.read));
+  assert.ok(!mine.some((n) => n.title === "Só da Bia"), "notificação de outra pessoa não aparece");
+
+  await updateIncident(sql, s.dono, (await createIncident(sql, s.dono, { service: "app", title: "Teste antigo", text: "Começou." })).id, { status: "resolved", text: "Resolvido." });
+  let n = await platformNotice(sql, s.agencyId);
+  assert.equal(n?.title, "Novo: Estúdio com vídeo");
+  assert.equal(n?.cta_url, "https://spherum.com.br/novidades");
+  const inc = await createIncident(sql, s.dono, { service: "meta", title: "Meta lento", severity: "major", text: "A API do Meta está lenta." });
+  n = await platformNotice(sql, s.agencyId);
+  assert.deepEqual([n?.title, n?.tone, n?.text], ["Meta lento", "red", "A API do Meta está lenta."]);
+  await setFlags(sql, s.dono.id, { maint: true });
+  assert.equal((await platformNotice(sql, s.agencyId))?.title, "Manutenção no Spherum");
+  await setFlags(sql, s.dono.id, { maint: false });
+  resetPlatformCache();
+  await updateIncident(sql, s.dono, inc.id, { status: "resolved", text: "Normalizou." });
+
+  const c = mine.find((x) => x.kind === "comunicado")!;
+  assert.equal((await markNotificationsRead(sql, s.agencyId, s.ana, { ids: [c.id] })).read, 1);
+  assert.equal(await platformNotice(sql, s.agencyId), null, "comunicado lido sai do topo");
+  await markNotificationsRead(sql, s.agencyId, s.ana, {});
+  assert.ok((await listNotifications(sql, s.agencyId, s.ana)).every((x) => x.read));
+  assert.equal((await one<{ n: number }>(sql, `select count(*)::int as n from notifications where user_id = $1 and read_at is null`, [other]))!.n, 1, "não marca a de outra pessoa");
+
+  await openSupport(sql, s.deps.mail, s.agencyId, s.ana, { subject: "Relatório não gera", text: "Fica carregando." });
+  const P = await agencyPortal(sql, s.agencyId, s.ana);
+  assert.deepEqual([P.support.length, P.support[0].subject, P.notice], [1, "Relatório não gera", null]);
+  assert.ok(Array.isArray(P.notifications));
 });

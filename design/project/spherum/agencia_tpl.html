@@ -469,7 +469,7 @@ a:hover{color:#3346D3;text-decoration:underline}
       </button>
       <button sc-camel-on-click="{{ openNotif }}" aria-label="Notificações" style="position:relative;width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff)" style-hover="background:var(--hv,#F9FAFB)">
         <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">notifications</span>
-        <span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:#F04438;border:1.5px solid var(--sf,#fff)"></span>
+        <span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:#F04438;border:1.5px solid var(--sf,#fff);display:{{ bellDot }}"></span>
       </button>
       <button sc-camel-on-click="{{ toggleTheme }}" aria-label="Alternar tema" style="width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff)" style-hover="background:var(--hv,#F9FAFB)">
         <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">{{ themeIcon }}</span>
@@ -481,6 +481,13 @@ a:hover{color:#3346D3;text-decoration:underline}
 
     <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto">
       <div style="max-width:1360px;margin:0 auto;padding:28px 32px 72px">
+        <sc-if value="{{ notice.has }}">
+          <div role="status" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:12px 14px;margin-bottom:20px;border-radius:10px;border:1px solid var(--bd,#E4E7EC);background:{{ notice.bg }}">
+            <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:{{ notice.c }}">{{ notice.icon }}</span>
+            <div style="flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;font-size:13.5px">{{ notice.title }}</span><span style="font-size:13px;color:var(--tx2,#667085);text-wrap:pretty">{{ notice.text }}</span></div>
+            <div style="display:flex;gap:6px;align-items:center"><sc-if value="{{ notice.hasCta }}"><button sc-camel-on-click="{{ notice.go }}" style="height:30px;padding:0 12px;border:1px solid var(--bd,#E4E7EC);border-radius:7px;background:var(--sf,#fff);font-size:13px;font-weight:500;white-space:nowrap">{{ notice.cta }}</button></sc-if><sc-if value="{{ notice.canClose }}"><button sc-camel-on-click="{{ notice.close }}" aria-label="Fechar aviso" style="width:30px;height:30px;border:none;border-radius:7px;background:transparent;color:var(--tx2,#667085);display:grid;place-items:center;padding:0" style-hover="background:var(--sf2,#F2F4F7)"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">close</span></button></sc-if></div>
+          </div>
+        </sc-if>
 
         <sc-if value="{{ soon.show }}">
           <section data-screen-label="Em breve" style="display:flex;flex-direction:column;gap:16px">
@@ -3001,6 +3008,13 @@ a:hover{color:#3346D3;text-decoration:underline}
               <sc-if value="{{ f.open }}"><div style="padding:0 18px 14px;font-size:13.5px;color:var(--tx2,#667085)">{{ f.a }}</div></sc-if>
             </div>
           </sc-for>
+          <sc-if value="{{ help.real }}">
+            <div style="padding:16px 18px 0;display:flex;flex-direction:column;gap:8px">
+              <div style="font-weight:600">Seus chamados com o Spherum</div>
+              <sc-if value="{{ help.noTk }}"><div style="font-size:13px;color:var(--tx2,#667085)">Nenhum chamado ainda.</div></sc-if>
+              <sc-for list="{{ help.tks }}" as="k"><button sc-camel-on-click="{{ k.open }}" style="display:flex;gap:10px;align-items:flex-start;width:100%;padding:10px 12px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);text-align:left" style-hover="background:var(--hv,#F9FAFB)"><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-weight:500;font-size:13.5px">{{ k.subj }}</span><span style="font-size:12.5px;color:var(--tx2,#667085);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ k.last }}</span></span><span style="font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:{{ k.bg }};color:{{ k.c }};white-space:nowrap">{{ k.st }}</span></button></sc-for>
+            </div>
+          </sc-if>
           <div style="padding:18px;display:flex;flex-direction:column;gap:8px">
             <div style="font-weight:600">Precisa falar com a gente?</div>
             <div style="font-size:13px;color:var(--tx2,#667085)">Tempo médio de primeira resposta: 2 h úteis.</div>
@@ -3076,7 +3090,7 @@ a:hover{color:#3346D3;text-decoration:underline}
   <sc-if value="{{ fm.has }}">
     <div sc-camel-on-click="{{ fm.close }}" style="position:fixed;inset:0;background:rgba(16,24,40,.4);backdrop-filter:blur(3px);z-index:85;display:grid;place-items:center;padding:20px">
       <div role="dialog" aria-modal="true" sc-camel-on-click="{{ fm.stop }}" style="width:min(500px,100%);max-height:calc(100vh - 40px);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;box-sizing:border-box;background:var(--sf,#fff);color:var(--tx,#101828);border-radius:22px;box-shadow:0 30px 70px rgba(16,24,40,.35);padding:24px;display:flex;flex-direction:column;gap:16px;animation:sp-in .22s ease both">
-        <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:42px;height:42px;border-radius:12px;background:{{ fm.ib }};color:{{ fm.ic }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1">{{ fm.icon }}</span></span><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:18px;font-weight:600;letter-spacing:-0.02em">{{ fm.title }}</span><span style="font-size:13.5px;color:var(--tx2,#667085);text-wrap:pretty">{{ fm.desc }}</span></div></div>
+        <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:42px;height:42px;border-radius:12px;background:{{ fm.ib }};color:{{ fm.ic }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:21px;line-height:1">{{ fm.icon }}</span></span><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:18px;font-weight:600;letter-spacing:-0.02em">{{ fm.title }}</span><span style="font-size:13.5px;color:var(--tx2,#667085);text-wrap:pretty;white-space:pre-line">{{ fm.desc }}</span></div></div>
         <sc-for list="{{ fm.fields }}" as="f"><div style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">{{ f.l }}
           <sc-if value="{{ f.isText }}"><input value="{{ f.v }}" sc-camel-on-change="{{ f.on }}" placeholder="{{ f.ph }}" style="height:42px;padding:0 12px;border:1.5px solid {{ f.bd }};border-radius:11px;outline:none;font-size:14px;font-weight:400;background:var(--sf,#fff);color:var(--tx,#101828)"></sc-if>
           <sc-if value="{{ f.isDate }}"><input type="date" value="{{ f.v }}" sc-camel-on-change="{{ f.on }}" style="height:42px;padding:0 12px;border:1.5px solid {{ f.bd }};border-radius:11px;outline:none;font-size:14px;font-weight:400;background:var(--sf,#fff);color:var(--tx,#101828)"></sc-if>
@@ -3835,6 +3849,31 @@ class Component extends DCLogic {
     this.setState(s => ({ real: Date.now(), clientId: has(s.clientId) || !first ? s.clientId : first, rClient: has(s.rClient) || !first ? s.rClient : first }));
   }
   spErr(e) { this.toastMsg((e && e.message) || 'Não deu certo agora. Tente de novo em instantes.'); }
+  // Chamados com o suporte do Spherum (central de ajuda) e notificações do app.
+  spSupNew() {
+    this.fm({ title: 'Abrir chamado com o Spherum', desc: 'A equipe do Spherum responde aqui no app e por e-mail.', icon: 'support_agent',
+      fields: [{ k: 's', l: 'Assunto', req: 1, min: 3 }, { k: 'txt', l: 'O que aconteceu', type: 'area', req: 1, min: 3, ph: 'Onde foi, o que você esperava e o que apareceu' }, { k: 'p', l: 'Urgência', type: 'pick', opts: [['alta', 'Alta'], ['media', 'Média'], ['baixa', 'Baixa']], req: 1 }],
+      init: { p: 'media' }, okL: 'Abrir chamado',
+      ok: async v => { try { await SP.api('/api/support', { method: 'POST', body: { agency_id: this.spAg, subject: v.s.trim(), text: v.txt.trim(), priority: v.p } }); await this.spLoad(); this.toastMsg('Chamado aberto. A resposta chega aqui e por e-mail.'); } catch (e) { this.spErr(e); } } });
+  }
+  spSupOpen(t) {
+    const conv = t.messages.slice(-6).map(m => (m.side === 'sp' ? 'Suporte Spherum' : (m.author || 'Vocês')) + ' · ' + this.spWhen(m.created_at) + '\n' + m.text).join('\n\n');
+    this.fm({ title: t.subject, desc: conv + (t.status === 'done' ? '\n\nEste chamado foi resolvido. Responder reabre.' : ''), icon: 'support_agent',
+      fields: [{ k: 'txt', l: 'Responder', type: 'area', req: 1, min: 1 }], okL: 'Enviar',
+      ok: async v => { try { await SP.api('/api/support/' + t.id, { method: 'POST', body: { agency_id: this.spAg, text: v.txt.trim() } }); await this.spLoad(); this.toastMsg('Resposta enviada ao suporte do Spherum'); } catch (e) { this.spErr(e); } } });
+  }
+  spNotifRead() {
+    if (!this.R || !(this.R.notifications || []).some(n => !n.read)) return;
+    this.R = Object.assign({}, this.R, { notifications: this.R.notifications.map(n => Object.assign({}, n, { read: true })) });
+    SP.api('/api/notifications', { method: 'POST', body: { agency_id: this.spAg } }).catch(() => {});
+  }
+  spNotice() {
+    const N = this.R && this.R.notice; if (!N || (N.id && this.state.noticeOff === N.id)) return { has: false };
+    const tn = this.tone(N.tone === 'blue' ? 'primary' : N.tone), url = N.cta_url;
+    return { has: true, title: N.title, text: N.text, icon: N.tone === 'red' ? 'error' : N.tone === 'amber' ? 'warning' : 'campaign', c: tn.c, bg: tn.bg,
+      hasCta: !!url, cta: N.cta_label || 'Saiba mais', go: () => { try { window.open(url, '_blank', 'noopener'); } catch (e) {} },
+      canClose: !!N.id, close: () => { this.setState({ noticeOff: N.id }); SP.api('/api/notifications', { method: 'POST', body: { agency_id: this.spAg, ids: [N.id] } }).catch(() => {}); } };
+  }
   exCl() { return this.R ? [] : this.D.exClients || this.D.clients; }
   // Fatura do servidor no formato da tela.
   spInv(i) { const MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], d = i.due_date.split('-');
@@ -4577,7 +4616,10 @@ class Component extends DCLogic {
           edit: () => this.spPjEdit(p), del: () => this.spPjDelete(p), openClient: () => r.client_id ? this.go('client', { clientId: r.client_id, clientTab: 'projects' }) : this.toastMsg('Projeto interno, sem cliente') } });
       }
     }
-    const notifAll = D.attention.map(a => Object.assign({}, T(a.tone), { icon: a.icon, title: a.client + ' — ' + a.title, meta: a.kind, when: 'hoje', cat: a.kind, run: () => this.go(a.go, a.extra || {}) })).concat([
+    const NK = { comunicado: ['campaign', 'blue'], spherum_mensagem: ['mail', 'primary'], suporte_resposta: ['support_agent', 'primary'], reuniao_agendada: ['event', 'blue', 'Cliente'], reuniao_cancelada: ['event_busy', 'gray', 'Cliente'], nota_nao_emitida: ['receipt_long', 'red', 'Financeiro'], automacao: ['bolt', 'gray'], reconhecimento: ['military_tech', 'green'], trilha_atribuida: ['school', 'blue'], onboarding_pendente: ['school', 'amber'] };
+    const realN = this.R ? (this.R.notifications || []).map(n => { const k = NK[n.kind] || ['notifications', 'gray']; return Object.assign({}, T(k[1]), { icon: k[0], title: n.title, meta: (n.body || '').slice(0, 140), when: this.spWhen(n.created_at), cat: k[2] || 'Spherum',
+      run: () => { if (n.kind === 'suporte_resposta') { const t = (this.R.support || []).find(x => x.id === (n.data || {}).ticket_id); this.closeAll(); return t ? this.spSupOpen(t) : this.setState({ drawer: 'help' }); } this.fm({ title: n.title, desc: n.body || '', icon: k[0], fields: [], okL: 'Fechar', ok: () => {} }); } }); }) : [];
+    const notifAll = realN.concat(D.attention.map(a => Object.assign({}, T(a.tone), { icon: a.icon, title: a.client + ' — ' + a.title, meta: a.kind, when: 'hoje', cat: a.kind, run: () => this.go(a.go, a.extra || {}) }))).concat([
       Object.assign({}, T('green'), { icon: 'payments', title: 'Pagamento recebido — Construtora Pilar', meta: 'R$ 7.200 via boleto', when: 'ontem', cat: 'Financeiro', run: () => this.go('finance', { finTab: 'receitas' }) }),
       Object.assign({}, T('gray'), { icon: 'visibility', title: 'Marcelo Pilar visualizou o relatório de agosto', meta: 'Relatório · 4ª visualização', when: 'ontem', cat: 'Relatório', run: () => this.go('reports') }),
       Object.assign({}, T('amber'), { icon: 'account_balance', title: 'Pet Mundo está a 8% do limite de orçamento', meta: 'Campanha · Catálogo Dinâmico', when: 'ontem', cat: 'Campanha', run: () => this.go('campaigns') }),
@@ -4593,7 +4635,10 @@ class Component extends DCLogic {
       qs: aiR.map((x, i) => ({ q: x[0], bd: S.aiQ === i ? '#465FFF' : 'var(--bd,#E4E7EC)', ask: () => this.setState({ aiQ: i }) })), asked: S.aiQ != null,
       followLabel: S.aiQ != null && aiR[S.aiQ] ? aiR[S.aiQ][3] + ' →' : '', follow: () => S.aiQ != null && aiR[S.aiQ] && this.go(aiR[S.aiQ][1], aiR[S.aiQ][2]) };
     const hq = S.helpQ.trim().toLowerCase();
-    const help = { q: S.helpQ, onQ: e => this.setState({ helpQ: e.target.value }), ticket: () => { this.closeAll(); if (this.R) { try { window.open('mailto:suporte@spherum.com.br?subject=' + encodeURIComponent('Ajuda · ' + this.R.agency.name)); } catch (e) {} return this.toastMsg('Escreva para suporte@spherum.com.br'); } this.toastMsg('Chamado aberto · #4821'); },
+    const SUP = this.R ? (this.R.support || []) : [];
+    const help = { q: S.helpQ, onQ: e => this.setState({ helpQ: e.target.value }), ticket: () => { this.closeAll(); if (this.R) return this.spSupNew(); this.toastMsg('Chamado aberto · #4821'); },
+      real: !!this.R, noTk: !SUP.length, tks: SUP.slice(0, 8).map(t => { const last = t.messages[t.messages.length - 1], wait = t.status === 'open' && last && last.side === 'sp', tn = T(t.status === 'done' ? 'gray' : wait ? 'primary' : 'amber');
+        return { subj: t.subject, last: last ? (last.side === 'sp' ? 'Spherum: ' : 'Vocês: ') + last.text : '', st: t.status === 'done' ? 'Resolvido' : wait ? 'Respondido' : 'Aguardando', bg: tn.bg, c: tn.c, open: () => { this.closeAll(); this.spSupOpen(t); } }; }),
       items: D.faq.map((f, i) => ({ q: f[0], a: f[1], i })).filter(f => !hq || (f.q + f.a).toLowerCase().indexOf(hq) >= 0).map(f => ({ q: f.q, a: f.a, open: S.faq === f.i, icon: S.faq === f.i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === f.i ? -1 : f.i }) })) };
 
     // dialogs
@@ -4688,7 +4733,7 @@ class Component extends DCLogic {
       wsList: (this.R && this.spMe ? this.spMe.agencies.map(a => [a.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), a.name, a.plan || '', a.agency_id === this.spAg, a.agency_id]) : [['MP', 'Marketing Pro', 'Escala · dados de demonstração', true], ['GL', 'Growth Lab', 'Solo · 3 clientes', false]]).map(w => ({ ini: w[0], name: w[1], plan: w[2], cur: w[3], pick: () => { this.setState({ ws: false }); if (w[3]) return; if (w[4]) { try { localStorage.setItem('spherum.agency', w[4]); } catch (e) {} this.spAg = w[4]; this.spLoad().then(() => this.go('dashboard'), e => this.spErr(e)); return; } this.toastMsg('Trocar de espaço de trabalho carrega os dados dele'); } })),
       crumb: titles[S.view], crumbGo: () => this.go(act), hasCrumbSub: S.view === 'client' || S.view === 'onboarding',
       crumbSub: S.view === 'client' ? cname(S.clientId) : S.view === 'onboarding' ? (this.R ? 'Onboarding' : 'Onboarding · Farmácia Vida') : '',
-      openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => this.setState({ drawer: 'notif' }), openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
+      openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => { this.setState({ drawer: 'notif' }); this.spNotifRead(); }, bellDot: !this.R || (this.R.notifications || []).some(n => !n.read) || D.attention.length ? 'block' : 'none', notice: this.R ? this.spNotice() : { has: false }, openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
       closeAll: () => this.closeAll(),
       toggleTheme: () => this.setState(s => ({ theme: (s.theme || P.theme || 'light') === 'dark' ? 'light' : 'dark' })), themeIcon: (S.theme || P.theme || 'light') === 'dark' ? 'light_mode' : 'dark_mode',
       is, soon, firstRun: !!P.firstRun || !!(this.R && !this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (this.R && !this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R ? ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '') : 'Proprietário', agIni: this.R ? this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() : 'MP', agSub: this.R ? ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas') : 'Escala · 6 pessoas',

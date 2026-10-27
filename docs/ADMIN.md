@@ -58,6 +58,24 @@ para lá.
 
   As chaves e os preços ficam em `site_settings`, com 30 s de cache.
 
+## No app da agência
+
+- **Central de ajuda**: lista os chamados da agência com o Spherum ("Aguardando", "Respondido",
+  "Resolvido"). Abrir um chamado mostra a conversa e um campo para responder. "Abrir chamado de
+  suporte" cria um chamado novo, com assunto, descrição e urgência.
+- **Notificações**: a gaveta mostra as notificações da agência inteira e as da pessoa, junto com o
+  que pede atenção. Abrir a gaveta marca tudo como lido. As notificações da agência inteira são
+  compartilhadas: quando uma pessoa lê, fica lida para todos.
+- **Aviso no topo**: mostra um aviso por vez, nesta ordem de prioridade:
+  1. a manutenção ligada no admin;
+  2. o incidente aberto mais grave;
+  3. o último comunicado não lido dos últimos 14 dias.
+
+  O comunicado tem botão, se o admin definiu um, e pode ser fechado; fechar marca como lido.
+- **Dados**: vêm em `/api/portal/agencia` nos campos `notifications`, `support` e `notice`.
+  - `GET /api/notifications?agency_id=` lista as notificações.
+  - `POST /api/notifications` com `{ agency_id, ids? }` marca como lidas. Sem `ids`, marca todas.
+
 ## Ainda não existe
 
 Estes botões avisam que ainda não estão disponíveis: conceder créditos, estornar, convidar
