@@ -296,6 +296,21 @@ export async function subscribe(deps: SubDeps, agencyId: string, userId: string,
   return chargeAndNotify(deps, inv.created.id);
 }
 
+export const billingInfoInput = z.object({
+  document: z.string().transform(digits).pipe(z.string().regex(/^(\d{11}|\d{14})$/, "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).")),
+  billing_email: z.email().trim().toLowerCase().max(254).nullable().optional(),
+});
+
+/** CPF ou CNPJ e e-mail das faturas. Mudar o documento cria um cadastro novo no Asaas na próxima fatura. */
+export async function setBillingInfo(sql: Sql, agencyId: string, userId: string, raw: unknown) {
+  const i = billingInfoInput.parse(raw);
+  const a = await agencyOf(sql, agencyId);
+  const changed = (a.billing_document ?? a.cnpj) !== i.document;
+  await sql.query(`update agencies set billing_document = $2, billing_email = $3, billing_customer_id = case when $4 then null else billing_customer_id end where id = $1`,
+    [agencyId, i.document, i.billing_email ?? null, changed]);
+  await audit(sql, { agencyId, actor: userId, action: "assinatura_dados", targetType: "agency", targetId: agencyId, summary: "Dados de cobrança atualizados" });
+}
+
 /** Plano menor que o uso atual: recusa antes de cobrar. */
 async function assertFits(sql: Sql, agencyId: string, plan: PlanId) {
   const [use, ad] = await Promise.all([usageOf(sql, agencyId), addonsOf(sql, agencyId)]);

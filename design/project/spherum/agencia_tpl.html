@@ -1502,6 +1502,19 @@ a:hover{color:#3346D3;text-decoration:underline}
             </sc-if>
 
             <sc-if value="{{ sett.isPlan }}">
+              <sc-if value="{{ sett.sub.real }}">
+                <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 260px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:15px;font-weight:600">{{ sett.sub.plan }}</span><span style="font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:{{ sett.sub.stBg }};color:{{ sett.sub.stC }};white-space:nowrap">{{ sett.sub.st }}</span></div><span style="font-size:13px;color:var(--tx2,#667085);text-wrap:pretty">{{ sett.sub.line }}</span><sc-if value="{{ sett.sub.hasPend }}"><span style="font-size:13px;color:var(--tx2,#667085)">{{ sett.sub.pend }}</span></sc-if><sc-if value="{{ sett.sub.hasCoupon }}"><span style="font-size:12.5px;color:#067647">{{ sett.sub.coupon }}</span></sc-if></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                      <sc-if value="{{ sett.sub.hasOpen }}"><button sc-camel-on-click="{{ sett.sub.payOpen }}" style="height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:600;white-space:nowrap">{{ sett.sub.openL }}</button></sc-if>
+                      <sc-if value="{{ sett.sub.canChoose }}"><button sc-camel-on-click="{{ sett.sub.choose }}" style="height:34px;padding:0 14px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);font-size:13px;font-weight:500;white-space:nowrap">{{ sett.sub.chooseL }}</button></sc-if>
+                      <button sc-camel-on-click="{{ sett.sub.billing }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);font-size:13px;font-weight:500;white-space:nowrap">Dados de cobrança</button>
+                      <sc-if value="{{ sett.sub.canCancel }}"><button sc-camel-on-click="{{ sett.sub.cancel }}" style="height:34px;padding:0 12px;border:none;border-radius:8px;background:transparent;color:#B42318;font-size:13px;font-weight:500;white-space:nowrap">{{ sett.sub.cancelL }}</button></sc-if>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
                 <sc-for list="{{ sett.plans }}" as="p"><div style="border:1px solid {{ p.bd }};background:{{ p.bg }};border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:15px">{{ p.n }}</span><sc-if value="{{ p.cur }}"><span style="font-size:11.5px;padding:1px 7px;border-radius:4px;background:#465FFF;color:#fff;font-weight:500">Atual</span></sc-if></div><div style="font-size:13px">{{ p.d }}</div><div style="font-size:12.5px;display:flex;align-items:baseline;gap:6px;color:{{ p.xc }}"><span style="font:700 13px/1 'Fredoka',sans-serif;color:{{ p.xw }}">xodó</span>{{ p.x }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ p.s }}</div><sc-if value="{{ p.canSwitch }}"><button sc-camel-on-click="{{ p.sw }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap;height:30px;align-self:flex-start;margin-top:6px">{{ p.swL }}</button></sc-if></div></sc-for>
               </div>
@@ -1539,6 +1552,18 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <span style="font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ sett.ad.total }}</span>
                 </div>
               </div>
+              <sc-if value="{{ sett.sub.real }}">
+                <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:14px;overflow:hidden">
+                  <div style="padding:16px 18px"><div style="font-size:15px;font-weight:600">Faturas do Spherum</div><div style="font-size:13px;color:var(--tx2,#667085);margin-top:2px">Pix, boleto ou cartão pela página do Asaas. A liberação é automática quando o pagamento cai.</div></div>
+                  <sc-if value="{{ sett.sub.noInv }}"><div style="padding:20px 18px;border-top:1px solid var(--bd,#EAECF0);text-align:center;color:var(--tx2,#667085);font-size:13.5px">Nenhuma fatura ainda.</div></sc-if>
+                  <sc-for list="{{ sett.sub.invs }}" as="i"><div style="border-top:1px solid var(--bd,#EAECF0);padding:12px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <div style="flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ i.l }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ i.d }}</span></div>
+                    <span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums">{{ i.v }}</span>
+                    <span style="font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:{{ i.sBg }};color:{{ i.sC }};white-space:nowrap">{{ i.st }}</span>
+                    <sc-if value="{{ i.canPay }}"><button sc-camel-on-click="{{ i.pay }}" style="height:30px;padding:0 12px;border:none;border-radius:7px;background:#465FFF;color:#fff;font-size:12.5px;font-weight:600">Pagar</button></sc-if>
+                  </div></sc-for>
+                </div>
+              </sc-if>
             </sc-if>
           </section>
         </sc-if>
@@ -3657,6 +3682,8 @@ const ADDONS = [
   ['sso', 'Segurança e dados', 'key', 'Login único (SSO) e auditoria', 'Entrada com a conta da empresa e histórico de tudo.', 299, null, 3, 4, 0, '']
 ].map(a => ({ id: a[0], g: a[1], icon: a[2], n: a[3], d: a[4], price: a[5], unit: a[6], from: a[7], incl: a[8], max: a[9], gate: a[10] }));
 const AD_PLAN_N = ['Solo', 'Agência', 'Escala', 'Rede', 'Empresarial'], AD_PLAN_P = [190, 490, 990, 1990, null];
+// Add-ons cujas funcionalidades ainda não existem: em modo real aparecem como "Em breve".
+const AD_SOON = ['pros', 'disp', 'domain', 'appb', 'api', 'sso'];
 const AD_GROUPS = ['Vender', 'Entregar', 'Sua marca', 'Equipe', 'Xodó', 'Capacidade', 'Segurança e dados'];
 function adState(a, rk) { if (a.incl != null && rk >= a.incl) return 'incl'; if (rk < a.from) return 'lock'; return 'buy'; }
 function adTotal(sel, rk, price) { return ADDONS.reduce((t, a) => { const q = sel[a.id] || 0; return adState(a, rk) === 'buy' && q ? t + price(a.price) * q : t; }, 0); }
@@ -3868,11 +3895,84 @@ class Component extends DCLogic {
     SP.api('/api/notifications', { method: 'POST', body: { agency_id: this.spAg } }).catch(() => {});
   }
   spNotice() {
+    const sub = this.spSub();
+    if (sub) {
+      const goPlan = () => this.go('settings', { setTab: 'plan' }), open = (sub.invoices || []).find(i => i.status === 'vencido' || i.status === 'pendente');
+      const S0 = sub.locked ? ({ teste: ['O teste grátis acabou', 'Escolha um plano para voltar a criar e editar. Seus dados estão guardados e dá para ver tudo.'], atraso: ['Agência bloqueada por atraso', 'A fatura do Spherum passou da carência. Pague para liberar a equipe e os xodós.'], cancelada: ['A assinatura terminou', 'Escolha um plano para voltar a criar e editar. Seus dados estão guardados.'] })[sub.locked_reason] || ['Agência bloqueada', 'Regularize a assinatura em Plano e cobrança.']
+        : sub.plan_status === 'past_due' && open ? ['Fatura do Spherum vencida', 'Pague em até 7 dias depois do vencimento para não bloquear a agência.']
+        : sub.plan_status === 'trial' && sub.trial_days_left != null && sub.trial_days_left <= 5 && !open ? ['Seu teste acaba em ' + sub.trial_days_left + (sub.trial_days_left === 1 ? ' dia' : ' dias'), 'Escolha um plano para continuar sem interrupção. A primeira fatura vence só no fim do teste.'] : null;
+      if (S0) { const red = sub.locked || sub.plan_status === 'past_due', tn = this.tone(red ? 'red' : 'amber');
+        return { has: true, title: S0[0], text: S0[1], icon: red ? 'lock' : 'hourglass_top', c: tn.c, bg: tn.bg, hasCta: true, cta: open && (sub.locked_reason === 'atraso' || sub.plan_status === 'past_due') ? 'Pagar fatura' : 'Ver planos',
+          go: () => open && (sub.locked_reason === 'atraso' || sub.plan_status === 'past_due') ? this.spPayInvoice(open) : goPlan(), canClose: false, close: () => {} }; }
+    }
     const N = this.R && this.R.notice; if (!N || (N.id && this.state.noticeOff === N.id)) return { has: false };
     const tn = this.tone(N.tone === 'blue' ? 'primary' : N.tone), url = N.cta_url;
     return { has: true, title: N.title, text: N.text, icon: N.tone === 'red' ? 'error' : N.tone === 'amber' ? 'warning' : 'campaign', c: tn.c, bg: tn.bg,
       hasCta: !!url, cta: N.cta_label || 'Saiba mais', go: () => { try { window.open(url, '_blank', 'noopener'); } catch (e) {} },
       canClose: !!N.id, close: () => { this.setState({ noticeOff: N.id }); SP.api('/api/notifications', { method: 'POST', body: { agency_id: this.spAg, ids: [N.id] } }).catch(() => {}); } };
+  }
+  // Assinatura do Spherum (Configurações → Plano e cobrança).
+  spSub() { return this.R && this.R.subscription ? this.R.subscription : null; }
+  spBrl(c) { return (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  spDmy(d) { return d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'; }
+  spSubPost(path, body, method) { return SP.api(path, { method: method || 'POST', body: Object.assign({ agency_id: this.spAg }, body) }); }
+  async spPayResult(r) {
+    await this.spLoad();
+    const inv = r && r.invoice;
+    if (inv && inv.pay_url && inv.amount_cents > 0) this.spPayInvoice(inv, true);
+    else this.toastMsg((r && r.message) || 'Pronto');
+  }
+  spPayInvoice(inv, fresh) {
+    const show = i => this.fm({ title: fresh ? 'Fatura gerada' : 'Pagar fatura do Spherum', desc: this.spBrl(i.amount_cents) + ', vence em ' + this.spDmy(i.due_date) + '. Na página do Asaas você paga por Pix, boleto ou cartão. A liberação é automática quando o pagamento cai.' + (i.pix_code ? '\n\nPix copia e cola:\n' + i.pix_code : ''), icon: 'receipt_long',
+      fields: [], okL: 'Abrir a fatura', ok: () => { try { window.open(i.pay_url, '_blank', 'noopener'); } catch (e) {} } });
+    if (inv.pay_url) return show(inv);
+    this.spSubPost('/api/subscription/invoices/' + inv.id, {}).then(r => show(r.invoice), e => this.spErr(e));
+  }
+  spPlanPick(planId) {
+    const sub = this.spSub(); if (!sub) return;
+    const N = { solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' };
+    if (planId === 'empresarial' && !sub.custom_price_cents) { this.toastMsg('O Empresarial é sob contrato. Abra um chamado na Central de ajuda e a gente combina.'); return; }
+    const paying = (sub.plan_status === 'active' || sub.plan_status === 'past_due') && sub.current_period_end && Date.parse(sub.current_period_end) > Date.now();
+    if (paying) { this.spSubPost('/api/subscription', { plan: planId, cycle: sub.cycle }).then(r => this.spPayResult(r), e => this.spErr(e)); return; }
+    const price = (sub.prices[planId] || 0), extra = Math.round((sub.monthly_cents || 0) / 100 - (sub.prices[sub.plan] || 0)), m = price + Math.max(0, extra), y = Math.round(m * 12 * 0.8);
+    const trial = sub.plan_status === 'trial' && sub.trial_ends_at && Date.parse(sub.trial_ends_at) > Date.now();
+    this.fm({ title: 'Assinar o plano ' + N[planId], icon: 'workspace_premium',
+      desc: 'Mensal: ' + this.spBrl(m * 100) + ' por mês. Anual: ' + this.spBrl(y * 100) + ' por ano (20% de desconto).' + (extra > 0 ? ' Os valores já contam os seus add-ons.' : '') + (trial ? '\n\nA primeira fatura vence no fim do teste, em ' + this.spDmy(sub.trial_ends_at) + '. Dá para pagar antes.' : ''),
+      fields: [{ k: 'cy', l: 'Ciclo', type: 'pick', opts: [['mensal', 'Mensal'], ['anual', 'Anual · 20% off']], req: 1 }, { k: 'cp', l: 'Cupom (opcional)', ph: 'ex.: IDEAL15' }].concat(sub.billing_document ? [] : [{ k: 'doc', l: 'CPF ou CNPJ de quem paga', req: 1, ph: 'só números' }]).concat([{ k: 'em', l: 'E-mail para as faturas (opcional)', ph: sub.billing_email || 'o dono da agência recebe' }]),
+      init: { cy: sub.cycle || 'mensal', cp: ((this.R.agency.onboarding || {}).coupon || '') }, okL: 'Gerar fatura',
+      ok: v => this.spSubPost('/api/subscription', { plan: planId, cycle: v.cy, coupon: (v.cp || '').trim().toUpperCase() || undefined, document: v.doc ? v.doc.replace(/\D/g, '') : undefined, billing_email: (v.em || '').trim() || undefined }).then(r => this.spPayResult(r), e => this.spErr(e)) });
+  }
+  spAddon(a, qty) { this.spSubPost('/api/subscription/addons', { addon: a.id, qty }, 'PUT').then(r => this.spPayResult(r), e => this.spErr(e)); }
+  spCancelSub() {
+    const sub = this.spSub(); if (!sub) return;
+    if (sub.cancel_at_period_end) { this.spSubPost('/api/subscription/cancel', { resume: true }).then(r => this.spPayResult(r), e => this.spErr(e)); return; }
+    this.fm({ title: 'Cancelar a assinatura?', danger: 1, icon: 'cancel', desc: sub.current_period_end ? 'A agência continua funcionando até ' + this.spDmy(sub.current_period_end) + ' e não renova. Depois disso dá para ver e exportar tudo, mas não criar nem editar.' : 'A fatura em aberto é cancelada.',
+      fields: [], okL: 'Cancelar no fim do período', ok: () => this.spSubPost('/api/subscription/cancel', {}).then(r => this.spPayResult(r), e => this.spErr(e)) });
+  }
+  spBillingInfo() {
+    const sub = this.spSub(); if (!sub) return;
+    this.fm({ title: 'Dados de cobrança', icon: 'badge', desc: 'Vão na fatura do Spherum e na nota fiscal.', fields: [{ k: 'doc', l: 'CPF ou CNPJ', req: 1 }, { k: 'em', l: 'E-mail para as faturas', email: 1 }], init: { doc: sub.billing_document || '', em: sub.billing_email || '' }, okL: 'Salvar',
+      ok: v => SP.api('/api/agencies/' + this.spAg + '/billing', { method: 'PATCH', body: { document: v.doc.replace(/\D/g, ''), billing_email: (v.em || '').trim() || null } }).then(() => this.spLoad().then(() => this.toastMsg('Dados de cobrança salvos')), e => this.spErr(e)) });
+  }
+  spSubView() {
+    const sub = this.spSub(); if (!sub) return { real: false };
+    const N = { solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }, open = (sub.invoices || []).find(i => i.status === 'vencido' || i.status === 'pendente');
+    const ST = sub.locked ? ['Bloqueada', 'red'] : sub.plan_status === 'trial' ? ['Teste grátis', 'primary'] : sub.plan_status === 'past_due' ? ['Em atraso', 'red'] : sub.plan_status === 'canceled' ? ['Encerrada', 'gray'] : sub.cancel_at_period_end ? ['Cancela no fim do período', 'amber'] : ['Ativa', 'green'];
+    const tn = this.tone(ST[1]);
+    const line = sub.plan_status === 'trial' ? (sub.trial_days_left ? 'Faltam ' + sub.trial_days_left + (sub.trial_days_left === 1 ? ' dia' : ' dias') + ' de teste, até ' + this.spDmy(sub.trial_ends_at) + '.' : 'O teste acabou em ' + this.spDmy(sub.trial_ends_at) + '.') + ' No teste valem os limites do plano Agência.'
+      : sub.current_period_end ? (sub.cancel_at_period_end ? 'Funciona até ' + this.spDmy(sub.current_period_end) + ' e não renova.' : 'Renova em ' + this.spDmy(sub.current_period_end) + (sub.cycle === 'anual' ? ' (anual).' : ' (mensal).')) : 'Sem período pago ainda.';
+    const pend = sub.pending_plan || sub.pending_cycle ? 'A partir de ' + this.spDmy(sub.current_period_end) + ': ' + [sub.pending_plan ? 'plano ' + N[sub.pending_plan] : '', sub.pending_cycle ? 'ciclo ' + sub.pending_cycle : ''].filter(Boolean).join(', ') + '.' : '';
+    const SI = { pendente: ['Em aberto', 'amber'], vencido: ['Vencida', 'red'], pago: ['Paga', 'green'], cancelado: ['Cancelada', 'gray'], estornado: ['Estornada', 'gray'] };
+    const paying = sub.plan_status === 'active' || sub.plan_status === 'past_due';
+    return { real: true, plan: 'Plano ' + N[sub.plan], st: ST[0], stBg: tn.bg, stC: tn.c, line, hasPend: !!pend, pend,
+      hasCoupon: !!(sub.coupon && sub.coupon.months_left > 0), coupon: sub.coupon ? 'Cupom ' + sub.coupon.coupon_code + ' · ' + sub.coupon.months_left + (sub.coupon.months_left === 1 ? ' mês restante' : ' meses restantes') : '',
+      hasOpen: !!open, openL: open ? 'Pagar ' + this.spBrl(open.amount_cents) : '', payOpen: () => open && this.spPayInvoice(open),
+      canCancel: paying || !!open, cancelL: sub.cancel_at_period_end ? 'Manter assinatura' : paying ? 'Cancelar assinatura' : 'Cancelar fatura', cancel: () => this.spCancelSub(), billing: () => this.spBillingInfo(),
+      choose: () => this.spPlanPick(sub.plan === 'empresarial' ? 'empresarial' : sub.plan), chooseL: paying ? '' : 'Assinar o plano ' + N[sub.plan], canChoose: !paying,
+      noInv: !(sub.invoices || []).length,
+      invs: (sub.invoices || []).map(i => { const s0 = SI[i.status] || [i.status, 'gray'], t0 = this.tone(s0[1]); return { l: i.kind === 'ajuste' ? 'Ajuste · ' + (i.items[0] ? i.items[0].l : '') : 'Plano ' + N[i.plan] + ' · ' + this.spDmy(i.period_start) + ' a ' + this.spDmy(new Date(Date.parse(i.period_end + 'T12:00:00Z') - 864e5).toISOString()),
+        d: 'Vence ' + this.spDmy(i.due_date) + (i.discount_cents ? ' · desconto ' + this.spBrl(i.discount_cents) : '') + (i.paid_at ? ' · paga em ' + this.spDmy(i.paid_at) : ''), v: this.spBrl(i.amount_cents), st: s0[0], sBg: t0.bg, sC: t0.c,
+        canPay: i.status === 'pendente' || i.status === 'vencido', pay: () => this.spPayInvoice(i) }; }) };
   }
   exCl() { return this.R ? [] : this.D.exClients || this.D.clients; }
   // Fatura do servidor no formato da tela.
@@ -4745,7 +4845,7 @@ class Component extends DCLogic {
   }
 
 
-  xoPlan() { const p = SP_PLANS.find(p => p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala')) || SP_PLANS[2], x = this.state.xoExtra || 0, q = this.state.adOn || {}, rk = SP_PLANS.indexOf(p);
+  xoPlan() { const p = SP_PLANS.find(p => p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala')) || SP_PLANS[2], x = this.state.xoExtra || 0, q = (this.spSub() ? this.spSub().addons : this.state.adOn) || {}, rk = SP_PLANS.indexOf(p);
     const ax = rk < 4 ? (q.xodo || 0) : 0, xn = p.xn === 99 ? 99 : p.xn + ax, cr = 0;
     return xn !== p.xn || cr !== p.cr ? Object.assign({}, p, { xn, cr }) : p; }
   xoBots() { if (this.R) return this.XR ? this.XR.xodos.map(x => this.spXoBot(x)) : []; return XO_BOTS.slice(0, Math.min(3, this.xoPlan().xn)); }
@@ -5747,18 +5847,19 @@ class Component extends DCLogic {
       tabbar: [['home', 'Início', 0], ['task_alt', 'Aprovações', 1], ['group', 'Clientes', 0], ['smart_toy', 'Xodós', 0]].map(t => ({ i: t[0], l: t[1], c: t[2] ? '#465FFF' : '#98A2B3' })) };
     // plan modal
     const pm = { open: !!S.planModal };
-    if (S.planModal) { const cur = plan, tgt = SP_PLANS.find(p => p.id === S.planModal), ci = SP_PLANS.findIndex(p => p.id === cur.id), ti = SP_PLANS.findIndex(p => p.id === tgt.id), up = ti > ci, nCl = 23;
+    if (S.planModal) { const cur = plan, tgt = SP_PLANS.find(p => p.id === S.planModal), ci = SP_PLANS.findIndex(p => p.id === cur.id), ti = SP_PLANS.findIndex(p => p.id === tgt.id), up = ti > ci, SBm = this.spSub(), nCl = SBm ? SBm.usage.clients : 23;
       const xL = p => p.xn === 0 ? 'Sem xodó' : p.xn === 99 ? 'Ilimitados' : p.xn + (p.xn === 1 ? ' xodó' : ' xodós'), cL = p => p.cr == null ? 'Sob medida' : p.cr ? brl(p.cr) + '/mês' : '—';
-      const block = SP_CLIM[tgt.id] < nCl, warns = [];
-      if (block) warns.push({ t: 'Você tem ' + nCl + ' clientes ativos e o plano ' + tgt.n + ' permite ' + SP_CLIM[tgt.id] + '. Arquive clientes antes de mudar.', bg: '#FEF3F2', c: '#B42318' });
+      const xoN = SBm ? SBm.usage.xodos : 0, xoMax = SBm ? tgt.xn + ((SBm.addons || {}).xodo || 0) : 99, block = SP_CLIM[tgt.id] < nCl || xoN > xoMax, warns = [];
+      if (SP_CLIM[tgt.id] < nCl) warns.push({ t: 'Você tem ' + nCl + ' clientes ativos e o plano ' + tgt.n + ' permite ' + SP_CLIM[tgt.id] + '. Arquive clientes antes de mudar.', bg: '#FEF3F2', c: '#B42318' });
+      else if (xoN > xoMax) warns.push({ t: 'Você tem ' + xoN + ' xodós e o plano ' + tgt.n + ' permite ' + xoMax + '. Apague xodós antes de mudar.', bg: '#FEF3F2', c: '#B42318' });
       else if (tgt.xn === 0) warns.push({ t: 'Os xodós pausam e guardam a memória até você voltar para um plano com xodó.', bg: '#FFFAEB', c: '#B54708' });
       else if (tgt.xn < bots.length) warns.push({ t: 'Você tem ' + bots.length + ' xodós. No ' + tgt.n + ' fica ' + tgt.xn + ' ativo (a Faísca). Os outros pausam e guardam a memória.', bg: '#FFFAEB', c: '#B54708' });
       const diff = Math.round((SP_PRICE[tgt.id] - SP_PRICE[cur.id]) * 29 / 30);
       Object.assign(pm, { title: (up ? 'Fazer upgrade para o ' : 'Mudar para o ') + tgt.n, sub: 'Hoje você está no ' + cur.n + '.',
         rows: [['Mensalidade', cur.price, tgt.price], ['Clientes', SP_CLIM[cur.id] + '', SP_CLIM[tgt.id] + ''], ['Xodós', xL(cur), xL(tgt)]].map((r, i) => ({ l: r[0], a: r[1], b: r[2], line: i ? 'var(--bd,#E4E7EC)' : 'transparent' })),
-        warns, charge: up ? 'Cobrança hoje: ' + brl(diff) + ', proporcional até 1º de novembro. Depois, ' + tgt.price + '.' : 'A mensalidade nova vale a partir de 1º de novembro. Os limites mudam agora.',
+        warns, charge: SBm ? (!(SBm.plan_status === 'active' || SBm.plan_status === 'past_due') ? 'Na próxima etapa você escolhe mensal ou anual e gera a fatura.' : up ? 'Hoje sai uma fatura só com a diferença proporcional até ' + this.spDmy(SBm.current_period_end) + '. Depois, ' + tgt.price + '.' : 'O plano novo vale a partir de ' + this.spDmy(SBm.current_period_end) + '. Até lá continua o ' + cur.n + '.') : up ? 'Cobrança hoje: ' + brl(diff) + ', proporcional até 1º de novembro. Depois, ' + tgt.price + '.' : 'A mensalidade nova vale a partir de 1º de novembro. Os limites mudam agora.',
         okL: up ? 'Confirmar upgrade' : 'Confirmar mudança', okOp: block ? 0.5 : 1, close: () => this.setState({ planModal: null }),
-        ok: () => { if (block) { this.toastMsg('Arquive clientes antes de mudar para o ' + tgt.n); return; } this.setState({ planModal: null, planOv: tgt.id }); this.toastMsg('Plano alterado para ' + tgt.n); } }); }
+        ok: () => { if (block) { this.toastMsg(xoN > xoMax ? 'Apague xodós antes de mudar para o ' + tgt.n : 'Arquive clientes antes de mudar para o ' + tgt.n); return; } if (SBm) { this.setState({ planModal: null }); this.spPlanPick(tgt.id); return; } this.setState({ planModal: null, planOv: tgt.id }); this.toastMsg('Plano alterado para ' + tgt.n); } }); }
     const packs = [100, 250, 500, 1000];
     const cm = { open: S.credModal, packs: packs.map(v => { const on = S.cmPack === v; return { v: brl(v), d: '~' + Math.round(v / 0.6).toLocaleString('pt-BR') + ' passos de tarefa', bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.05)' : 'var(--sf,#fff)', pick: () => this.setState({ cmPack: v }) }; }),
       auto: spSw(S.cmAuto, () => this.setState(s => ({ cmAuto: !s.cmAuto }))), okL: 'Pagar ' + brl(S.cmPack), close: () => this.setState({ credModal: false }),
@@ -6472,21 +6573,26 @@ class Component extends DCLogic {
 
 
   adBuy(a) {
+    if (this.spSub()) { const sub = this.spSub(), paying = sub.plan_status === 'active' || sub.plan_status === 'past_due';
+      if (AD_SOON.includes(a.id)) { this.toastMsg(a.n + ' ainda não está disponível. Avisamos quando liberar.'); return; }
+      this.fm({ title: 'Adicionar ' + a.n.charAt(0).toLowerCase() + a.n.slice(1), desc: 'R$ ' + a.price + (a.unit ? ' por ' + a.unit : '') + '/mês, cobrado junto com o plano' + (sub.cycle === 'anual' ? ' (no anual, com 20% de desconto)' : '') + '. ' + (paying ? 'Hoje sai uma fatura só com o proporcional ao que falta do período.' : 'Entra na primeira fatura.'), icon: a.icon,
+        fields: a.max ? [{ k: 'q', l: 'Quantidade', type: 'pick', opts: ['1', '2', '3', '5'], req: 1 }] : [], init: a.max ? { q: '1' } : {}, okL: 'Adicionar',
+        ok: v => this.spAddon(a, Math.min(a.max || 1, ((sub.addons || {})[a.id] || 0) + (a.max ? parseInt(v.q) : 1))) }); return; }
     const days = 17, prop = Math.round(a.price * days / 31);
     this.fm({ title: 'Adicionar ' + a.n.charAt(0).toLowerCase() + a.n.slice(1), desc: 'R$ ' + a.price + (a.unit ? ' por ' + a.unit : '') + '/mês, cobrado junto com o plano. Neste mês você paga só o proporcional dos ' + days + ' dias que faltam.', icon: a.icon,
       fields: a.max ? [{ k: 'q', l: 'Quantidade', type: 'pick', opts: ['1', '2', '3', '5'], req: 1 }] : [], init: a.max ? { q: '1' } : {}, okL: 'Adicionar · R$ ' + prop + ' agora',
       ok: v => { const q = a.max ? parseInt(v.q) : 1, prev = this.state.adOn; this.setState(s => ({ adOn: Object.assign({}, s.adOn, { [a.id]: Math.min(a.max || 1, (s.adOn[a.id] || 0) + q) }) })); this.toastMsg(a.n + ' adicionado · R$ ' + (prop * q) + ' cobrados hoje', () => this.setState({ adOn: prev })); } });
   }
   vAdAg() {
-    const S = this.state, P = ['solo', 'agencia', 'escala', 'rede', 'empresarial'], plan = this.xoPlan(), rk = P.indexOf(plan.id), own = S.adOn || {}, tab = S.adTab || 'all', id1 = x => x;
-    const set = (a, q) => { const prev = this.state.adOn; this.setState(s => ({ adOn: Object.assign({}, s.adOn, { [a.id]: q }) })); return prev; };
+    const S = this.state, P = ['solo', 'agencia', 'escala', 'rede', 'empresarial'], plan = this.xoPlan(), rk = P.indexOf(plan.id), sub = this.spSub(), own = (sub ? sub.addons : S.adOn) || {}, tab = S.adTab || 'all', id1 = x => x;
+    const set = (a, q) => { if (sub) { this.spAddon(a, q); return null; } const prev = this.state.adOn; this.setState(s => ({ adOn: Object.assign({}, s.adOn, { [a.id]: q }) })); return prev; };
     const groups = AD_GROUPS.map(g => ({ l: g, items: ADDONS.filter(a => a.g === g).filter(a => { const st = adState(a, rk), q = own[a.id] || 0; return tab === 'all' || (tab === 'on' ? st === 'buy' && q > 0 : st === 'buy' && !q); }).map(a => {
       const st = adState(a, rk), q = own[a.id] || 0, on = q > 0 && st === 'buy', isQty = st === 'buy' && a.max > 0, isTog = st === 'buy' && !a.max;
       return { n: a.n, d: a.d, icon: a.icon, priceL: st === 'incl' ? 'Já vem no seu plano' : on && isQty ? 'R$ ' + (a.price * q) + '/mês' : 'R$ ' + a.price + (a.unit ? ' por ' + a.unit : '') + '/mês', pc: st === 'incl' ? '#067647' : st === 'lock' ? 'var(--tx2,#98A2B3)' : 'var(--tx,#101828)',
-        isPill: st !== 'buy', pill: st === 'incl' ? 'Incluído' : 'A partir do ' + AD_PLAN_N[a.from], pBg: st === 'incl' ? 'rgba(18,183,106,.12)' : 'var(--sf2,#F2F4F7)', pC: st === 'incl' ? '#067647' : 'var(--tx2,#667085)',
-        isTog, tL: on ? 'Remover' : 'Adicionar', tBg: on ? 'var(--sf,#fff)' : '#465FFF', tC: on ? '#B42318' : '#fff', tBd: on ? 'var(--bd,#D0D5DD)' : '#465FFF',
-        tog: () => { if (on) { const prev = set(a, 0); this.toastMsg(a.n + ' removido · sai da próxima fatura', () => this.setState({ adOn: prev })); } else this.adBuy(a); },
-        isQty, q: String(q), decOp: q === 0 ? 0.4 : 1, dec: () => { if (!q) return; const prev = set(a, q - 1); this.toastMsg(a.n + ': ' + (q - 1) + ' no total', () => this.setState({ adOn: prev })); }, inc: () => { if (q >= a.max) { this.toastMsg('O máximo é ' + a.max + '. Para mais, fale com o time.'); return; } if (!q) { this.adBuy(a); return; } const prev = set(a, q + 1); this.toastMsg(a.n + ': ' + (q + 1) + ' no total · +R$ ' + a.price + '/mês', () => this.setState({ adOn: prev })); },
+        isPill: st !== 'buy' || (!!sub && AD_SOON.includes(a.id) && !q), pill: st === 'incl' ? 'Incluído' : st === 'lock' ? 'A partir do ' + AD_PLAN_N[a.from] : 'Em breve', pBg: st === 'incl' ? 'rgba(18,183,106,.12)' : 'var(--sf2,#F2F4F7)', pC: st === 'incl' ? '#067647' : 'var(--tx2,#667085)',
+        isTog: isTog && !(sub && AD_SOON.includes(a.id) && !q), tL: on ? 'Remover' : 'Adicionar', tBg: on ? 'var(--sf,#fff)' : '#465FFF', tC: on ? '#B42318' : '#fff', tBd: on ? 'var(--bd,#D0D5DD)' : '#465FFF',
+        tog: () => { if (sub && !on && AD_SOON.includes(a.id)) { this.toastMsg(a.n + ' ainda não está disponível. Avisamos quando liberar.'); return; } if (on) { const prev = set(a, 0); if (!sub) this.toastMsg(a.n + ' removido · sai da próxima fatura', () => this.setState({ adOn: prev })); } else this.adBuy(a); },
+        isQty, q: String(q), decOp: q === 0 ? 0.4 : 1, dec: () => { if (!q) return; const prev = set(a, q - 1); if (sub) return; this.toastMsg(a.n + ': ' + (q - 1) + ' no total', () => this.setState({ adOn: prev })); }, inc: () => { if (q >= a.max) { this.toastMsg('O máximo é ' + a.max + '. Para mais, fale com o time.'); return; } if (!q) { this.adBuy(a); return; } const prev = set(a, q + 1); if (sub) return; this.toastMsg(a.n + ': ' + (q + 1) + ' no total · +R$ ' + a.price + '/mês', () => this.setState({ adOn: prev })); },
         bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,.04)' : 'var(--sf,#fff)', op: st === 'lock' ? 0.65 : 1, icBg: st === 'incl' ? 'rgba(18,183,106,.12)' : 'rgba(70,95,255,.1)', icC: st === 'incl' ? '#067647' : '#465FFF' };
     }) })).filter(g => g.items.length);
     const T = adTotal(own, rk, id1), base = AD_PLAN_P[rk], n = ADDONS.filter(a => adState(a, rk) === 'buy' && own[a.id]).length, nu = rk < 4 ? adNudge(own, rk, id1) : null;
@@ -6494,11 +6600,11 @@ class Component extends DCLogic {
     const brl = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
     return { planN: AD_PLAN_N[rk], tabs, groups, empty: !groups.length, emptyL: tab === 'on' ? 'Nenhum add-on ativo.' : 'Tudo o que existe já está no seu plano.',
       hasNudge: !!nu, nudge: nu ? 'Seus add-ons somam ' + brl(nu.t) + '/mês. O plano ' + nu.n + ' custa ' + brl(nu.d) + ' a mais e já inclui ' + nu.k + ' deles' + (nu.cheaper ? ', então sai mais barato.' : '.') : '', nudgeL: nu ? 'Ver o plano ' + nu.n : '', nudgeGo: () => nu && this.setState({ planModal: P[rk + 1] }),
-      billL: base == null ? 'Plano Empresarial sob contrato' : 'Plano ' + AD_PLAN_N[rk] + ' ' + brl(base) + (T ? ' + ' + n + (n === 1 ? ' add-on ' : ' add-ons ') + brl(T) : ' · sem add-ons'), total: base == null ? 'Sob contrato' : brl(base + T) + '/mês' };
+      billL: sub ? 'Plano ' + AD_PLAN_N[rk] + (n ? ' + ' + n + (n === 1 ? ' add-on' : ' add-ons') : ' · sem add-ons') + (sub.cycle === 'anual' ? ' · cobrado por ano com 20% de desconto' : '') : base == null ? 'Plano Empresarial sob contrato' : 'Plano ' + AD_PLAN_N[rk] + ' ' + brl(base) + (T ? ' + ' + n + (n === 1 ? ' add-on ' : ' add-ons ') + brl(T) : ' · sem add-ons'), total: sub ? (sub.monthly_cents == null ? 'Sob contrato' : this.spBrl(sub.monthly_cents) + '/mês') : base == null ? 'Sob contrato' : brl(base + T) + '/mês' };
   }
   gate(min, name, limitL) {
     const P = ['solo', 'agencia', 'escala', 'rede', 'empresarial'], N = ['Solo', 'Agência', 'Escala', 'Rede', 'Empresarial'];
-    const rk = P.indexOf(this.xoPlan().id), ad = ADDONS.find(a => a.gate === name), own = !!(ad && (this.state.adOn || {})[ad.id] && adState(ad, rk) === 'buy'), ok = rk >= min || own, canAdd = !ok && !!ad && adState(ad, rk) === 'buy';
+    const rk = P.indexOf(this.xoPlan().id), ad = ADDONS.find(a => a.gate === name), own = !!(ad && ((this.spSub() ? this.spSub().addons : this.state.adOn) || {})[ad.id] && adState(ad, rk) === 'buy'), ok = rk >= min || own, canAdd = !ok && !!ad && adState(ad, rk) === 'buy';
     return { rk, hasAdd: canAdd, addL: canAdd ? 'Adicionar só isto · R$ ' + ad.price + '/mês' : '', addOn: () => { if (canAdd) this.adBuy(ad); }, locked: !ok, open: ok, tag: rk >= min ? 'Plano ' + N[rk] : own ? 'Add-on ativo' : 'A partir do ' + N[min], tagBg: ok ? 'rgba(18,183,106,.12)' : 'rgba(247,144,9,.14)', tagC: ok ? '#067647' : '#B54708',
       lockT: name + ' a partir do plano ' + N[min], lockD: 'Seu plano atual é o ' + N[rk] + '.' + (canAdd ? ' Dá para mudar de plano ou adicionar só esta funcionalidade por R$ ' + ad.price + '/mês.' : ' Ao mudar de plano, tudo o que você já cadastrou continua igual.'), hasLimit: ok && !!limitL, limitL: limitL || '', upgrade: () => this.go('settings', { setTab: 'plan' }) };
   }
@@ -7834,15 +7940,15 @@ class Component extends DCLogic {
       ['Comunicação', [['WhatsApp Business', 'Relatórios, cobranças, lembretes e aprovações · em breve'], ['E-mail (SMTP próprio)', 'Envio com o domínio da agência']]]]
       .map(g => ({ g: g[0], items: g[1].map(i => ({ l: i[0], d: i[1], ini: i[0].split(' ').map(w => w[0]).join('').slice(0, 2), soon: i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0, ready: !(i[1].indexOf('Em breve') >= 0 || i[1].indexOf('em breve') >= 0), st: 'Não conectado', btn: 'Conectar', run: () => this.fm({ title: i[0] + ': lista de espera', desc: 'Essa integração está em construção. Avisamos por e-mail no dia em que liberar.', icon: 'notifications', fields: [{ k: 'mail', l: 'E-mail para avisar', req: 1, email: 1 }], init: { mail: 'joao@marketingpro.com.br' }, okL: 'Entrar na lista', ok: v => this.toastMsg('Combinado: avisamos ' + v.mail.trim() + ' quando o ' + i[0] + ' liberar') }) })) }));
     const brandColors = ['#465FFF', '#0E9384', '#C4320A', '#101828'];
-    const sett = { nextBill: this.R ? 'Próxima fatura · 1 de ' + ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][(new Date().getMonth() + 1) % 12] : 'Próxima fatura · 1 de novembro', tabs: this.tabsOf([['workspace', 'Empresa'], ['integrations', 'Integrações'], ['brand', 'Marca e portais'], ['plan', 'Plano e cobrança'], ['pipeline', 'Preferências']], S.setTab, set('setTab')),
+    const SB = this.spSub(), sett = { sub: this.spSubView(), nextBill: SB ? (SB.current_period_end && !SB.cancel_at_period_end ? 'Próxima fatura · ' + this.spDmy(SB.current_period_end) : SB.plan_status === 'trial' ? 'Primeira fatura no fim do teste · ' + this.spDmy(SB.trial_ends_at) : 'Sem renovação programada') : this.R ? 'Próxima fatura · 1 de ' + ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][(new Date().getMonth() + 1) % 12] : 'Próxima fatura · 1 de novembro', tabs: this.tabsOf([['workspace', 'Empresa'], ['integrations', 'Integrações'], ['brand', 'Marca e portais'], ['plan', 'Plano e cobrança'], ['pipeline', 'Preferências']], S.setTab, set('setTab')),
       isWs: S.setTab === 'workspace', isBrand: S.setTab === 'brand', isInt: S.setTab === 'integrations', isPipe: S.setTab === 'pipeline', isPlan: S.setTab === 'plan', intg, ad: S.setTab === 'plan' ? this.vAdAg() : {},
       wsFields: (this.R ? [['Nome da agência', this.R.agency.name], ['CNPJ', this.R.agency.cnpj ? this.R.agency.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'], ['Telefone', this.R.agency.phone || '—'], ['Site', this.R.agency.website || '—'], ['Cidade', [this.R.agency.city, this.R.agency.state].filter(Boolean).join(' · ') || '—'], ['Fuso horário', this.R.agency.timezone || 'America/Sao_Paulo']]
         : [['Nome da agência', 'Marketing Pro'], ['CNPJ', '42.118.905/0001-37'], ['E-mail de faturamento', 'financeiro@marketingpro.com.br'], ['Fuso horário', 'America/Sao_Paulo (GMT−3)'], ['Moeda', 'Real brasileiro (R$)'], ['Início do mês fiscal', 'Dia 1']]).map(f => ({ l: f[0], v: f[1] })),
       colors: brandColors.map(c => ({ c, ring: (S.brand || '#465FFF') === c ? '0 0 0 2px var(--sf,#fff), 0 0 0 4px ' + c : 'none', pick: () => this.setState({ brand: c }) })), brand: S.brand || '#465FFF',
       powered: S.powered !== false, pwBg: S.powered !== false ? '#465FFF' : 'var(--bd,#D0D5DD)', pwX: S.powered !== false ? '14px' : '2px', togglePowered: () => this.setState(s => ({ powered: s.powered === false })),
       stages: ['Novo lead', 'Contato realizado', 'Diagnóstico', 'Proposta enviada', 'Negociação', 'Fechado', 'Perdido'].map((s, i) => ({ s, p: [10, 20, 35, 50, 70, 100, 0][i] + '%' })),
-      plans: SP_PLANS.map(p => { const cur = p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala'); const ci = SP_PLANS.findIndex(q => q.id === this.xoPlan().id), pi = SP_PLANS.findIndex(q => q.id === p.id); return { canSwitch: !cur, swL: p.id === 'empresarial' ? 'Falar com vendas' : pi > ci ? 'Fazer upgrade' : 'Mudar para este plano', sw: () => p.id === 'empresarial' ? this.toastMsg('Nosso time comercial fala com você em até 1 dia útil') : this.setState({ planModal: p.id }), n: p.n, d: p.d, x: p.x, xc: p.xn ? 'var(--tx,#101828)' : 'var(--tx2,#667085)', xw: p.xn ? '#EF5B3B' : 'var(--tx2,#98A2B3)', s: cur ? 'Plano atual · ' + p.price : p.price, cur, bd: cur ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: cur ? 'rgba(70,95,255,0.04)' : 'var(--sf,#fff)' }; }),
-      usage: (this.R ? [['Clientes', this.R.clients.length, 100], ['Usuários', this.R.team.length, 30], ['Relatórios', this.R.reports.length, 60], ['Armazenamento', Math.round((this.R.documents || []).reduce((t, d) => t + d.size_bytes, 0) / 1e9 * 10) / 10, 50]] : [['Clientes', 23, 100], ['Usuários', 6, 30], ['Relatórios automáticos', 8, 60], ['Armazenamento', 12, 50]]).concat(this.xoPlan().xn ? [['Xodós', Math.min(3, this.xoPlan().xn), this.xoPlan().xn === 99 ? 'ilimitados' : this.xoPlan().xn], ...(this.xoPlan().cr === 0 ? [] : [['Créditos xodó (R$)', Math.round(this.xoMonth()), this.xoPlan().cr || 'sob medida']])] : []).map(u => ({ l: u[0], v: u[1] + ' de ' + u[2] + (u[0] === 'Armazenamento' ? ' GB' : ''), w: (typeof u[2] === 'number' ? Math.min(100, u[1] / u[2] * 100) : 8) + '%' })),
+      plans: SP_PLANS.map(p => { const cur = p.id === (this.state.planOv || (this.R && this.R.agency.plan) || this.props.plan || 'escala'); const ci = SP_PLANS.findIndex(q => q.id === this.xoPlan().id), pi = SP_PLANS.findIndex(q => q.id === p.id); return { canSwitch: !cur, swL: p.id === 'empresarial' ? 'Falar com vendas' : pi > ci ? 'Fazer upgrade' : 'Mudar para este plano', sw: () => p.id === 'empresarial' ? (this.spSub() ? this.spPlanPick('empresarial') : this.toastMsg('Nosso time comercial fala com você em até 1 dia útil')) : this.setState({ planModal: p.id }), n: p.n, d: p.d, x: p.x, xc: p.xn ? 'var(--tx,#101828)' : 'var(--tx2,#667085)', xw: p.xn ? '#EF5B3B' : 'var(--tx2,#98A2B3)', s: cur ? 'Plano atual · ' + p.price : p.price, cur, bd: cur ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: cur ? 'rgba(70,95,255,0.04)' : 'var(--sf,#fff)' }; }),
+      usage: (this.spSub() ? (() => { const u = this.spSub().usage, l = this.spSub().limits, ad = this.spSub().addons || {}; return [['Clientes ativos', u.clients, l.clients == null ? 'ilimitados' : l.clients], ['Pessoas e convites', u.seats, l.seats == null ? 'ilimitadas' : l.seats], ['Xodós', u.xodos, l.xodos], ['Armazenamento', Math.round((this.R.documents || []).reduce((t, d) => t + d.size_bytes, 0) / 1e9 * 10) / 10, 50 + 25 * (ad.storage || 0)]]; })() : this.R ? [['Clientes', this.R.clients.length, 100], ['Usuários', this.R.team.length, 30], ['Relatórios', this.R.reports.length, 60], ['Armazenamento', Math.round((this.R.documents || []).reduce((t, d) => t + d.size_bytes, 0) / 1e9 * 10) / 10, 50]] : [['Clientes', 23, 100], ['Usuários', 6, 30], ['Relatórios automáticos', 8, 60], ['Armazenamento', 12, 50]]).concat(!this.spSub() && this.xoPlan().xn ? [['Xodós', Math.min(3, this.xoPlan().xn), this.xoPlan().xn === 99 ? 'ilimitados' : this.xoPlan().xn], ...(this.xoPlan().cr === 0 ? [] : [['Créditos xodó (R$)', Math.round(this.xoMonth()), this.xoPlan().cr || 'sob medida']])] : []).map(u => ({ l: u[0], v: u[1] + ' de ' + u[2] + (u[0] === 'Armazenamento' ? ' GB' : ''), w: (typeof u[2] === 'number' ? Math.min(100, u[1] / u[2] * 100) : 8) + '%' })),
       save: () => { this.toastMsg('Salvando…'); clearTimeout(this._svT); this._svT = setTimeout(() => this.toastMsg('Alterações salvas'), 600); } };
     return { fin, msg, docs, team, sett };
   }

@@ -953,7 +953,7 @@ class Component extends DCLogic {
     // Permissões fixas no servidor, por papel (a matriz só mostra).
     const perms = { ops: ['ag', 'plan', 'suspend', 'comms', 'status', 'coupons'], support: ['ag'], finance: ['ag', 'plan', 'coupons'], read: ['ag'] };
     const S = this.state;
-    return { ag, audit, tickets, leads, cps, comms, incs, staff, svcs, aiProv, prices, priceDraft: null, priceErr: {}, flags: Object.assign({}, R.flags), inv: [], sess: [], perms,
+    return { ag, audit, tickets, leads, cps, comms, incs, staff, svcs, aiProv, prices, priceDraft: null, priceErr: {}, flags: Object.assign({}, R.flags), inv: (R.invoices || []).map(i => ({ id: i.id, code: 'F-' + i.id.slice(0, 6).toUpperCase(), ag: i.agency_id, val: i.amount_cents / 100, date: this.spDay(i.due_date), st: ({ pago: 'paid', vencido: 'fail', pendente: 'pend', estornado: 'refund', cancelado: 'refund' })[i.status] || 'pend', x: i })), sess: [], perms,
       cal: S.cal && S.calReal ? S.cal : Object.assign({}, SP_CAL_DEF, { connected: false, email: '', owner: R.me.name || '', synced: 'agora' }, (this.D && this.D.calendar) || {}), calReal: true, calF: S.calF || { prov: 'Google Agenda', email: '', err: '', busy: false }, calSync: false,
       tkSel: tickets.some(t => t.id === S.tkSel) ? S.tkSel : ((tickets.find(t => t.st === 'open') || tickets[0] || {}).id || null), sel: S.sel && ag.some(a => a.id === S.sel) ? S.sel : null };
   }
@@ -964,8 +964,18 @@ class Component extends DCLogic {
     if (m.kind === 'suspend') return this.spCall('/api/admin/agencies/' + a.id, 'PATCH', { suspend: { reason: v.reason.trim() } }, a.name + ' suspensa · a equipe e os clientes perderam o acesso');
     if (m.kind === 'message') return this.spCall('/api/admin/agencies/' + a.id, 'POST', { subject: v.subject.trim(), body: v.body.trim() }, r => r && r.emailed ? 'Mensagem enviada para ' + a.owner + ' (aviso no app e e-mail)' : 'Aviso enviado no app da ' + a.name + ' (o e-mail não saiu)');
     if (m.kind === 'credits') return this.spSoon('Conceder créditos');
-    if (m.kind === 'refund') return this.spSoon('Estorno (a cobrança do Spherum ainda não existe)');
+    if (m.kind === 'refund') return this.spCall('/api/admin/invoices/' + m.inv, 'POST', { action: 'refund', reason: v.reason.trim() }, 'Fatura estornada pelo Asaas');
     if (m.kind === 'invite') return this.spSoon('Convidar agência pelo admin (a agência se cadastra pelo site)');
+  }
+  spCustomPrice(a) {
+    const x = a.x;
+    this.fxOpen({ title: 'Preço combinado · ' + a.name, desc: 'Valor por mês do plano, no lugar do preço de tabela. Vale a partir da próxima fatura. Para o Empresarial é obrigatório; deixe em branco para voltar ao preço de tabela.', icon: 'sell',
+      fields: [{ k: 'p', l: 'Valor por mês (R$)', num: [1, 1000000], ph: 'ex.: 4500' }], init: { p: x.custom_price_cents ? String(x.custom_price_cents / 100) : '' }, okL: 'Salvar',
+      ok: v => this.spCall('/api/admin/agencies/' + a.id, 'PATCH', { custom_price: v.p ? parseFloat(String(v.p).replace(',', '.')) : null }, v.p ? 'Preço combinado salvo' : 'Volta ao preço de tabela') });
+  }
+  spInvCancel(v) {
+    this.fxOpen({ title: 'Cancelar a fatura ' + v.code + '?', desc: 'A cobrança é cancelada no Asaas e a agência não consegue mais pagar por ela.', icon: 'block', danger: 1, fields: [{ k: 'why', l: 'Motivo (vai para a auditoria)', req: 1, min: 5 }], okL: 'Cancelar fatura',
+      ok: w => this.spCall('/api/admin/invoices/' + v.id, 'POST', { action: 'cancel', reason: w.why.trim() }, 'Fatura cancelada') });
   }
   spAgStatus(a) {
     const x = a.x, SL = [['trial', 'Em teste grátis'], ['active', 'Pagante'], ['past_due', 'Pagamento pendente'], ['canceled', 'Cancelada']];
@@ -976,11 +986,11 @@ class Component extends DCLogic {
   spReal(o) {
     const R = this.R, S = this.state, MN = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], PL = { solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' };
     const go = v => this.setState({ view: v, sel: null, hov: null }), M = R.metrics, live = S.ag.filter(a => a.status === 'active' && a.bill !== 'cancel');
-    // Receita estimada pelos preços de tabela (sem cobrança do Spherum ainda).
+    // Receita pelas faturas pagas do Spherum (agências marcadas como pagantes à mão entram pelo preço de tabela).
     const n = S.per === '3m' ? 3 : S.per === '6m' ? 6 : 12, ser = R.mrr.series.slice(-n), mon = ser.map(x => MN[+x.m.slice(5) - 1]), W = 680, H = 200;
     const top = Math.max(1, ...ser.map(x => x.v)) * 1.1, pts = ser.map((x, i) => [n === 1 ? W / 2 : i * (W / (n - 1)), H - x.v / top * (H - 20) - 6]), line = smooth(pts).replace(/(-?[\d.]+) (-?[\d.]+)/g, (q, x, y) => x + ' ' + Math.min(H - 6, +y).toFixed(1)), hi = S.hov != null && S.hov < n ? S.hov : null;
     const now = R.mrr.now, prev = ser.length > 1 ? ser[ser.length - 2].v : 0, dl = prev ? (now / prev - 1) * 100 : null;
-    o.ch = Object.assign({}, o.ch, { big: brl(now), delta: dl == null ? 'estimado' : (dl >= 0 ? '+' : '') + dl.toFixed(1).replace('.', ',') + '% no mês', sub: R.mrr.paying + (R.mrr.paying === 1 ? ' agência pagante' : ' agências pagantes') + ' · estimado pelos preços de tabela',
+    o.ch = Object.assign({}, o.ch, { big: brl(now), delta: dl == null ? 'estimado' : (dl >= 0 ? '+' : '') + dl.toFixed(1).replace('.', ',') + '% no mês', sub: R.mrr.paying + (R.mrr.paying === 1 ? ' agência pagante' : ' agências pagantes') + ' · pelas faturas pagas',
       line, area: line + ' L' + W + ' ' + H + ' L0 ' + H + ' Z', hx: hi != null ? pts[hi][0] : 0, hy: hi != null ? pts[hi][1] : 0, hO: hi != null ? 1 : 0, tipX: hi != null ? (pts[hi][0] / W * 100) + '%' : '0%', tipV: hi != null ? brl(ser[hi].v) : '', tipL: hi != null ? mon[hi] + (hi === n - 1 ? ' · até hoje' : '') : '',
       hits: pts.map((p, i) => ({ x: Math.max(0, p[0] - W / (2 * Math.max(1, n - 1))), w: W / Math.max(1, n - 1), on: () => this.setState({ hov: i }) })), xl: mon,
       moves: [['Cadastros no mês', String((M.signups[M.signups.length - 1] || {}).n || 0), '#12B76A', '#067647'], ['Em teste grátis', String(M.trial), '#465FFF', '#3538CD'], ['Suspensas', String(M.suspended), '#F79009', '#B54708'], ['Canceladas', String(M.canceled), '#F04438', '#B42318']].map(m => ({ l: m[0], v: m[1], c: m[2], vc: m[3] })) });
@@ -1007,14 +1017,14 @@ class Component extends DCLogic {
     const sa = S.sel ? this.agBy(S.sel) : null;
     if (sa && o.dr.has) {
       const act = sa.status === 'active', x = sa.x;
-      o.dr.stats = [['Receita estimada', x.plan_status === 'active' && act ? brl(S.prices[sa.plan] || 0) : '—'], ['Clientes', String(sa.clients)], ['Pessoas', String(sa.users)], ['Saúde', String(sa.health)], ['IA (30 dias)', brl(x.ai_brl || 0)], ['Teste até', x.trial_ends_at ? this.spDay(x.trial_ends_at) : '—']].map(q => ({ l: q[0], v: q[1] }));
-      o.dr.acts = [['swap_vert', 'Mudar plano', () => this.openModal('plan', sa.id), '#F2F4F7', '#101828'], ['event_repeat', 'Situação e teste', () => this.spAgStatus(sa), '#F2F4F7', '#101828'], ['mail', 'Enviar mensagem', () => this.openModal('message', sa.id), '#F2F4F7', '#101828'],
+      o.dr.stats = [['Receita por mês', x.mrr ? brl(x.mrr) : '—'], ['Assinatura', x.locked_reason ? 'Bloqueada (' + x.locked_reason + ')' : x.cancel_at_period_end ? 'Cancela em ' + this.spDay(x.current_period_end) : x.current_period_end ? 'Renova em ' + this.spDay(x.current_period_end) + (x.billing_cycle === 'anual' ? ' · anual' : '') : '—'], ['Clientes', String(sa.clients)], ['Pessoas', String(sa.users)], ['Saúde', String(sa.health)], ['IA (30 dias)', brl(x.ai_brl || 0)], ['Teste até', x.trial_ends_at ? this.spDay(x.trial_ends_at) : '—']].map(q => ({ l: q[0], v: q[1] }));
+      o.dr.acts = [['swap_vert', 'Mudar plano', () => this.openModal('plan', sa.id), '#F2F4F7', '#101828'], ['event_repeat', 'Situação e teste', () => this.spAgStatus(sa), '#F2F4F7', '#101828'], ['mail', 'Enviar mensagem', () => this.openModal('message', sa.id), '#F2F4F7', '#101828'], ['sell', x.custom_price_cents ? 'Preço combinado · ' + brl(x.custom_price_cents / 100) : 'Preço combinado', () => this.spCustomPrice(sa), '#F2F4F7', '#101828'],
         act ? ['block', 'Suspender', () => this.openModal('suspend', sa.id), 'rgba(240,68,56,.08)', '#B42318'] : ['play_circle', 'Reativar', () => this.spCall('/api/admin/agencies/' + sa.id, 'PATCH', { reactivate: true }, sa.name + ' reativada'), 'rgba(18,183,106,.12)', '#067647']].map(q => ({ icon: q[0], l: q[1], run: q[2], bg: q[3], c: q[4] }));
     }
     // Receita.
     const arpa = M.paying ? now / M.paying : 0;
-    o.revKpis = [['Receita mensal estimada', brl(now), R.mrr.paying + ' pagantes × preço de tabela', '#667085'], ['Receita anual estimada', brl(now * 12), 'mensal × 12', '#667085'], ['Ticket médio', arpa ? brl(arpa) : '—', 'por agência pagante', '#667085'], ['Em teste grátis', String(M.trial), 'viram receita quando pagarem', '#3538CD']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] }));
-    o.invEmpty = true; o.invEmptyL = 'A cobrança das agências pelo Spherum ainda não existe. Quando o gateway for escolhido, as faturas aparecem aqui.';
+    o.revKpis = [['Receita mensal', brl(now), R.mrr.paying + (R.mrr.paying === 1 ? ' pagante' : ' pagantes') + ' · pelas faturas pagas', '#667085'], ['Receita anual', brl(now * 12), 'mensal × 12', '#667085'], ['Ticket médio', arpa ? brl(arpa) : '—', 'por agência pagante', '#667085'], ['Em teste grátis', String(M.trial), 'viram receita quando pagarem', '#3538CD']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] }));
+    o.invEmpty = !S.inv.length; o.invEmptyL = 'Nenhuma fatura ainda. As faturas aparecem quando as agências assinam um plano.';
     // Suporte.
     if (o.tk.has) { const t = S.tickets.find(x => x.id === S.tkSel);
       o.tk.send = () => { const txt = (S.draft || '').trim(); if (txt.length < 2) { this.setState({ draftErr: 'Escreva a resposta antes de enviar' }); return; } this.spCall('/api/admin/support/' + t.id, 'POST', { text: txt }, 'Resposta enviada para ' + t.who).then(r => { if (r) this.setState({ draft: '' }); }); };
@@ -1183,8 +1193,8 @@ class Component extends DCLogic {
       md = { has: true, icon: K[0], ib: K[1], ic: K[2], title: K[3], desc: K[4], fields: K[5], okL: K[6], okBg: K[7], okOp: bad ? 0.55 : 1, ok: () => this.submit(), close: () => this.setState({ modal: null }), backdrop: () => this.setState({ modal: null }), stop: ev => ev.stopPropagation() }; }
     const invSt = { paid: ['Paga', 'rgba(18,183,106,.12)', '#067647'], fail: ['Falhou', 'rgba(240,68,56,.1)', '#B42318'], pend: ['Pendente', 'rgba(247,144,9,.14)', '#B54708'], refund: ['Estornada', '#F2F4F7', '#475467'] };
     const invRows = S.inv.filter(v => S.invTab === 'all' || (S.invTab === 'issue' ? v.st === 'fail' || v.st === 'pend' : v.st === S.invTab)).filter(v => !q || (v.id + ' ' + (this.agBy(v.ag) || {}).name).toLowerCase().indexOf(q) >= 0).map(v => { const st = invSt[v.st], a = this.agBy(v.ag) || {};
-      const acts = v.st === 'paid' ? [['Estornar', () => this.openModal('refund', v.ag, { inv: v.id })]] : v.st === 'fail' || v.st === 'pend' ? [['Cobrar de novo', () => this.retry(v.ag, v.id)], ['Abrir', () => this.setState({ view: 'agencies', sel: v.ag })]] : [['Abrir', () => this.setState({ view: 'agencies', sel: v.ag })]];
-      return { id: v.id, ag: a.name, date: v.date, val: brl(v.val), st: st[0], sBg: st[1], sC: st[2], acts: acts.map(x => ({ l: x[0], run: x[1] })) }; });
+      const acts = v.st === 'paid' ? [['Estornar', () => this.openModal('refund', v.ag, { inv: v.id })]] : v.st === 'fail' || v.st === 'pend' ? [this.R ? ['Cancelar', () => this.spInvCancel(v)] : ['Cobrar de novo', () => this.retry(v.ag, v.id)], ['Abrir', () => this.setState({ view: 'agencies', sel: v.ag })]] : [['Abrir', () => this.setState({ view: 'agencies', sel: v.ag })]];
+      return { id: v.code || v.id, ag: a.name, date: v.date, val: brl(v.val), st: st[0], sBg: st[1], sC: st[2], acts: acts.map(x => ({ l: x[0], run: x[1] })) }; });
     const tkList = S.tickets.filter(t => S.tkTab === 'all' || t.st === S.tkTab).filter(t => !q || (t.subj + ' ' + (this.agBy(t.ag) || {}).name).toLowerCase().indexOf(q) >= 0);
     const tSel = S.tickets.find(t => t.id === S.tkSel);
     const tickets = tkList.map(t => ({ subj: t.subj, when: t.when, ag: (this.agBy(t.ag) || {}).name, stL: t.st === 'open' ? 'aberto' : 'resolvido', pc: t.st !== 'open' ? '#98A2B3' : t.prio === 'alta' ? '#F04438' : t.prio === 'média' ? '#F79009' : '#12B76A', bg: t.id === S.tkSel ? '#F5F7FF' : 'transparent', sh: t.id === S.tkSel ? 'inset 3px 0 0 #465FFF' : 'none', open: () => this.setState({ tkSel: t.id, draft: '', draftErr: '' }) }));

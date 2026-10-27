@@ -12,10 +12,10 @@ para lá.
 
   | Função | O que pode fazer |
   |---|---|
-  | dono | tudo, inclusive equipe, chaves da plataforma e preços |
+  | dono | tudo, inclusive equipe, chaves da plataforma, preços e faturas |
   | operacao | plano, suspensão, mensagens, cupons, comunicados, status, suporte e leads |
   | suporte | mensagens, suporte e leads |
-  | financeiro | plano e cupons |
+  | financeiro | plano, cupons, estorno e cancelamento de faturas |
   | leitura | só vê |
 
   A equipe nunca fica sem dono: rebaixar ou remover o último é recusado. A conta é feita com trava,
@@ -46,10 +46,14 @@ para lá.
   - Todas as mudanças de um pedido entram juntas ou nenhuma entra.
 - **Leads e demos**: os formulários do site viram um funil (novo, em contato, demo marcada, em
   teste, ganho, perdido), com responsável e anotação. Dá para cadastrar um lead à mão.
-- **Receita**: estimativa pelos preços de tabela. Faturas e estornos aparecem quando a cobrança do
-  Spherum existir.
-- **Cupons**: criar, pausar e encerrar. Cupom já usado é pausado em vez de apagado. Por enquanto o
-  cupom só fica registrado no cadastro da agência.
+- **Receita**: receita mensal pelas faturas pagas da assinatura (veja `docs/ASSINATURA.md`). O anual
+  conta dividido por 12. Agência marcada como pagante à mão, para pagamento por fora, entra pelo preço
+  de tabela ou pelo preço combinado. As faturas recentes podem ser estornadas pelo Asaas, se pagas,
+  ou canceladas, se em aberto.
+- **Preço combinado**: no painel da agência. Substitui o preço de tabela a partir da próxima fatura e
+  é obrigatório para o plano Empresarial.
+- **Cupons**: criar, pausar e encerrar. Cupom já usado é pausado em vez de apagado. A agência aplica
+  o cupom ao assinar; ele vale nos meses definidos.
 - **Xodó e IA**: chamadas e gasto das chaves das agências nos últimos 30 dias, por provedor e por
   agência.
 - **Comunicados**: aviso no app, e-mail ou os dois, para todas, pagantes, em teste, com xodó ou um
@@ -94,10 +98,10 @@ para lá.
 
 ## Ainda não existe
 
-Estes botões avisam que ainda não estão disponíveis: conceder créditos, estornar, convidar
-agência pelo admin, entrar como a agência, ligar e desligar provedores de IA, encerrar sessões,
-editar a matriz de permissões e publicar a página pública de status. Faturas e estornos dependem
-da cobrança do Spherum. A matriz de permissões é fixa no código (`CAN` em `admin.ts`).
+Estes botões avisam que ainda não estão disponíveis: conceder créditos, convidar agência pelo
+admin, entrar como a agência, ligar e desligar provedores de IA, encerrar sessões, editar a matriz
+de permissões e publicar a página pública de status. A matriz de permissões é fixa no código (`CAN`
+em `admin.ts`).
 
 ## API
 
