@@ -15,7 +15,10 @@ export async function GET() {
       const u = new URL(raw);
       formato = { configurada: true, protocolo: u.protocol, porta: u.port || null, pooler: u.hostname.includes("pooler"), tem_senha: Boolean(u.password), usuario_com_projeto: u.username.includes(".") };
     } catch {
-      formato = { configurada: true, endereco_invalido: true };
+      // Só a forma do texto (nada da senha): como começa, tamanho, espaços, quantos @.
+      const v = raw.trim();
+      const inicio = (v.match(/^[a-z][a-z0-9+.-]*:\/\/|^[a-z_]+=|^psql\b|^[a-z]+\s/i)?.[0] ?? v.slice(0, 1).replace(/[a-z0-9]/i, "letra/número")).slice(0, 15);
+      formato = { configurada: true, endereco_invalido: true, comeca_com: inicio, tamanho: v.length, tem_espaco: /\s/.test(v), arrobas: (v.match(/@/g) ?? []).length };
     }
   }
   try {
