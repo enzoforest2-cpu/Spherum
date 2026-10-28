@@ -70,7 +70,9 @@ export class Worker {
       try {
         return await fn();
       } catch (error) {
-        console.error(`[agendador] ${name} falhou`, error);
+        // Sem internet é comum (notebook dormindo, Wi-Fi caiu): uma linha basta.
+        if (error instanceof TypeError && error.message === "fetch failed") console.warn(`[agendador] ${name}: sem conexão, tento de novo depois`);
+        else console.error(`[agendador] ${name} falhou`, error);
         return null;
       }
     };

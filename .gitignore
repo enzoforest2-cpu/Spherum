@@ -3,3 +3,4 @@ dados/
 dist/
 *.log
 .env
+ui/

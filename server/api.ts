@@ -8,6 +8,8 @@ import { createCredential, createXodo, deleteXodo, listCredentials, revokeCreden
 import { conflictBody, createNote, deleteNote, editNote, listMemory } from "../src/xodos/memory/team";
 import { createRoutine, nextRunAt } from "../src/xodos/routines";
 import { loadXodo, startRun, type EngineDeps } from "../src/xodos/runner";
+import { TOOLS_BY_NAME } from "../src/xodos/tools";
+import { NATIVE_APP_TOOLS } from "../src/integrations/registry";
 import { ensureOwner, writeSettings, type AppState } from "./state";
 import type { Worker } from "./worker";
 
@@ -34,6 +36,18 @@ export function failure(error: unknown): Res {
   if (conflict) return { status: 409, body: conflict };
   console.error("[api] erro", error);
   return { status: 500, body: { error: "Erro interno. Veja o registro do app." } };
+}
+
+/** Frase curta do que o xodó quer fazer ("Escrever o arquivo notas.txt"), para a tela de aprovação. */
+function withSummary<T extends { tool_name: string; input: unknown }>(rows: T[]): (T & { resumo: string })[] {
+  return rows.map((row) => {
+    const tool = TOOLS_BY_NAME.get(row.tool_name) ?? NATIVE_APP_TOOLS.find((t) => t.name === row.tool_name);
+    let resumo = row.tool_name;
+    try {
+      if (tool) resumo = tool.summarize(row.input as never);
+    } catch {}
+    return { ...row, resumo };
+  });
 }
 
 const who = (c: Ctx) => ({ userId: c.state.userId, manage: true });
@@ -122,13 +136,13 @@ export async function handle(c: Ctx, req: Req): Promise<Res> {
     if (seg[0] === "aprovacoes") {
       if (method === "GET" && !seg[1]) {
         return ok({
-          aprovacoes: await sql.query(
+          aprovacoes: withSummary(await sql.query<{ tool_name: string; input: unknown }>(
             `select a.id, a.run_id, a.xodo_id, x.name as xodo_name, x.species, x.color, a.tool_name, a.category, a.input, a.reason,
                     a.expires_at::text, a.created_at::text
                from xodo_actions a join xodos x on x.id = a.xodo_id
               where a.agency_id = $1 and a.status = 'pending' order by a.created_at`,
             [owner],
-          ),
+          )),
         });
       }
       if (method === "POST" && seg[1]) {
@@ -186,7 +200,7 @@ export async function handle(c: Ctx, req: Req): Promise<Res> {
             [xodo.id, owner],
           ),
         ]);
-        return ok({ mensagens: messages, pendentes: pending, ultima_execucao: runs[0] ?? null });
+        return ok({ mensagens: messages, pendentes: withSummary(pending as { tool_name: string; input: unknown }[]), ultima_execucao: runs[0] ?? null });
       }
       if (sub === "mensagens" && method === "POST") {
         const { text } = messageInput.parse(body);

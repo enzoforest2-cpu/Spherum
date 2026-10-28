@@ -97,7 +97,8 @@ export function llmFromModels(models: MutableModels): LlmClient {
     },
     complete(model, context, options) {
       return models.complete(model, context, {
-        apiKey: options.apiKey || undefined,
+        // Servidor no próprio computador (Ollama, LM Studio) costuma não ter chave; a biblioteca exige uma.
+        apiKey: options.apiKey || (isSelfHosted(model.provider) ? "sem-chave" : undefined),
         maxTokens: options.maxTokens,
         signal: options.signal,
       });
