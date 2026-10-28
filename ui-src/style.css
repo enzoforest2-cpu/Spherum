@@ -12,48 +12,50 @@
 }
 
 :root {
-  --bg: #fbf6ee;
+  /* Mesmas cores do Spherum: cinzas neutros e o azul #465FFF. */
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --surface-2: #f4ece0;
-  --line: #e8dccb;
-  --ink: #2b1d16;
-  --ink-2: #6f5d51;
-  --accent: #ef5b3b;
+  --surface-2: #f2f4f7;
+  --line: #e4e7ec;
+  --ink: #101828;
+  --ink-2: #667085;
+  --accent: #465fff;
   --accent-ink: #ffffff;
-  --accent-soft: #fde4dc;
-  --blue: #3e64de;
-  --warn: #b5470f;
-  --warn-soft: #fff0d6;
-  --live: #1f8a63;
-  --live-soft: #dcf5ea;
-  --danger: #c4321b;
-  --me: #2b1d16;
-  --me-ink: #fbf6ee;
+  --accent-soft: #eef1ff;
+  --blue: #465fff;
+  --warn: #b54708;
+  --warn-soft: #fffaeb;
+  --live: #067647;
+  --live-soft: #ecfdf3;
+  --danger: #d92d20;
+  --me: #465fff;
+  --me-ink: #ffffff;
   --radius: 16px;
-  --shadow: 0 1px 2px rgba(43, 29, 22, 0.06), 0 8px 24px rgba(43, 29, 22, 0.06);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.06);
   --display: "Fredoka", "Segoe UI", system-ui, sans-serif;
   --text: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17120f;
-    --surface: #211a16;
-    --surface-2: #2c231e;
-    --line: #3a2f28;
-    --ink: #f6ede3;
-    --ink-2: #b7a598;
-    --accent: #ff7556;
-    --accent-ink: #1b0f0a;
-    --accent-soft: #3d221a;
-    --warn: #ffb168;
-    --warn-soft: #3a2615;
-    --live: #6fe0b0;
-    --live-soft: #173528;
-    --danger: #ff8a73;
-    --me: #f6ede3;
-    --me-ink: #17120f;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --bg: #0f1117;
+    --surface: #181b23;
+    --surface-2: #222631;
+    --line: #2c313c;
+    --ink: #f2f4f7;
+    --ink-2: #98a2b3;
+    --accent: #465fff;
+    --accent-ink: #ffffff;
+    --accent-soft: #1e2440;
+    --blue: #8da0ff;
+    --warn: #fdb022;
+    --warn-soft: #2e2410;
+    --live: #47cd89;
+    --live-soft: #0f2a1c;
+    --danger: #f97066;
+    --me: #465fff;
+    --me-ink: #ffffff;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
 }
@@ -166,7 +168,7 @@ textarea {
   font-size: 24px;
   text-decoration: none;
   padding: 0 10px 16px;
-  color: var(--accent);
+  color: var(--blue);
 }
 .nav,
 .side-xodo,
