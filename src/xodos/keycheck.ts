@@ -32,7 +32,9 @@ export async function checkAiKey(provider: string, key: string, http: typeof fet
   } catch {
     return { checked: false, note: "Não consegui falar com o provedor agora; a chave foi guardada e o primeiro uso confirma." };
   }
-  if (response.status === 401 || response.status === 403) {
+  // O Google responde 400 ("API key not valid") em vez de 401 para chave errada.
+  const googleBadKey = provider === "google" && response.status === 400 && /api key not valid|API_KEY_INVALID/i.test(await response.clone().text().catch(() => ""));
+  if (response.status === 401 || response.status === 403 || googleBadKey) {
     throw new XodoError("O provedor recusou essa chave. Confira se copiou inteira e se ela está ativa.", 400);
   }
   if (response.status === 429) return { checked: true, note: "A chave funciona, mas o provedor está limitando as chamadas agora." };

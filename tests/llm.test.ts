@@ -42,8 +42,8 @@ test("mensagens de erro do provedor em português", () => {
     ...fauxAssistantMessage("", { stopReason: "error", errorMessage }),
     ...(raw ? { rawStopReason: raw } : {}),
   });
-  assert.match(providerErrorMessage(fail('401 {"error":"invalid x-api-key"}')), /chave de API foi recusada/);
-  assert.match(providerErrorMessage(fail("429 rate limit")), /limitou as chamadas/);
+  assert.match(providerErrorMessage(fail('401 {"error":"invalid x-api-key"}')), /chave de IA foi recusada/);
+  assert.match(providerErrorMessage(fail("429 rate limit")), /limite de uso/);
   assert.match(providerErrorMessage(fail("529 overloaded")), /instável/);
   assert.match(providerErrorMessage(fail("Connection error.")), /Não consegui falar/);
   assert.match(providerErrorMessage(fail("recusou", "refusal")), /se recusou/);
@@ -79,4 +79,18 @@ test("histórico visível vira conversa que começa pelo usuário, com falas seg
       ["assistant", [{ type: "text", text: "c" }]],
     ],
   );
+});
+
+test("explica em português os erros mais comuns dos provedores", () => {
+  const fail = (errorMessage: string) => ({ errorMessage }) as never;
+  assert.match(providerErrorMessage(fail("You have no credits remaining. Add credits to continue using the API")), /sem saldo/);
+  assert.match(providerErrorMessage(fail('{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}')), /chave de IA foi recusada/);
+  assert.match(providerErrorMessage(fail('{"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generate_content_free_tier_requests, limit: 0, model: gemini-3.1-pro","status":"RESOURCE_EXHAUSTED"}}')), /não está liberado no uso gratuito/);
+  assert.match(providerErrorMessage(fail('{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests, limit: 15","status":"RESOURCE_EXHAUSTED"}}')), /limite de uso/);
+});
+
+test("o catálogo esconde modelos que não servem para conversa", () => {
+  const ids = serverLlm().models("google").map((m) => m.id);
+  assert.ok(ids.some((id) => /flash/.test(id)));
+  assert.ok(!ids.some((id) => /image|live|deep-research|customtools|computer-use/.test(id)));
 });

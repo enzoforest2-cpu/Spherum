@@ -900,7 +900,8 @@ function ModelPicker({ chaves, value, onChange }) {
 function suggestModel(models) {
   if (!models.length) return "";
   const pick = (re) => models.filter((m) => re.test(m.id)).sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }))[0];
-  return (pick(/sonnet/) || pick(/gpt-5(?!.*(nano|mini|pro))/) || pick(/gemini-.*-pro/) || pick(/gemini-.*flash(?!-lite)/) || models[0]).id;
+  // Anthropic: Sonnet. OpenAI: o "Sol" mais novo. Google: o Flash estável mais novo (funciona no uso gratuito).
+  return (pick(/sonnet/) || pick(/^gpt-[\d.]+-sol$/) || pick(/^gemini-[\d.]+-flash$/) || pick(/^gemini-.*flash(?!-lite)/) || models[0]).id;
 }
 
 function XodoSettings({ xodo, overview, reload, notify }) {

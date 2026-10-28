@@ -346,7 +346,7 @@ test("se todos os modelos falham, a tarefa falha com uma mensagem clara", async 
   const { runId, status } = await ask(testDeps(sql, model), xodo, "Oi", ownerId);
   assert.equal(status, "failed");
   const run = await one<{ error: string }>(sql, `select error from xodo_runs where id = $1`, [runId]);
-  assert.match(run!.error, /limitou as chamadas/);
+  assert.match(run!.error, /limite de uso/);
 });
 
 test("modelo de reserva com chave revogada é pulado", async () => {
