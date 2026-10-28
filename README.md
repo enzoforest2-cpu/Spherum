@@ -1,20 +1,36 @@
 # Xodós
 
-Colegas de IA que trabalham para você, rodando no seu computador.
+Seus ajudantes de IA rodando no seu computador. Eles conversam com você, pesquisam na internet,
+organizam a pasta `Documentos\Xodós`, guardam memória e cuidam de rotinas no horário. Antes de
+qualquer coisa importante (apagar, enviar, pagar), pedem a sua aprovação.
 
-Os xodós vieram do Spherum: o mesmo motor (conversa com vários modelos de IA, memória,
-rotinas, aprovações e teto de gasto), sem nada de agência. Eles pesquisam na internet,
-leem páginas e cuidam de uma pasta de arquivos só deles. Você usa a sua própria chave de IA.
+O motor é o mesmo dos xodós do Spherum, adaptado para uso pessoal: o banco é um Postgres embutido
+(PGlite) e tudo fica no seu computador.
 
-Em construção. O guia de instalação para Windows vem junto com o pacote.
+## Usar no Windows
 
-## Para desenvolver
+1. Baixe `Xodos-windows.zip`, clique com o botão direito > Propriedades > marque **Desbloquear** > OK.
+2. Descompacte numa pasta fixa (ex.: `Documentos\Programas\Xodos`).
+3. Dois cliques em **Abrir Xodos.bat**. A tela abre no navegador em http://127.0.0.1:4747.
+
+O `LEIA-ME.txt` dentro do pacote explica o resto (iniciar com o Windows, backup, atualizar).
+
+## Desenvolver
 
 ```bash
 npm install
-npm test
+npm run dev            # monta a tela e abre o servidor em http://127.0.0.1:4747
+npm test               # testes
+npm run typecheck
+npm run pack:windows   # gera dist/Xodos-windows.zip (com Node portátil)
 ```
 
-- `src/xodos`: o motor (copiado do Spherum e adaptado para uso pessoal).
-- `src/local`: o que é só do app pessoal (ferramentas de internet e da pasta, travas desligadas).
-- `db/`: o banco, que roda embutido (PGlite) e fica num arquivo no seu computador.
+Variáveis úteis: `XODOS_DADOS` (pasta dos dados), `XODOS_PORTA`, `XODOS_NAO_ABRIR=1` (não abre o navegador).
+
+## Organização
+
+- `server/` — servidor local (só 127.0.0.1, com token por abertura), API, agendador.
+- `ui-src/` — tela (React), montada em `ui/` por `scripts/build-ui.mjs`.
+- `src/xodos/` — motor dos xodós (execução, aprovações, memória, rotinas).
+- `src/local/` — ferramentas pessoais: pesquisa na web, leitura de páginas, pasta de arquivos.
+- `db/` — esquema do banco (migrações do Spherum + base).

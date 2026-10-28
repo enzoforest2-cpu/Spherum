@@ -250,6 +250,8 @@ async function main() {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
   process.on("SIGBREAK", stop);
+  // No Windows, fechar a janela no X manda SIGHUP e dá alguns segundos para fechar o banco direito.
+  process.on("SIGHUP", stop);
 }
 
 const invoked = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
