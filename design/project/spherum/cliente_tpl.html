@@ -465,7 +465,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                 <path d="{{ ch.area }}" style="fill:color-mix(in srgb, {{ br.acc }} 8%, transparent);stroke:none"></path>
                 <path d="{{ ch.line }}" style="fill:none;stroke:{{ br.acc }};stroke-width:2;vector-effect:non-scaling-stroke"></path>
               </svg>
-              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#667085;padding-top:8px;font-family:'Geist Mono',monospace"><span>30 ago</span><span>06 set</span><span>13 set</span><span>20 set</span><span>28 set</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#667085;padding-top:8px;font-family:'Geist Mono',monospace"><sc-for list="{{ ch.ticks }}" as="d"><span>{{ d }}</span></sc-for></div>
             </div>
           </div>
           <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow-x:auto">
@@ -504,7 +504,7 @@ a:hover{color:#3346D3;text-decoration:underline}
             <sc-if value="{{ nextInv.has1 }}"><button sc-camel-on-click="{{ nextInv.act1 }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-weight:500">{{ nextInv.b1 }}</button></sc-if>
           </div>
           <sc-if value="{{ cw.pixOff }}"><div style="border:1px solid #ABEFC6;background:#ECFDF3;border-radius:12px;padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:24px;line-height:1;color:#079455">bolt</span><div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600;color:#054F31">Pague sem boleto com o Pix Automático</span><span style="font-size:13px;color:#085D3A;text-wrap:pretty">Você autoriza uma vez no app do seu banco e a mensalidade é paga sozinha todo dia 5. Dá para cancelar quando quiser, pelo próprio banco.</span></div><button sc-camel-on-click="{{ cw.pixStart }}" style="height:36px;padding:0 14px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;background:#079455">{{ cw.pixL }}</button></div></sc-if>
-<sc-if value="{{ cw.pixOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;line-height:1;color:#079455">check_circle</span><span style="flex:1;font-size:14px"><b>Pix Automático ativo.</b> A mensalidade de R$ 7.200 é paga sozinha todo dia 5, e a nota fiscal chega no seu e-mail logo depois.</span></div></sc-if>
+<sc-if value="{{ cw.pixOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;line-height:1;color:#079455">check_circle</span><span style="flex:1;font-size:14px"><b>Pix Automático ativo.</b> A mensalidade é paga sozinha no vencimento, e a nota fiscal chega no seu e-mail logo depois.</span></div></sc-if>
 <div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden">
             <sc-for list="{{ invoices }}" as="i"><div sc-camel-on-click="{{ i.pay }}" style="cursor:{{ i.cur }};display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 20px;border-bottom:1px solid #F2F4F7;font-size:13.5px"><div><div style="font-weight:500">{{ i.d }}</div><div style="font-size:12.5px;color:#667085">Vencimento {{ i.due }} · {{ i.nf }}</div></div><span style="font-size:12px;padding:2px 8px;border-radius:5px;background:{{ i.bg }};color:{{ i.c }};font-weight:500">{{ i.st }}</span><span style="font-variant-numeric:tabular-nums;font-weight:600;min-width:80px;text-align:right">{{ i.v }}</span></div></sc-for>
           </div>
@@ -601,7 +601,7 @@ a:hover{color:#3346D3;text-decoration:underline}
       <sc-if value="{{ cw.feedEmpty }}"><div style="padding:22px 18px;border-top:1px solid #F2F4F7;font-size:13.5px;color:#667085;text-wrap:pretty">{{ cw.feedEmptyL }}</div></sc-if><sc-for list="{{ cw.feed }}" as="f"><div style="display:grid;grid-template-columns:38px 1fr;gap:12px;padding:12px 18px;border-top:1px solid #F2F4F7"><span style="width:34px;height:34px;border-radius:9px;background:{{ f.bg }};display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;color:{{ f.c }}">{{ f.i }}</span></span><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-size:14px;font-weight:500;text-wrap:pretty">{{ f.t }}</span><span style="font-size:13px;color:#475467;text-wrap:pretty">{{ f.why }}</span><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:#667085"><span>{{ f.when }}</span><span>·</span><span>{{ f.who }}</span><sc-if value="{{ f.hasImp }}"><span style="padding:1px 7px;border-radius:5px;background:rgba(23,178,106,0.12);color:#067647;font-weight:500">{{ f.imp }}</span></sc-if></div></div></div></sc-for>
     </div>
     <sc-if value="{{ cw.askOn }}"><div style="background:#fff;border:1px solid #E4E7EC;border-radius:12px;display:flex;flex-direction:column;min-height:440px;overflow:hidden">
-      <div style="padding:14px 18px;border-bottom:1px solid #F2F4F7;display:flex;gap:10px;align-items:center"><span style="font:700 13px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 9px">xodó</span><span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:600">Pergunte sobre seus resultados</span><span style="font-size:12px;color:#667085">Vê só os dados da Construtora Pilar. Assuntos de contrato vão para o Rafael.</span></span></div>
+      <div style="padding:14px 18px;border-bottom:1px solid #F2F4F7;display:flex;gap:10px;align-items:center"><span style="font:700 13px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 9px">xodó</span><span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14px;font-weight:600">Pergunte sobre seus resultados</span><span style="font-size:12px;color:#667085">Vê só os dados da sua conta. Assuntos de contrato vão para a {{ br.name }}.</span></span></div>
       <div style="flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:420px"><sc-for list="{{ cw.chat }}" as="m"><sc-if value="{{ m.bot }}"><div style="align-self:flex-start;max-width:88%;background:#F2F4F7;border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:13.5px;line-height:1.45;text-wrap:pretty">{{ m.t }}</div></sc-if><sc-if value="{{ m.me }}"><div style="align-self:flex-end;max-width:80%;background:{{ br.acc }};color:#fff;border-radius:14px 14px 4px 14px;padding:9px 12px;font-size:13.5px;line-height:1.45">{{ m.t }}</div></sc-if><sc-if value="{{ m.hand }}"><div style="align-self:stretch;border:1px dashed #D0D5DD;border-radius:10px;padding:8px 12px;font-size:12.5px;color:#475467;display:flex;gap:8px;align-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1;color:{{ br.acc }}">support_agent</span><span>{{ m.t }}</span></div></sc-if></sc-for></div>
       <div style="padding:10px 18px 0;display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ cw.sugg }}" as="s"><button sc-camel-on-click="{{ s.pick }}" style="height:28px;padding:0 10px;border:1px solid #E4E7EC;border-radius:99px;background:#fff;color:#344054;font-size:12.5px">{{ s.l }}</button></sc-for></div>
       <div style="padding:12px 18px;display:flex;gap:8px"><input value="{{ cw.q }}" sc-camel-on-change="{{ cw.onQ }}" sc-camel-on-key-down="{{ cw.onKey }}" placeholder="Por que o custo por lead subiu?" aria-label="Pergunta" style="flex:1;min-width:0;height:38px;border:1px solid #D0D5DD;border-radius:8px;padding:0 12px;font-size:14px;outline:none"><button sc-camel-on-click="{{ cw.ask }}" aria-label="Enviar" style="width:38px;height:38px;border:none;border-radius:8px;background:{{ br.acc }};color:#fff;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:inherit">arrow_upward</span></button></div>
@@ -646,44 +646,8 @@ a:hover{color:#3346D3;text-decoration:underline}
 </x-dc>
 <script type="text/x-dc" data-dc-script="">
 
-// Demonstração de Chamados e Busca por IA (sem sessão).
-const TK_DEMO = [
-  { id: 'k1', subject: 'Formulário do site parou de enviar e-mail', status: 'aberto', created_at: 'ontem', answered: true, msgs: [
-    { side: 'cliente', who: '', text: 'Desde ontem à tarde os contatos do formulário não chegam no nosso e-mail.', at: 'ontem' },
-    { side: 'agencia', who: 'Rafael Lima', text: 'Achamos: a senha do e-mail de envio venceu. Já trocamos e os 6 contatos de ontem foram reenviados para vocês. Confere se chegaram?', at: 'hoje, 08:40' }] },
-  { id: 'k2', subject: 'Trocar o telefone nos anúncios', status: 'resolvido', created_at: '12 set', resolved_at: '12 set', answered: true, msgs: [
-    { side: 'cliente', who: '', text: 'O telefone do stand mudou para (41) 3333-0000.', at: '12 set' },
-    { side: 'agencia', who: 'Bia Nunes', text: 'Atualizado nos 8 anúncios e na página do Vista Parque.', at: '12 set' }] },
-];
-const AV_DEMO = {
-  engines: [{ id: 'openai', name: 'ChatGPT' }, { id: 'google', name: 'Gemini' }, { id: 'anthropic', name: 'Claude' }],
-  queries: [
-    { id: 'q1', question: 'Melhores construtoras de alto padrão em Curitiba', cells: { openai: { position: 2, mentioned: true }, google: { position: 1, mentioned: true }, anthropic: { position: null, mentioned: true } } },
-    { id: 'q2', question: 'Apartamento de 4 quartos no Ecoville, qual construtora?', cells: { openai: { position: null, mentioned: false }, google: { position: 3, mentioned: true }, anthropic: { position: null, mentioned: false } } },
-    { id: 'q3', question: 'Construtora confiável para comprar na planta em Curitiba', cells: { openai: { position: 1, mentioned: true }, google: { position: null, mentioned: true }, anthropic: { position: 4, mentioned: true } } },
-  ],
-  stats: { checked: 9, mentioned: 7, first: 2, share_pct: 38 },
-  share: [{ name: 'Construtora Pilar', pct: 38, mine: true }, { name: 'Grupo Horizonte', pct: 33, mine: false }, { name: 'Alto Vale Incorporadora', pct: 29, mine: false }],
-  last_checked: '20 out 2026',
-};
-
-const CW_FEED = [
-  ['opt', 'auto_awesome', 'Pausamos um anúncio que estava caro e passamos a verba para o que traz mais contatos', 'O anúncio “Vista Parque · Carrossel” trazia cada contato a R$ 148. Os R$ 210 por dia foram para o “Vista Parque · Vídeo”, que traz a R$ 81.', 'hoje, 09:12', 'Nina, xodó da Marketing Pro', '−R$ 67 por contato'],
-  ['alert', 'notifications', 'Avisamos que a verba do mês estava acabando cedo', 'No ritmo atual, a verba de outubro acabaria no dia 24. O Rafael ajustou o ritmo para durar até o fim do mês.', 'ontem', 'Zuca, xodó · revisado por Rafael Lima', ''],
-  ['rep', 'lab_profile', 'Publicamos o relatório de setembro', '131 contatos no lançamento Vista Parque, 18% a mais que agosto. Está em Relatórios.', '01 out', 'Faísca, xodó · revisado por Rafael Lima', '+18% contatos'],
-  ['opt', 'auto_awesome', 'Aumentamos o lance nas buscas por “apartamento 3 quartos Ecoville”', 'Vocês apareciam em só 41% das buscas. Agora aparecem em 68%.', '30 set', 'Nina, xodó da Marketing Pro', '+27 pontos de presença'],
-  ['team', 'groups', 'Criamos 4 novos criativos para a fase 2', 'Esperando sua aprovação em Relatórios → Criativos.', '29 set', 'Bia Nunes, designer', ''],
-  ['opt', 'auto_awesome', 'Tiramos da campanha quem já é cliente', 'A lista de compradores de 2025 parou de ver anúncios de lançamento. Menos verba desperdiçada.', '28 set', 'Nina, xodó da Marketing Pro', '−R$ 340 no mês'],
-];
+// Cores de cada tipo de item em "Feito pela agência".
 const CW_TONE = { opt: ['#FFF3EE', '#D9472A'], alert: ['#FFFAEB', '#B54708'], rep: [`color-mix(in srgb, ${ACC()} 8%, transparent)`, ACC()], team: ['#F2F4F7', '#475467'] };
-const CW_ITEMS = [
-  ['meta', 'Acesso ao Meta Business', 'Para criarmos a campanha da fase 2 na sua conta de anúncios.', 'steps', ['Abra business.facebook.com', 'Configurações → Parceiros → Adicionar', 'Cole o código 4821 0937 da Marketing Pro']],
-  ['gads', 'Acesso ao Google Ads', 'Para a campanha de pesquisa do Vista Parque.', 'steps', ['Abra ads.google.com', 'Ferramentas → Acesso e segurança → Gerentes', 'Aceite o convite da Marketing Pro (ID 482-119-3307)']],
-  ['brand', 'Materiais do empreendimento', 'Logo da fase 2, fotos decoradas e tabela de unidades.', 'file', []],
-  ['brief', 'Briefing da fase 2', 'Público, diferenciais e o que não pode ser dito nos anúncios.', 'text', [], 'Ex.: casais de 30 a 45 anos, 3 quartos, lazer completo. Não citar valor de entrada.'],
-  ['appr', 'Quem aprova os criativos', 'Se não for você, diga quem. Essa pessoa recebe os criativos no WhatsApp.', 'text', [], 'Nome e WhatsApp'],
-  ['site', 'Acesso ao site', 'Para instalar o pixel e medir as vendas que vêm dos anúncios.', 'steps', ['Envie o acesso de administrador para ti@marketingpro.com.br', 'Ou peça para quem cuida do site falar com o Rafael']],
-];
 
 function mountSpherumLogo(host, o) {
   const NS = 'http://www.w3.org/2000/svg', CX = 23, CY = 27, RX = 22.5, RY = 7.2, T = -20 * Math.PI / 180;
@@ -735,7 +699,6 @@ function LiveLogo(p) {
 }
 function ACC() { return (window.__spBrand && window.__spBrand.c) || '#465FFF'; }
 function spDl(name, content, type) { const url = URL.createObjectURL(new Blob([content], { type })); const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }
-function spDoc(t, sub) { return '<!doctype html><meta charset="utf-8"><title>' + t + '</title><body style="font-family:sans-serif;padding:40px;max-width:680px;color:#101828"><h2>' + t + '</h2><p>' + (sub || '') + '</p><p style="color:#667085;margin-top:32px">Documento de demonstração.</p></body>'; }
 // <spherum-api> Sessão do Supabase Auth e chamadas à API do Spherum (fonte: design/shared/spherum-api.js; o script scripts/design-bundle.mjs copia este bloco para os modelos).
 const SP_SB = { url: 'https://fszbxwlxuncqefcwttru.supabase.co', key: 'sb_publishable_zAhuSdMR3g2zHAb7WwYyCQ_XW8CLEth' };
 const SP_SESSION = 'spherum.session';
@@ -795,6 +758,12 @@ const SP = {
     if (!r.ok) { const e = new Error(j.error || 'Não deu certo agora. Tente de novo em instantes.'); e.status = r.status; e.body = j; throw e; }
     return j;
   },
+  // Os portais só abrem com login: sem sessão, vai para a tela de entrar do site.
+  requireLogin() {
+    if (SP.get()) return true;
+    try { location.replace(location.origin + '/?entrar=1'); } catch (e) {}
+    return false;
+  },
   logout() {
     const s = SP.get();
     SP.save(null);
@@ -803,19 +772,18 @@ const SP = {
 };
 // </spherum-api>
 class Component extends DCLogic {
-  state = { apprChg: null, apprTxt: '', cwBusy: null, view: 'home', workSeen: false, cwF: 'all', cwChat: null, cwQ: '', npsV: null, npsTxt: '', npsDone: false, pix: 'off', cwDone: { meta: true, gads: true }, cwOpen: null, cwVals: {}, period: '30D', metric: 'leads', appr: {}, draft: '', sent: [], faq: -1, toast: null, narrow: false };
+  state = { apprChg: null, apprTxt: '', cwBusy: null, view: 'home', workSeen: false, cwF: 'all', npsV: null, npsTxt: '', npsDone: false, cwOpen: null, cwVals: {}, period: '30D', metric: 'leads', draft: '', faq: -1, toast: null, narrow: false, noPortal: false };
   mainRef = React.createRef();
   componentDidMount() { this.spInit(); this.pl = setInterval(() => { if (this.R && this.state.view === 'msgs' && !document.hidden) this.spReload(); }, 20000); this.rs = () => { const n = window.innerWidth < 900; if (n !== this.state.narrow) this.setState({ narrow: n }); }; this.rs(); window.addEventListener('resize', this.rs); }
   componentWillUnmount() { window.removeEventListener('resize', this.rs); clearTimeout(this.tt); clearInterval(this.pl); }
-  // Conta de verdade: tudo vem de /api/portal/cliente; o que o cliente responde vai para /api/portal/cliente/collab.
-  spReal() { try { return location.protocol !== 'blob:' && localStorage.getItem('spherum.mode') === 'real' && !!SP.get(); } catch (e) { return false; } }
+  // Tudo vem de /api/portal/cliente; o que o cliente responde vai para /api/portal/cliente/collab. Sem sessão, vai para o login.
   async spInit() {
-    if (!this.spReal()) return;
+    if (!SP.requireLogin()) return;
     try {
       const me = await SP.api('/api/me'), list = me.portals || []; let id = null;
       try { id = localStorage.getItem('spherum.client'); } catch (e) {}
       if (!list.some(p => p.client_id === id)) id = list.length ? list[0].client_id : id;
-      if (!id) return;
+      if (!id) { this.setState({ noPortal: true }); return; }
       try { localStorage.setItem('spherum.client', id); } catch (e) {}
       const R = await SP.api('/api/portal/cliente?client_id=' + id);
       window.__spBrand = R.agency.brand_color && /^#[0-9a-f]{6}$/i.test(R.agency.brand_color) ? { c: R.agency.brand_color } : null;
@@ -859,7 +827,7 @@ class Component extends DCLogic {
       const d = (cur - prev) / prev * 100; return Object.assign(base, { d: (d > 0 ? '+' : d < 0 ? '−' : '') + pct(d) }, x.st(d, dir)); };
     const cost = t => t.results ? t.spend / t.results : 0, roas = t => t.spend ? t.revenue / t.spend : 0;
     const third = gm === 'ROAS' ? kpi('ROAS', roas(w.cur), roas(w.prev), v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'x', 1, gv ? gv.toLocaleString('pt-BR') + 'x' : '', gv && roas(w.cur) ? pct((roas(w.cur) - gv) / gv * 100) + (roas(w.cur) >= gv ? ' melhor' : ' pior') + ' que a meta' : '')
-      : kpi(costL, cost(w.cur), cost(w.prev), brl2, -1, gv ? brl2(gv) : '', gv && cost(w.cur) ? pct((cost(w.cur) - gv) / gv * 100) + (cost(w.cur) <= gv ? ' melhor' : ' pior') + ' que a meta' : '');
+      : kpi(costL, cost(w.cur), cost(w.prev), v => v ? brl2(v) : '—', -1, gv ? brl2(gv) : '', gv && cost(w.cur) ? pct((cost(w.cur) - gv) / gv * 100) + (cost(w.cur) <= gv ? ' melhor' : ' pior') + ' que a meta' : '');
     o.kpis = [kpi('Investimento', w.cur.spend, w.prev.spend, brl, 0), kpi(resL, w.cur.results, w.prev.results, v => f(Math.round(v)), 1), third, kpi('Cliques', w.cur.clicks, w.prev.clicks, v => f(Math.round(v)), 1)];
     // Gráfico: 30 dias, dia a dia, contra os 30 anteriores.
     const end = Date.parse(R.period.to + 'T12:00:00Z'), b = []; for (let i = 0; i < 60; i++) b.push({ spend: 0, conv: 0 });
@@ -868,7 +836,8 @@ class Component extends DCLogic {
     const cur = b.slice(0, 30).reverse().map(val), prev = b.slice(30).reverse().map(val);
     const t30 = R.totals.d30, tv = t => S.metric === 'leads' ? t.results : S.metric === 'invest' ? t.spend : cost(t), a = tv(t30.cur), z = tv(t30.prev), dd = z ? (a - z) / z * 100 : 0;
     const good = S.metric === 'cpl' ? dd <= 0 : dd >= 0;
-    o.ch = Object.assign({ label: S.metric === 'leads' ? resL : S.metric === 'cpl' ? costL : 'Investimento', total: S.metric === 'leads' ? f(Math.round(a)) : S.metric === 'invest' ? brl(a) : a ? brl2(a) : '—', d: z ? (dd > 0 ? '+' : '−') + pct(dd) : '—', dc: S.metric === 'invest' || !z ? '#475467' : good ? '#079455' : '#D92D20' }, this.path(cur, prev, 800, 220));
+    const MN0 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], tick = k => { const d = new Date(end - k * 864e5); return String(d.getUTCDate()).padStart(2, '0') + ' ' + MN0[d.getUTCMonth()]; };
+    o.ch = Object.assign({ ticks: [29, 22, 15, 8, 0].map(tick), label: S.metric === 'leads' ? resL : S.metric === 'cpl' ? costL : 'Investimento', total: S.metric === 'leads' ? f(Math.round(a)) : S.metric === 'invest' ? brl(a) : a ? brl2(a) : '—', d: z ? (dd > 0 ? '+' : '−') + pct(dd) : '—', dc: S.metric === 'invest' || !z ? '#475467' : good ? '#079455' : '#D92D20' }, this.path(cur, prev, 800, 220));
     o.metrics = this.seg([['leads', resL], ['cpl', costL], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v }));
     const ins = [], c0 = cost(t30.cur), c1 = cost(t30.prev);
     if (c0 && c1 && Math.abs(c0 - c1) / c1 >= 0.005) ins.push([c0 <= c1 ? 'green' : 'blue', c0 <= c1 ? 'trending_down' : 'trending_up', 'Seu ' + costL.toLowerCase() + (c0 <= c1 ? ' caiu ' : ' subiu ') + pct((c0 - c1) / c1 * 100), brl2(c0) + ' agora vs ' + brl2(c1) + ' no período anterior']);
@@ -911,8 +880,8 @@ class Component extends DCLogic {
     o.who = { name: R.me.name, client: R.client.name, ini: (R.me.name || R.client.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() };
     o.hello = (first ? 'Olá, ' + first + ' · ' : '') + 'dados até ' + this.spDate(R.period.to);
     o.msgSub = 'Fale com seu time na ' + nm + (R.owner ? ' · ' + R.owner.name + ' cuida da sua conta' : '');
-    // Chamados e Busca por IA com o nome real da agência.
-    o.tk = this.tkVals(this.spTkList(), true, o.br); o.av = this.avVals(R.aivis, nm);
+    // Chamados e Busca por IA com o nome da agência.
+    o.tk = this.tkVals(this.spTkList(), o.br); o.av = this.avVals(R.aivis, nm);
     return this.spCollab(o, x);
   }
   // Recarrega os dados do portal (depois de responder algo, e de tempos em tempos na conversa).
@@ -1038,12 +1007,12 @@ class Component extends DCLogic {
     o.send = () => this.spSend(); o.onKey = e => { if (e.key === 'Enter') this.spSend(); };
     return o;
   }
-  // Chamados: lista normalizada (real ou demonstração) e a tela.
+  // Chamados: lista normalizada e a tela.
   spTkList() { return (this.R.tickets || []).map(t => ({ id: t.id, subject: t.subject, status: t.status, created_at: t.created_at, resolved_at: t.resolved_at, answered: !!t.first_response_at, msgs: t.messages.map(m => ({ side: m.side, who: m.author_name, text: m.text, at: m.created_at })) })); }
-  tkVals(list, real, br) {
+  tkVals(list, br) {
     const S = this.state, acc = ACC(), mix = c => `color-mix(in srgb, ${c} 10%, transparent)`;
     const PR = [['alta', 'Urgente', 'Algo parado ou perdendo dinheiro agora.'], ['media', 'Normal', 'Precisa de atenção, mas não para nada.'], ['baixa', 'Pode esperar', 'Ajuste ou dúvida sem pressa.']], prio = S.tkPrio || 'media';
-    const when = t => real ? this.spWhen(t) : t;
+    const when = t => this.spWhen(t);
     const items = list.map(t => { const open = S.tkOpen === t.id, last = t.msgs[t.msgs.length - 1], resolved = t.status === 'resolvido', waiting = !resolved && last && last.side === 'agencia';
       const st = resolved ? ['Resolvido', '#079455', 'rgba(23,178,106,0.12)'] : waiting ? ['Respondido', acc, mix(acc)] : t.answered ? ['Com a agência', '#B54708', 'rgba(247,144,9,0.13)'] : ['Aguardando resposta', '#475467', '#F2F4F7'];
       const busy = S.tkBusy === t.id;
@@ -1052,31 +1021,28 @@ class Component extends DCLogic {
         msgs: t.msgs.map(m => ({ them: m.side === 'agencia', me: m.side === 'cliente', who: m.who || br.name, when: when(m.at), text: m.text })),
         draft: (S.tkDrafts || {})[t.id] || '', ph: resolved ? 'Responder reabre o chamado' : 'Escreva sua resposta…', sendL: busy ? 'Enviando…' : 'Enviar',
         onDraft: e => { const v = e.target.value; this.setState(s => ({ tkDrafts: Object.assign({}, s.tkDrafts, { [t.id]: v }) })); },
-        send: () => this.tkReply(t, real), onKey: e => { if (e.key === 'Enter') this.tkReply(t, real); } }; });
+        send: () => this.tkReply(t), onKey: e => { if (e.key === 'Enter') this.tkReply(t); } }; });
     return { sub: 'Peça algo à ' + br.name + ' e acompanhe a resposta. Cada chamado tem prazo de primeira resposta conforme a urgência.',
       canNew: !S.tkNew, newOpen: !!S.tkNew, openNew: () => this.setState({ tkNew: true, tkErr: '' }), closeNew: () => this.setState({ tkNew: false, tkErr: '' }),
       subj: S.tkSubj || '', onSubj: e => this.setState({ tkSubj: e.target.value }), text: S.tkText || '', onText: e => this.setState({ tkText: e.target.value }),
       prios: PR.map(p => ({ l: p[1], on: prio === p[0] ? 'true' : 'false', pick: () => this.setState({ tkPrio: p[0] }), bd: prio === p[0] ? acc : '#E4E7EC', bg: prio === p[0] ? mix(acc) : '#fff', c: prio === p[0] ? acc : '#344054' })),
-      prioHint: (PR.find(p => p[0] === prio) || PR[1])[2], hasErr: !!S.tkErr, err: S.tkErr || '', createL: S.tkBusy === 'new' ? 'Abrindo…' : 'Abrir chamado', create: () => this.tkCreate(real),
+      prioHint: (PR.find(p => p[0] === prio) || PR[1])[2], hasErr: !!S.tkErr, err: S.tkErr || '', createL: S.tkBusy === 'new' ? 'Abrindo…' : 'Abrir chamado', create: () => this.tkCreate(),
       empty: !items.length && !S.tkNew, list: items };
   }
-  async tkCreate(real) {
+  async tkCreate() {
     const S = this.state, subject = (S.tkSubj || '').trim(), text = (S.tkText || '').trim();
     if (subject.length < 3) return this.setState({ tkErr: 'Escreva o assunto (pelo menos 3 letras).' });
     if (!text) return this.setState({ tkErr: 'Conte o que está acontecendo.' });
     if (S.tkBusy) return;
-    if (!real) { const t = { id: 'd' + Date.now(), subject, status: 'aberto', created_at: 'agora', answered: false, msgs: [{ side: 'cliente', who: '', text, at: 'agora' }] };
-      this.setState(s => ({ tkDemo: [t].concat(s.tkDemo || TK_DEMO), tkNew: false, tkSubj: '', tkText: '', tkPrio: 'media', tkErr: '', tkOpen: t.id })); return this.toastMsg('Chamado aberto · a agência foi avisada'); }
     this.setState({ tkBusy: 'new', tkErr: '' });
     try { const r = await this.spCollabPost({ tipo: 'chamado', subject, text, priority: S.tkPrio || 'media' }); await this.spReload();
       this.setState({ tkNew: false, tkSubj: '', tkText: '', tkPrio: 'media', tkOpen: r && r.id ? r.id : null }); this.toastMsg('Chamado aberto · a agência foi avisada'); }
     catch (e) { this.setState({ tkErr: e.message || 'Não deu certo agora. Tente de novo.' }); } finally { this.setState({ tkBusy: null }); }
   }
-  async tkReply(t, real) {
+  async tkReply(t) {
     const text = ((this.state.tkDrafts || {})[t.id] || '').trim();
     if (!text || this.state.tkBusy) return;
     const clear = () => this.setState(s => ({ tkDrafts: Object.assign({}, s.tkDrafts, { [t.id]: '' }) }));
-    if (!real) { this.setState(s => ({ tkDemo: (s.tkDemo || TK_DEMO).map(x => x.id === t.id ? Object.assign({}, x, { status: 'aberto', msgs: x.msgs.concat([{ side: 'cliente', who: '', text, at: 'agora' }]) }) : x) })); clear(); return; }
     this.setState({ tkBusy: t.id });
     try { await this.spCollabPost({ tipo: 'chamado_resposta', item_id: t.id, text }); clear(); await this.spReload(); if (t.status === 'resolvido') this.toastMsg('Chamado reaberto · a agência foi avisada'); }
     catch (e) { this.toastMsg(e.message); } finally { this.setState({ tkBusy: null }); }
@@ -1089,7 +1055,7 @@ class Component extends DCLogic {
     const rows = (A.queries || []).map(q => ({ q: q.question, cells: eng.map(e => cell(q.cells[e.id])) }));
     const checked = rows.some(r => r.cells.some(c => c.l !== '—'));
     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-    const last = A.last_checked ? (this.R ? this.spDate(A.last_checked) : A.last_checked) : null;
+    const last = A.last_checked ? this.spDate(A.last_checked) : null;
     return {
       sub: 'Quando alguém pergunta a um assistente de IA (ChatGPT, Gemini, Claude…) sobre o seu mercado, a sua marca aparece? A ' + agency + ' faz as perguntas toda semana e mostra o resultado aqui.',
       kpis: [['Respostas checadas', String(st.checked || 0), eng.length + (eng.length === 1 ? ' assistente' : ' assistentes') + ' · ' + rows.length + (rows.length === 1 ? ' pergunta' : ' perguntas')],
@@ -1103,109 +1069,60 @@ class Component extends DCLogic {
       note: (last ? 'Última checagem em ' + last + '. ' : '') + 'As respostas dos assistentes mudam de uma semana para outra; o que importa é a tendência.' };
   }
   toastMsg(m) { clearTimeout(this.tt); this.setState({ toast: m }); this.tt = setTimeout(() => this.setState({ toast: null }), 2400); }
-  cwPendN() { return CW_ITEMS.filter(i => !(this.state.cwDone || {})[i[0]]).length || 0; }
   go(v) { this.setState(v === 'work' ? { view: v, workSeen: true } : { view: v }); if (this.mainRef.current) this.mainRef.current.scrollTop = 0;
     if (v === 'msgs' && this.R && this.R.collab.unread) { this.R.collab.unread = 0; this.spCollabPost({ tipo: 'lido' }).catch(() => {}); } }
   seg(list, cur, set) { return list.map(([id, l]) => { const a = cur === id; return { l, pick: () => set(id), sel: a ? 'true' : 'false', bg: a ? '#fff' : 'transparent', c: a ? '#101828' : '#667085', bd: a ? '#E4E7EC' : 'transparent', sh: a ? '0 1px 2px rgba(16,24,40,0.08)' : 'none' }; }); }
   path(a, b, w, h) { const all = a.concat(b); let mn = Math.min(...all), mx = Math.max(...all); const p = (mx - mn) * 0.2 || 1; mn -= p; mx += p;
     const d = arr => arr.map((v, i) => (i ? 'L' : 'M') + (i * w / (arr.length - 1)).toFixed(1) + ' ' + (h - (v - mn) / (mx - mn) * h).toFixed(1)).join(' ');
     const line = d(a); return { line, area: line + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z', prev: d(b) }; }
-  ser(seed, n, base, vol, tr) { let s = seed * 7919 % 233280; const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; const a = []; for (let i = 0; i < n; i++) a.push(base * (1 + tr * (i / (n - 1) - 0.5)) * (1 + (r() - 0.5) * vol)); return a; }
   renderVals() {
     if (this._br === undefined) { try { this._br = JSON.parse(localStorage.getItem('spherum.brand') || 'null'); } catch (e) { this._br = null; } window.__spBrand = this._br && this._br.onClient && /^#[0-9a-f]{6}$/i.test(this._br.brand) ? { c: this._br.brand } : null; }
-    const brS = (this._br && this._br.onClient) ? this._br : null, brC = ACC(), brLogo = brS && brS.logo ? brS.logo : '', brName = brS && brS.name ? brS.name : 'Marketing Pro';
+    const brS = (this._br && this._br.onClient) ? this._br : null, brC = ACC(), brLogo = brS && brS.logo ? brS.logo : '', brName = brS && brS.name ? brS.name : '';
     const brFg = (() => { const n = parseInt(brC.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
-    const br = { acc: brC, name: brName, lgBg: brLogo ? '#FFFFFF' : brC, lgImg: brLogo ? 'url("' + brLogo + '")' : 'none', lgFg: brFg, lgIni: brLogo ? '' : (brName.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'MP').toUpperCase(), powOpen: this.state.sbOpen !== false && !(brS && brS.powered === false) };
+    const br = { acc: brC, name: brName, lgBg: brLogo ? '#FFFFFF' : brC, lgImg: brLogo ? 'url("' + brLogo + '")' : 'none', lgFg: brFg, lgIni: brLogo ? '' : brName.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase(), powOpen: this.state.sbOpen !== false && !(brS && brS.powered === false) };
     const S = this.state; const open = !S.narrow;
     const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Sem os dados de /api/portal/cliente (carregando ou sem acesso), as telas abrem vazias.
     const cb = this.R ? this.spBadges() : null;
-    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', cb ? cb.work : S.workSeen ? 0 : 3], ['start', 'Pendências', 'assignment', cb ? cb.start : this.cwPendN()], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 1]].concat(this.R && !this.R.aivis ? [] : [['aivis', 'Busca por IA', 'travel_explore']]).concat([['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', cb ? cb.msgs : S.sent.length ? 0 : 1], ['tickets', 'Chamados', 'support_agent', cb ? cb.tickets : 1], ['help', 'Ajuda', 'help']]);
-    const nav0 = navDef; const nav = nav0.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
+    const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', cb ? cb.work : 0], ['start', 'Pendências', 'assignment', cb ? cb.start : 0], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 0]].concat(this.R && this.R.aivis ? [['aivis', 'Busca por IA', 'travel_explore']] : []).concat([['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', cb ? cb.msgs : 0], ['tickets', 'Chamados', 'support_agent', cb ? cb.tickets : 0], ['help', 'Ajuda', 'help']]);
+    const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
     // Telas que ainda não têm dados de verdade mostram um aviso (hoje todas têm).
     const SOON = {};
     const is = {}; navDef.forEach(n => is[n[0]] = S.view === n[0]);
     const soonD = this.R && SOON[S.view]; if (soonD) is[S.view] = false;
     const soon = { show: !!soonD, title: (navDef.find(n => n[0] === S.view) || [])[1] || '', icon: soonD ? soonD[0] : '', text: soonD ? soonD[1] : '', back: () => this.go('home') };
-    const m90 = S.period === '90D' ? 2.9 : 1;
     const st = (d, dir) => { if (dir === 0 || Math.abs(d) < 3) return { state: dir === 0 ? 'Conforme o planejado' : 'Estável', icon: 'trending_flat', c: '#475467', bg: '#F2F4F7' }; const good = dir > 0 ? d > 0 : d < 0;
       return good ? { state: 'Melhorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#079455', bg: 'rgba(23,178,106,0.12)' } : { state: 'Piorou', icon: d > 0 ? 'trending_up' : 'trending_down', c: '#D92D20', bg: 'rgba(240,68,56,0.10)' }; };
-    const K = [['Investimento', 18700 * m90, 17608 * m90, brl, 0], ['Leads', 189 * m90, 155 * m90, v => f(Math.round(v)), 1], ['Custo por lead', 98.94, 113.6, brl2, -1, 'R$ 120,00', '17,5% melhor que a meta'], ['Visitas agendadas', 42 * m90, 41 * m90, v => f(Math.round(v)), 1]];
-    const kpis = K.map(k => { const d = (k[1] - k[2]) / k[2] * 100; return Object.assign({ l: k[0], v: k[3](k[1]), prev: k[3](k[2]), d: (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', hasGoal: !!k[5], goal: k[5] || '', goalSt: k[6] || '', goalC: '#079455' }, st(d, k[4])); });
-    const mets = { leads: ['Leads', 6.3, '189', '+21,9%', '#079455'], cpl: ['Custo por lead', 98.9, 'R$ 98,94', '−12,9%', '#079455'], invest: ['Investimento', 623, 'R$ 18.700', '+6,2%', '#475467'] };
-    const mm = mets[S.metric]; const cur = this.ser(S.metric.length + 3, 30, mm[1], 0.35, S.metric === 'cpl' ? -0.15 : 0.18), prev = this.ser(S.metric.length + 40, 30, mm[1] * (S.metric === 'cpl' ? 1.14 : 0.85), 0.35, 0);
-    const ch = Object.assign({ label: mm[0], total: mm[2], d: mm[3], dc: mm[4] }, this.path(cur, prev, 800, 220));
-    const apprDef = [['Criativos fase 2 · Vista Parque', '6 peças · enviadas por Lucas Prado há 1 dia'], ['Landing page · Decorado virtual', 'Nova seção de plantas · enviada hoje']];
-    const approvals = apprDef.map((a, i) => { const s = S.appr[i]; return { t: a[0], d: a[1], pending: !s, st: s === 'ok' ? 'Aprovado' : s === 'chg' ? 'Alterações solicitadas' : 'Aguardando aprovação', c: s === 'ok' ? '#079455' : s === 'chg' ? '#B54708' : ACC(), bg: s === 'ok' ? 'rgba(23,178,106,0.12)' : s === 'chg' ? 'rgba(247,144,9,0.13)' : `color-mix(in srgb, ${ACC()} 10%, transparent)`,
-      showBtns: !s, hasView: false, chgOpen: false, approve: () => { this.setState(x => ({ appr: Object.assign({}, x.appr, { [i]: 'ok' }) })); this.toastMsg('Aprovado · a agência foi avisada'); }, change: () => { this.setState(x => ({ appr: Object.assign({}, x.appr, { [i]: 'chg' }) })); this.go('msgs'); } }; });
-    const chatBase = [['them', 'Rafael Lima', 'ontem', 'Marcelo, o relatório de agosto já está no portal. Destaque para o lançamento Vista Parque: 131 leads a R$ 94,66.'], ['me', '', 'ontem', 'Excelente resultado no lançamento. O time comercial está animado com a qualidade dos leads.'], ['them', 'Rafael Lima', 'ontem', 'Que bom! Na reunião de hoje às 09:30 trago a proposta para a fase 2.']];
-    const chat = chatBase.map(c => ({ them: c[0] === 'them', me: c[0] === 'me', who: c[1], when: c[2], text: c[3] })).concat(S.sent.map(t => ({ them: false, me: true, who: '', when: 'agora', text: t })));
-    const send = () => { const d = S.draft.trim(); if (!d) return; this.setState(x => ({ draft: '', sent: x.sent.concat([d]) })); };
     const faq = [['O que significa “Melhorou”, “Piorou” e “Estável”?', 'Comparamos cada métrica com o mesmo número de dias imediatamente anterior. Para custos (como custo por lead), cair é melhorar. Variações abaixo de 3% aparecem como estáveis.'],
       ['Com que frequência os dados são atualizados?', 'Uma vez por dia, às 07:00. Relatórios mensais chegam todo dia 1º.'], ['Como aprovo um criativo?', 'Na visão geral, em “Aguardando sua aprovação”. Você pode aprovar ou solicitar alterações, e a agência é avisada na hora.'], ['Onde encontro minhas notas fiscais?', 'Em Financeiro, junto de cada fatura paga.'], ['Como peço algo urgente?', 'Em Chamados, abra um chamado e marque a urgência. A agência tem prazo para a primeira resposta, e você acompanha a conversa por ali.']]
       .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
+    const npsV = S.npsV;
     const out = {
-      soon, showAppr: true, nextInv: { v: 'R$ 7.200', d: 'Mensalidade out/26 · vence 05 out · boleto', has1: true, has2: true, b1: 'Ver boleto', b2: 'Copiar linha digitável', act1: () => this.toastMsg('Linha digitável copiada'), act2: () => this.toastMsg('Linha digitável copiada') },
-      who: { name: 'Marcelo Pilar', client: 'Construtora Pilar', ini: 'MP' }, hello: 'Olá, Marcelo · atualizado hoje às 07:00', msgSub: 'Fale com seu time na Marketing Pro · Rafael Lima costuma responder em 1 h',
-      logout: () => { this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, back: () => this.setState({ __out: false }) }, br: Object.assign(br, { powOpen: br.powOpen && open }),
+      soon, showAppr: false, approvals: [], pendingN: 0,
+      nextInv: { v: '—', d: '', has1: false, has2: false, b1: '', b2: '', act1: () => {}, act2: () => {} },
+      who: { name: '', client: '', ini: '' }, hello: S.noPortal ? 'Este login ainda não tem acesso a um portal de cliente. Peça o convite à sua agência.' : '', msgSub: '',
+      logout: () => { SP.logout(); this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); else location.href = '/'; } catch (e) {} }, back: () => { location.href = '/?entrar=1'; } }, br: Object.assign(br, { powOpen: br.powOpen && open }),
       liveLogo: React.createElement(LiveLogo, { size: 15, ink: '#475467', bg: '#FFFFFF', intro: false }),
       mainRef: this.mainRef, open, sbW: open ? '240px' : '64px', nav, is,
-      periods: this.seg([['30D', '30 dias'], ['90D', '90 dias']], S.period, v => this.setState({ period: v })), periodLabel: S.period === '30D' ? 'últimos 30 dias' : 'últimos 90 dias', kpis,
-      transparency: [
-        { icon: 'task_alt', h: 'O que fizemos', items: ['Lançamos a campanha Vista Parque com 3 públicos e 8 criativos', 'Ativamos a pesquisa “apartamento alto padrão” no Google', 'Ajustamos o formulário para qualificar renda'] },
-        { icon: 'insights', h: 'O que aconteceu', items: ['189 leads no mês, 22% a mais que agosto', 'Custo por lead abaixo da meta pelo 3º mês seguido', '42 visitas agendadas pelo seu time comercial'] },
-        { icon: 'flag', h: 'O que vem a seguir', items: ['Fase 2 do lançamento com vídeo do decorado', 'Teste de campanha de remarketing para visitantes do stand', 'Reunião de resultados hoje, 09:30'] }],
-      insights: [['green', 'trending_down', 'Seu custo por lead caiu 13%', 'R$ 98,94 agora vs R$ 113,60 no período anterior'], ['green', 'trending_up', 'Google Ads cresceu 21% em leads', '58 leads vs 48 · pesquisa por “alto padrão”'], ['blue', 'pie_chart', 'A campanha Vista Parque gerou 69% dos leads', '131 de 189 leads no período']]
-        .map(i => ({ t: i[2], ev: i[3], icon: i[1], c: i[0] === 'green' ? '#079455' : '#1570EF', bg: i[0] === 'green' ? 'rgba(23,178,106,0.12)' : 'rgba(46,144,250,0.12)' })),
-      approvals, pendingN: approvals.filter(a => a.pending).length,
-      summary: [['event', 'Próxima reunião', 'Hoje, 09:30 · Google Meet', 'msgs'], ['lab_profile', 'Relatório mais recente', 'Agosto 2026 · enviado 01 set', 'reports'], ['receipt_long', 'Próxima fatura', 'R$ 7.200 · vence 05 out', 'fin']].map(s => ({ icon: s[0], l: s[1], v: s[2], go: () => this.go(s[3]) })),
-      metrics: this.seg([['leads', 'Leads'], ['cpl', 'Custo por lead'], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v })), ch,
-      channels: [['Meta Ads', 12400, 131], ['Google Ads', 6300, 58]].map(c => ({ p: c[0], s: brl(c[1]), l: f(c[2]), cpl: brl2(c[1] / c[2]), w: c[1] / 18700 * 100 + '%' })),
-      camps: [{ name: 'Lançamento Vista Parque', plat: 'Meta Ads', obj: 'Captação de leads', m: [['Investimento', 'R$ 12.400'], ['Leads', '131'], ['Custo por lead', 'R$ 94,66'], ['Visitas', '29']], note: 'Melhor público: interesse em imóveis de alto padrão, 35–54 anos, raio de 15 km.' },
-        { name: 'Search Alto Padrão', plat: 'Google Ads', obj: 'Captação de leads', m: [['Investimento', 'R$ 6.300'], ['Leads', '58'], ['Custo por lead', 'R$ 108,62'], ['Visitas', '13']], note: 'Termos com “apartamento 4 quartos” convertem 1,8× mais que termos genéricos.' }]
-        .map(k => Object.assign({}, k, { m: k.m.map(x => ({ l: x[0], v: x[1] })) })),
-      reports: [['Relatório mensal · Setembro 2026', 'Chega em 01 out', false], ['Relatório mensal · Agosto 2026', 'Enviado 01 set · 4 páginas', true], ['Relatório mensal · Julho 2026', 'Enviado 01 ago', false], ['Relatório trimestral · Q2 2026', 'Enviado 03 jul', false]]
-        .map(r => ({ t: r[0], d: r[1], isNew: r[2], open: () => { const w = window.open(URL.createObjectURL(new Blob([spDoc(r[0], 'Relatório enviado em ' + r[1])], { type: 'text/html' })), '_blank'); if (!w) this.toastMsg('Permita pop-ups para abrir o relatório'); }, pdf: () => { spDl(r[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(r[0], 'Relatório enviado em ' + r[1]), 'text/html'); this.toastMsg('Relatório baixado'); } })),
-      invoices: [['Mensalidade out/26', '05 out', 'Pendente', 'R$ 7.200', ACC(), `color-mix(in srgb, ${ACC()} 10%, transparent)`, 'NF após pagamento'], ['Mensalidade set/26', '05 set', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0482'], ['Mensalidade ago/26', '05 ago', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0451'], ['Mensalidade jul/26', '05 jul', 'Pago', 'R$ 7.200', '#079455', 'rgba(23,178,106,0.12)', 'NF 0420']]
-        .map(i => ({ d: i[0], due: i[1], st: i[2], v: i[3], c: i[4], bg: i[5], nf: i[6], pay: () => {}, cur: 'default' })),
-      copyCode: () => { try { navigator.clipboard.writeText('23793.38128 60082.153600 47000.063300 1 99870000720000'); } catch (e) {} this.toastMsg('Linha digitável copiada'); },
-      docs: [['Aditivo contratual 2026', 'Contrato', '02 jan 2026', 'PDF'], ['Relatório mensal — agosto', 'Relatório', '01 set 2026', 'PDF'], ['Contrato de prestação de serviços', 'Contrato', '14 jul 2023', 'PDF'], ['Guia de marca Construtora Pilar', 'Outros', '20 jul 2023', 'PDF']].map(d => ({ name: d[0], cat: d[1], date: d[2], type: d[3], dl: () => { spDl(d[0].toLowerCase().replace(/\W+/g, '-') + '.html', spDoc(d[0], d[1] + ' · ' + d[2]), 'text/html'); this.toastMsg(d[0] + ' baixado'); } })),
-      chat, chatEmpty: false, draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }), send, onKey: e => { if (e.key === 'Enter') send(); }, faq,
-      cw: (() => {
-        const filt = [['all', 'Tudo'], ['opt', 'Otimizações'], ['rep', 'Relatórios'], ['alert', 'Alertas']];
-        const chat0 = [['bot', 'Oi, Marcelo! Posso explicar qualquer número da sua conta. Por exemplo: por que o custo por contato mudou, ou como está o Vista Parque.']];
-        const chat = (S.cwChat || chat0).map(m => ({ bot: m[0] === 'bot', me: m[0] === 'me', hand: m[0] === 'hand', t: m[1] }));
-        const reply = q => { const s = q.toLowerCase(); if (/pre[çc]o|desconto|contrato|valor da mensalidade|cancel|reajuste/.test(s)) return [['bot', 'Essa é uma conversa para o Rafael, que cuida da sua conta.'], ['hand', 'Passei sua pergunta para o Rafael Lima. Ele responde em Mensagens até amanhã.']];
-          if (/cpl|custo|caro|subiu/.test(s)) return [['bot', 'O custo por contato subiu de R$ 88 para R$ 94 em setembro porque o carrossel do Vista Parque ficou caro. Hoje cedo ele foi pausado e a verba foi para o vídeo, que traz contatos a R$ 81.']];
-          if (/vista|lan[çc]amento|fase/.test(s)) return [['bot', 'O Vista Parque teve 131 contatos em setembro, 18% a mais que agosto. Para a fase 2 ainda faltam os materiais e o briefing, que estão em Pendências.']];
-          if (/venda|retorno|vale a pena/.test(s)) return [['bot', 'Em setembro, 2 unidades vendidas vieram de contatos dos anúncios. Isso deu R$ 38 mil em vendas para cada R$ 5,4 mil investidos. O detalhe está no relatório.']];
-          return [['bot', 'Boa pergunta. Pelos dados da sua conta, os contatos estão estáveis e o investimento está dentro do previsto. Se quiser, pergunte sobre custo, o Vista Parque ou vendas.']]; };
-        const ask = q0 => { const q = (q0 || S.cwQ || '').trim(); if (!q) return; const base = (S.cwChat || chat0).concat([['me', q]]); this.setState({ cwChat: base, cwQ: '' }); setTimeout(() => this.setState(s => ({ cwChat: (s.cwChat || base).concat(reply(q)) })), 700); };
-        const done = Object.assign({}, S.cwDone), left = CW_ITEMS.filter(i => !done[i[0]]).length;
-        const items = CW_ITEMS.map(i => { const ok = !!done[i[0]], open = S.cwOpen === i[0];
-          return { t: i[1], d: ok ? 'Recebido. Obrigado!' : i[2], todo: !ok && !open, isOpen: open, op: ok ? 0.7 : 1, mark: ok ? '✓' : '', ring: ok ? '#12B76A' : '#D0D5DD', fill: ok ? '#12B76A' : 'transparent', openL: i[3] === 'steps' ? 'Ver como fazer' : i[3] === 'file' ? 'Enviar arquivos' : 'Responder',
-            steps: (i[4] || []).map((x, k) => ({ k: String(k + 1), t: x })), isText: i[3] === 'text', isFile: i[3] === 'file', ph: i[5] || '', val: (S.cwVals || {})[i[0]] || '', onVal: e => this.setState(s => ({ cwVals: Object.assign({}, s.cwVals, { [i[0]]: e.target.value }) })),
-            doneL: i[3] === 'steps' ? 'Já fiz' : i[3] === 'file' ? 'Enviar' : 'Salvar', open: () => this.setState({ cwOpen: i[0] }), close: () => this.setState({ cwOpen: null }), fileL: 'Arraste os arquivos ou clique para escolher',
-            done: () => { this.setState(s => ({ cwDone: Object.assign({}, s.cwDone, { [i[0]]: true }), cwOpen: null })); this.toastMsg(i[3] === 'steps' ? 'Vamos confirmar o acesso e te avisamos' : 'Recebido! O Rafael foi avisado.'); } }; });
-        items.forEach(it => { it.pick = it.done; });
-        const npsV = S.npsV;
-        return { weekL: 'RESUMO DA SEMANA · 28 SET A 4 OUT', weekNote: 'também enviado no seu WhatsApp', hasBest: true, feedEmpty: false, feedEmptyL: '', pendTail: 'para começarmos a fase 2 do Vista Parque', startSub: 'Para começar a fase 2 do Vista Parque. Leva uns 10 minutos.', noItems: false, weekN: '6 ajustes', best: 'Pausamos um anúncio caro e passamos a verba para o vídeo do Vista Parque: cada contato ficou R$ 67 mais barato.',
-          week: [['Contatos', '38', '+12% na semana', '#75E0A7'], ['Custo por contato', 'R$ 92', '−4% na semana', '#75E0A7'], ['Investido', 'R$ 3.500', 'dentro do previsto', '#A4ABB8']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
-          filt: filt.map(f => { const on = S.cwF === f[0]; return { l: f[1], pick: () => this.setState({ cwF: f[0] }), bd: on ? ACC() : '#E4E7EC', bg: on ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : '#fff', c: on ? '#3538CD' : '#344054' }; }),
-          feed: CW_FEED.filter(f => S.cwF === 'all' || f[0] === S.cwF).map(f => ({ i: f[1], t: f[2], why: f[3], when: f[4], who: f[5], imp: f[6], hasImp: !!f[6], bg: CW_TONE[f[0]][0], c: CW_TONE[f[0]][1] })),
-          askOn: true, chat, q: S.cwQ, onQ: e => this.setState({ cwQ: e.target.value }), onKey: e => { if (e.key === 'Enter') ask(); }, ask: () => ask(),
-          sugg: ['Por que o custo subiu?', 'Como está o Vista Parque?', 'Os anúncios viraram vendas?'].map(l => ({ l, pick: () => ask(l) })),
-          goWork: () => this.go('work'), goStart: () => this.go('start'), hasPend: left > 0, pendL: left + (left === 1 ? ' item pendente' : ' itens pendentes'),
-          progL: (CW_ITEMS.length - left) + ' de ' + CW_ITEMS.length + ' prontos', progW: (CW_ITEMS.length - left) / CW_ITEMS.length * 100 + '%', items,
-          npsQ0: 'De 0 a 10, quanto você recomendaria a ' + br.name + ' para um amigo?', npsDoneL: 'Obrigado, Marcelo. O Rafael vai ler sua resposta hoje.',
-          showNps: true, npsAsk: npsV == null && !S.npsDone, npsWhy: npsV != null && !S.npsDone, npsDone: S.npsDone, npsQ: npsV >= 9 ? 'Que bom! O que você mais gosta no nosso trabalho?' : 'Obrigado. O que faria essa nota subir?',
-          npsOpts: Array.from({ length: 11 }, (_, n) => ({ l: String(n), pick: () => this.setState({ npsV: n }), bd: npsV === n ? ACC() : '#E4E7EC', bg: npsV === n ? ACC() : '#fff', c: npsV === n ? '#fff' : '#344054' })),
-          npsTxt: S.npsTxt, onNps: e => this.setState({ npsTxt: e.target.value }), npsSend: () => this.setState({ npsDone: true }), npsSkip: () => this.setState({ npsDone: true }),
-          pixOff: S.pix !== 'on', pixOn: S.pix === 'on', pixL: S.pix === 'wait' ? 'Abrindo o app do banco…' : 'Ativar Pix Automático',
-          pixStart: () => { if (S.pix === 'wait') return; this.setState({ pix: 'wait' }); setTimeout(() => { this.setState({ pix: 'on' }); this.toastMsg('Pix Automático autorizado no seu banco'); }, 1800); } };
-      })(),
+      periods: this.seg([['30D', '30 dias'], ['90D', '90 dias']], S.period, v => this.setState({ period: v })), periodLabel: S.period === '30D' ? 'últimos 30 dias' : 'últimos 90 dias', kpis: [],
+      transparency: [], insights: [],
+      summary: [['event', 'Seu contato na agência', '—', 'msgs'], ['lab_profile', 'Relatório mais recente', '—', 'reports'], ['receipt_long', 'Próxima fatura', '—', 'fin']].map(s => ({ icon: s[0], l: s[1], v: s[2], go: () => this.go(s[3]) })),
+      metrics: this.seg([['leads', 'Leads'], ['cpl', 'Custo por lead'], ['invest', 'Investimento']], S.metric, v => this.setState({ metric: v })), ch: { label: '', total: '—', d: '', dc: '#475467', line: '', area: '', prev: '', ticks: [] },
+      channels: [], camps: [], reports: [], invoices: [], docs: [],
+      chat: [], chatEmpty: false, draft: S.draft, onDraft: e => this.setState({ draft: e.target.value }), send: () => {}, onKey: () => {}, faq,
+      cw: {
+        filt: [['all', 'Tudo'], ['opt', 'Otimizações'], ['rep', 'Relatórios'], ['alert', 'Alertas']].map(x => { const on = S.cwF === x[0]; return { l: x[1], pick: () => this.setState({ cwF: x[0] }), bd: on ? ACC() : '#E4E7EC', bg: on ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : '#fff', c: on ? '#3538CD' : '#344054' }; }),
+        goWork: () => this.go('work'), goStart: () => this.go('start'),
+        showNps: false, npsAsk: npsV == null && !S.npsDone, npsWhy: npsV != null && !S.npsDone, npsDone: S.npsDone, npsQ0: '', npsDoneL: '', npsQ: npsV >= 9 ? 'Que bom! O que você mais gosta no nosso trabalho?' : 'Obrigado. O que faria essa nota subir?',
+        npsOpts: Array.from({ length: 11 }, (_, n) => ({ l: String(n), pick: () => this.setState({ npsV: n }), bd: npsV === n ? ACC() : '#E4E7EC', bg: npsV === n ? ACC() : '#fff', c: npsV === n ? '#fff' : '#344054' })),
+        npsTxt: S.npsTxt, onNps: e => this.setState({ npsTxt: e.target.value }), npsSend: () => {}, npsSkip: () => {},
+        pixOff: false, pixOn: false, pixL: '', pixStart: () => {},
+        askOn: false, chat: [], sugg: [], q: '', onQ: () => {}, onKey: () => {}, ask: () => {},
+        showWork: false, weekN: '', best: '', hasBest: false, weekL: '', weekNote: '', week: [], feed: [], feedEmpty: false, feedEmptyL: '',
+        hasPend: false, pendL: '', pendTail: '', startSub: '', noItems: false, progL: '', progW: '0%', items: [] },
       toast: { show: !!S.toast, msg: S.toast || '' },
-      tk: this.tkVals(this.R ? this.spTkList() : (S.tkDemo || TK_DEMO), !!this.R, br),
-      av: this.avVals(this.R ? this.R.aivis : AV_DEMO, br.name)
+      tk: this.tkVals([], br),
+      av: this.avVals(null, br.name)
     };
     return this.R ? this.spVals(out, { f, brl, brl2, st }) : out;
   }
