@@ -69,12 +69,29 @@ export function fromPGlite(db: PGliteLike, inTransaction = false): Sql {
 let shared: Sql | null = null;
 
 /**
+ * DATABASE_URL, ou a POSTGRES_URL que a integração Supabase da Vercel cria sozinha (pooler em
+ * modo transação). Essa traz parâmetros só da Supabase (supa, pgbouncer) que o Postgres recusaria.
+ */
+export function databaseUrl(env: Record<string, string | undefined>): string | null {
+  const raw = env.DATABASE_URL?.trim() || env.POSTGRES_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    url.searchParams.delete("supa");
+    url.searchParams.delete("pgbouncer");
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
+/**
  * Conexão de serviço do servidor (DATABASE_URL do Supabase, de preferência o pooler
  * em modo transação, porta 6543). Ignora RLS; por isso todo SQL do motor filtra por agency_id.
  */
 export async function serverSql(): Promise<Sql> {
   if (shared) return shared;
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl(process.env);
   if (!url) throw new Error("DATABASE_URL não configurada");
   const { default: postgres } = await import("postgres");
   shared = fromPostgres(postgres(url, { prepare: false, max: 5 }) as unknown as PostgresLike);
