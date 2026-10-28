@@ -46,7 +46,9 @@ export async function createCredential(
   if (isSelfHosted(input.provider)) {
     if (!input.base_url) throw new XodoError("Informe o endereço do servidor (ex.: https://meu-ollama.exemplo.com/v1).");
     try {
-      baseUrl = (await assertPublicUrl(input.base_url, resolve)).toString().replace(/\/+$/, "");
+      // No app pessoal, o modelo "local" roda no seu computador (Ollama, LM Studio): esse endereço vale.
+      const own = input.provider === "local" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(input.base_url);
+      baseUrl = (own ? new URL(input.base_url) : await assertPublicUrl(input.base_url, resolve)).toString().replace(/\/+$/, "");
     } catch (error) {
       throw new XodoError(error instanceof Error ? error.message : "Endereço inválido.");
     }
