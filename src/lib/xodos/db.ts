@@ -70,11 +70,24 @@ let shared: Sql | null = null;
 
 /**
  * DATABASE_URL, ou a POSTGRES_URL que a integração Supabase da Vercel cria sozinha (pooler em
- * modo transação). Essa traz parâmetros só da Supabase (supa, pgbouncer) que o Postgres recusaria.
+ * modo transação). Conserta os erros comuns de quem cola o endereço à mão: aspas ou
+ * "DATABASE_URL=" junto, os colchetes de [YOUR-PASSWORD] mantidos e senha com @ # / ? sem
+ * codificar. Tira os parâmetros só da Supabase (supa, pgbouncer) que o Postgres recusaria.
  */
 export function databaseUrl(env: Record<string, string | undefined>): string | null {
-  const raw = env.DATABASE_URL?.trim() || env.POSTGRES_URL?.trim();
+  let raw = (env.DATABASE_URL?.trim() || env.POSTGRES_URL?.trim() || "").replace(/^DATABASE_URL\s*=\s*/i, "");
+  raw = raw.replace(/^["']|["']$/g, "").trim();
   if (!raw) return null;
+  const parts = raw.match(/^(postgres(?:ql)?:\/\/)([^:/@]+):(.*)@([^@/?#]+)(\/[^?#]*)?(\?.*)?$/i);
+  if (parts) {
+    const [, scheme, user, rawPass, host, path = "/postgres", query = ""] = parts;
+    let pass = rawPass;
+    if (pass.startsWith("[") && pass.endsWith("]")) pass = pass.slice(1, -1);
+    try {
+      pass = decodeURIComponent(pass);
+    } catch {}
+    raw = `${scheme}${user}:${encodeURIComponent(pass)}@${host}${path}${query}`;
+  }
   try {
     const url = new URL(raw);
     url.searchParams.delete("supa");

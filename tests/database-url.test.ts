@@ -11,3 +11,14 @@ test("usa DATABASE_URL e, sem ela, a POSTGRES_URL da integração sem os parâme
   );
   assert.equal(databaseUrl({ DATABASE_URL: "postgres://a@h/db", POSTGRES_URL: "postgres://b@h/db" }), "postgres://a@h/db");
 });
+
+test("conserta senha com símbolos, colchetes mantidos e aspas", () => {
+  const ok = (v: string) => new URL(databaseUrl({ DATABASE_URL: v })!);
+  const a = ok("postgresql://postgres.abc:minha@senha#1/x?@aws-0-sa-east-1.pooler.supabase.com:6543/postgres");
+  assert.equal(decodeURIComponent(a.password), "minha@senha#1/x?");
+  assert.equal(a.port, "6543");
+  assert.equal(a.hostname, "aws-0-sa-east-1.pooler.supabase.com");
+  assert.equal(decodeURIComponent(ok("postgresql://postgres.abc:[Segredo123]@h.pooler.supabase.com:6543/postgres").password), "Segredo123");
+  assert.equal(decodeURIComponent(ok('"postgresql://postgres.abc:x%40y@h:6543/postgres"').password), "x@y");
+  assert.equal(ok("DATABASE_URL=postgresql://u:p@h:6543/postgres").username, "u");
+});
