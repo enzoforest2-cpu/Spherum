@@ -3620,7 +3620,7 @@ class Component extends DCLogic {
       const me = await SP.api('/api/me'), list = me.agencies || []; let ag = null;
       try { ag = localStorage.getItem('spherum.agency'); } catch (e) {}
       if (!list.some(a => a.agency_id === ag)) ag = list.length ? list[0].agency_id : null;
-      if (!ag) return;
+      if (!ag) { location.replace(me.home === 'cliente' || me.home === 'admin' ? '/' + me.home : '/?entrar=1'); return; }
       try { localStorage.setItem('spherum.agency', ag); } catch (e) {}
       this.spAg = ag; this.spMe = me;
       await this.spLoad();
@@ -4426,7 +4426,7 @@ class Component extends DCLogic {
     const ctx = { cl, cp, invs, clById, cname, T, brl, brl2, n0, f1, f2, pctS, kf };
     return Object.assign({
       rootRef: this.rootRef, mainRef: this.mainRef, stop, open, sbW: S.mobile ? (S.menuOpen ? '248px' : '0px') : open ? '248px' : '64px', sbPos: S.mobile ? 'fixed' : 'relative', sbOv: S.mobile ? 'hidden' : 'visible', isMobile: !!S.mobile, notMobile: !S.mobile, menuBackdrop: !!(S.mobile && S.menuOpen), toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen })), nav, setItem: navItem(['settings', 'Configurações', 'settings']),
-      collapseIcon: open ? 'left_panel_close' : 'left_panel_open', logout: () => { this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, back: () => this.setState({ __out: false }) }, toggleSidebar: () => this.setState(s => ({ collapsed: !s.collapsed })),
+      collapseIcon: open ? 'left_panel_close' : 'left_panel_open', logout: () => { clearInterval(this.pl); SP.logout(); this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); else location.href = '/'; } catch (e) {} }, back: () => { location.href = '/?entrar=1'; } }, toggleSidebar: () => this.setState(s => ({ collapsed: !s.collapsed })),
       wsOpen: S.ws, toggleWs: () => this.setState(s => ({ ws: !s.ws })), newWs: () => { this.setState({ ws: false }); this.toastMsg('Novos espaços de trabalho estão disponíveis no plano Escala'); },
       wsList: (this.spMe ? this.spMe.agencies : []).map(a => [a.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), a.name, a.plan || '', a.agency_id === this.spAg, a.agency_id]).map(w => ({ ini: w[0], name: w[1], plan: w[2], cur: w[3], pick: () => { this.setState({ ws: false }); if (w[3]) return; try { localStorage.setItem('spherum.agency', w[4]); } catch (e) {} this.spAg = w[4]; this.spLoad().then(() => this.go('dashboard'), e => this.spErr(e)); } })),
       crumb: titles[S.view], crumbGo: () => this.go(act), hasCrumbSub: S.view === 'client' || S.view === 'onboarding',
