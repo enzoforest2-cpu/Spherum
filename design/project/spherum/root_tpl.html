@@ -1009,7 +1009,10 @@ html{scroll-behavior:smooth}
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
               <sc-for list="{{ su.inputs }}" as="f">
                 <label style="grid-column:{{ f.col }};display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500;min-width:0"><span>{{ f.l }}<sc-if value="{{ f.req }}"><span style="color:#D92D20"> *</span></sc-if></span>
-                  <input type="{{ f.type }}" value="{{ f.val }}" sc-camel-on-change="{{ f.onChange }}" placeholder="{{ f.ph }}" autocomplete="{{ f.ac }}" style="height:42px;padding:0 12px;border:1px solid {{ f.bd }};border-radius:9px;background:#fff;font-weight:400;font-size:14.5px;outline:none" style-focus="border-color:#465FFF;box-shadow:0 0 0 3px rgba(70,95,255,0.15)">
+                  <span style="position:relative;display:block">
+                  <input type="{{ f.type }}" value="{{ f.val }}" sc-camel-on-change="{{ f.onChange }}" placeholder="{{ f.ph }}" autocomplete="{{ f.ac }}" inputmode="{{ f.im }}" maxlength="{{ f.max }}" style="width:100%;box-sizing:border-box;height:42px;padding:0 {{ f.padR }} 0 12px;border:1px solid {{ f.bd }};border-radius:9px;background:#fff;font-weight:400;font-size:14.5px;outline:none" style-focus="border-color:#465FFF;box-shadow:0 0 0 3px rgba(70,95,255,0.15)">
+                  <sc-if value="{{ f.isPass }}"><button type="button" sc-camel-on-click="{{ f.toggle }}" aria-label="{{ f.eyeL }}" title="{{ f.eyeL }}" style="position:absolute;right:4px;top:4px;width:34px;height:34px;border:none;border-radius:7px;background:transparent;color:#667085;cursor:pointer;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1">{{ f.eye }}</span></button></sc-if>
+                  </span>
                   <sc-if value="{{ f.hasHelp }}"><span style="font-size:12.5px;font-weight:400;color:#667085">{{ f.help }}</span></sc-if>
                   <sc-if value="{{ f.hasErr }}"><span role="alert" style="font-size:12.5px;font-weight:400;color:#D92D20">{{ f.err }}</span></sc-if>
                 </label>
@@ -1897,15 +1900,21 @@ class Component extends DCLogic {
     const su = (() => {
       const A = S.su || {}, err = S.suErr || {}, step = S.suStep || 1;
       const set = (k, v) => this.setState(s => ({ su: Object.assign({}, s.su, { [k]: v }), suErr: Object.assign({}, s.suErr, { [k]: false }) }));
-      const inp = (k, l, type, o) => ({ l, req: !!o.req, type, ac: o.ac || 'off', ph: o.ph || '', val: A[k] || '', onChange: e => set(k, e.target.value), hasErr: !!err[k], err: err[k] || '', bd: err[k] ? '#F04438' : '#D0D5DD', col: o.span ? '1 / -1' : 'auto', help: o.help || '', hasHelp: !!o.help && !err[k] });
+      // Celular no formato (11) 98888-7777 enquanto a pessoa digita.
+      const fmtPhone = v => { const d = String(v || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '').slice(0, 11);
+        if (d.length <= 2) return d ? '(' + d : ''; if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+        if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6); return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7); };
+      const inp = (k, l, type, o) => { const pass = type === 'password', shown = pass && !!S.suShowPass, tel = type === 'tel';
+        return { l, req: !!o.req, type: shown ? 'text' : type, ac: o.ac || 'off', ph: o.ph || '', val: A[k] || '', onChange: e => set(k, tel ? fmtPhone(e.target.value) : e.target.value), hasErr: !!err[k], err: err[k] || '', bd: err[k] ? '#F04438' : '#D0D5DD', col: o.span ? '1 / -1' : 'auto', help: o.help || '', hasHelp: !!o.help && !err[k],
+          im: tel ? 'tel' : type === 'email' ? 'email' : 'text', max: tel ? 15 : 200, isPass: pass, padR: pass ? '42px' : '12px', eye: shown ? 'visibility_off' : 'visibility', eyeL: shown ? 'Esconder a senha' : 'Mostrar a senha', toggle: () => this.setState(s => ({ suShowPass: !s.suShowPass })) }; };
       const grp = (k, t, opts, o) => { const v = A[k]; const multi = !!o.multi; const cnt = multi ? Object.keys(v || {}).filter(x => v[x]).length : 0;
         return { t, req: !!o.req, sub: o.sub || (multi ? (o.max ? 'Escolha até ' + o.max + (cnt ? ' · ' + cnt + ' de ' + o.max : '') : 'Escolha quantas quiser') : ''), hasErr: !!err[k], err: err[k] || '',
           opts: opts.map(x => { const on = multi ? !!(v && v[x]) : v === x; return { l: x, sel: on ? 'true' : 'false', bg: on ? 'rgba(70,95,255,0.08)' : '#fff', c: on ? '#465FFF' : '#101828', bd: on ? 'rgba(70,95,255,0.5)' : (err[k] ? '#F04438' : '#E4E7EC'),
             pick: () => { if (multi) { const nv = Object.assign({}, v || {}); if (!nv[x] && o.max && cnt >= o.max) return; nv[x] = !nv[x]; set(k, nv); } else set(k, x); } }; }) }; };
       const titles = { 1: ['Crie sua conta', '14 dias grátis com todos os recursos. Sem cartão de crédito.'], 2: ['Sobre a sua agência', 'Isso ajusta o Spherum ao tamanho da sua operação.'], 3: ['Como é a sua operação hoje', 'Cinco perguntas rápidas para calibrar limites e integrações.'], 4: ['O que você quer resolver primeiro', 'Vamos priorizar essas áreas no seu primeiro acesso.'], 5: ['Seu plano recomendado', 'Com base nas suas respostas. Você pode trocar de plano quando quiser.'] };
-      const inputs = step === 1 ? [inp('name', 'Seu nome', 'text', { req: 1, ph: 'Nome e sobrenome', ac: 'name' }), inp('email', 'E-mail profissional', 'email', { req: 1, ph: 'voce@agencia.com.br', ac: 'email' }), inp('phone', 'WhatsApp', 'tel', { ph: '(11) 99999-9999', ac: 'tel', help: 'Para suporte e avisos importantes' }), inp('pass', 'Senha', 'password', { req: 1, ph: 'Mínimo de 8 caracteres', ac: 'new-password', help: 'Use pelo menos 8 caracteres' })]
+      const inputs = step === 1 ? [inp('name', 'Seu nome', 'text', { req: 1, ph: 'Nome e sobrenome', ac: 'name' }), inp('email', 'E-mail profissional', 'email', { req: 1, ph: 'voce@agencia.com.br', ac: 'email' }), inp('pass', 'Senha', 'password', { req: 1, ph: 'Mínimo de 8 caracteres', ac: 'new-password', help: 'Use pelo menos 8 caracteres' }), inp('pass2', 'Repita a senha', 'password', { req: 1, ph: 'Digite a mesma senha', ac: 'new-password' }), inp('phone', 'WhatsApp', 'tel', { ph: '(11) 99999-9999', ac: 'tel', help: 'Para suporte e avisos importantes' })]
         : step === 2 ? [inp('agency', 'Nome da agência', 'text', { req: 1, span: 1, ph: 'Ou o seu nome, se trabalha sozinho' }), inp('site', 'Site ou Instagram', 'text', { ph: '@suaagencia' })] : [];
-      const groups = step === 3 ? [grp('clients', 'Quantos clientes você atende hoje?', ['Nenhum ainda', '1–2', '3–10', '11–30', '31–100', 'Mais de 100'], { req: 1 }), grp('team', 'Quantas pessoas trabalham na operação?', ['Só eu', '2–5', '6–15', '16 ou mais'], { req: 1 }),
+      const groups = step === 3 ? [grp('clients', 'Quantos clientes você atende hoje?', ['Nenhum ainda', '1–5', '6–20', '21–100', '101–250', 'Mais de 250'], { req: 1 }), grp('team', 'Quantas pessoas trabalham na operação?', ['Só eu', '2–10', '11–30', '31–75', 'Mais de 75'], { req: 1 }),
           grp('invest', 'Quanto você gerencia em mídia por mês?', ['Até R$ 20 mil', 'R$ 20–100 mil', 'R$ 100–500 mil', 'Mais de R$ 500 mil'], {}), grp('plats', 'Em quais plataformas você anuncia?', ['Meta Ads', 'Google Ads', 'TikTok Ads', 'LinkedIn Ads', 'GA4'], { multi: 1 }),
           grp('tools', 'Como você organiza a operação hoje?', ['WhatsApp', 'Planilhas', 'Trello ou ClickUp', 'Notion', 'Outro CRM', 'Ainda não organizo'], { multi: 1 })]
         : step === 4 ? [grp('goals', 'Prioridades', ['Organizar clientes', 'Automatizar relatórios', 'Controlar o financeiro', 'Reduzir cancelamentos', 'Vender mais com CRM', 'Organizar a equipe', 'Portal para clientes', 'Marca própria no portal'], { req: 1, multi: 1, max: 3 }),
@@ -1915,7 +1924,9 @@ class Component extends DCLogic {
       const UF = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
       const ufSelect = React.createElement('select', { key: 'uf-' + (A.uf || ''), value: A.uf || '', onChange: e => set('uf', e.target.value), style: { height: 42, padding: '0 10px', border: '1px solid #D0D5DD', borderRadius: 9, background: '#fff', fontSize: 14.5, fontWeight: 400, color: '#101828' } }, [React.createElement('option', { key: '_', value: '', disabled: true }, 'Selecione')].concat(UF.map(u => React.createElement('option', { key: u, value: u }, u))));
       const validate = () => { const b = {};
-        if (step === 1) { if (!(A.name || '').trim()) b.name = 'Informe seu nome'; if (!/^\S+@\S+\.\S+$/.test(A.email || '')) b.email = 'Informe um e-mail válido'; if ((A.pass || '').length < 8) b.pass = 'A senha precisa de pelo menos 8 caracteres'; if (!A.terms) b.terms = 1; }
+        if (step === 1) { if (!(A.name || '').trim()) b.name = 'Informe seu nome'; if (!/^\S+@\S+\.\S+$/.test(A.email || '')) b.email = 'Informe um e-mail válido'; if ((A.pass || '').length < 8) b.pass = 'A senha precisa de pelo menos 8 caracteres'; else if ((A.pass2 || '') !== A.pass) b.pass2 = 'As senhas não são iguais';
+          const ph = (A.phone || '').replace(/\D/g, ''); if (ph && (ph.length < 10 || ph.length > 11)) b.phone = 'Use DDD e número, ex.: (11) 98888-7777';
+          if (!A.terms) b.terms = 1; }
         if (step === 2) { if (!(A.agency || '').trim()) b.agency = 'Informe o nome da agência'; if (!A.mode) b.mode = 1; }
         if (step === 3) { if (!A.clients) b.clients = 'Escolha uma opção'; if (!A.team) b.team = 'Escolha uma opção'; }
         if (step === 4) { const g = A.goals || {}; if (!Object.keys(g).some(k => g[k])) b.goals = 'Escolha pelo menos uma prioridade'; }
@@ -1927,13 +1938,18 @@ class Component extends DCLogic {
         ['Rede', 1990, 'Para grupos e redes com até 250 clientes', 250, 75, ['Tudo do plano Escala', 'Painel consolidado por unidade', 'API e webhooks', '5 xodós na sua chave de API', 'Até 75 pessoas']],
         ['Empresarial', null, 'Para operações com mais de 250 clientes', null, null, ['Clientes ilimitados', 'Login único (SSO) e auditoria', '10 xodós', 'SLA dedicado', 'Implantação assistida']]];
       const g = A.goals || {}, has = k => !!g[k];
-      const lc = ({ '11–30': 1, '31–100': 2, 'Mais de 100': 3 })[A.clients] || 0, lt = ({ '2–5': 1, '6–15': 2, '16 ou mais': 3 })[A.team] || 0, li = ({ 'R$ 100–500 mil': 1, 'Mais de R$ 500 mil': 2 })[A.invest] || 0, lr = ({ 'R$ 30–100 mil': 1, 'Mais de R$ 100 mil': 2 })[A.rev] || 0;
-      const lg = Math.max(has('Controlar o financeiro') || has('Vender mais com CRM') || has('Marca própria no portal') ? 1 : 0, has('Organizar a equipe') && lt >= 1 ? 2 : 0, A.mode === 'agency' ? 1 : 0, A.clients === '3–10' && lt >= 1 ? 1 : 0);
-      const rec = Math.max(lc, lt, li, lr, lg), lvl = S.suAlt ? (rec > 0 ? rec - 1 : 1) : rec;
+      // O plano recomendado é o menor que comporta a operação: as faixas de clientes e de pessoas
+      // batem com os limites de cada plano, e algumas prioridades só existem a partir do Agência.
+      // Verba de mídia e faturamento não mudam o plano (não são limites); ficam só no cadastro.
+      const lc = ({ '6–20': 1, '21–100': 2, '101–250': 3, 'Mais de 250': 4 })[A.clients] || 0, lt = ({ '2–10': 1, '11–30': 2, '31–75': 3, 'Mais de 75': 4 })[A.team] || 0;
+      const needsAgency = has('Controlar o financeiro') || has('Vender mais com CRM') || has('Marca própria no portal') || (has('Organizar a equipe') && lt >= 1);
+      const lg = Math.max(needsAgency ? 1 : 0, A.mode === 'team' || A.mode === 'agency' ? 1 : 0);
+      const rec = Math.max(lc, lt, lg), lvl = S.suAlt ? (rec > 0 ? rec - 1 : 1) : rec;
       const p = PL[lvl], price = p[1] == null ? 'Sob consulta' : 'R$ ' + (S.annual ? Math.round(p[1] * 0.8) : p[1]).toLocaleString('pt-BR');
       const pr = PL[rec]; const reasons = [];
-      if (A.clients) reasons.push(A.clients === 'Nenhum ainda' ? 'Você está começando: o plano cresce junto com a carteira' : 'Você atende ' + A.clients + ' clientes' + (p[3] ? ' e o plano comporta até ' + pr[3] : ', sem limite de clientes'));
-      if (A.team) reasons.push(A.team === 'Só eu' ? 'Você trabalha sozinho: um usuário já basta' : 'Sua equipe tem ' + A.team + ' pessoas' + (p[4] ? ' e o plano inclui até ' + pr[4] + (pr[4] === 1 ? ' usuário' : ' usuários') : ', com usuários ilimitados'));
+      const range = v => /^\d+–\d+$/.test(v) ? 'de ' + v.replace('–', ' a ') : v.toLowerCase();
+      if (A.clients) reasons.push(A.clients === 'Nenhum ainda' ? 'Você está começando: o plano cresce junto com a carteira' : 'Você atende ' + range(A.clients) + ' clientes' + (pr[3] ? '; o plano comporta até ' + pr[3] : ', e o plano não tem limite de clientes'));
+      if (A.team) reasons.push(A.team === 'Só eu' ? 'Você trabalha sozinho: um usuário já basta' : 'Sua equipe tem ' + range(A.team) + ' pessoas' + (pr[4] ? '; o plano inclui até ' + pr[4] + ' usuários' : ', e o plano não tem limite de usuários'));
       const gm = { 'Automatizar relatórios': 'Relatórios automáticos enviados ao portal do cliente', 'Controlar o financeiro': 'Mensalidades, cobranças e vencidos no Financeiro', 'Vender mais com CRM': 'CRM com funil e passagem automática para cliente', 'Marca própria no portal': 'Portal e relatórios com a marca da sua agência', 'Organizar a equipe': 'Permissões e carga de trabalho por pessoa', 'Reduzir cancelamentos': 'Saúde do cliente com alertas de risco', 'Organizar clientes': 'Cada cliente com contrato, saúde e histórico', 'Portal para clientes': 'Portal do cliente incluído' };
       Object.keys(g).filter(k => g[k]).forEach(k => reasons.push(gm[k]));
       const tl = Object.keys(A.tools || {}).filter(k => A.tools[k] && k !== 'Ainda não organizo');
@@ -1944,7 +1960,8 @@ class Component extends DCLogic {
         if (p[3] && lc > 0) caveats.push(p[0] + ' comporta até ' + p[3] + ' clientes; você atende ' + A.clients);
         if (p[4] && lt > 0) caveats.push(p[0] + ' inclui até ' + p[4] + (p[4] === 1 ? ' usuário' : ' usuários') + '; sua equipe tem ' + A.team + ' pessoas');
         if (lvl === 0 && (has('Controlar o financeiro') || has('Vender mais com CRM') || has('Marca própria no portal'))) caveats.push('Financeiro, CRM e marca própria no portal ficam de fora');
-        if (lvl <= 1 && has('Organizar a equipe') && lt >= 1) caveats.push('Permissões por função e carga de trabalho ficam de fora');
+        if (lvl === 0 && has('Organizar a equipe') && lt >= 1) caveats.push('O Solo tem só 1 usuário: a equipe fica de fora');
+        if (lvl === 0 && (A.mode === 'team' || A.mode === 'agency')) caveats.push('O Solo é para quem atende sozinho');
         if (!caveats.length) caveats.push('Você pode subir para o ' + PL[rec][0] + ' quando precisar, sem perder dados');
       } else if (S.suAlt) {
         caveats.push('Inclui tudo o que você precisa hoje, com espaço para crescer');
@@ -1976,7 +1993,8 @@ class Component extends DCLogic {
             x => this.setState({ suBusy: false, suMsg: x.message, suMsgOk: false }));
         },
         comparePlans: () => { this.setState({ view: 'landing' }); setTimeout(() => { const el = document.getElementById('precos'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); }, 60); },
-        guide: [['Cadastre seu primeiro cliente', '1 min'], ['Conecte uma conta de anúncios', 'opcional'], ['Defina a meta de CPL ou CPA', '1 min'], ['Crie seu primeiro projeto', '2 min'], ['Configure mensalidades e cobranças', '2 min'], ['Convide sua equipe', lt ? 'recomendado' : 'opcional'], ['Envie o portal para o cliente', '1 min']].map((x, i) => ({ n: i + 1, t: x[0], m: x[1] }))
+        // Só o que existe no plano mostrado: o Solo não tem financeiro nem equipe.
+        guide: [['Cadastre seu primeiro cliente', '1 min'], ['Conecte uma conta de anúncios', 'opcional'], ['Defina a meta de CPL ou CPA', '1 min'], ['Crie seu primeiro projeto', '2 min'], lvl > 0 && ['Configure mensalidades e cobranças', '2 min'], lvl > 0 && ['Convide sua equipe', lt ? 'recomendado' : 'opcional'], ['Envie o portal para o cliente', '1 min']].filter(Boolean).map((x, i) => ({ n: i + 1, t: x[0], m: x[1] }))
       };
     })();
 
