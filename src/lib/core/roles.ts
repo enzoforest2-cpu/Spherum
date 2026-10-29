@@ -10,14 +10,14 @@ import { audit } from "./audit";
  */
 
 export const AREAS = [
-  { key: "clientes", label: "Clientes", hint: "Clientes, documentos e portal do cliente" },
-  { key: "comercial", label: "Comercial", hint: "CRM, prospecção, propostas, formulários e agenda" },
-  { key: "campanhas", label: "Campanhas e relatórios", hint: "Campanhas, performance, relatórios e riscos" },
-  { key: "projetos", label: "Projetos e conteúdo", hint: "Projetos, tarefas, conteúdo, atas, chamados e automações" },
-  { key: "financeiro", label: "Financeiro", hint: "Cobranças, notas, contratos, DRE e rentabilidade" },
+  { key: "clientes", label: "Clientes", hint: "Clientes, radar de risco, chamados, documentos e portal do cliente" },
+  { key: "comercial", label: "Vendas", hint: "CRM, prospecção, pontuação de leads, propostas, formulários e agendamentos" },
+  { key: "campanhas", label: "Tráfego", hint: "Campanhas, performance, relatórios, retorno e busca por IA" },
+  { key: "projetos", label: "Projetos e conteúdo", hint: "Projetos, conteúdo, publicar, estúdio, atas e automações" },
+  { key: "financeiro", label: "Financeiro", hint: "Financeiro, rentabilidade, notas e cobranças, DRE e contratos" },
   { key: "equipe", label: "Equipe", hint: "Pessoas, cargos, convites, academy e conquistas" },
   { key: "xodos", label: "Xodós", hint: "Criar, conversar e aprovar o que os xodós pedem" },
-  { key: "configuracoes", label: "Integrações e configurações", hint: "Contas conectadas, canais, plano e dados da agência" },
+  { key: "configuracoes", label: "Integrações e configurações", hint: "Integrações, canais, plano e dados da agência" },
 ] as const;
 export type Area = (typeof AREAS)[number]["key"];
 export const AREA_KEYS = AREAS.map((a) => a.key) as [Area, ...Area[]];

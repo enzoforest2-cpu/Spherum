@@ -3924,10 +3924,10 @@ class Component extends DCLogic {
     } catch (e) { this.spErr(e); }
   }
   // Cargos: cada tela pertence a uma área; o cargo diz se a pessoa não vê, só vê ou edita.
-  areaOf(view) { return ({ xodo: 'xodos', clients: 'clientes', client: 'clientes', onboarding: 'clientes', documents: 'clientes', risk: 'clientes',
+  areaOf(view) { return ({ xodo: 'xodos', clients: 'clientes', client: 'clientes', tickets: 'clientes', onboarding: 'clientes', documents: 'clientes', risk: 'clientes',
     crm: 'comercial', score: 'comercial', prospect: 'comercial', forms: 'comercial', sched: 'comercial', proposals: 'comercial',
     campaigns: 'campanhas', performance: 'campanhas', reports: 'campanhas', roi: 'campanhas', aivis: 'campanhas',
-    projects: 'projetos', content: 'projetos', publish: 'projetos', minutes: 'projetos', studio: 'projetos', auto: 'projetos', tickets: 'projetos',
+    projects: 'projetos', content: 'projetos', publish: 'projetos', minutes: 'projetos', studio: 'projetos', auto: 'projetos', 
     finance: 'financeiro', profit: 'financeiro', fiscal: 'financeiro', dre: 'financeiro', contracts: 'financeiro',
     team: 'equipe', academy: 'equipe', badges: 'equipe', integrations: 'configuracoes' })[view] || null; }
   levelOf(area) { const a = this.R && this.R.access; if (!a || a.owner || !area) return 'editar'; return (a.perms || {})[area] || 'nenhum'; }
@@ -4303,11 +4303,17 @@ class Component extends DCLogic {
     const cname = id => (cById[id] || {}).name || 'Interno';
 
     const navItem = ([id, label, icon, badge]) => { const a = act === id; if (SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
-    const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', this.crmDueN()], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
-      ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', (((this.R.tickets || {}).stats || {}).open) || null]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
-      ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', this.spUnread()], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
+    // Os grupos do menu são as mesmas áreas dos cargos e permissões (Equipe → Cargos e permissões).
+    const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]],
+      ['Clientes', [['clients', 'Clientes', 'group'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()], ['tickets', 'Chamados', 'support_agent', (((this.R.tickets || {}).stats || {}).open) || null], ['documents', 'Documentos', 'folder_open']]],
+      ['Vendas', [['crm', 'CRM', 'filter_alt', this.crmDueN()], ['prospect', 'Prospecção', 'person_search'], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['proposals', 'Propostas', 'request_quote'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available']]],
+      ['Tráfego', [['campaigns', 'Campanhas', 'ads_click'], ['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
+      ['Projetos e conteúdo', [['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['studio', 'Estúdio', 'auto_awesome'], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['auto', 'Automações', 'account_tree']]],
+      ['Financeiro', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract']]],
+      ['Equipe', [['team', 'Equipe', 'groups'], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]],
+      ['Ferramentas', [['messages', 'Mensagens', 'forum', this.spUnread()], ['app', 'App de celular', 'smartphone'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
       .map(([label, items]) => [label, items.filter(x => this.canSee(x[0]))]).filter(g => g[1].length)
-      .map(([label, items]) => { const GI = { Comercial: 'handshake', 'Operação': 'bolt', 'Análise': 'insights', 'Gestão': 'account_balance', Recursos: 'widgets' };
+      .map(([label, items]) => { const GI = { Clientes: 'group', Vendas: 'handshake', 'Tráfego': 'ads_click', 'Projetos e conteúdo': 'view_kanban', Financeiro: 'account_balance_wallet', Equipe: 'groups', Ferramentas: 'widgets' };
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
         const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' && !SP_SOON[x[0]] ? x[3] : 0), 0);
         return { label, items: items.map(navItem), hasHead: head, exp: exp ? 'true' : 'false', showItems: !head || exp, icon: GI[label] || 'folder', rot: exp ? '180deg' : '0deg',

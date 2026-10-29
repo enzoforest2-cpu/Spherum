@@ -400,8 +400,8 @@ function withoutHiddenAreas<T extends Record<string, unknown>>(access: Access, d
     out.proposals = { proposals: [], catalog: null, stats: {} };
     out.prospect_unread = 0;
   }
-  if (hide("projetos")) empty(["projects", "tickets"]);
-  if (hide("clientes")) empty(["documents", "collab"]);
+  if (hide("projetos")) empty(["projects"]);
+  if (hide("clientes")) empty(["documents", "collab", "tickets"]);
   if (hide("equipe")) empty(["invites"]);
   if (hide("configuracoes")) {
     empty(["connections"]);

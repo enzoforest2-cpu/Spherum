@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const id = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await ticketAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     await updateTicket({ sql, mail: mailerFromEnv(), appUrl: process.env.APP_URL }, agencyId, id, await request.json());
     return NextResponse.json({ ok: true });
   } catch (error) {

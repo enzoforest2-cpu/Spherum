@@ -48,7 +48,7 @@ test("o cargo vale no servidor: ver, editar e sem acesso por área", async () =>
   const { agencyId, pessoa } = await agencyWith("Gestor de tráfego");
   await requireRole(sql, pessoa.id, agencyId, CAN_USE, { area: "campanhas" });
   await requireRole(sql, pessoa.id, agencyId, CAN_READ, { area: "comercial" });
-  await assert.rejects(requireRole(sql, pessoa.id, agencyId, CAN_USE, { area: "comercial" }), /só permite ver Comercial/);
+  await assert.rejects(requireRole(sql, pessoa.id, agencyId, CAN_USE, { area: "comercial" }), /só permite ver Vendas/);
   await assert.rejects(requireRole(sql, pessoa.id, agencyId, CAN_READ, { area: "financeiro" }), /não tem acesso a Financeiro/);
   // Sem área: gerir pede editar nas configurações.
   await assert.rejects(requireRole(sql, pessoa.id, agencyId, CAN_MANAGE), /Integrações e configurações/);
