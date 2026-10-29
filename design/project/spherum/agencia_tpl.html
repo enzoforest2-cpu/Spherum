@@ -3709,7 +3709,7 @@ class Component extends DCLogic {
       }
     } catch (e) { this.toastMsg(e.message || 'Não deu para carregar os dados agora.'); }
   }
-  async spLoad() { this.spApply(await SP.api('/api/portal/agencia?agency_id=' + this.spAg)); this.spXoLoad().catch(() => {}); }
+  async spLoad() { this.spApply(await SP.api('/api/portal/agencia?agency_id=' + this.spAg)); if (this.levelOf('xodos') !== 'nenhum') this.spXoLoad().catch(e => { this._xoErr = e.message; }); }
   // Enquanto carrega, a tela já abre vazia.
   spEmpty() { const z = { cur: 0, prev: 0 }, y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     return { loading: 1, agency: { name: '', plan: '' }, me: { name: '', role: null }, period: { from: y, to: y }, clients: [], camps: [], plat: [], daily: [], cdaily: {}, reports: [], team: [], invites: [], attention: [], kpis: { mrr: 0, activeClients: 0, spend: z, results: z, revenue: z }, connections: [], accounts: [], pendingApprovals: 0 }; }
@@ -4744,8 +4744,10 @@ class Component extends DCLogic {
       ok: async v => { try { const r = await SP.api('/api/xodos/credentials', { method: 'POST', body: { agency_id: this.spAg, provider: v.provider, label: v.label.trim(), api_key: v.key.trim() } }); await this.spXoLoad(); this.toastMsg(r.credential && r.credential.checked ? 'Chave conferida no provedor e guardada' : (r.credential && r.credential.note) || 'Chave guardada'); if (after) after(); } catch (e) { this.spErr(e); } } });
   }
   // Assistente de criação: forma → jeito e função → cérebro e limites.
-  spXoNew() {
-    const keys = (this.XR.credentials || []).filter(c => c.kind !== 'sandbox');
+  async spXoNew() {
+    // Os dados dos xodós ainda não chegaram (ou falharam): carrega agora e mostra o motivo se não der.
+    if (!this.XR) { try { await this.spXoLoad(); } catch (e) { return this.toastMsg('Não deu para carregar os xodós agora: ' + (e.message || 'tente de novo') + '.'); } }
+    const keys = ((this.XR && this.XR.credentials) || []).filter(c => c.kind !== 'sandbox');
     if (!keys.length) return this.spXoKey(() => this.spXoNew());
     this.fm({ title: 'Novo xodó · forma', desc: 'Escolha a forma do seu colega de IA. Dá para mudar depois.', icon: 'smart_toy', fields: [{ k: 'sp', l: 'Forma', type: 'pick', opts: SP_KEYS.map(k => [k, SPECIES[k].label, SPECIES[k].desc.pt]), req: 1 }], init: { sp: 'pingo' }, okL: 'Continuar',
       ok: v => { const sp = v.sp, sd = SPECIES[sp];
@@ -4767,7 +4769,7 @@ class Component extends DCLogic {
                   await this.spXoLoad(); this.toastMsg(w.name.trim() + ' chegou na equipe'); } catch (e) { this.spErr(e); } } }); } }); } });
   }
   xoTick() {
-    if (this.XR && Date.now() - (this._xoLast || 0) > 6000) this.spXoLoad().catch(() => {}); if (this.state.xoSel) this.spXoMsgs(this.state.xoSel);
+    if (Date.now() - (this._xoLast || 0) > (this.XR ? 6000 : 15000)) this.spXoLoad().catch(e => { this._xoErr = e.message; }); if (this.state.xoSel) this.spXoMsgs(this.state.xoSel);
   }
   xoResolve(a, mode) { return this.spXoDecide(a, mode); }
   xoSend() { return this.spXoSend(); }
