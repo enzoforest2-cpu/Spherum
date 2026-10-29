@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const search = new URL(request.url).searchParams;
     const agencyId = uuid.parse(search.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "financeiro" });
     return NextResponse.json({ invoices: await listInvoices(sql, agencyId, search.get("client_id") ? uuid.parse(search.get("client_id")) : null) });
   } catch (error) {
     return fail(error);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json(await createInvoice(billingDepsFromEnv(sql, masterKeyFromEnv()), agencyId, userId, input), { status: 201 });
   } catch (error) {
     return fail(error);

@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     const { provider } = await params;
     const input = body.parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, input.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, input.agency_id, CAN_MANAGE, { area: "configuracoes" });
     const url = await startOAuth(
       { sql, ...serverIntegrations() },
       { agencyId: input.agency_id, userId, provider, apps: input.apps, returnTo: input.return_to },

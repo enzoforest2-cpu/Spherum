@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const id = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await projectAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "projetos" });
     return NextResponse.json({ tasks: await listTasks(sql, agencyId, id) });
   } catch (error) {
     return fail(error);
@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const id = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await projectAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     return NextResponse.json({ task: await addTask(sql, agencyId, id, await request.json()) }, { status: 201 });
   } catch (error) {
     return fail(error);

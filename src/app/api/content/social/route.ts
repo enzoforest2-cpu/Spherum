@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const agencyId = uuid.parse(q.get("agency_id"));
     const connectionId = uuid.parse(q.get("connection_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     return NextResponse.json({ pages: await metaPages({ sql, ...serverIntegrations() }, agencyId, connectionId) });
   } catch (error) {
     return fail(error);

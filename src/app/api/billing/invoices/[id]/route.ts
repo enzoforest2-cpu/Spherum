@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json(await updateInvoice(billingDepsFromEnv(sql, masterKeyFromEnv()), agencyId, userId, id, input));
   } catch (error) {
     return fail(error);

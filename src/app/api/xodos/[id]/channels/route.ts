@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     const [channels, conversations] = await Promise.all([
       listXodoChannels(sql, xodo.agency_id, xodoId),
       listConversations(sql, xodo.agency_id, xodoId),
@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json({ id: await setXodoChannel(sql, xodo.agency_id, xodoId, await request.json()) }, { status: 201 });
   } catch (error) {
     return fail(error);
@@ -44,7 +44,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const channelId = uuid.parse(new URL(request.url).searchParams.get("channel_id"));
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     await removeXodoChannel(sql, xodo.agency_id, xodoId, channelId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

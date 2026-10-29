@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams;
     const agencyId = uuid.parse(q.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json(await dreReport(sql, agencyId, Math.min(12, Math.max(1, Number(q.get("months")) || 3))));
   } catch (error) {
     return fail(error);
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json({ entry: await addEntry(sql, agencyId, userId, input) }, { status: 201 });
   } catch (error) {
     return fail(error);

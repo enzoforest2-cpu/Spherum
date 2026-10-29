@@ -15,7 +15,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const sql = await serverSql();
     const row = await one<{ agency_id: string; status: string }>(sql, `select agency_id, status from fiscal_notes where id = $1`, [id]);
     if (!row) throw new XodoError("Nota não encontrada.", 404);
-    await requireRole(sql, userId, row.agency_id, CAN_BILL);
+    await requireRole(sql, userId, row.agency_id, CAN_BILL, { area: "financeiro" });
     await cancelNote(await fiscalDeps(sql), row.agency_id, id, row.status === "emitida" ? reason : reason || "Nota descartada pela agência");
     return NextResponse.json({ ok: true });
   } catch (error) {

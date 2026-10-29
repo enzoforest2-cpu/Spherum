@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const p = z.object({ agency_id: uuid, token: z.string(), environment: z.enum(["homologacao", "producao"]) }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, p.agency_id, CAN_BILL);
+    await requireRole(sql, userId, p.agency_id, CAN_BILL, { area: "financeiro" });
     const id = await connectFocus({ sql, ...serverIntegrations() }, p.agency_id, userId, p.token, p.environment);
     await setConfig(sql, p.agency_id, { connection_id: id, environment: p.environment });
     return NextResponse.json({ connection_id: id }, { status: 201 });

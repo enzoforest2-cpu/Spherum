@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const deps = await channelDeps();
     const agencyId = await triggerAgency(deps.sql, id);
     if (!agencyId) throw new XodoError("Gatilho não encontrado", 404);
-    await requireRole(deps.sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(deps.sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json(await rotateTriggerSecret(deps, agencyId, id));
   } catch (error) {
     return fail(error);

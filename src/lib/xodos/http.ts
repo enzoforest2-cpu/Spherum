@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 import { IntegrationError } from "../integrations/http";
 import { one, type Sql } from "./db";
 import { XodoError } from "./runner";
+import { accessOf, AREAS, atLeast, type Area } from "../core/roles";
 
 /**
  * Autenticação das rotas dos Xodós: o navegador manda o token do Supabase Auth em
@@ -42,19 +43,38 @@ const LOCKED: Record<string, string> = {
 /**
  * Papel de quem pede na agência. Agência bloqueada pela cobrança (teste acabou, atraso, cancelada):
  * ler continua (CAN_READ) e o que tem allowLocked (assinatura, suporte) também; o resto é recusado.
+ *
+ * Com area, vale o cargo da pessoa (ver core/roles.ts): ler pede "ver" na área e o resto pede
+ * "editar". Sem area, o que é de todos (CAN_READ, CAN_USE) passa; gerir (CAN_MANAGE) pede editar
+ * nas configurações e cobrar (CAN_BILL) pede editar no financeiro. O dono pode tudo.
+ * Devolve o papel antigo equivalente (algumas regras internas ainda usam).
  */
-export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[], opts: { allowLocked?: boolean } = {}): Promise<Role> {
-  const member = await one<{ role: Role; suspended: boolean; locked: string | null }>(
+export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[], opts: { allowLocked?: boolean; area?: Area } = {}): Promise<Role> {
+  const member = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null; suspended: boolean; locked: string | null }>(
     sql,
-    `select m.role, a.suspended_at is not null as suspended, case when a.locked_at is not null then coalesce(a.locked_reason, 'teste') end as locked
-       from agency_members m join agencies a on a.id = m.agency_id where m.agency_id = $1 and m.user_id = $2`,
+    `select m.role, r.perms, m.role_id, r.name as role_name, a.suspended_at is not null as suspended,
+            case when a.locked_at is not null then coalesce(a.locked_reason, 'teste') end as locked
+       from agency_members m join agencies a on a.id = m.agency_id left join agency_roles r on r.id = m.role_id
+      where m.agency_id = $1 and m.user_id = $2`,
     [agencyId, userId],
   );
   // Mesmo erro para "não existe" e "não é sua", para não revelar outras agências.
   if (!member) throw new XodoError("Não encontrado", 404);
   // Suspensa pela equipe do Spherum: ninguém da agência age até a reativação (os dados ficam guardados).
   if (member.suspended) throw new XodoError("Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).", 403);
-  if (!allowed.includes(member.role)) throw new XodoError("Seu papel na agência não permite esta ação.", 403);
+  const access = accessOf(member);
+  if (!access.owner) {
+    const reading = allowed === CAN_READ;
+    const area: Area | null = opts.area ?? (allowed === CAN_MANAGE ? "configuracoes" : allowed === CAN_BILL ? "financeiro" : null);
+    if (area) {
+      if (!atLeast(access.perms[area], reading ? "ver" : "editar")) {
+        const label = AREAS.find((a) => a.key === area)?.label ?? area;
+        throw new XodoError(reading ? `Seu cargo não tem acesso a ${label}.` : `Seu cargo só permite ver ${label}, não alterar.`, 403);
+      }
+    } else if (!reading && allowed !== CAN_USE && !allowed.includes(member.role)) {
+      throw new XodoError("Seu cargo na agência não permite esta ação.", 403);
+    }
+  }
   if (member.locked && allowed !== CAN_READ && !opts.allowLocked) throw new XodoError(LOCKED[member.locked] ?? LOCKED.teste, 402);
   return member.role;
 }

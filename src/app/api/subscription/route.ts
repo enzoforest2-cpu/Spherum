@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "configuracoes" });
     return NextResponse.json(await subscriptionView(sql, agencyId));
   } catch (error) {
     return fail(error);
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true });
+    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, area: "configuracoes" });
     return NextResponse.json(await subscribe(subDepsFromEnv(sql, mailerFromEnv()), agencyId, userId, input));
   } catch (error) {
     return fail(error);

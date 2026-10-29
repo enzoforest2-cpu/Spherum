@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    const role = await requireRole(sql, userId, agencyId, CAN_READ);
+    const role = await requireRole(sql, userId, agencyId, CAN_READ, { area: "xodos" });
     const screen = await screenUrls(computerDeps(sql), agencyId, userId, role);
     return NextResponse.json(screen, { headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   } catch (error) {

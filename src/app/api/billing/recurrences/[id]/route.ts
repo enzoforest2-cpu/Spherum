@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const id = uuid.parse((await params).id);
     const body = z.object({ agency_id: uuid, active: z.boolean() }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, body.agency_id, CAN_BILL);
+    await requireRole(sql, userId, body.agency_id, CAN_BILL, { area: "financeiro" });
     await setRecurrenceActive(sql, body.agency_id, id, body.active);
     return NextResponse.json({ ok: true });
   } catch (error) {

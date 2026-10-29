@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const search = new URL(request.url).searchParams;
     const agencyId = uuid.parse(search.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "xodos" });
     return NextResponse.json(
       await listEvents(sql, agencyId, { before: search.get("before") ?? undefined, limit: search.get("limit") ?? undefined }),
     );

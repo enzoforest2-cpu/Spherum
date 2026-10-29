@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const p = z.object({ agency_id: uuid, provider: z.enum(["fal", "replicate"]), key: z.string(), image_model: z.string().optional(), video_model: z.string().nullable().optional() }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, p.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, p.agency_id, CAN_MANAGE, { area: "projetos" });
     const id = await connectStudio({ sql, ...serverIntegrations() }, p.agency_id, userId, p.provider, p.key);
     await setConfig(sql, p.agency_id, { provider: p.provider, connection_id: id, image_model: p.image_model, video_model: p.video_model });
     return NextResponse.json({ connection_id: id }, { status: 201 });

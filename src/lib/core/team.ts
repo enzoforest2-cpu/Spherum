@@ -4,6 +4,7 @@ import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import type { Role } from "../xodos/http";
 import { audit } from "./audit";
+import { accessOf, assertCanGrant, legacyRole, roleIdForLegacy, rolePerms, type Access } from "./roles";
 import { assertLimit } from "./subscription";
 
 /**
@@ -19,8 +20,9 @@ const nowOf = (now?: () => Date) => (now ? now() : new Date());
 
 export async function listMembers(sql: Sql, agencyId: string) {
   return sql.query(
-    `select m.user_id, m.role, m.title, m.created_at::text, p.full_name, u.email
+    `select m.user_id, m.role, m.title, m.created_at::text, p.full_name, u.email, m.role_id, r.name as role_name
        from agency_members m
+       left join agency_roles r on r.id = m.role_id
        left join profiles p on p.id = m.user_id
        left join auth.users u on u.id = m.user_id
       where m.agency_id = $1
@@ -33,54 +35,84 @@ async function ownerCount(sql: Sql, agencyId: string) {
   return (await one<{ n: number }>(sql, `select count(*)::int as n from agency_members where agency_id = $1 and role = 'owner'`, [agencyId]))!.n;
 }
 
+/** Quem age: com o acesso do cargo, ou só o papel antigo (vira o acesso equivalente). */
+type Actor = { id: string; access: Access } | { id: string; role: Role };
+const accessOfActor = (a: Actor): Access => ("access" in a ? a.access : accessOf({ role: a.role, perms: null, role_id: null, role_name: null }));
+
 /**
- * Troca papel ou cargo. Owner pode tudo (inclusive passar a posse); admin mexe em member e
- * viewer. A agência nunca fica sem dono.
+ * Troca o cargo (role_id), a função (title) ou passa a posse (role: "owner"). Só o dono mexe em
+ * outro dono e passa a posse; quem edita a equipe só dá cargos com até o acesso que tem e não
+ * mexe em quem tem mais acesso que ele. Ninguém troca o próprio cargo (só o dono, que não tem).
+ * A agência nunca fica sem dono.
  */
-export async function updateMember(
-  sql: Sql,
-  agencyId: string,
-  actor: { id: string; role: Role },
-  targetId: string,
-  raw: unknown,
-) {
-  const input = z.object({ role: z.enum(["owner", "admin", "member", "viewer", "financeiro"]), title: z.string().trim().max(80).nullable() }).partial().parse(raw);
+export async function updateMember(sql: Sql, agencyId: string, actor: Actor, targetId: string, raw: unknown) {
+  const input = z
+    .object({ role_id: z.uuid(), role: z.enum(["owner", "admin", "member", "viewer", "financeiro"]), title: z.string().trim().max(80).nullable() })
+    .partial()
+    .parse(raw);
+  const me = accessOfActor(actor);
   return sql.transaction(async (tx) => {
-    const target = await one<{ role: Role }>(tx, `select role from agency_members where agency_id = $1 and user_id = $2 for update`, [agencyId, targetId]);
+    const target = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null }>(
+      tx,
+      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id
+        where m.agency_id = $1 and m.user_id = $2 for update of m`,
+      [agencyId, targetId],
+    );
     if (!target) throw new XodoError("Pessoa não encontrada na equipe.", 404);
-    if (input.role && input.role !== target.role) {
-      const touchesTop = target.role === "owner" || input.role === "owner" || target.role === "admin" || input.role === "admin";
-      if (actor.role !== "owner" && touchesTop) throw new XodoError("Só o dono da agência muda papéis de dono e de admin.", 403);
-      if (target.role === "owner" && (await ownerCount(tx, agencyId)) <= 1) {
+    const self = actor.id === targetId;
+    const them = accessOf(target);
+    const changesRole = input.role_id !== undefined || input.role !== undefined;
+    if (changesRole || (!self && input.title !== undefined)) {
+      if (!me.owner && me.perms.equipe !== "editar") throw new XodoError("Seu cargo não permite mudar a equipe.", 403);
+      if (them.owner && !me.owner) throw new XodoError("Só o dono da agência mexe em outro dono.", 403);
+      if (!me.owner) assertCanGrant(me, them.perms);
+    }
+    let roleId: string | null = null, legacy: string | null = null, summary = "";
+    if (input.role === "owner") {
+      if (!me.owner) throw new XodoError("Só o dono da agência passa a posse.", 403);
+      legacy = "owner";
+      summary = "→ dono";
+    } else if (input.role_id || input.role) {
+      if (self && !me.owner) throw new XodoError("Peça a outra pessoa da equipe para trocar o seu cargo.", 403);
+      roleId = input.role_id ?? (await roleIdForLegacy(tx, agencyId, input.role!));
+      if (!roleId) throw new XodoError("Cargo não encontrado.", 404);
+      const perms = await rolePerms(tx, agencyId, roleId);
+      assertCanGrant(me, perms);
+      if (them.owner && (await ownerCount(tx, agencyId)) <= 1) {
         throw new XodoError("A agência precisa de pelo menos um dono. Passe a posse para outra pessoa antes.", 409);
       }
-    }
-    if (input.title !== undefined && actor.id !== targetId && actor.role !== "owner" && actor.role !== "admin") {
-      throw new XodoError("Seu papel na agência não permite esta ação.", 403);
+      legacy = legacyRole(perms);
+      summary = `${them.roleName ?? target.role} → cargo ${roleId}`;
     }
     await tx.query(
-      `update agency_members set role = coalesce($3, role), title = case when $5 then $4 else title end where agency_id = $1 and user_id = $2`,
-      [agencyId, targetId, input.role ?? null, input.title ?? null, input.title !== undefined],
+      `update agency_members set role = coalesce($3, role), role_id = case when $6 then $5::uuid else role_id end,
+              title = case when $7 then $4 else title end
+        where agency_id = $1 and user_id = $2`,
+      [agencyId, targetId, legacy, input.title ?? null, legacy === "owner" ? null : roleId, legacy !== null, input.title !== undefined],
     );
-    if (input.role && input.role !== target.role) {
-      await audit(tx, { agencyId, actor: actor.id, action: "papel_alterado", targetType: "member", targetId, summary: `${target.role} → ${input.role}` });
-    }
+    if (legacy) await audit(tx, { agencyId, actor: actor.id, action: "papel_alterado", targetType: "member", targetId, summary });
   });
 }
 
 /** Tira alguém da equipe (ou a própria pessoa sai). O último dono não sai. */
-export async function removeMember(sql: Sql, agencyId: string, actor: { id: string; role: Role }, targetId: string) {
+export async function removeMember(sql: Sql, agencyId: string, actor: Actor, targetId: string) {
+  const me = accessOfActor(actor);
   return sql.transaction(async (tx) => {
-    const target = await one<{ role: Role }>(tx, `select role from agency_members where agency_id = $1 and user_id = $2 for update`, [agencyId, targetId]);
+    const target = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null }>(
+      tx,
+      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id
+        where m.agency_id = $1 and m.user_id = $2 for update of m`,
+      [agencyId, targetId],
+    );
     if (!target) throw new XodoError("Pessoa não encontrada na equipe.", 404);
     const self = actor.id === targetId;
+    const them = accessOf(target);
     if (!self) {
-      if (actor.role !== "owner" && actor.role !== "admin") throw new XodoError("Seu papel na agência não permite esta ação.", 403);
-      if (actor.role !== "owner" && (target.role === "owner" || target.role === "admin")) {
-        throw new XodoError("Só o dono da agência tira donos e admins.", 403);
-      }
+      if (!me.owner && me.perms.equipe !== "editar") throw new XodoError("Seu cargo não permite mudar a equipe.", 403);
+      if (them.owner && !me.owner) throw new XodoError("Só o dono da agência tira outro dono.", 403);
+      if (!me.owner) assertCanGrant(me, them.perms);
     }
-    if (target.role === "owner" && (await ownerCount(tx, agencyId)) <= 1) {
+    if (them.owner && (await ownerCount(tx, agencyId)) <= 1) {
       throw new XodoError("A agência precisa de pelo menos um dono. Passe a posse para outra pessoa antes.", 409);
     }
     await tx.query(`delete from agency_members where agency_id = $1 and user_id = $2`, [agencyId, targetId]);
@@ -94,6 +126,8 @@ export async function removeMember(sql: Sql, agencyId: string, actor: { id: stri
 
 export const inviteInput = z.object({
   email: z.email().trim().toLowerCase().max(254),
+  /** Cargo da agência. Sem ele, vale o papel antigo (role), convertido para o cargo pronto. */
+  role_id: z.uuid().optional(),
   role: z.enum(TEAM_ROLES).default("member"),
 });
 
@@ -101,7 +135,7 @@ export type CreatedInvite = { id: string; email: string; role: string; expires_a
 
 async function insertInvite(
   sql: Sql,
-  o: { agencyId: string; kind: "equipe" | "cliente"; clientId: string | null; email: string; role: string; actor: string; now?: () => Date },
+  o: { agencyId: string; kind: "equipe" | "cliente"; clientId: string | null; email: string; role: string; roleId?: string | null; actor: string; now?: () => Date },
 ): Promise<CreatedInvite> {
   // Vaga na equipe: convite pendente conta como pessoa (reenviar para o mesmo e-mail não conta de novo).
   if (o.kind === "equipe") {
@@ -120,19 +154,26 @@ async function insertInvite(
     );
     const row = await one<{ id: string; expires_at: string }>(
       tx,
-      `insert into invites (agency_id, kind, client_id, email, role, token_hash, invited_by, expires_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz) returning id, expires_at::text`,
-      [o.agencyId, o.kind, o.clientId, o.email, o.role, hashToken(token), o.actor, new Date(now.getTime() + INVITE_TTL_MS).toISOString()],
+      `insert into invites (agency_id, kind, client_id, email, role, token_hash, invited_by, expires_at, role_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9) returning id, expires_at::text`,
+      [o.agencyId, o.kind, o.clientId, o.email, o.role, hashToken(token), o.actor, new Date(now.getTime() + INVITE_TTL_MS).toISOString(), o.roleId ?? null],
     );
     await audit(tx, { agencyId: o.agencyId, actor: o.actor, action: "convite_criado", targetType: o.kind, targetId: row!.id, summary: o.role });
     return { id: row!.id, email: o.email, role: o.role, expires_at: row!.expires_at, token };
   });
 }
 
-/** Convida para a equipe. Admin não convida admin (só o dono). */
-export async function inviteMember(sql: Sql, agencyId: string, actor: { id: string; role: Role }, raw: unknown, now?: () => Date) {
+/** Convida para a equipe com um cargo. Quem convida só dá cargos com até o acesso que tem. */
+export async function inviteMember(sql: Sql, agencyId: string, actor: Actor, raw: unknown, now?: () => Date) {
   const input = inviteInput.parse(raw);
-  if (input.role === "admin" && actor.role !== "owner") throw new XodoError("Só o dono da agência convida admins.", 403);
+  const me = accessOfActor(actor);
+  if (!me.owner && me.perms.equipe !== "editar") throw new XodoError("Seu cargo não permite convidar pessoas.", 403);
+  const roleId = input.role_id ?? (await roleIdForLegacy(sql, agencyId, input.role));
+  if (!roleId) throw new XodoError("Escolha um cargo para a pessoa.", 400);
+  const perms = await rolePerms(sql, agencyId, roleId);
+  assertCanGrant(me, perms);
+  // A coluna role guarda o papel antigo equivalente ao cargo.
+  const inviteRole = legacyRole(perms);
   const already = await one(
     sql,
     `select 1 from agency_members m join auth.users u on u.id = m.user_id where m.agency_id = $1 and lower(u.email) = $2`,
@@ -145,7 +186,7 @@ export async function inviteMember(sql: Sql, agencyId: string, actor: { id: stri
     [agencyId, nowOf(now).toISOString()],
   );
   if ((pending?.n ?? 0) >= 50) throw new XodoError("Há convites demais em aberto. Cancele alguns antes.", 429);
-  return insertInvite(sql, { agencyId, kind: "equipe", clientId: null, email: input.email, role: input.role, actor: actor.id, now });
+  return insertInvite(sql, { agencyId, kind: "equipe", clientId: null, email: input.email, role: inviteRole, roleId, actor: actor.id, now });
 }
 
 /** Dá a alguém do cliente acesso ao portal do cliente (só o que é daquele cliente). */
@@ -246,8 +287,8 @@ export async function acceptInvite(sql: Sql, user: { id: string; email: string |
     if (invite.kind === "equipe") {
       // Quem já está na equipe mantém o papel que tem.
       await tx.query(
-        `insert into agency_members (agency_id, user_id, role, invited_by)
-         select $1, $2, $3, invited_by from invites where id = $4
+        `insert into agency_members (agency_id, user_id, role, invited_by, role_id)
+         select $1, $2, $3, invited_by, role_id from invites where id = $4
          on conflict (agency_id, user_id) do nothing`,
         [invite.agency_id, user.id, invite.role, invite.id],
       );

@@ -24,7 +24,7 @@ async function access(request: Request, params: Ctx["params"], roles: typeof CAN
   const clientId = uuid.parse((await params).id);
   const sql = await serverSql();
   const agencyId = await clientAgency(sql, clientId);
-  await requireRole(sql, userId, agencyId, roles);
+  await requireRole(sql, userId, agencyId, roles, { area: "clientes" });
   return { userId, clientId, agencyId, sql };
 }
 

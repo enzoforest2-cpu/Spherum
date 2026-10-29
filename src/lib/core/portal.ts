@@ -1,5 +1,6 @@
 import { num, one, type Sql } from "../xodos/db";
 import { dayIn } from "../xodos/budget";
+import { memberAccess, NONE, type Access, type Area } from "./roles";
 import { XodoError } from "../xodos/errors";
 import { listConnections } from "../integrations/store";
 import { listAccounts, listInvoices, listRecurrences } from "../billing";
@@ -143,17 +144,17 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
         where r.agency_id = $1 and r.status <> 'archived' order by r.created_at desc limit 100`,
       [agencyId],
     ),
-    sql.query<{ user_id: string; role: string; title: string | null; full_name: string | null; email: string | null; clients: number }>(
-      `select m.user_id, m.role, m.title, p.full_name, u.email,
+    sql.query<{ user_id: string; role: string; title: string | null; full_name: string | null; email: string | null; clients: number; role_id: string | null; role_name: string | null }>(
+      `select m.user_id, m.role, m.title, p.full_name, u.email, m.role_id, r.name as role_name,
               (select count(*)::int from clients c where c.agency_id = m.agency_id and c.owner_user_id = m.user_id and c.archived_at is null) as clients
-         from agency_members m left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
+         from agency_members m left join agency_roles r on r.id = m.role_id left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
         where m.agency_id = $1
         order by case m.role when 'owner' then 0 when 'admin' then 1 when 'member' then 2 else 3 end, m.created_at`,
       [agencyId],
     ),
-    sql.query<{ id: string; email: string; role: string; kind: string; expires_at: string }>(
-      `select id, email, role, kind, expires_at::text from invites
-        where agency_id = $1 and accepted_at is null and revoked_at is null and expires_at > $2::timestamptz order by created_at desc`,
+    sql.query<{ id: string; email: string; role: string; kind: string; expires_at: string; role_id: string | null; role_name: string | null }>(
+      `select i.id, i.email, i.role, i.kind, i.expires_at::text, i.role_id, r.name as role_name from invites i left join agency_roles r on r.id = i.role_id
+        where i.agency_id = $1 and i.accepted_at is null and i.revoked_at is null and i.expires_at > $2::timestamptz order by i.created_at desc`,
       [agencyId, now.toISOString()],
     ),
     listConnections(sql, agencyId),
@@ -299,7 +300,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
 
   const team = memberRows.map((m) => {
     const name = m.full_name || m.email || "Sem nome";
-    return { user_id: m.user_id, name, ini: initials(name), role: m.title || "Sem cargo definido", perm: ROLE_LABEL[m.role] || m.role, roleKey: m.role, email: m.email, clients: m.clients, projects: load[m.user_id]?.projects ?? 0, tasks: load[m.user_id]?.tasks ?? 0, cap: Math.min(100, (load[m.user_id]?.tasks ?? 0) * 5) };
+    return { user_id: m.user_id, name, ini: initials(name), role: m.title || "", perm: m.role === "owner" ? "Proprietário" : m.role_name || ROLE_LABEL[m.role] || m.role, roleKey: m.role, roleId: m.role_id, email: m.email, clients: m.clients, projects: load[m.user_id]?.projects ?? 0, tasks: load[m.user_id]?.tasks ?? 0, cap: Math.min(100, (load[m.user_id]?.tasks ?? 0) * 5) };
   });
 
   const attention: Record<string, unknown>[] = [];
@@ -330,7 +331,9 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     revenue: { cur: sum("cur", "revenue"), prev: sum("prev", "revenue") },
   };
 
-  return {
+  const access = (await memberAccess(sql, agencyId, userId)) ?? { owner: false, perms: NONE, roleId: null, roleName: null };
+  return withoutHiddenAreas(access, {
+    access,
     agency: { id: agencyId, ...agency },
     me: { user_id: userId, name: me?.full_name || me?.email || "", role: me?.role ?? null, email: me?.email ?? null },
     period: cur,
@@ -368,5 +371,46 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     support,
     notice,
     subscription,
-  };
+  });
+}
+
+/**
+ * Tira do portal o que o cargo não vê (área "nenhum"). O resto da tela continua: a lista de
+ * clientes fica (os nomes aparecem em todas as áreas), sem os valores quando o financeiro está fechado.
+ */
+function withoutHiddenAreas<T extends Record<string, unknown>>(access: Access, data: T): T {
+  if (access.owner) return data;
+  const hide = (area: Area) => access.perms[area] === "nenhum";
+  const out: Record<string, unknown> = { ...data };
+  const empty = (keys: string[], value: (k: string) => unknown = () => []) => keys.forEach((k) => (out[k] = value(k)));
+  if (hide("financeiro")) {
+    empty(["invoices", "recurrences", "paymentAccounts", "contracts"]);
+    empty(["dre", "profit"], () => null);
+    out.clients = (out.clients as Record<string, unknown>[]).map((c) => ({ ...c, mrr: 0, fee: null }));
+    out.kpis = { ...(out.kpis as Record<string, unknown>), mrr: 0 };
+  }
+  if (hide("campanhas")) {
+    empty(["camps", "plat", "daily", "reports", "accounts"]);
+    out.cdaily = {};
+    out.attention = (out.attention as { kind: string }[]).filter((a) => a.kind !== "Campanha");
+  }
+  if (hide("comercial")) {
+    empty(["forms", "meetings"]);
+    out.crm = null;
+    out.proposals = { proposals: [], catalog: null, stats: {} };
+    out.prospect_unread = 0;
+  }
+  if (hide("projetos")) empty(["projects", "tickets"]);
+  if (hide("clientes")) empty(["documents", "collab"]);
+  if (hide("equipe")) empty(["invites"]);
+  if (hide("configuracoes")) {
+    empty(["connections"]);
+    out.subscription = null;
+    out.attention = (out.attention as { kind: string }[]).filter((a) => a.kind !== "Integração");
+  }
+  if (hide("xodos")) {
+    out.pendingApprovals = 0;
+    out.attention = (out.attention as { kind: string }[]).filter((a) => a.kind !== "Xodó");
+  }
+  return out as T;
 }

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json(await fiscalBoard(sql, agencyId));
   } catch (error) {
     return fail(error);
@@ -23,7 +23,7 @@ export async function PATCH(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json({ config: await setConfig(sql, agencyId, input) });
   } catch (error) {
     return fail(error);

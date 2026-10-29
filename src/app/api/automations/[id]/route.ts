@@ -14,7 +14,7 @@ async function access(request: Request, params: Ctx["params"]) {
   const sql = await serverSql();
   const row = await one<{ agency_id: string }>(sql, `select agency_id from automations where id = $1`, [id]);
   if (!row) throw new XodoError("Automação não encontrada.", 404);
-  await requireRole(sql, userId, row.agency_id, CAN_USE);
+  await requireRole(sql, userId, row.agency_id, CAN_USE, { area: "projetos" });
   return { id, agencyId: row.agency_id, sql };
 }
 

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json({ credentials: await listCredentials(sql, agencyId) });
   } catch (error) {
     return fail(error);
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     const credential = await createCredential(sql, serverLlm(), agencyId, body, userId, masterKeyFromEnv(), undefined, globalThis.fetch.bind(globalThis));
     return NextResponse.json({ credential }, { status: 201 });
   } catch (error) {
@@ -42,7 +42,7 @@ export async function DELETE(request: Request) {
     const agencyId = uuid.parse(search.get("agency_id"));
     const credentialId = uuid.parse(search.get("id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     await revokeCredential(sql, agencyId, credentialId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

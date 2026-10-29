@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams;
     const agencyId = uuid.parse(q.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "equipe" });
     return NextResponse.json(await badgeBoard(sql, agencyId, userId, q.get("period") === "week" ? "week" : "month"));
   } catch (error) {
     return fail(error);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "equipe" });
     await giveKudos(sql, agencyId, userId, input);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
@@ -39,7 +39,7 @@ export async function PATCH(request: Request) {
     const userId = await requireUser(request);
     const { agency_id, ...input } = z.object({ agency_id: uuid }).passthrough().parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, agency_id, CAN_MANAGE, { area: "equipe" });
     return NextResponse.json({ config: await setConfig(sql, agency_id, input) });
   } catch (error) {
     return fail(error);

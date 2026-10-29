@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     return NextResponse.json(await listMemory(sql, xodo, Object.fromEntries(new URL(request.url).searchParams)));
   } catch (error) {
     return fail(error);
@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = await request.json();
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     const result = await createNote(sql, xodo, body, { userId, manage: CAN_MANAGE.includes(role) });
     return NextResponse.json(result, { status: result.criada ? 201 : 200 });
   } catch (error) {

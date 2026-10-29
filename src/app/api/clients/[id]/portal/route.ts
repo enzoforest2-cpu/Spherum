@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const clientId = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "clientes" });
     return NextResponse.json({ users: await listClientUsers(sql, agencyId, clientId) });
   } catch (error) {
     return fail(error);
@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const clientId = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "clientes" });
     const { token, ...invite } = await inviteClientUser(sql, agencyId, clientId, userId, await request.json());
     const link = inviteLink(token, request);
     const names = await one<{ agency: string; client: string }>(
@@ -51,7 +51,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
     const target = uuid.parse(new URL(request.url).searchParams.get("user_id"));
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "clientes" });
     await removeClientUser(sql, agencyId, clientId, userId, target);
     return NextResponse.json({ ok: true });
   } catch (error) {

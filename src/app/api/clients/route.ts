@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const agencyId = uuid.parse(url.searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "clientes" });
     return NextResponse.json({ clients: await listClients(sql, agencyId, { archived: url.searchParams.get("archived") === "1" }) });
   } catch (error) {
     return fail(error);
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     const { agency_id: _drop, ...input } = body;
     void _drop;
     return NextResponse.json({ client: await createClient(sql, agencyId, userId, input) }, { status: 201 });

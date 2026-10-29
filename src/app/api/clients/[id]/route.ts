@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const clientId = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "clientes" });
     return NextResponse.json({ client: await getClient(sql, agencyId, clientId) });
   } catch (error) {
     return fail(error);
@@ -29,10 +29,10 @@ export async function PATCH(request: Request, { params }: Ctx) {
     const agencyId = await clientAgency(sql, clientId);
     const { archived, ...fields } = (await request.json()) ?? {};
     if (typeof archived === "boolean") {
-      await requireRole(sql, userId, agencyId, CAN_MANAGE);
+      await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "clientes" });
       await setClientArchived(sql, agencyId, userId, clientId, archived);
     } else {
-      await requireRole(sql, userId, agencyId, CAN_USE);
+      await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     }
     return NextResponse.json({ client: await updateClient(sql, agencyId, userId, clientId, fields) });
   } catch (error) {
@@ -47,7 +47,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
     const clientId = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "clientes" });
     return NextResponse.json({ client: await setClientArchived(sql, agencyId, userId, clientId, true) });
   } catch (error) {
     return fail(error);

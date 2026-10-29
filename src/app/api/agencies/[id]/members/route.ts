@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await params).id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "equipe" });
     return NextResponse.json({ members: await listMembers(sql, agencyId) });
   } catch (error) {
     return fail(error);

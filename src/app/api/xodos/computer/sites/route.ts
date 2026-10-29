@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "xodos" });
     return NextResponse.json({ rules: await listSiteRules(sql, agencyId) });
   } catch (error) {
     return fail(error);
@@ -23,7 +23,7 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id ?? new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json({ rules: await setSiteRules(sql, agencyId, userId, { rules: body?.rules }) });
   } catch (error) {
     return fail(error);

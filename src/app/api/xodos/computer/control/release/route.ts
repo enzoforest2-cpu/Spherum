@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = input.parse({ ...body, agency_id: body?.agency_id ?? new URL(request.url).searchParams.get("agency_id") });
     const engine = await productionDeps();
-    await requireRole(engine.sql, userId, parsed.agency_id, CAN_USE);
+    await requireRole(engine.sql, userId, parsed.agency_id, CAN_USE, { area: "xodos" });
     const deps = withEngine(computerDeps(engine.sql), engine, (runId, task) =>
       after(async () => {
         try {

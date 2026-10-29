@@ -13,7 +13,7 @@ async function managed(request: Request, params: Params["params"]) {
   const deps = await channelDeps();
   const agencyId = await triggerAgency(deps.sql, id);
   if (!agencyId) throw new XodoError("Gatilho não encontrado", 404);
-  await requireRole(deps.sql, userId, agencyId, CAN_MANAGE);
+  await requireRole(deps.sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
   return { deps, id, agencyId };
 }
 

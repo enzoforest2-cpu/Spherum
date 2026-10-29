@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { flags } = z.object({ flags: z.array(z.string()) }).parse(await request.json());
     const sql = await serverSql();
     const agencyId = await dealAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "comercial" });
     await setDealFlags(sql, agencyId, id, flags);
     return NextResponse.json({ ok: true });
   } catch (error) {

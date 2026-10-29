@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const clientId = uuid.parse((await params).id);
     const sql = await serverSql();
     const agencyId = await clientAgency(sql, clientId);
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     return NextResponse.json({ contact: await addContact(sql, agencyId, clientId, await request.json()) }, { status: 201 });
   } catch (error) {
     return fail(error);

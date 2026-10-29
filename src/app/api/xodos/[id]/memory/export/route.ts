@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     const { filename, markdown } = await exportMarkdown(sql, xodo);
     return new NextResponse(markdown, {
       headers: {

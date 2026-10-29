@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { acao } = body.parse(raw);
     const sql = await serverSql();
     const agencyId = await contractAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     const rest = { ...(raw as Record<string, unknown>) };
     delete rest.acao;
     if (acao === "renovar") return NextResponse.json(await renewContract(sql, agencyId, userId, id, rest));

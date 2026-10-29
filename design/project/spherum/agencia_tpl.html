@@ -1405,14 +1405,14 @@ a:hover{color:#3346D3;text-decoration:underline}
           <section data-screen-label="Equipe" style="display:flex;flex-direction:column;gap:16px">
             <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
               <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">Equipe</h1><p style="margin:4px 0 0;color:var(--tx2,#667085)">{{ team.sub }}</p></div>
-              <button sc-camel-on-click="{{ team.invite }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 10px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">person_add</span>Convidar</button>
+              <sc-if value="{{ team.canInvite }}"><button sc-camel-on-click="{{ team.invite }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 10px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">person_add</span>Convidar</button></sc-if>
             </div>
             <div role="tablist" style="display:flex;gap:22px;border-bottom:1px solid var(--bd,#E4E7EC)"><sc-for list="{{ team.tabs }}" as="t"><button role="tab" aria-selected="{{ t.sel }}" sc-camel-on-click="{{ t.pick }}" style="height:38px;border:none;border-bottom:2px solid {{ t.bd }};margin-bottom:-1px;background:transparent;padding:0;color:{{ t.c }};font-weight:{{ t.fw }};font-size:13.5px">{{ t.l }}</button></sc-for></div>
             <sc-if value="{{ team.isPeople }}" hint-placeholder-val="{{ true }}">
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow-x:auto">
                 <div style="min-width:760px">
-                  <div style="display:grid;grid-template-columns:minmax(200px,1.6fr) 1.2fr 0.7fr 0.7fr 0.7fr 1.4fr;gap:12px;padding:0 16px;height:38px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:12px;color:var(--tx2,#667085);font-weight:500;background:var(--bg,#F7F8FA)"><span>Nome</span><span>Função</span><span style="text-align:right">Clientes</span><span style="text-align:right">Projetos</span><span style="text-align:right">Tarefas</span><span>Capacidade</span></div>
-                  <sc-for list="{{ team.rows }}" as="p"><div style="display:grid;grid-template-columns:minmax(200px,1.6fr) 1.2fr 0.7fr 0.7fr 0.7fr 1.4fr;gap:12px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><span style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:11px;font-weight:600;display:grid;place-items:center">{{ p.ini }}</span><span style="font-weight:500">{{ p.name }}</span></span><div><div>{{ p.role }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ p.perm }}</div></div><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.clients }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.projects }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.tasks }}</span><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ p.capW }};background:{{ p.capC }};border-radius:3px"></div></div><span style="width:36px;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px">{{ p.capW }}</span></div></div></sc-for>
+                  <div style="display:grid;grid-template-columns:minmax(200px,1.6fr) 1.2fr 0.7fr 0.7fr 0.7fr 1.4fr;gap:12px;padding:0 16px;height:38px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:12px;color:var(--tx2,#667085);font-weight:500;background:var(--bg,#F7F8FA)"><span>Nome</span><span>Cargo e função</span><span style="text-align:right">Clientes</span><span style="text-align:right">Projetos</span><span style="text-align:right">Tarefas</span><span>Capacidade</span></div>
+                  <sc-for list="{{ team.rows }}" as="p"><div style="display:grid;grid-template-columns:minmax(200px,1.6fr) 1.2fr 0.7fr 0.7fr 0.7fr 1.4fr;gap:12px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><span style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:11px;font-weight:600;display:grid;place-items:center">{{ p.ini }}</span><span style="font-weight:500">{{ p.name }}</span></span><sc-if value="{{ p.canEdit }}"><button sc-camel-on-click="{{ p.edit }}" title="Trocar cargo ou função" style="text-align:left;border:none;background:transparent;padding:4px 6px;margin:0 -6px;border-radius:7px;color:inherit;font:inherit;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:var(--sf2,#F2F4F7)"><span><span style="display:block;font-weight:500">{{ p.perm }}</span><span style="display:block;font-size:12px;color:var(--tx2,#667085)">{{ p.role }}</span></span><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--tx2,#98A2B3)">edit</span></button></sc-if><sc-if value="{{ p.noEdit }}"><div><div style="font-weight:500">{{ p.perm }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ p.role }}</div></div></sc-if><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.clients }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.projects }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ p.tasks }}</span><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ p.capW }};background:{{ p.capC }};border-radius:3px"></div></div><span style="width:36px;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px">{{ p.capW }}</span></div></div></sc-for>
                 </div>
               </div>
             </sc-if>
@@ -1420,7 +1420,7 @@ a:hover{color:#3346D3;text-decoration:underline}
               <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid rgba(247,144,9,0.35);border-radius:10px;background:rgba(247,144,9,0.06);font-size:13.5px"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#B54708">balance</span><span>{{ team.tip }}</span></div>
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
                 <sc-for list="{{ team.rows }}" as="p"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px">
-                  <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:12px;font-weight:600;display:grid;place-items:center">{{ p.ini }}</span><div style="flex:1"><div style="font-weight:600">{{ p.name }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ p.role }}</div></div><span style="font-size:12px;font-weight:500;color:{{ p.capC }}">{{ p.capL }}</span></div>
+                  <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:var(--sf2,#F2F4F7);font-size:12px;font-weight:600;display:grid;place-items:center">{{ p.ini }}</span><div style="flex:1"><div style="font-weight:600">{{ p.name }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ p.perm }}</div></div><span style="font-size:12px;font-weight:500;color:{{ p.capC }}">{{ p.capL }}</span></div>
                   <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">{{ p.capW }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">da capacidade</span></div>
                   <div style="height:8px;border-radius:4px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ p.capW }};background:{{ p.capC }};border-radius:4px"></div></div>
                   <div style="display:flex;gap:16px;font-size:12.5px;color:var(--tx2,#667085)"><span><b style="color:var(--tx,#101828);font-weight:600">{{ p.clientsL }}</b></span><span><b style="color:var(--tx,#101828);font-weight:600">{{ p.tasks }}</b> tarefas</span><span><b style="color:var(--tx,#101828);font-weight:600">{{ p.projects }}</b> projetos</span></div>
@@ -1428,12 +1428,22 @@ a:hover{color:#3346D3;text-decoration:underline}
               </div>
             </sc-if>
             <sc-if value="{{ team.isPerms }}">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid rgba(70,95,255,0.25);border-radius:10px;background:rgba(70,95,255,0.05);font-size:13.5px">
+                <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;color:#465FFF">badge</span>
+                <span style="flex:1 1 280px">Os cargos abaixo são sugestões. Você pode alterar, apagar ou criar os seus, com o nome que quiser e o que cada um pode fazer em cada área. O dono da agência sempre pode tudo.</span>
+                <sc-if value="{{ team.canRoles }}"><button sc-camel-on-click="{{ team.newRole }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 10px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">add</span>Novo cargo</button></sc-if>
+              </div>
+              <sc-if value="{{ team.rolesLoading }}"><div style="padding:24px;text-align:center;color:var(--tx2,#667085)">Carregando os cargos…</div></sc-if>
               <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow-x:auto">
-                <div style="min-width:820px">
-                  <div style="display:grid;grid-template-columns:1.4fr repeat(6,1fr);gap:12px;padding:0 16px;height:38px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:12px;color:var(--tx2,#667085);font-weight:500;background:var(--bg,#F7F8FA)"><span>Papel</span><sc-for list="{{ team.mods }}" as="m"><span>{{ m }}</span></sc-for></div>
-                  <sc-for list="{{ team.roles }}" as="r"><div style="display:grid;grid-template-columns:1.4fr repeat(6,1fr);gap:12px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px"><span style="font-weight:500">{{ r.role }}</span><sc-for list="{{ r.cells }}" as="c"><span style="color:{{ c.c }};font-weight:{{ c.fw }};font-size:12.5px">{{ c.v }}</span></sc-for></div></sc-for>
+                <div style="min-width:1040px">
+                  <div style="display:grid;grid-template-columns:minmax(170px,1.4fr) repeat(8,minmax(78px,0.8fr)) 76px;gap:10px;padding:0 16px;min-height:44px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:12px;color:var(--tx2,#667085);font-weight:500;background:var(--bg,#F7F8FA)"><span>Cargo</span><sc-for list="{{ team.areas }}" as="m"><span>{{ m }}</span></sc-for><span></span></div>
+                  <sc-for list="{{ team.roles }}" as="r"><div style="display:grid;grid-template-columns:minmax(170px,1.4fr) repeat(8,minmax(78px,0.8fr)) 76px;gap:10px;padding:10px 16px;min-height:56px;align-items:center;border-bottom:1px solid var(--bd,#E4E7EC);font-size:13px">
+                    <div style="min-width:0"><div style="font-weight:600">{{ r.name }}</div><div style="font-size:12px;color:var(--tx2,#667085)">{{ r.who }}</div></div>
+                    <sc-for list="{{ r.cells }}" as="c"><span style="color:{{ c.c }};font-weight:{{ c.fw }};font-size:12.5px">{{ c.v }}</span></sc-for>
+                    <span style="display:flex;gap:2px;justify-content:flex-end"><sc-if value="{{ r.canEdit }}"><button sc-camel-on-click="{{ r.edit }}" aria-label="Editar cargo" title="Editar" style="width:32px;height:32px;border:none;border-radius:7px;background:transparent;color:var(--tx2,#667085);display:grid;place-items:center;cursor:pointer" style-hover="background:var(--sf2,#F2F4F7)"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">edit</span></button><button sc-camel-on-click="{{ r.del }}" aria-label="Apagar cargo" title="Apagar" style="width:32px;height:32px;border:none;border-radius:7px;background:transparent;color:#D92D20;display:grid;place-items:center;cursor:pointer" style-hover="background:rgba(240,68,56,0.08)"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">delete</span></button></sc-if></span>
+                  </div></sc-for>
                 </div>
-                <div style="padding:12px 16px;font-size:12.5px;color:var(--tx2,#667085)">O papel Cliente nunca vê CRM, tarefas internas, margem, outros clientes ou a equipe operacional.</div>
+                <div style="padding:12px 16px;font-size:12.5px;color:var(--tx2,#667085)">Quem acessa o portal do cliente não é da equipe: vê só o que é daquele cliente, sem CRM, tarefas internas, margem ou outros clientes.</div>
               </div>
             </sc-if>
           </section>
@@ -3631,6 +3641,7 @@ class Component extends DCLogic {
       this.R = Object.assign({}, this.R, { agency: Object.assign({}, this.R.agency, { name: cur.name || '', plan: cur.plan || '' }), me: Object.assign({}, this.R.me, { name: (me.user && (me.user.full_name || me.user.email)) || '', role: cur.role || null }) });
       this.forceUpdate();
       await this.spLoad();
+      this.spRolesLoad();
       this.pl = setInterval(() => { if (document.hidden || this.state.view !== 'messages') return; this.spLoad().catch(() => {}); const t = this.state.threadId; if (t && this.CC && this.CC[t]) this.spCcLoad(t, true).catch(() => {}); }, 20000);
       const q = new URLSearchParams(location.search);
       if (q.get('integracao')) {
@@ -3854,9 +3865,51 @@ class Component extends DCLogic {
       this.toastMsg('Cliente criado: ' + client.name + extra);
     } catch (e) { this.spErr(e); }
   }
+  // Cargos: cada tela pertence a uma área; o cargo diz se a pessoa não vê, só vê ou edita.
+  areaOf(view) { return ({ xodo: 'xodos', clients: 'clientes', client: 'clientes', onboarding: 'clientes', documents: 'clientes', risk: 'clientes',
+    crm: 'comercial', score: 'comercial', prospect: 'comercial', forms: 'comercial', sched: 'comercial', proposals: 'comercial',
+    campaigns: 'campanhas', performance: 'campanhas', reports: 'campanhas', roi: 'campanhas', aivis: 'campanhas',
+    projects: 'projetos', content: 'projetos', publish: 'projetos', minutes: 'projetos', studio: 'projetos', auto: 'projetos', tickets: 'projetos',
+    finance: 'financeiro', profit: 'financeiro', fiscal: 'financeiro', dre: 'financeiro', contracts: 'financeiro',
+    team: 'equipe', academy: 'equipe', badges: 'equipe', integrations: 'configuracoes' })[view] || null; }
+  levelOf(area) { const a = this.R && this.R.access; if (!a || a.owner || !area) return 'editar'; return (a.perms || {})[area] || 'nenhum'; }
+  canSee(view) { return this.levelOf(this.areaOf(view)) !== 'nenhum'; }
+  async spRolesLoad() { try { this.RL = await SP.api('/api/agencies/' + this.spAg + '/roles'); this.forceUpdate(); } catch (e) { this.RL = null; } }
+  // Cargos que eu posso dar: até o acesso que eu tenho, área por área.
+  rolesICanGive() { const RL = this.RL; if (!RL) return []; const me = RL.me || {}, rank = { nenhum: 0, ver: 1, editar: 2 };
+    return RL.roles.filter(r => me.owner || RL.areas.every(a => rank[(me.perms || {})[a.key] || 'nenhum'] >= rank[r.perms[a.key] || 'nenhum'])); }
+  roleForm(r) {
+    const RL = this.RL || { areas: [] }, init = { name: r ? r.name : '', desc: r ? r.description : '' };
+    RL.areas.forEach(a => { init[a.key] = r ? r.perms[a.key] : 'ver'; });
+    this.fm({ title: r ? 'Editar cargo' : 'Novo cargo', desc: 'Dê o nome que quiser e escolha, em cada área, o que esse cargo pode fazer.', icon: 'badge',
+      fields: [{ k: 'name', l: 'Nome do cargo', req: 1, ph: 'Ex.: Social media' }, { k: 'desc', l: 'Descrição (opcional)', ph: 'O que essa pessoa faz' }]
+        .concat(RL.areas.map(a => ({ k: a.key, l: a.label, hint: a.hint, type: 'pick', opts: [['nenhum', 'Sem acesso'], ['ver', 'Só ver'], ['editar', 'Ver e editar']], req: 1 }))),
+      init, okL: r ? 'Salvar cargo' : 'Criar cargo',
+      ok: v => { const perms = {}; RL.areas.forEach(a => { perms[a.key] = v[a.key]; });
+        SP.api('/api/agencies/' + this.spAg + '/roles' + (r ? '/' + r.id : ''), { method: r ? 'PATCH' : 'POST', body: { name: v.name.trim(), description: (v.desc || '').trim(), perms } })
+          .then(() => { this.toastMsg(r ? 'Cargo salvo.' : 'Cargo criado.'); this.spRolesLoad(); this.spLoad().catch(() => {}); }, e => this.spErr(e)); } });
+  }
+  roleDelete(r) {
+    const others = ((this.RL && this.RL.roles) || []).filter(x => x.id !== r.id);
+    const go = to => SP.api('/api/agencies/' + this.spAg + '/roles/' + r.id + (to ? '?mover_para=' + to : ''), { method: 'DELETE' })
+      .then(() => { this.toastMsg('Cargo apagado.'); this.spRolesLoad(); this.spLoad().catch(() => {}); }, e => this.spErr(e));
+    if (r.members > 0) this.fm({ title: 'Apagar o cargo ' + r.name, desc: (r.members === 1 ? '1 pessoa usa' : r.members + ' pessoas usam') + ' este cargo. Escolha para qual cargo ' + (r.members === 1 ? 'ela vai.' : 'elas vão.'), icon: 'delete', danger: 1,
+      fields: [{ k: 'to', l: 'Novo cargo', type: 'pick', opts: others.map(x => [x.id, x.name]), req: 1 }], init: { to: others.length ? others[0].id : '' }, okL: 'Mover e apagar', ok: v => go(v.to) });
+    else this.fm({ title: 'Apagar o cargo ' + r.name + '?', desc: 'Ninguém usa este cargo. Dá para criar de novo quando quiser.', icon: 'delete', danger: 1, fields: [], okL: 'Apagar', ok: () => go(null) });
+  }
+  memberEdit(p) {
+    if (p.roleKey === 'owner') { this.toastMsg('O dono da agência tem acesso a tudo e não usa cargo.'); return; }
+    const opts = this.rolesICanGive().map(r => [r.id, r.name, r.description]);
+    this.fm({ title: p.name, desc: 'Cargo e função dessa pessoa na agência.', icon: 'manage_accounts',
+      fields: [{ k: 'role', l: 'Cargo', type: 'pick', opts, req: 1 }, { k: 'title', l: 'Função (aparece para a equipe)', ph: 'Ex.: Designer sênior' }, { k: 'act', l: 'Acesso', type: 'pick', opts: [['manter', 'Continua na equipe'], ['remover', 'Tirar da equipe']], req: 1 }],
+      init: { role: p.roleId || (opts[0] || [])[0], title: p.role || '', act: 'manter' }, okL: 'Salvar',
+      ok: v => { const url = '/api/agencies/' + this.spAg + '/members/' + p.user_id;
+        const run = v.act === 'remover' ? SP.api(url, { method: 'DELETE' }) : SP.api(url, { method: 'PATCH', body: Object.assign({ title: (v.title || '').trim() || null }, v.role !== p.roleId ? { role_id: v.role } : {}) });
+        run.then(() => { this.toastMsg(v.act === 'remover' ? p.name + ' saiu da equipe.' : 'Salvo.'); this.spLoad().catch(() => {}); this.spRolesLoad(); }, e => this.spErr(e)); } });
+  }
   async spInvite(v) {
     try {
-      const r = await SP.api('/api/agencies/' + this.spAg + '/invites', { method: 'POST', body: { email: v.mail.trim().toLowerCase(), role: v.role === 'Admin' ? 'admin' : v.role === 'Financeiro' ? 'financeiro' : 'member' } });
+      const r = await SP.api('/api/agencies/' + this.spAg + '/invites', { method: 'POST', body: { email: v.mail.trim().toLowerCase(), role_id: v.role } });
       if (!r.emailed) try { navigator.clipboard.writeText(r.link); } catch (e) {}
       this.toastMsg(r.emailed ? 'Convite enviado para ' + r.invite.email : 'Link do convite copiado. Mande para ' + r.invite.email + '.');
       this.spLoad().catch(() => {});
@@ -4195,6 +4248,7 @@ class Component extends DCLogic {
     const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]], ['Comercial', [['clients', 'Clientes', 'group'], ['crm', 'CRM', 'filter_alt', this.crmDueN()], ['score', 'Pontuação de leads', 'speed', this.scHotN()], ['prospect', 'Prospecção', 'person_search'], ['forms', 'Formulários', 'dynamic_form'], ['sched', 'Agendamentos', 'event_available'], ['proposals', 'Propostas', 'request_quote'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()]]],
       ['Operação', [['campaigns', 'Campanhas', 'ads_click'], ['projects', 'Projetos', 'view_kanban'], ['content', 'Conteúdo', 'calendar_month', this.ctWaitN()], ['publish', 'Publicar', 'send', this.pbFailN()], ['minutes', 'Atas', 'event_note', this.mnPendN()], ['studio', 'Estúdio', 'auto_awesome'], ['auto', 'Automações', 'account_tree'], ['tickets', 'Chamados', 'support_agent', (((this.R.tickets || {}).stats || {}).open) || null]]], ['Análise', [['performance', 'Performance', 'monitoring'], ['reports', 'Relatórios', 'lab_profile'], ['roi', 'Retorno', 'paid'], ['aivis', 'Busca por IA', 'travel_explore']]],
       ['Gestão', [['finance', 'Financeiro', 'account_balance_wallet'], ['profit', 'Rentabilidade', 'percent'], ['fiscal', 'Notas e cobranças', 'receipt_long'], ['dre', 'DRE', 'table_chart'], ['contracts', 'Contratos', 'contract'], ['team', 'Equipe', 'groups'], ['academy', 'Academy', 'school'], ['badges', 'Conquistas', 'military_tech']]], ['Recursos', [['messages', 'Mensagens', 'forum', this.spUnread()], ['chat', 'Chat da equipe', 'chat', this.tchUnN()], ['app', 'App de celular', 'smartphone'], ['documents', 'Documentos', 'folder_open'], ['integrations', 'Integrações', 'hub', this.inAlertN()]]]]
+      .map(([label, items]) => [label, items.filter(x => this.canSee(x[0]))]).filter(g => g[1].length)
       .map(([label, items]) => { const GI = { Comercial: 'handshake', 'Operação': 'bolt', 'Análise': 'insights', 'Gestão': 'account_balance', Recursos: 'widgets' };
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
         const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' && !SP_SOON[x[0]] ? x[3] : 0), 0);
@@ -4443,7 +4497,7 @@ class Component extends DCLogic {
       openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => { this.setState({ drawer: 'notif' }); this.spNotifRead(); }, bellDot: (this.R.notifications || []).some(n => !n.read) || D.attention.length ? 'block' : 'none', notice: this.spNotice(), openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
       closeAll: () => this.closeAll(),
       toggleTheme: () => this.setState(s => ({ theme: (s.theme || P.theme || 'light') === 'dark' ? 'light' : 'dark' })), themeIcon: (S.theme || P.theme || 'light') === 'dark' ? 'light_mode' : 'dark_mode',
-      is, soon, firstRun: !!P.firstRun || !!(!this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (!this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, heroSub: this.R.loading ? 'Carregando os dados da agência…' : 'Você tem ' + dash.todayN + (dash.todayN === 1 ? ' compromisso' : ' compromissos') + ' hoje e ' + dash.attnN + (dash.attnN === 1 ? ' item que pede' : ' itens que pedem') + ' atenção.', meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: { owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '', agIni: this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), agSub: 'Plano ' + ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan || '…') + (this.R.loading ? '' : ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas')),
+      is, soon, firstRun: !!P.firstRun || !!(!this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (!this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, heroSub: this.R.loading ? 'Carregando os dados da agência…' : 'Você tem ' + dash.todayN + (dash.todayN === 1 ? ' compromisso' : ' compromissos') + ' hoje e ' + dash.attnN + (dash.attnN === 1 ? ' item que pede' : ' itens que pedem') + ' atenção.', meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: this.R.access && !this.R.access.owner && this.R.access.roleName ? this.R.access.roleName : ({ owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor', financeiro: 'Financeiro' }[this.R.me.role] || ''), agIni: this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), agSub: 'Plano ' + ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan || '…') + (this.R.loading ? '' : ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas')),
       setup: { steps: setupSteps, doneN: setupN, pctW: setupN / 7 * 100 + '%' }, newClient: () => openForm('cliente'),
       goProjCal: () => this.go('projects', { projView: 'calendar' }), goClientsRisk: () => this.go('clients', { clientsView: 'Em risco' }), goPerf: () => this.go('performance'), goFin: () => this.go('finance'),
       cmd, drawer, notif, ai, help, dlg, toast: { show: !!S.toast, msg: S.toast || '', hasUndo: !!S.toastU, undo: () => { const u = this._undo; this._undo = null; clearTimeout(this.tt); this.setState({ toast: null, toastU: false }); if (u) u(); } }, fm: this.fmV(),
@@ -6345,13 +6399,21 @@ class Component extends DCLogic {
       docs.noAppr = !docs.approvals.length;
     }
     // team
-    const team = { tip: 'A capacidade conta as tarefas abertas de cada pessoa nos projetos ativos: 20 tarefas abertas = 100%.', sub: D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : ''), tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
-      rows: D.team.map(p => Object.assign({}, p, { capW: p.cap + '%', capC: p.cap >= 85 ? '#F04438' : p.cap >= 70 ? '#F79009' : '#17B26A', capL: p.cap >= 85 ? 'Carga alta' : p.cap >= 70 ? 'Carga moderada' : 'Disponível', clientsL: p.clients ? p.clients + ' clientes' : '—' })),
-      invite: () => this.fm({ title: 'Convidar para a equipe', desc: 'A pessoa recebe um e-mail para criar a senha. O acesso segue a função escolhida.', icon: 'person_add', fields: [{ k: 'n', l: 'Nome', req: 1, min: 3 }, { k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@agencia.com.br' }, { k: 'role', l: 'Função', type: 'pick', opts: ['Admin', 'Gestor de tráfego', 'Designer', 'Atendimento', 'Financeiro'], req: 1 }], init: { role: 'Gestor de tráfego' }, okL: 'Enviar convite', ok: v => this.spInvite(v) }),
-      roles: [['Proprietário', 'Total', 'Total', 'Total', 'Total', 'Total', 'Total'], ['Admin', 'Total', 'Total', 'Total', 'Total', 'Total', 'Editar'], ['Gestor de tráfego', 'Editar', 'Editar', 'Editar', 'Editar', 'Ver', '—'], ['Analista de mídia', 'Ver', '—', 'Editar', 'Editar', '—', '—'],
-        ['Criativo (design / copy)', 'Ver', '—', 'Ver', 'Editar', '—', '—'], ['Financeiro', 'Ver', 'Ver', '—', '—', 'Total', '—'], ['Leitor', 'Ver', 'Ver', 'Ver', 'Ver', '—', '—'], ['Cliente (portal)', 'Própria conta', '—', 'Ver', 'Aprovar', 'Próprias faturas', '—']]
-        .map(r => ({ role: r[0], cells: r.slice(1).map(v => ({ v, c: v === '—' ? 'var(--tx2,#98A2B3)' : v === 'Total' ? '#465FFF' : 'var(--tx,#101828)', fw: v === 'Total' ? '600' : '400' })) })),
-      mods: ['Clientes', 'CRM', 'Campanhas', 'Projetos', 'Financeiro', 'Configurações'] };
+    const RL = this.RL || { roles: [], areas: [], me: {} }, canTeam = this.levelOf('equipe') === 'editar';
+    const LV = { nenhum: ['Sem acesso', 'var(--tx2,#98A2B3)', '400'], ver: ['Só ver', 'var(--tx,#344054)', '400'], editar: ['Editar', '#465FFF', '600'] };
+    const team = { tip: 'A capacidade conta as tarefas abertas de cada pessoa nos projetos ativos: 20 tarefas abertas = 100%.', sub: D.team.length + (D.team.length === 1 ? ' pessoa' : ' pessoas') + (this.R.invites.filter(i => i.kind === 'equipe').length ? ' · ' + this.R.invites.filter(i => i.kind === 'equipe').length + ' convite(s) em aberto' : ''), tabs: this.tabsOf([['people', 'Pessoas'], ['workload', 'Carga de trabalho'], ['perms', 'Cargos e permissões']], S.teamTab, set('teamTab')), isPeople: S.teamTab === 'people', isWork: S.teamTab === 'workload', isPerms: S.teamTab === 'perms',
+      rows: D.team.map(p => Object.assign({}, p, { capW: p.cap + '%', capC: p.cap >= 85 ? '#F04438' : p.cap >= 70 ? '#F79009' : '#17B26A', capL: p.cap >= 85 ? 'Carga alta' : p.cap >= 70 ? 'Carga moderada' : 'Disponível', clientsL: p.clients ? p.clients + ' clientes' : '—',
+        canEdit: canTeam && p.roleKey !== 'owner', noEdit: !(canTeam && p.roleKey !== 'owner'), edit: () => this.memberEdit(p) })),
+      canInvite: canTeam,
+      invite: () => { const opts = this.rolesICanGive().map(r => [r.id, r.name, r.description]); if (!opts.length) { this.toastMsg('Carregando os cargos… tente de novo em um instante.'); this.spRolesLoad(); return; }
+        const def = (opts.find(o => o[1] === 'Gestor de tráfego') || opts[0])[0];
+        this.fm({ title: 'Convidar para a equipe', desc: 'A pessoa recebe um e-mail para criar a senha. O que ela pode fazer segue o cargo escolhido.', icon: 'person_add', fields: [{ k: 'mail', l: 'E-mail', req: 1, email: 1, ph: 'nome@agencia.com.br' }, { k: 'role', l: 'Cargo', type: 'pick', opts, req: 1, hint: 'Os cargos e o que cada um pode estão na aba Cargos e permissões.' }], init: { role: def }, okL: 'Enviar convite', ok: v => this.spInvite(v) }); },
+      canRoles: canTeam, newRole: () => this.roleForm(null),
+      areas: RL.areas.map(a => a.label),
+      roles: RL.roles.map(r => ({ name: r.name, desc: r.description || '', who: r.members ? (r.members === 1 ? '1 pessoa' : r.members + ' pessoas') : 'Ninguém ainda',
+        cells: RL.areas.map(a => { const l = LV[r.perms[a.key]] || LV.nenhum; return { v: l[0], c: l[1], fw: l[2] }; }),
+        canEdit: canTeam, edit: () => this.roleForm(r), del: () => this.roleDelete(r) })),
+      rolesLoading: !this.RL };
     // settings
     const intg = [['Anúncios', [['meta', 'Meta Ads', 'Campanhas, gasto e conversões'], ['gads', 'Google Ads', 'Pesquisa, PMax, YouTube'], ['tiktok', 'TikTok Ads', 'Campanhas e Spark Ads'], [null, 'LinkedIn Ads', 'Em breve']]],
       ['Analytics', [['ga4', 'Google Analytics 4', 'Receita e conversões atribuídas'], [null, 'Google Tag Manager', 'Em breve']]],

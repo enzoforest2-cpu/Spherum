@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     const id = uuid.parse((await params).id);
     const agencyId = uuid.parse((await request.json())?.agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     await setDefaultAccount(sql, agencyId, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -28,7 +28,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
     const id = uuid.parse((await params).id);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     await disconnectAccount(billingDepsFromEnv(sql, masterKeyFromEnv()), agencyId, userId, id);
     return NextResponse.json({ ok: true });
   } catch (error) {

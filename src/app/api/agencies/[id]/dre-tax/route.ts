@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const agencyId = uuid.parse((await params).id);
     const { pct } = z.object({ pct: z.number() }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     await setTax(sql, agencyId, pct);
     return NextResponse.json({ ok: true });
   } catch (error) {

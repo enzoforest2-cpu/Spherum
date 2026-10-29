@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const p = z.object({ agency_id: uuid, invoice_ids: z.array(uuid).min(1).max(50) }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, p.agency_id, CAN_BILL);
+    await requireRole(sql, userId, p.agency_id, CAN_BILL, { area: "financeiro" });
     const deps = await fiscalDeps(sql);
     const results = [];
     for (const id of p.invoice_ids) {

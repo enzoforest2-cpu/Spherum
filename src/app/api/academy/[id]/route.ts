@@ -13,7 +13,7 @@ async function access(request: Request, params: Ctx["params"]) {
   const sql = await serverSql();
   const row = await one<{ agency_id: string }>(sql, `select agency_id from academy_items where id = $1`, [id]);
   if (!row) throw new XodoError("Item não encontrado.", 404);
-  await requireRole(sql, userId, row.agency_id, CAN_USE);
+  await requireRole(sql, userId, row.agency_id, CAN_USE, { area: "equipe" });
   return { userId, id, agencyId: row.agency_id, sql };
 }
 

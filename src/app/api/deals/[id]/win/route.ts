@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { invite, ...rest } = z.object({ invite: z.boolean().default(true) }).passthrough().parse(raw);
     const sql = await serverSql();
     const agencyId = await dealAgency(sql, id);
-    const role = await requireRole(sql, userId, agencyId, CAN_USE);
+    const role = await requireRole(sql, userId, agencyId, CAN_USE, { area: "comercial" });
     const canBill = CAN_BILL.includes(role);
     const result = await winDeal(sql, agencyId, userId, id, { ...rest, contract: canBill && rest.contract !== false });
     let invited: { email: string; emailed: boolean; link: string } | null = null;

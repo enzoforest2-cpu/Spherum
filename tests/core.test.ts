@@ -104,8 +104,8 @@ test("equipe: convite por link vale só para o e-mail convidado, uma vez, por 7 
   await revokeInvite(sql, agencyId, dona.id, fresh.id, clock.now);
   await assert.rejects(revokeInvite(sql, agencyId, dona.id, fresh.id, clock.now), /já usado/);
 
-  // Admin não convida admin.
-  await assert.rejects(inviteMember(sql, agencyId, { id: beto.id, role: "admin" }, { email: "x@y.com", role: "admin" }), /Só o dono/);
+  // Quem não tem acesso total não convida para um cargo com mais acesso que o seu.
+  await assert.rejects(inviteMember(sql, agencyId, { id: beto.id, role: "member" }, { email: "x@y.com", role: "admin" }), /não permite convidar|mais acesso do que tem/);
 });
 
 test("equipe: papéis e saída respeitam o dono, e a agência nunca fica sem dono", async () => {
@@ -116,7 +116,7 @@ test("equipe: papéis e saída respeitam o dono, e a agência nunca fica sem don
   await sql.query(`insert into agency_members (agency_id, user_id, role) values ($1, $2, 'admin'), ($1, $3, 'member')`, [agencyId, admin, membro]);
 
   await assert.rejects(updateMember(sql, agencyId, { id: admin, role: "admin" }, dona.id, { role: "member" }), /Só o dono/);
-  await assert.rejects(updateMember(sql, agencyId, { id: admin, role: "admin" }, membro, { role: "admin" }), /Só o dono/);
+  await assert.rejects(updateMember(sql, agencyId, { id: membro, role: "member" }, admin, { role: "viewer" }), /não permite mudar a equipe/);
   await updateMember(sql, agencyId, { id: admin, role: "admin" }, membro, { role: "viewer", title: "Estagiário" });
   await assert.rejects(updateMember(sql, agencyId, { id: dona.id, role: "owner" }, dona.id, { role: "admin" }), /pelo menos um dono/);
   await assert.rejects(removeMember(sql, agencyId, { id: dona.id, role: "owner" }, dona.id), /pelo menos um dono/);

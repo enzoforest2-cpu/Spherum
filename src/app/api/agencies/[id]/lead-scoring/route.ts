@@ -9,7 +9,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await params).id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "comercial" });
     return NextResponse.json({ scoring: await setScoring(sql, agencyId, await request.json()) });
   } catch (error) {
     return fail(error);

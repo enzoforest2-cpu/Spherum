@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const connectionId = uuid.parse((await params).id);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "configuracoes" });
     return NextResponse.json(await whatsappQrStatus({ sql, ...serverIntegrations() }, agencyId, connectionId));
   } catch (error) {
     return fail(error);

@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: Ctx) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await params).id);
     const sql = await serverSql();
-    const role = await requireRole(sql, userId, agencyId, CAN_READ);
+    const role = await requireRole(sql, userId, agencyId, CAN_READ, { area: "configuracoes" });
     return NextResponse.json({ agency: await getAgency(sql, agencyId), role });
   } catch (error) {
     return fail(error);
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await params).id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "configuracoes" });
     return NextResponse.json({ agency: await updateAgency(sql, agencyId, userId, await request.json()) });
   } catch (error) {
     return fail(error);

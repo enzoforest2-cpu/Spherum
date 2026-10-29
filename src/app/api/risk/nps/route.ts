@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     return NextResponse.json(await requestNps(sql, agencyId, userId, input));
   } catch (error) {
     return fail(error);

@@ -10,7 +10,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const id = uuid.parse((await params).id);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    const role = await requireRole(sql, userId, agencyId, CAN_USE);
+    const role = await requireRole(sql, userId, agencyId, CAN_USE, { area: "configuracoes" });
     await unlinkIdentity(sql, agencyId, id, userId, role);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

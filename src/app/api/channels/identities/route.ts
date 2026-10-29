@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    const role = await requireRole(sql, userId, agencyId, CAN_USE);
+    const role = await requireRole(sql, userId, agencyId, CAN_USE, { area: "configuracoes" });
     return NextResponse.json({ identities: await listIdentities(sql, agencyId, userId, role) });
   } catch (error) {
     return fail(error);

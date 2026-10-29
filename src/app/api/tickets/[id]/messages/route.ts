@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { text } = z.object({ text: z.string() }).parse(await request.json());
     const sql = await serverSql();
     const agencyId = await ticketAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     await replyTicket({ sql, mail: mailerFromEnv(), appUrl: process.env.APP_URL }, agencyId, userId, "agencia", id, text);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {

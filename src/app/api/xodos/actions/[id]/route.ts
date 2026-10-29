@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const deps = await productionDeps();
     const action = await one<{ agency_id: string }>(deps.sql, `select agency_id from xodo_actions where id = $1`, [actionId]);
     if (!action) throw new XodoError("Pedido não encontrado", 404);
-    await requireRole(deps.sql, userId, action.agency_id, CAN_USE);
+    await requireRole(deps.sql, userId, action.agency_id, CAN_USE, { area: "xodos" });
     const result = await decideAction(deps, { actionId, agencyId: action.agency_id, userId, ...body });
     after(async () => {
       try {

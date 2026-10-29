@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const body = await request.json();
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     return NextResponse.json(await editNote(sql, xodo, number, body, { userId, manage: CAN_MANAGE.includes(role) }));
   } catch (error) {
     return failNote(error);
@@ -43,7 +43,7 @@ export async function DELETE(request: Request, { params }: Params) {
     const definitivo = query.definitivo === "1" || query.definitivo === "true";
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, definitivo ? CAN_MANAGE : CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, definitivo ? CAN_MANAGE : CAN_USE, { area: "xodos" });
     return NextResponse.json(await deleteNote(sql, xodo, number, query, { userId, manage: CAN_MANAGE.includes(role) }));
   } catch (error) {
     return failNote(error);

@@ -15,7 +15,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const sql = await serverSql();
     const row = await one<{ agency_id: string }>(sql, `select agency_id from bookings where id = $1`, [id]);
     if (!row) throw new XodoError("Reunião não encontrada.", 404);
-    await requireRole(sql, userId, row.agency_id, CAN_USE);
+    await requireRole(sql, userId, row.agency_id, CAN_USE, { area: "comercial" });
     await cancelBooking(await bookingDeps(sql), row.agency_id, id, reason);
     return NextResponse.json({ ok: true });
   } catch (error) {

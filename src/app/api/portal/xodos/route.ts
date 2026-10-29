@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "xodos" });
     return NextResponse.json(await xodoScreen(sql, agencyId));
   } catch (error) {
     return fail(error);

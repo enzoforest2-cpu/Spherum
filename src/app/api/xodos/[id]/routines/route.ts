@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     const routines = await sql.query(
       `select id, name, prompt, cron, timezone, active, continuity, last_summary, last_run_at::text, next_run_at::text
          from xodo_routines where xodo_id = $1 and agency_id = $2 order by created_at`,
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const input = routineInput.parse(await request.json());
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     const routine = await createRoutine(sql, { ...input, agencyId: xodo.agency_id, xodoId, createdBy: userId });
     return NextResponse.json({ routine }, { status: 201 });
   } catch (error) {
@@ -58,7 +58,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { active } = z.object({ active: z.boolean() }).parse(await request.json());
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     const row = await one<{ cron: string; timezone: string }>(sql, `select cron, timezone from xodo_routines where id = $1 and xodo_id = $2`, [routineId, xodoId]);
     if (!row) throw new XodoError("Rotina não encontrada", 404);
     const next = active ? nextRunAt(row.cron, row.timezone, new Date()) : null;
@@ -77,7 +77,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const routineId = uuid.parse(new URL(request.url).searchParams.get("routine_id"));
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     const row = await one(sql, `delete from xodo_routines where id = $1 and xodo_id = $2 returning id`, [routineId, xodoId]);
     if (!row) throw new XodoError("Rotina não encontrada", 404);
     return NextResponse.json({ ok: true });

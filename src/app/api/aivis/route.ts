@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams;
     const agencyId = uuid.parse(q.get("agency_id")), clientId = uuid.parse(q.get("client_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "campanhas" });
     const deps = aivisDeps(sql);
     return NextResponse.json(await aivisBoard(sql, agencyId, clientId, await deps.engines(agencyId)));
   } catch (error) {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const agencyId = uuid.parse(raw.agency_id), clientId = uuid.parse(raw.client_id);
     const p = body.parse(raw);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "campanhas" });
     if (p.acao === "pergunta") {
       const q = await addQuery(sql, agencyId, userId, clientId, p.question);
       // A primeira checagem da pergunta nova sai na hora.

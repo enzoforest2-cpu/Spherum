@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     return NextResponse.json({ document: await updateDocument(sql, agencyId, id, input) });
   } catch (error) {
     return fail(error);
@@ -27,7 +27,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
     const id = uuid.parse((await params).id);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     await deleteDocument(sql, documentsStorage(), agencyId, userId, id);
     return NextResponse.json({ ok: true });
   } catch (error) {

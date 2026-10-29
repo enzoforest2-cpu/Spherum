@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const { agency_id, dry_run, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "comercial" });
     return NextResponse.json(await importLeads(sql, agencyId, userId, input, dry_run === true), { status: dry_run ? 200 : 201 });
   } catch (error) {
     return fail(error);
@@ -29,7 +29,7 @@ export async function PATCH(request: Request) {
     const userId = await requireUser(request);
     const p = bulk.parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, p.agency_id, CAN_USE);
+    await requireRole(sql, userId, p.agency_id, CAN_USE, { area: "comercial" });
     return NextResponse.json(p.acao === "fila" ? await queueLeads(sql, p.agency_id, p.ids) : await deleteLeads(sql, p.agency_id, p.ids));
   } catch (error) {
     return fail(error);

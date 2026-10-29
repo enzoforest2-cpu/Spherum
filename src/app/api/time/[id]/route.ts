@@ -12,7 +12,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const sql = await serverSql();
     const row = await one<{ agency_id: string }>(sql, `select agency_id from time_entries where id = $1`, [id]);
     if (!row) throw new XodoError("Registro não encontrado.", 404);
-    const role = await requireRole(sql, userId, row.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, row.agency_id, CAN_USE, { area: "projetos" });
     await deleteTime(sql, row.agency_id, userId, id, CAN_MANAGE.includes(role));
     return NextResponse.json({ ok: true });
   } catch (error) {

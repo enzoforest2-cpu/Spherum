@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const deps = await channelDeps();
     const xodo = await loadXodo(deps.sql, xodoId);
-    await requireRole(deps.sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(deps.sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     return NextResponse.json({ triggers: await listTriggers(deps, xodo.agency_id, xodoId) });
   } catch (error) {
     return fail(error);
@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const xodoId = uuid.parse((await params).id);
     const deps = await channelDeps();
     const xodo = await loadXodo(deps.sql, xodoId);
-    await requireRole(deps.sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(deps.sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     const created = await createTrigger(deps, xodo.agency_id, xodoId, await request.json(), userId);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

@@ -13,7 +13,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const connectionId = uuid.parse((await params).id);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "configuracoes" });
     const deps = { sql, ...serverIntegrations() };
     const conn = await one<{ provider: string }>(sql, `select provider from integration_connections where id = $1 and agency_id = $2`, [
       connectionId,

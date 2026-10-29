@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const b = z.object({ agency_id: uuid, client_id: uuid, note: z.string().max(500).optional() }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, b.agency_id, CAN_USE);
+    await requireRole(sql, userId, b.agency_id, CAN_USE, { area: "clientes" });
     await markRiskHandled(sql, b.agency_id, userId, b.client_id, b.note);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {

@@ -12,7 +12,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const sql = await serverSql();
     const row = await one<{ agency_id: string }>(sql, `select agency_id from finance_entries where id = $1`, [id]);
     if (!row) throw new XodoError("Lançamento não encontrado.", 404);
-    await requireRole(sql, userId, row.agency_id, CAN_BILL);
+    await requireRole(sql, userId, row.agency_id, CAN_BILL, { area: "financeiro" });
     await removeEntry(sql, row.agency_id, id, new URL(request.url).searchParams.get("from") ?? undefined);
     return NextResponse.json({ ok: true });
   } catch (error) {

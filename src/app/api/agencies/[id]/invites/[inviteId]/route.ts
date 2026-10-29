@@ -10,7 +10,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const p = await params;
     const agencyId = uuid.parse(p.id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "equipe" });
     await revokeInvite(sql, agencyId, userId, uuid.parse(p.inviteId));
     return NextResponse.json({ ok: true });
   } catch (error) {

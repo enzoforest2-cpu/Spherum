@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const agencyId = uuid.parse(search.get("agency_id"));
     const clientId = search.get("client_id") ? uuid.parse(search.get("client_id")) : null;
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "clientes" });
     return NextResponse.json({ documents: await listDocuments(sql, agencyId, clientId) });
   } catch (error) {
     return fail(error);
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "clientes" });
     return NextResponse.json(await startUpload(sql, documentsStorage(), agencyId, userId, input), { status: 201 });
   } catch (error) {
     return fail(error);

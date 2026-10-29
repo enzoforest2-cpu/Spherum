@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const { agency_id: agencyId } = z.object({ agency_id: uuid }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "configuracoes" });
     const { code, expiresAt } = await createPairingCode(sql, agencyId, userId, new Date());
     return NextResponse.json({
       code,

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams;
     const agencyId = uuid.parse(q.get("agency_id")), clientId = uuid.parse(q.get("client_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "projetos" });
     return NextResponse.json(await studioBoard(await studioDeps(sql), agencyId, clientId));
   } catch (error) {
     return fail(error);
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const agencyId = uuid.parse(raw.agency_id), clientId = uuid.parse(raw.client_id);
     const p = body.parse(raw);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     if (p.acao === "gerar") return NextResponse.json(await generate(await studioDeps(sql), agencyId, userId, clientId, p), { status: 201 });
     if (p.acao === "animar") { await animate(await studioDeps(sql), agencyId, userId, clientId, p.document_id, p.text); return NextResponse.json({ ok: true }, { status: 202 }); }
     if (p.acao === "conteudo") return NextResponse.json({ post: await toContent(sql, agencyId, userId, clientId, p) }, { status: 201 });

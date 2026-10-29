@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const xodoId = uuid.parse((await params).id);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    await requireRole(sql, userId, xodo.agency_id, CAN_READ);
+    await requireRole(sql, userId, xodo.agency_id, CAN_READ, { area: "xodos" });
     const [messages, pending, runs] = await Promise.all([
       sql.query(
         `select * from (select id, run_id, role, author_user, text, created_at::text from xodo_messages
@@ -49,7 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { text } = z.object({ text: z.string().min(1).max(8000) }).parse(await request.json());
     const deps = await productionDeps();
     const xodo = await loadXodo(deps.sql, xodoId);
-    await requireRole(deps.sql, userId, xodo.agency_id, CAN_USE);
+    await requireRole(deps.sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     // O xodó esperava a pessoa no computador: a mensagem vale como "terminei" e vai junto.
     const waiting = await one<{ id: string }>(
       deps.sql,

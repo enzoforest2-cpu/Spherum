@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "financeiro" });
     return NextResponse.json({ contracts: await listContracts(sql, agencyId) });
   } catch (error) {
     return fail(error);
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL);
+    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
     return NextResponse.json({ contract: await createContract(sql, agencyId, userId, input) }, { status: 201 });
   } catch (error) {
     return fail(error);

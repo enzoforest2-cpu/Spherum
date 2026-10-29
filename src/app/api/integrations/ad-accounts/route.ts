@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const p = platform.parse(search.get("platform"));
     const connectionId = search.get("connection_id") ? uuid.parse(search.get("connection_id")) : undefined;
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "campanhas" });
     return NextResponse.json({ accounts: await discoverAccounts({ sql, ...serverIntegrations() }, agencyId, p, connectionId) });
   } catch (error) {
     return fail(error);
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const input = link.parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, input.agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, input.agency_id, CAN_MANAGE, { area: "campanhas" });
     const id = await linkAccount(sql, {
       agencyId: input.agency_id,
       clientId: input.client_id,
@@ -65,7 +65,7 @@ export async function DELETE(request: Request) {
     const agencyId = uuid.parse(search.get("agency_id"));
     const id = uuid.parse(search.get("id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "campanhas" });
     await unlinkAccount(sql, agencyId, id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

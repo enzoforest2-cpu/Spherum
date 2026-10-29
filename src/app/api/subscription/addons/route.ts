@@ -11,7 +11,7 @@ export async function PUT(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true });
+    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, area: "configuracoes" });
     return NextResponse.json(await setAddon(subDepsFromEnv(sql, mailerFromEnv()), agencyId, userId, input));
   } catch (error) {
     return fail(error);

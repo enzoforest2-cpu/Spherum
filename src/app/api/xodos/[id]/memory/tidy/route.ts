@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const xodoId = uuid.parse((await params).id);
     const deps = await productionDeps();
     const xodo = await loadXodo(deps.sql, xodoId);
-    await requireRole(deps.sql, userId, xodo.agency_id, CAN_MANAGE);
+    await requireRole(deps.sql, userId, xodo.agency_id, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json({ relatorio: await runTidy(deps, xodo, { manual: true }) });
   } catch (error) {
     return fail(error);

@@ -12,7 +12,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const sql = await serverSql();
     const row = await one<{ agency_id: string }>(sql, `select agency_id from aivis_queries where id = $1`, [id]);
     if (!row) throw new XodoError("Pergunta não encontrada.", 404);
-    await requireRole(sql, userId, row.agency_id, CAN_USE);
+    await requireRole(sql, userId, row.agency_id, CAN_USE, { area: "campanhas" });
     await deleteQuery(sql, row.agency_id, id);
     return NextResponse.json({ ok: true });
   } catch (error) {

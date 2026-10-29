@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const batchId = uuid.parse(batch);
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     return NextResponse.json(await revertNotes(sql, xodo, batchId, { userId, manage: CAN_MANAGE.includes(role) }));
   } catch (error) {
     return fail(error);

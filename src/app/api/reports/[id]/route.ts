@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const id = uuid.parse((await params).id);
     const body = z.object({ agency_id: uuid, status: z.enum(["published", "draft", "archived"]) }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, body.agency_id, CAN_USE);
+    await requireRole(sql, userId, body.agency_id, CAN_USE, { area: "campanhas" });
     await setReportStatus(sql, body.agency_id, userId, id, body.status);
     return NextResponse.json({ ok: true });
   } catch (error) {

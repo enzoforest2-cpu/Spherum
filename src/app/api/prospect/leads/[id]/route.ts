@@ -15,7 +15,7 @@ async function access(request: Request, params: Ctx["params"], roles: typeof CAN
   const sql = await serverSql();
   const row = await one<{ agency_id: string }>(sql, `select agency_id from prospect_leads where id = $1`, [id]);
   if (!row) throw new XodoError("Lead não encontrado.", 404);
-  await requireRole(sql, userId, row.agency_id, roles);
+  await requireRole(sql, userId, row.agency_id, roles, { area: "comercial" });
   return { userId, id, agencyId: row.agency_id, sql };
 }
 

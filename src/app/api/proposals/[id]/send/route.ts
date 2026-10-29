@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = z.object({ valid_days: z.number().int().min(1).max(90).default(15), email: z.boolean().default(true) }).parse(await request.json());
     const sql = await serverSql();
     const agencyId = await proposalAgency(sql, id);
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "comercial" });
     const sent = await sendProposal(sql, agencyId, userId, id, body.valid_days);
     const base = (process.env.APP_URL?.trim() || new URL(request.url).origin).replace(/\/$/, "");
     const link = `${base}/proposta/${sent.token}`;

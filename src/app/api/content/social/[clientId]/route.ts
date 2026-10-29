@@ -13,7 +13,7 @@ export async function PUT(request: Request, { params }: Ctx) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     await linkSocial(sql, agencyId, clientId, input);
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -28,7 +28,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
     const clientId = uuid.parse((await params).clientId);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     await unlinkSocial(sql, agencyId, clientId);
     return NextResponse.json({ ok: true });
   } catch (error) {

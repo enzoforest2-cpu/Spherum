@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "configuracoes" });
     const deps = { sql, ...serverIntegrations() };
     switch (body?.provider) {
       case "telegram":

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     return NextResponse.json({ keys: await listSandboxKeys(sql, agencyId) });
   } catch (error) {
     return fail(error);
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const agencyId = uuid.parse(body?.agency_id ?? new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE);
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "xodos" });
     const key = await createSandboxKey(sql, agencyId, body, userId, masterKeyFromEnv());
     return NextResponse.json({ key }, { status: 201 });
   } catch (error) {

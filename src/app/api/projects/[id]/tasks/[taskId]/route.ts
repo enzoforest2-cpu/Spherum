@@ -12,7 +12,7 @@ async function access(request: Request, params: Ctx["params"]) {
   const id = uuid.parse(p.id), taskId = uuid.parse(p.taskId);
   const sql = await serverSql();
   const agencyId = await projectAgency(sql, id);
-  await requireRole(sql, userId, agencyId, CAN_USE);
+  await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
   return { userId, id, taskId, agencyId, sql };
 }
 

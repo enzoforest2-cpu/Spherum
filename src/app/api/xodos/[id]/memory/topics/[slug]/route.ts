@@ -15,7 +15,7 @@ export async function PUT(request: Request, { params }: Params) {
     const body = await request.json();
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     return NextResponse.json(await updateTopic(sql, xodo, slug, body, { userId, manage: CAN_MANAGE.includes(role) }));
   } catch (error) {
     return fail(error);
@@ -31,7 +31,7 @@ export async function DELETE(request: Request, { params }: Params) {
     const reason = new URL(request.url).searchParams.get("motivo")?.slice(0, 200) ?? null;
     const sql = await serverSql();
     const xodo = await loadXodo(sql, xodoId);
-    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE);
+    const role = await requireRole(sql, userId, xodo.agency_id, CAN_USE, { area: "xodos" });
     return NextResponse.json(await deleteTopic(sql, xodo, slug, { userId, manage: CAN_MANAGE.includes(role) }, reason));
   } catch (error) {
     return fail(error);

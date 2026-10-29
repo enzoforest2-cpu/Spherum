@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const userId = await requireUser(request);
     const input = z.object({ agency_id: uuid, account_id: uuid }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, input.agency_id, CAN_USE);
+    await requireRole(sql, userId, input.agency_id, CAN_USE, { area: "campanhas" });
     const row = await one<AccountRow>(sql, `select * from client_ad_accounts where id = $1 and agency_id = $2`, [input.account_id, input.agency_id]);
     if (!row) throw new XodoError("Conta não encontrada", 404);
     const { since, until } = syncWindow(row, new Date());

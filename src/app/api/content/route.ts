@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const from = q.get("from") ? day.parse(q.get("from")) : new Date(now.getTime() - 45 * 864e5).toISOString().slice(0, 10);
     const to = q.get("to") ? day.parse(q.get("to")) : new Date(now.getTime() + 90 * 864e5).toISOString().slice(0, 10);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_READ);
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "projetos" });
     return NextResponse.json(await contentBoard(sql, agencyId, from, to));
   } catch (error) {
     return fail(error);
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const { agency_id, schedule, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_USE);
+    await requireRole(sql, userId, agencyId, CAN_USE, { area: "projetos" });
     return NextResponse.json({ post: await createPost(sql, agencyId, userId, input, { schedule: schedule === true }) }, { status: 201 });
   } catch (error) {
     return fail(error);
@@ -45,7 +45,7 @@ export async function PATCH(request: Request) {
     const userId = await requireUser(request);
     const { agency_id, auto_publish } = z.object({ agency_id: uuid, auto_publish: z.boolean() }).parse(await request.json());
     const sql = await serverSql();
-    await requireRole(sql, userId, agency_id, CAN_MANAGE);
+    await requireRole(sql, userId, agency_id, CAN_MANAGE, { area: "projetos" });
     await setAutoPublish(sql, agency_id, auto_publish);
     return NextResponse.json({ ok: true });
   } catch (error) {
