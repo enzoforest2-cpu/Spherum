@@ -397,6 +397,8 @@ export async function continueRun(deps: EngineDeps, runId: string, opts: { deadl
       }
       if (!result.ok) {
         const reason = result.detail ? providerErrorMessage(result.detail) : `nenhum modelo pôde ser usado (${result.problems.join("; ")})`;
+        // A mensagem da tela é curta; a original do provedor fica no registro para diagnóstico.
+        if (result.detail?.errorMessage) console.warn(`[xodós] ${xodo.name} (${xodo.provider}/${xodo.model}) falhou:`, result.detail.errorMessage.slice(0, 500));
         return finish(deps, xodo, runId, "failed", { error: reason });
       }
 

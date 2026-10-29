@@ -21,6 +21,9 @@ import type { Worker } from "./worker";
  * (ver main.ts) e toda chamada leva o token da página.
  */
 
+// Mensagens de validação em português ("Pequeno demais: …"), não em inglês.
+z.config(z.locales.ptBR());
+
 export type Ctx = { deps: EngineDeps; state: AppState; worker: Worker; channels: Channels };
 
 function integrationsOf(c: Ctx): IntegrationDeps {

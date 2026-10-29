@@ -1411,9 +1411,29 @@ details p {
     border-bottom: 1px solid var(--line);
     align-items: center;
   }
-  .side-head,
-  .side-foot {
+  .side-head {
     display: none;
+  }
+  /* No celular, Integrações, Configurações e o tema seguem na mesma faixa (rolando para o lado). */
+  .side-foot {
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .side .nav,
+  .side-xodo,
+  .side-add {
+    flex: none;
+    white-space: nowrap;
+  }
+  .theme-switch {
+    margin: 0 0 0 4px;
+    flex: none;
+  }
+  .theme-switch button {
+    padding: 0 10px;
   }
   .brand {
     padding: 0 8px;

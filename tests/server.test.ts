@@ -27,7 +27,10 @@ const api = (p: string, init: RequestInit = {}) =>
 test("a página leva o token e as chamadas sem token são recusadas", async () => {
   const html = await (await fetch(app.url + "/")).text();
   assert.match(html, new RegExp(`name="xodos-token" content="${app.token}"`));
-  assert.equal((await fetch(app.url + "/api/estado")).status, 401);
+  const semToken = await fetch(app.url + "/api/estado");
+  assert.equal(semToken.status, 401);
+  // Só esta recusa pede à tela para recarregar (outros 401, como token do Telegram errado, não).
+  assert.equal(((await semToken.json()) as { recarregar?: boolean }).recarregar, true);
   assert.equal((await fetch(app.url + "/api/estado", { headers: { "x-xodos-token": "x" + app.token.slice(1) } })).status, 401);
 });
 

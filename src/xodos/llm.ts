@@ -155,6 +155,10 @@ export function providerErrorMessage(message: AssistantMessage | undefined | nul
   if (/no credits|credit balance|insufficient_quota|billing/i.test(raw)) {
     return "Sua conta no provedor de IA está sem saldo. Entre no site do provedor, na parte de cobrança (Billing), coloque créditos e tente de novo.";
   }
+  // A OpenAI responde 403/404 quando a chave é boa mas o projeto não tem acesso ao modelo.
+  if (/does not have access to model|model_not_found|model .{0,80} does not exist|not found for API version|unsupported model/i.test(raw)) {
+    return "Sua chave não tem acesso ao modelo escolhido. Em Ajustes, troque o modelo (ou libere esse modelo no site do provedor).";
+  }
   if (/api key not valid|api_key_invalid|incorrect api key|invalid.{0,10}api.?key/i.test(raw) || status === 401 || status === 403) {
     return "A chave de IA foi recusada pelo provedor. Confira em Configurações se ela foi copiada inteira e se ainda está ativa.";
   }

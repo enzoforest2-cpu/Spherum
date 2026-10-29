@@ -89,7 +89,9 @@ export async function finishGoogleLogin(deps: IntegrationDeps, query: URLSearchP
   );
   if (!row || !code) throw new IntegrationError("Esse login venceu ou já foi usado. Tente conectar de novo pelo app.", 400);
   const provider = OAUTH_PROVIDERS.google;
-  const tokens = await provider.exchange(code, oauthCreds(provider, deps.appUrl), deps.fetch, row.code_verifier ?? undefined);
+  const tokens = await provider.exchange(code, oauthCreds(provider, deps.appUrl), deps.fetch, row.code_verifier ?? undefined).catch((error) => {
+    throw new IntegrationError(googleMessage(error), 400);
+  });
   const who = await provider.identity(tokens, deps.fetch);
   await saveConnection(deps, {
     agencyId: row.agency_id,
@@ -102,6 +104,17 @@ export async function finishGoogleLogin(deps: IntegrationDeps, query: URLSearchP
     createdBy: row.user_id,
   });
   return who.label;
+}
+
+/** O Google responde em inglês; os erros mais comuns do login viram instrução em português. */
+function googleMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/client was not found|invalid_client|unauthorized_client/i.test(raw)) {
+    return "O Google não reconheceu o seu app (ID do cliente ou chave secreta errados). Confira em Integrações → Trocar o app do Google.";
+  }
+  if (/invalid_grant|expired|already redeemed/i.test(raw)) return "O código do Google venceu. Tente conectar de novo pelo app.";
+  if (/redirect_uri/i.test(raw)) return "O Google recusou o endereço de volta. O ID do cliente precisa ser do tipo “App para computador”.";
+  return `O Google recusou o login: ${raw.slice(0, 200)}`;
 }
 
 /** Contas conectadas (Google e canais), sem segredo nenhum. */

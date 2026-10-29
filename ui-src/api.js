@@ -21,6 +21,17 @@ export async function api(path, { method = "GET", body } = {}) {
     throw new ApiError("O app parece fechado. Abra os Xodós de novo e recarregue esta página.", 0);
   }
   const data = await res.json().catch(() => ({}));
+  // O app foi reaberto e a página ficou com o token antigo: recarrega sozinha (no máximo uma vez a cada 15 s).
+  if (res.status === 401 && data.recarregar) {
+    let last = 0;
+    try {
+      last = Number(sessionStorage.getItem("xodos-recarregou") || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem("xodos-recarregou", String(Date.now()));
+        location.reload();
+      }
+    } catch {}
+  }
   if (!res.ok) throw new ApiError(data.error || data.message || "Algo deu errado.", res.status, data);
   return data;
 }

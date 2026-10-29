@@ -87,6 +87,9 @@ test("explica em português os erros mais comuns dos provedores", () => {
   assert.match(providerErrorMessage(fail('{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}')), /chave de IA foi recusada/);
   assert.match(providerErrorMessage(fail('{"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generate_content_free_tier_requests, limit: 0, model: gemini-3.1-pro","status":"RESOURCE_EXHAUSTED"}}')), /não está liberado no uso gratuito/);
   assert.match(providerErrorMessage(fail('{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests, limit: 15","status":"RESOURCE_EXHAUSTED"}}')), /limite de uso/);
+  // Chave boa, mas sem acesso ao modelo: não pode virar "chave recusada".
+  assert.match(providerErrorMessage(fail('403 {"error":{"message":"Project proj_x does not have access to model gpt-9","code":"model_not_found"}}')), /não tem acesso ao modelo/);
+  assert.match(providerErrorMessage(fail('OpenAI API error (401): {"message":"Incorrect API key provided: sk-proj-***w28A.","code":"invalid_api_key"}')), /chave de IA foi recusada/);
 });
 
 test("o catálogo esconde modelos que não servem para conversa", () => {

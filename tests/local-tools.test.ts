@@ -36,7 +36,8 @@ test("pasta: escreve, lista e lê dentro da pasta dos xodós", async () => {
 test("pasta: nada sai dela, nem por .., caminho absoluto, letra de disco ou atalho", async () => {
   const outside = mkdtempSync(path.join(tmpdir(), "fora-"));
   writeFileSync(path.join(outside, "segredo.txt"), "senha");
-  symlinkSync(outside, path.join(ROOT, "atalho"));
+  // No Windows, "junction" é o atalho de pasta que não precisa de administrador.
+  symlinkSync(outside, path.join(ROOT, "atalho"), process.platform === "win32" ? "junction" : "dir");
   for (const caminho of ["../segredo.txt", "resumos/../../x.txt", path.join(outside, "segredo.txt"), "C:\\Windows\\win.ini", "atalho/segredo.txt"]) {
     await assert.rejects(run(FILE_TOOLS, "ler_arquivo", { caminho }), ToolError, caminho);
   }
@@ -76,6 +77,19 @@ test("web: resultados do buscador com o endereço de verdade", () => {
   const html = `<div class="result"><a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexemplo.com.br%2Fpreco&amp;rut=x">Preço da <b>geladeira</b></a>
   <a class="result__snippet" href="#">A partir de <b>R$ 3.499</b> em 10x</a></div>`;
   assert.deepEqual(parseDuckResults(html, 5), [{ titulo: "Preço da geladeira", url: "https://exemplo.com.br/preco", resumo: "A partir de R$ 3.499 em 10x" }]);
+});
+
+test("web: resumo no formato atual do DuckDuckGo (título dentro de h2, divs no meio)", () => {
+  const item = (site: string, resumo: string) => `<div class="result results_links web-result"><div class="links_main links_deep result__body">
+  <h2 class="result__title"><a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2F${site}%2F&amp;rut=x">Site ${site}</a></h2>
+  <div class="result__extras"><div class="result__extras__url"><a class="result__url" href="#">${site}</a></div></div>
+  <a class="result__snippet" href="#">${resumo}</a><div class="clear"></div></div></div>`;
+  const html = item("a.com.br", "Cotação do <b>dólar</b> hoje") + item("b.com.br", "");
+  assert.deepEqual(parseDuckResults(html, 5), [
+    { titulo: "Site a.com.br", url: "https://a.com.br/", resumo: "Cotação do dólar hoje" },
+    // O resumo de um resultado nunca vaza para o seguinte.
+    { titulo: "Site b.com.br", url: "https://b.com.br/", resumo: "" },
+  ]);
 });
 
 test("web: não abre endereços da rede de casa nem do próprio computador", async () => {

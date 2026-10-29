@@ -1640,6 +1640,9 @@ function GoogleClientForm({ data, notify, onSaved, onCancel }) {
             Em <em>Tela de consentimento OAuth</em>, escolha <em>Externo</em> e adicione o seu Gmail em <em>Usuários de teste</em>.
           </li>
           <li>
+            Em <em>Público-alvo</em>, clique em <strong>Publicar app</strong>. Sem isso, o Google desconecta a cada 7 dias. Na hora de entrar vai aparecer “app não verificado”: é normal, o app é seu (clique em <em>Avançado → Acessar</em>).
+          </li>
+          <li>
             Em <em>Credenciais → ID do cliente OAuth</em>, escolha <strong>App para computador</strong>.
           </li>
           <li>Copie o ID e a chave secreta para o lado.</li>

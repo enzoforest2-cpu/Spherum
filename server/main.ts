@@ -181,7 +181,8 @@ export async function startApp(opts: { dataDir?: string; port?: number; quiet?: 
       if (url.pathname.startsWith("/api/")) {
         // O EventSource do navegador não manda cabeçalhos; ali o token vai no endereço.
         const given = url.pathname === "/api/eventos" ? url.searchParams.get("t") : req.headers["x-xodos-token"]?.toString();
-        if (!sameToken(given, token)) return send(res, 401, { error: "Recarregue a página do app." });
+        // recarregar: a página aberta é de uma abertura anterior do app (a tela recarrega sozinha).
+        if (!sameToken(given, token)) return send(res, 401, { error: "Recarregue a página do app.", recarregar: true });
 
         if (url.pathname === "/api/eventos" && req.method === "GET") {
           res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });

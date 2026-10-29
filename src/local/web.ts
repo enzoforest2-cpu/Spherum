@@ -94,15 +94,20 @@ export function htmlToText(html: string): { title: string; text: string } {
 /** Resultados da página leve do DuckDuckGo (não precisa de chave). */
 export function parseDuckResults(html: string, limit: number) {
   const out: { titulo: string; url: string; resumo: string }[] = [];
-  const re = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>|<\/div>)/g;
-  for (const m of html.matchAll(re)) {
+  const links = [...html.matchAll(/<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
+  const clean = (s: string | undefined) => decodeEntities((s ?? "").replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+  for (let k = 0; k < links.length; k++) {
+    const m = links[k];
     let href = decodeEntities(m[1]);
     const uddg = href.match(/[?&]uddg=([^&]+)/);
     if (uddg) href = decodeURIComponent(uddg[1]);
     if (href.startsWith("//")) href = "https:" + href;
     if (!/^https?:\/\//.test(href) || /duckduckgo\.com\/y\.js/.test(href)) continue;
-    const clean = (s: string | undefined) => decodeEntities((s ?? "").replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
-    out.push({ titulo: clean(m[2]), url: href, resumo: clean(m[3]) });
+    // O resumo fica depois do título e antes do próximo resultado (pode ter <b> dentro).
+    const end = k + 1 < links.length ? links[k + 1].index : html.length;
+    const block = html.slice(m.index + m[0].length, end);
+    const snippet = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/(?:a|div|td)>/)?.[1];
+    out.push({ titulo: clean(m[2]), url: href, resumo: clean(snippet) });
     if (out.length >= limit) break;
   }
   return out;
