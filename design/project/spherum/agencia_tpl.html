@@ -546,7 +546,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                   <div style="width:72px;height:72px;border-radius:20px;background:rgba(255,255,255,.08);display:grid;place-items:center;backdrop-filter:blur(4px)">{{ heroLogo }}</div>
                   <div><div style="font-size:12.5px;color:#C7D0FF;margin-bottom:6px">{{ heroDate }}</div>
                   <h1 style="margin:0;font:italic 400 clamp(34px,4vw,44px)/1 'Instrument Serif',serif;letter-spacing:-0.01em">{{ heroHi }}</h1>
-                  <p style="margin:8px 0 0;color:#D0D5DD;font-size:15px">Você tem {{ dash.todayN }} compromissos hoje e {{ dash.attnN }} itens que pedem atenção.</p></div>
+                  <p style="margin:8px 0 0;color:#D0D5DD;font-size:15px">{{ heroSub }}</p></div>
                 </div>
                 <div style="position:relative;display:flex;gap:10px;flex-wrap:wrap">
                   <sc-for list="{{ dash.dayCounts }}" as="d" hint-placeholder-count="4"><div style="min-width:92px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 14px;backdrop-filter:blur(4px)"><div style="font-size:12px;color:#C7D0FF">{{ d.l }}</div><div style="font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.02em">{{ d.n }}</div></div></sc-for>
@@ -3626,6 +3626,10 @@ class Component extends DCLogic {
       if (!ag) { location.replace(me.home === 'cliente' || me.home === 'admin' ? '/' + me.home : '/?entrar=1'); return; }
       try { localStorage.setItem('spherum.agency', ag); } catch (e) {}
       this.spAg = ag; this.spMe = me;
+      // Nome da agência e o seu já aparecem; o resto chega com /api/portal/agencia.
+      const cur = list.find(a => a.agency_id === ag) || {};
+      this.R = Object.assign({}, this.R, { agency: Object.assign({}, this.R.agency, { name: cur.name || '', plan: cur.plan || '' }), me: Object.assign({}, this.R.me, { name: (me.user && (me.user.full_name || me.user.email)) || '', role: cur.role || null }) });
+      this.forceUpdate();
       await this.spLoad();
       this.pl = setInterval(() => { if (document.hidden || this.state.view !== 'messages') return; this.spLoad().catch(() => {}); const t = this.state.threadId; if (t && this.CC && this.CC[t]) this.spCcLoad(t, true).catch(() => {}); }, 20000);
       const q = new URLSearchParams(location.search);
@@ -4142,6 +4146,8 @@ class Component extends DCLogic {
   }
   spark(a, w, h) {
     w = w || 72; h = h || 28; const mn = Math.min(...a), mx = Math.max(...a), rg = mx - mn || 1;
+    // Sem variação (ex.: tudo zero) não há tendência para mostrar: nada de linha solta no rodapé.
+    if (!a.length || mx === mn) return { line: '', area: '' };
     const pts = a.map((v, i) => [i * w / (a.length - 1), h - 2 - (v - mn) / rg * (h - 4)]);
     const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
     return { line, area: line + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z' };
@@ -4431,13 +4437,13 @@ class Component extends DCLogic {
       rootRef: this.rootRef, mainRef: this.mainRef, stop, open, sbW: S.mobile ? (S.menuOpen ? '248px' : '0px') : open ? '248px' : '64px', sbPos: S.mobile ? 'fixed' : 'relative', sbOv: S.mobile ? 'hidden' : 'visible', isMobile: !!S.mobile, notMobile: !S.mobile, menuBackdrop: !!(S.mobile && S.menuOpen), toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen })), nav, setItem: navItem(['settings', 'Configurações', 'settings']),
       collapseIcon: open ? 'left_panel_close' : 'left_panel_open', logout: () => { clearInterval(this.pl); SP.logout(); this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); else location.href = '/'; } catch (e) {} }, back: () => { location.href = '/?entrar=1'; } }, toggleSidebar: () => this.setState(s => ({ collapsed: !s.collapsed })),
       wsOpen: S.ws, toggleWs: () => this.setState(s => ({ ws: !s.ws })), newWs: () => { this.setState({ ws: false }); this.toastMsg('Novos espaços de trabalho estão disponíveis no plano Escala'); },
-      wsList: (this.spMe ? this.spMe.agencies : []).map(a => [a.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), a.name, a.plan || '', a.agency_id === this.spAg, a.agency_id]).map(w => ({ ini: w[0], name: w[1], plan: w[2], cur: w[3], pick: () => { this.setState({ ws: false }); if (w[3]) return; try { localStorage.setItem('spherum.agency', w[4]); } catch (e) {} this.spAg = w[4]; this.spLoad().then(() => this.go('dashboard'), e => this.spErr(e)); } })),
+      wsList: (this.spMe ? this.spMe.agencies : []).map(a => [a.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), a.name, ({ solo: 'Plano Solo', agencia: 'Plano Agência', escala: 'Plano Escala', rede: 'Plano Rede', empresarial: 'Plano Empresarial' })[a.plan] || '', a.agency_id === this.spAg, a.agency_id]).map(w => ({ ini: w[0], name: w[1], plan: w[2], cur: w[3], pick: () => { this.setState({ ws: false }); if (w[3]) return; try { localStorage.setItem('spherum.agency', w[4]); } catch (e) {} this.spAg = w[4]; this.spLoad().then(() => this.go('dashboard'), e => this.spErr(e)); } })),
       crumb: titles[S.view], crumbGo: () => this.go(act), hasCrumbSub: S.view === 'client' || S.view === 'onboarding',
       crumbSub: S.view === 'client' ? cname(S.clientId) : S.view === 'onboarding' ? 'Onboarding' : '',
       openCmd: () => this.setState({ cmd: true, cmdQ: '', cmdIdx: 0 }), openNotif: () => { this.setState({ drawer: 'notif' }); this.spNotifRead(); }, bellDot: (this.R.notifications || []).some(n => !n.read) || D.attention.length ? 'block' : 'none', notice: this.spNotice(), openAi: () => this.setState({ drawer: 'ai', aiQ: null }), openHelp: () => this.setState({ drawer: 'help' }),
       closeAll: () => this.closeAll(),
       toggleTheme: () => this.setState(s => ({ theme: (s.theme || P.theme || 'light') === 'dark' ? 'light' : 'dark' })), themeIcon: (S.theme || P.theme || 'light') === 'dark' ? 'light_mode' : 'dark_mode',
-      is, soon, firstRun: !!P.firstRun || !!(!this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (!this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: { owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '', agIni: this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), agSub: this.R.loading ? '' : ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan) + ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas'),
+      is, soon, firstRun: !!P.firstRun || !!(!this.R.loading && !this.R.clients.length), notFirstRun: !(P.firstRun || (!this.R.loading && !this.R.clients.length)), dash, agName, heroDate, heroHi, heroSub: this.R.loading ? 'Carregando os dados da agência…' : 'Você tem ' + dash.todayN + (dash.todayN === 1 ? ' compromisso' : ' compromissos') + ' hoje e ' + dash.attnN + (dash.attnN === 1 ? ' item que pede' : ' itens que pedem') + ' atenção.', meName: meN, meFirst: (meN || '').split(/\s+/).filter(Boolean)[0] || 'você', meIni: meN.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(), meRole: { owner: 'Proprietário', admin: 'Admin', member: 'Membro', viewer: 'Leitor' }[this.R.me.role] || '', agIni: this.R.agency.name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase(), agSub: 'Plano ' + ({ solo: 'Solo', agencia: 'Agência', escala: 'Escala', rede: 'Rede', empresarial: 'Empresarial' }[this.R.agency.plan] || this.R.agency.plan || '…') + (this.R.loading ? '' : ' · ' + this.R.team.length + (this.R.team.length === 1 ? ' pessoa' : ' pessoas')),
       setup: { steps: setupSteps, doneN: setupN, pctW: setupN / 7 * 100 + '%' }, newClient: () => openForm('cliente'),
       goProjCal: () => this.go('projects', { projView: 'calendar' }), goClientsRisk: () => this.go('clients', { clientsView: 'Em risco' }), goPerf: () => this.go('performance'), goFin: () => this.go('finance'),
       cmd, drawer, notif, ai, help, dlg, toast: { show: !!S.toast, msg: S.toast || '', hasUndo: !!S.toastU, undo: () => { const u = this._undo; this._undo = null; clearTimeout(this.tt); this.setState({ toast: null, toastU: false }); if (u) u(); } }, fm: this.fmV(),
