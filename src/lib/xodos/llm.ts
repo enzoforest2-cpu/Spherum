@@ -55,6 +55,8 @@ export interface LlmClient {
   models(provider: string): CatalogModel[];
 }
 
+const NOT_CHAT = /image|live|tts|audio|realtime|computer-use|deep-research|customtools|embedding|transcribe|search/i;
+
 export function isSelfHosted(provider: string): provider is SelfHosted {
   return (SELF_HOSTED as readonly string[]).includes(provider);
 }
@@ -97,7 +99,8 @@ export function llmFromModels(models: MutableModels): LlmClient {
     },
     complete(model, context, options) {
       return models.complete(model, context, {
-        apiKey: options.apiKey || undefined,
+        // Servidor no próprio computador (Ollama, LM Studio) costuma não ter chave; a biblioteca exige uma.
+        apiKey: options.apiKey || (isSelfHosted(model.provider) ? "sem-chave" : undefined),
         maxTokens: options.maxTokens,
         signal: options.signal,
       });
@@ -116,7 +119,11 @@ export function llmFromModels(models: MutableModels): LlmClient {
     },
     models(provider) {
       if (NOT_API_KEY.has(provider) || isSelfHosted(provider)) return [];
-      return models.getModels(provider).map((m) => ({
+      return models
+        .getModels(provider)
+        // Fora os modelos que não servem para conversa com ferramentas (imagem, voz, pesquisa pronta...).
+        .filter((m) => !NOT_CHAT.test(m.id))
+        .map((m) => ({
         id: m.id,
         name: m.name,
         contextWindow: m.contextWindow,
@@ -143,9 +150,24 @@ export function serverLlm(): LlmClient {
 export function providerErrorMessage(message: AssistantMessage | undefined | null): string {
   const raw = message?.errorMessage ?? "";
   if (message?.rawStopReason === "refusal") return "O modelo se recusou a fazer este pedido.";
-  const status = Number(raw.match(/^(\d{3})\b/)?.[1] ?? 0);
-  if (status === 401 || status === 403) return "A chave de API foi recusada pelo provedor. Confira a chave da agência.";
-  if (status === 429) return "O provedor limitou as chamadas desta chave (limite de uso). Tente de novo em instantes.";
+  const status = Number(raw.match(/^(\d{3})\b/)?.[1] ?? raw.match(/"code":\s*(\d{3})/)?.[1] ?? 0);
+  // Os provedores escrevem o motivo em inglês; os mais comuns viram instrução em português.
+  if (/no credits|credit balance|insufficient_quota|billing/i.test(raw)) {
+    return "Sua conta no provedor de IA está sem saldo. Entre no site do provedor, na parte de cobrança (Billing), coloque créditos e tente de novo.";
+  }
+  // A OpenAI responde 403/404 quando a chave é boa mas o projeto não tem acesso ao modelo.
+  if (/does not have access to model|model_not_found|model .{0,80} does not exist|not found for API version|unsupported model/i.test(raw)) {
+    return "Sua chave não tem acesso ao modelo escolhido. Nos ajustes do xodó, troque o modelo (ou libere esse modelo no site do provedor).";
+  }
+  if (/api key not valid|api_key_invalid|incorrect api key|invalid.{0,10}api.?key/i.test(raw) || status === 401 || status === 403) {
+    return "A chave de IA foi recusada pelo provedor. Confira a chave de IA da agência: se foi copiada inteira e se ainda está ativa.";
+  }
+  if (/limit:\s*0\b/i.test(raw)) {
+    return "Este modelo não está liberado no uso gratuito da sua chave. Nos ajustes do xodó, troque para um modelo \"Flash\" ou ative a cobrança no provedor.";
+  }
+  if (status === 429 || /resource_exhausted|quota/i.test(raw)) {
+    return "A sua chave chegou no limite de uso do provedor (no plano gratuito, o limite é por minuto e por dia). Espere um pouco e tente de novo.";
+  }
   if (status === 404) return "O provedor não encontrou o modelo configurado.";
   if (status >= 500) return "O provedor do modelo está instável agora. Tente de novo em instantes.";
   if (/connection|fetch failed|ECONN|ENOTFOUND|timed? ?out/i.test(raw)) return "Não consegui falar com o provedor do modelo.";
