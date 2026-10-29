@@ -380,7 +380,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 <div ref="{{ rootRef }}" style="display:flex;height:100vh;background:var(--bg,#F7F8FA);color:var(--tx,#101828);font-family:'Geist',system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden">
 
   <aside aria-label="Navegação principal" style="width:{{ sbW }};flex-shrink:0;background:{{ ab.sideBg }};color:#A4ABB8;display:flex;flex-direction:column;transition:width 180ms ease;position:{{ sbPos }};top:0;left:0;height:100%;overflow:{{ sbOv }};z-index:45">
-    <div style="height:56px;display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0">
+    <div style="height:60px;display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0">
       <sc-if value="{{ ab.off }}" hint-placeholder-val="{{ true }}">{{ liveLogo }}</sc-if>
       <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><sc-if value="{{ ab.off }}" hint-placeholder-val="{{ true }}">
         <span style="font:italic 400 20px/1 'Instrument Serif',serif;letter-spacing:-0.01em;white-space:nowrap;color:#FFFFFF">Spherum</span>
@@ -389,19 +389,19 @@ a:hover{color:#3346D3;text-decoration:underline}
       <sc-if value="{{ open }}"><sc-if value="{{ ab.on }}"><span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-weight:600;font-size:14.5px;color:#FFFFFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ab.name }}</span><sc-if value="{{ ab.powered }}"><span style="font-size:10.5px;color:#A4ABB8">com Spherum</span></sc-if></span></sc-if></sc-if>
     </div>
 
-    <div style="padding:2px 10px 10px;position:relative;border-bottom:1px solid #1D2027;margin-bottom:6px">
-      <button sc-camel-on-click="{{ toggleWs }}" aria-haspopup="menu" aria-label="Trocar espaço de trabalho" style="width:100%;display:flex;align-items:center;gap:10px;height:44px;padding:0 8px;border:none;border-radius:8px;background:transparent;color:#FFFFFF;text-align:left;transition:background 120ms" style-hover="background:#1A1D23">
-        <div style="width:28px;height:28px;border-radius:8px;background:#F2F4F7;color:#111318;display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0.02em;flex-shrink:0">{{ agIni }}</div>
+    <div style="padding:2px 12px 12px;position:relative;margin-bottom:4px">
+      <button sc-camel-on-click="{{ toggleWs }}" aria-haspopup="menu" aria-label="Trocar espaço de trabalho" style="width:100%;display:flex;align-items:center;gap:10px;height:50px;padding:0 10px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);color:#FFFFFF;text-align:left;transition:background 120ms,border-color 120ms" style-hover="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14)">
+        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#465FFF,#8B9BFF);color:#FFFFFF;display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0.02em;flex-shrink:0;box-shadow:0 2px 6px rgba(70,95,255,0.35)">{{ agIni }}</div>
         <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
             <span style="font-size:13.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ agName }}</span>
-            <span style="font-size:12px;line-height:1.2;color:#7D8595;white-space:nowrap">{{ agSub }}</span>
+            <span style="font-size:12px;line-height:1.2;color:#8A92A3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ agSub }}</span>
           </div>
-          <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:16px;line-height:1;color:#5F6674">expand_more</span>
+          <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1;color:#7D8595">unfold_more</span>
         </sc-if>
       </button>
       <sc-if value="{{ wsOpen }}">
-        <div role="menu" style="position:absolute;left:10px;top:52px;width:240px;background:#1A1D23;border:1px solid #2A2E37;border-radius:10px;padding:6px;box-shadow:0 16px 32px rgba(0,0,0,0.35);z-index:20">
+        <div role="menu" style="position:absolute;left:12px;top:58px;width:240px;background:#1A1D23;border:1px solid #2A2E37;border-radius:10px;padding:6px;box-shadow:0 16px 32px rgba(0,0,0,0.35);z-index:20">
           <div style="font-size:11px;color:#7D8595;padding:6px 8px">Espaços de trabalho</div>
           <sc-for list="{{ wsList }}" as="w" hint-placeholder-count="2">
             <button role="menuitem" sc-camel-on-click="{{ w.pick }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:7px 8px;border:none;border-radius:6px;background:transparent;color:#E4E7EC;text-align:left" style-hover="background:#252A33">
@@ -416,16 +416,16 @@ a:hover{color:#3346D3;text-decoration:underline}
       </sc-if>
     </div>
 
-    <nav style="flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 10px;display:flex;flex-direction:column;gap:3px">
+    <nav style="flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 12px 8px;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.14) transparent">
       <sc-for list="{{ nav }}" as="g" hint-placeholder-count="5">
         <div style="display:flex;flex-direction:column;gap:1px">
-          <sc-if value="{{ g.hasHead }}"><button sc-camel-on-click="{{ g.toggle }}" aria-expanded="{{ g.exp }}" title="{{ g.label }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 8px 0 10px;border:none;border-radius:8px;background:{{ g.hbg }};color:{{ g.hc }};font-size:13.5px;font-weight:500;text-align:left;width:100%;transition:background 120ms,color 120ms" style-hover="background:#1C1F26;color:#FFFFFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:{{ g.ic }};font-variation-settings:'wght' 350">{{ g.icon }}</span><span style="flex:1;white-space:nowrap">{{ g.label }}</span><sc-if value="{{ g.hasBadge }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#465FFF;color:#FFFFFF;font-size:11px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums">{{ g.badge }}</span></sc-if><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1;color:#5F6674;transform:rotate({{ g.rot }});transition:transform .2s">expand_more</span></button></sc-if>
+          <sc-if value="{{ g.hasHead }}"><button sc-camel-on-click="{{ g.toggle }}" aria-expanded="{{ g.exp }}" title="{{ g.label }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px 0 10px;border:none;border-radius:9px;background:{{ g.hbg }};color:{{ g.hc }};font-size:13.5px;font-weight:{{ g.hfw }};text-align:left;width:100%;transition:background 120ms,color 120ms" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:{{ g.ic }};font-variation-settings:'wght' 350">{{ g.icon }}</span><span style="flex:1;white-space:nowrap">{{ g.label }}</span><sc-if value="{{ g.hasBadge }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#465FFF;color:#FFFFFF;font-size:11px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums">{{ g.badge }}</span></sc-if><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1;color:#6B7280;transform:rotate({{ g.rot }});transition:transform .2s">expand_more</span></button></sc-if>
           <sc-if value="{{ g.showItems }}"><div style="display:flex;flex-direction:column;gap:1px;margin:{{ g.mg }};padding-left:{{ g.pl }};border-left:{{ g.bl }};animation:sp-in .18s ease both">
           <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2">
-            <button sc-camel-on-click="{{ it.onClick }}" title="{{ it.label }}" aria-current="{{ it.cur }}" style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:none;border-radius:6px;background:{{ it.bg }};color:{{ it.color }};font-size:13.5px;font-weight:500;text-align:left;width:100%;transition:background 120ms,color 120ms" style-hover="background:#1C1F26;color:#FFFFFF">
-              <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:{{ it.ic }};font-variation-settings:'wght' 350">{{ it.icon }}</span>
+            <button sc-camel-on-click="{{ it.onClick }}" title="{{ it.label }}" aria-current="{{ it.cur }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border:none;border-radius:8px;background:{{ it.bg }};box-shadow:{{ it.sh }};color:{{ it.color }};font-size:13.5px;font-weight:{{ it.fw }};text-align:left;width:100%;transition:background 120ms,color 120ms" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF">
+              <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:{{ it.ic }};font-variation-settings:{{ it.fv }}">{{ it.icon }}</span>
               <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span style="flex:1">{{ it.label }}</span></sc-if>
-              <sc-if value="{{ it.hasBadge }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#2A2F3A;color:#E4E7EC;font-size:11px;display:grid;place-items:center;font-variant-numeric:tabular-nums">{{ it.badge }}</span></sc-if>
+              <sc-if value="{{ it.hasBadge }}"><span style="min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:{{ it.bBg }};color:#FFFFFF;font-size:11px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums">{{ it.badge }}</span></sc-if>
             </button>
           </sc-for>
           </div></sc-if>
@@ -433,23 +433,23 @@ a:hover{color:#3346D3;text-decoration:underline}
       </sc-for>
     </nav>
 
-    <div style="padding:8px 10px 12px;border-top:1px solid #1D2027;display:flex;flex-direction:column;gap:1px">
-      <button sc-camel-on-click="{{ setItem.onClick }}" title="Configurações" style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:none;border-radius:6px;background:{{ setItem.bg }};color:{{ setItem.color }};font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:#1C1F26;color:#FFFFFF">
+    <div style="padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:2px">
+      <button sc-camel-on-click="{{ setItem.onClick }}" title="Configurações" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border:none;border-radius:8px;background:{{ setItem.bg }};color:{{ setItem.color }};font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF">
         <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:{{ setItem.ic }}">settings</span>
         <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span>Configurações</span></sc-if>
       </button>
-      <button sc-camel-on-click="{{ openHelp }}" title="Ajuda e suporte" style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:none;border-radius:6px;background:transparent;color:#A4ABB8;font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:#1C1F26;color:#FFFFFF">
+      <button sc-camel-on-click="{{ openHelp }}" title="Ajuda e suporte" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border:none;border-radius:8px;background:transparent;color:#B4BAC6;font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF">
         <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1;color:#7D8595">help</span>
         <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span>Ajuda e suporte</span></sc-if>
       </button>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 8px 0;margin-top:6px">
-        <div style="width:28px;height:28px;border-radius:50%;background:#2A2F3A;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ meIni }}</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;margin-top:8px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06)">
+        <div style="position:relative;width:32px;height:32px;flex-shrink:0"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#2E3A8C,#465FFF);color:#fff;display:grid;place-items:center;font-size:11.5px;font-weight:600">{{ meIni }}</div><span style="position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#12B76A;border:2px solid #111318"></span></div>
         <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
-          <div style="flex:1;min-width:0"><div style="font-size:13px;color:#E4E7EC;font-weight:500">{{ meName }}</div><div style="font-size:11.5px;color:#7D8595">{{ meRole }}</div></div>
-          <button type="button" sc-camel-on-click="{{ logout }}" title="Sair" aria-label="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#7D8595;display:grid;place-items:center;width:28px;height:28px;border-radius:6px"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;color:#F2F4F7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ meName }}</div><div style="font-size:11.5px;color:#8A92A3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ meRole }}</div></div>
+          <button type="button" sc-camel-on-click="{{ logout }}" title="Sair" aria-label="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#8A92A3;display:grid;place-items:center;width:30px;height:30px;border-radius:8px" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
         </sc-if>
       </div>
-      <button sc-camel-on-click="{{ toggleSidebar }}" aria-label="Recolher menu" style="margin-top:8px;display:flex;align-items:center;justify-content:center;height:28px;border:none;border-radius:6px;background:transparent;color:#5F6674" style-hover="background:#1C1F26;color:#fff"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">{{ collapseIcon }}</span></button>
+      <button sc-camel-on-click="{{ toggleSidebar }}" aria-label="Recolher menu" style="margin-top:6px;display:flex;align-items:center;justify-content:center;height:28px;border:none;border-radius:8px;background:transparent;color:#6B7280" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">{{ collapseIcon }}</span></button>
     </div>
   </aside>
   <sc-if value="{{ menuBackdrop }}"><div sc-camel-on-click="{{ toggleMenu }}" style="position:fixed;inset:0;background:rgba(16,24,40,0.4);z-index:44"></div></sc-if>
@@ -4416,7 +4416,7 @@ class Component extends DCLogic {
     const cById = {}; D.clients.forEach(c => cById[c.id] = c);
     const cname = id => (cById[id] || {}).name || 'Interno';
 
-    const navItem = ([id, label, icon, badge]) => { const a = act === id; if (SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? '#1F232B' : 'transparent', color: a ? '#FFFFFF' : '#A4ABB8', ic: a ? '#8B9BFF' : '#7D8595', onClick: () => this.go(id) }; };
+    const navItem = ([id, label, icon, badge]) => { const a = act === id; if (SP_SOON[id]) badge = 0; return { id, label, icon, badge: badge || '', hasBadge: !!badge && open, cur: a ? 'page' : undefined, bg: a ? 'rgba(124,141,255,0.16)' : 'transparent', sh: a ? 'inset 3px 0 0 #8B9BFF' : 'none', fw: a ? '600' : '500', fv: a ? "'FILL' 1, 'wght' 400" : "'FILL' 0, 'wght' 350", color: a ? '#FFFFFF' : '#B4BAC6', ic: a ? '#A9B6FF' : '#7D8595', bBg: a ? '#465FFF' : 'rgba(255,255,255,0.10)', onClick: () => this.go(id) }; };
     // Os grupos do menu são as mesmas áreas dos cargos e permissões (Equipe → Cargos e permissões).
     const nav = [['Principal', [['dashboard', 'Visão geral', 'space_dashboard']]], ['Xodó', [['xodo', 'Xodós', 'smart_toy', this.xoPendingN()]]],
       ['Clientes', [['clients', 'Clientes', 'group'], ['risk', 'Radar de risco', 'monitor_heart', this.rkHighN()], ['tickets', 'Chamados', 'support_agent', (((this.R.tickets || {}).stats || {}).open) || null], ['documents', 'Documentos', 'folder_open']]],
@@ -4431,8 +4431,8 @@ class Component extends DCLogic {
         const multi = items.length > 1, hasAct = items.some(x => x[0] === act), ex = (S.navExp || {})[label], exp = ex == null ? hasAct : ex, head = open && multi;
         const bsum = items.reduce((n, x) => n + (typeof x[3] === 'number' && !SP_SOON[x[0]] ? x[3] : 0), 0);
         return { label, items: items.map(navItem), hasHead: head, exp: exp ? 'true' : 'false', showItems: !head || exp, icon: GI[label] || 'folder', rot: exp ? '180deg' : '0deg',
-          hbg: hasAct && !exp ? '#1F232B' : 'transparent', hc: hasAct ? '#FFFFFF' : '#A4ABB8', ic: hasAct ? '#8B9BFF' : '#7D8595', hasBadge: !exp && bsum > 0, badge: String(bsum),
-          mg: head ? '1px 0 4px 19px' : '0', pl: head ? '8px' : '0', bl: head ? '1px solid #262A33' : 'none',
+          hbg: hasAct && !exp ? 'rgba(124,141,255,0.16)' : 'transparent', hc: hasAct ? '#FFFFFF' : '#B4BAC6', ic: hasAct ? '#A9B6FF' : '#7D8595', hfw: hasAct ? '600' : '500', hasBadge: !exp && bsum > 0, badge: String(bsum),
+          mg: head ? '2px 0 6px 19px' : '0', pl: head ? '8px' : '0', bl: head ? '1px solid rgba(255,255,255,0.08)' : 'none',
           toggle: () => this.setState(s => ({ navExp: Object.assign({}, s.navExp, { [label]: !exp }) })) }; });
     const titles = { dashboard: 'Visão geral', clients: 'Clientes', client: 'Clientes', onboarding: 'Clientes', crm: 'CRM', campaigns: 'Campanhas', projects: 'Projetos', performance: 'Performance', reports: 'Relatórios', finance: 'Financeiro', messages: 'Mensagens', documents: 'Documentos', team: 'Equipe', settings: 'Configurações', xodo: 'Xodós', prospect: 'Prospecção', proposals: 'Propostas', content: 'Conteúdo', roi: 'Retorno', integrations: 'Integrações', profit: 'Rentabilidade', fiscal: 'Notas e cobranças', risk: 'Radar de risco', aivis: 'Busca por IA', studio: 'Estúdio', auto: 'Automações', forms: 'Formulários', sched: 'Agendamentos', tickets: 'Chamados', publish: 'Publicar', chat: 'Chat da equipe', academy: 'Academy', badges: 'Conquistas', dre: 'DRE', score: 'Pontuação de leads', contracts: 'Contratos', minutes: 'Atas', app: 'App de celular' };
     const is = {}; Object.keys(titles).forEach(k => is[k] = S.view === k);

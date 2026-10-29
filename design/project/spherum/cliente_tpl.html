@@ -356,26 +356,29 @@ a:hover{color:#3346D3;text-decoration:underline}
 </style>
 </helmet>
 <div style="display:flex;height:100vh;background:#F7F8FA;color:#101828;font-family:'Geist',system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden">
-  <aside aria-label="Navegação" style="width:{{ sbW }};flex-shrink:0;background:#FFFFFF;border-right:1px solid #E4E7EC;display:flex;flex-direction:column">
-    <div style="height:60px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #F2F4F7">
-      <div style="width:30px;height:30px;border-radius:8px;background-color:{{ br.lgBg }};background-image:{{ br.lgImg }};background-size:contain;background-position:center;background-repeat:no-repeat;color:{{ br.lgFg }};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">{{ br.lgIni }}</div>
-      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ br.name }}</div><div style="font-size:11.5px;color:#667085">Portal do cliente</div></div></sc-if>
+  <aside aria-label="Navegação" style="width:{{ sbW }};flex-shrink:0;background:#FFFFFF;border-right:1px solid #EAECF0;display:flex;flex-direction:column">
+    <div style="height:68px;display:flex;align-items:center;gap:12px;padding:0 18px">
+      <div style="width:36px;height:36px;border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,0.08),0 0 0 1px rgba(16,24,40,0.04);background-color:{{ br.lgBg }};background-image:{{ br.lgImg }};background-size:contain;background-position:center;background-repeat:no-repeat;color:{{ br.lgFg }};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">{{ br.lgIni }}</div>
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><div style="min-width:0"><div style="font-weight:600;font-size:14.5px;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ br.name }}</div><div style="font-size:12px;color:#667085">Portal do cliente</div></div></sc-if>
     </div>
-    <nav style="flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto">
+    <nav style="flex:1;padding:6px 12px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;scrollbar-width:thin">
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span style="padding:8px 10px 6px;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#98A2B3">Menu</span></sc-if>
       <sc-for list="{{ nav }}" as="it" hint-placeholder-count="8">
-        <button sc-camel-on-click="{{ it.go }}" aria-current="{{ it.cur }}" title="{{ it.l }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ it.bg }};color:{{ it.c }};font-size:13.5px;font-weight:500;text-align:left;width:100%" style-hover="background:#F2F4F7">
-          <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">{{ it.icon }}</span>
+        <button sc-camel-on-click="{{ it.go }}" aria-current="{{ it.cur }}" title="{{ it.l }}" style="display:flex;align-items:center;gap:11px;height:38px;padding:0 11px;border:none;border-radius:10px;background:{{ it.bg }};box-shadow:{{ it.sh }};color:{{ it.c }};font-size:14px;font-weight:{{ it.fw }};text-align:left;width:100%;transition:background 120ms" style-hover="background:#F2F4F7">
+          <span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:20px;line-height:1;color:{{ it.ic }};font-variation-settings:{{ it.fv }}">{{ it.icon }}</span>
           <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span style="flex:1">{{ it.l }}</span></sc-if>
-          <sc-if value="{{ it.hasBadge }}"><span style="min-width:18px;height:18px;border-radius:9px;background:{{ br.acc }};color:#fff;font-size:11px;display:grid;place-items:center">{{ it.badge }}</span></sc-if>
+          <sc-if value="{{ it.hasBadge }}"><span style="min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:{{ br.acc }};color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center">{{ it.badge }}</span></sc-if>
         </button>
       </sc-for>
     </nav>
-    <div style="padding:12px 14px;border-top:1px solid #F2F4F7;display:flex;align-items:center;gap:10px">
-      <div style="width:30px;height:30px;border-radius:50%;background:#F2F4F7;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0">{{ who.ini }}</div>
-      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">{{ who.name }}</div><div style="font-size:11.5px;color:#667085">{{ who.client }}</div></div>
-        <button type="button" sc-camel-on-click="{{ logout }}" aria-label="Sair" title="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#667085;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
-      </sc-if>
+    <div style="padding:12px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:#F9FAFB;border:1px solid #EAECF0">
+        <div style="width:34px;height:34px;border-radius:50%;background:{{ br.acc }};color:#FFFFFF;display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0">{{ who.ini }}</div>
+        <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ who.name }}</div><div style="font-size:11.5px;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ who.client }}</div></div>
+          <button type="button" sc-camel-on-click="{{ logout }}" aria-label="Sair" title="Sair" style="border:none;background:transparent;padding:0;cursor:pointer;color:#667085;display:grid;place-items:center;width:30px;height:30px;border-radius:8px" style-hover="background:#EAECF0;color:#101828"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">logout</span></button>
+        </sc-if>
+      </div>
     </div>
     <sc-if value="{{ br.powOpen }}" hint-placeholder-val="{{ true }}"><div style="padding:0 18px 12px;font-size:10.5px;color:#98A2B3;display:flex;align-items:center;gap:6px">Desenvolvido com {{ liveLogo }}<span style="font:italic 400 14px/1 'Instrument Serif',serif;color:#475467">Spherum</span></div></sc-if>
   </aside>
@@ -1080,7 +1083,7 @@ class Component extends DCLogic {
     // Sem os dados de /api/portal/cliente (carregando ou sem acesso), as telas abrem vazias.
     const cb = this.R ? this.spBadges() : null;
     const navDef = [['home', 'Visão geral', 'home'], ['work', 'Feito pela agência', 'auto_awesome', cb ? cb.work : 0], ['start', 'Pendências', 'assignment', cb ? cb.start : 0], ['perf', 'Performance', 'monitoring'], ['camps', 'Campanhas', 'ads_click'], ['reports', 'Relatórios', 'lab_profile', this.R ? this.spNewReports() : 0]].concat(this.R && this.R.aivis ? [['aivis', 'Busca por IA', 'travel_explore']] : []).concat([['fin', 'Financeiro', 'receipt_long'], ['docs', 'Documentos', 'folder_open'], ['msgs', 'Mensagens', 'forum', cb ? cb.msgs : 0], ['tickets', 'Chamados', 'support_agent', cb ? cb.tickets : 0], ['help', 'Ajuda', 'help']]);
-    const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 8%, transparent)` : 'transparent', c: a ? ACC() : '#344054', badge: n[3] || '', hasBadge: !!n[3] && open }; });
+    const nav = navDef.map(n => { const a = S.view === n[0]; return { l: n[1], icon: n[2], go: () => this.go(n[0]), cur: a ? 'page' : undefined, bg: a ? `color-mix(in srgb, ${ACC()} 10%, transparent)` : 'transparent', c: a ? ACC() : '#344054', ic: a ? ACC() : '#667085', sh: a ? `inset 3px 0 0 ${ACC()}` : 'none', fw: a ? '600' : '500', fv: a ? "'FILL' 1" : "'FILL' 0", badge: n[3] || '', hasBadge: !!n[3] && open }; });
     // Telas que ainda não têm dados de verdade mostram um aviso (hoje todas têm).
     const SOON = {};
     const is = {}; navDef.forEach(n => is[n[0]] = S.view === n[0]);
