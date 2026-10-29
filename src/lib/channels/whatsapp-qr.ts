@@ -666,3 +666,59 @@ export const whatsappQrAdapter: ChannelAdapter = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// Grupos (Prospecção): os grupos em que o número está e quem participa de cada um
+// ---------------------------------------------------------------------------
+
+async function qrGateway(deps: IntegrationDeps, agencyId: string, connectionId: string): Promise<Gateway> {
+  const row = await loadConnection(deps.sql, agencyId, connectionId);
+  if (row.provider !== PROVIDER || row.status === "revoked") throw new IntegrationError("Conexão do WhatsApp por QR Code não encontrada.", 404);
+  try {
+    return gatewayOf(row, (await readSecret(deps, row)).apiKey);
+  } catch (error) {
+    if (error instanceof ChannelError) throw new IntegrationError(error.message, 409);
+    throw error;
+  }
+}
+
+export type WhatsappGroup = { id: string; name: string; size: number | null };
+
+/** Grupos do número conectado (GET /group/fetchAllGroups, sem os participantes, que pesa). */
+export async function whatsappQrGroups(deps: IntegrationDeps, agencyId: string, connectionId: string, resolve?: Resolver): Promise<WhatsappGroup[]> {
+  const gw = await qrGateway(deps, agencyId, connectionId);
+  const body = await call<unknown>(deps.fetch, gw, "GET", `${path("group/fetchAllGroups", gw.instance)}?getParticipants=false`, undefined, { resolve, timeoutMs: SLOW_TIMEOUT_MS });
+  const list = Array.isArray(body) ? body : [];
+  return list
+    .map((g) => record(g))
+    .filter((g) => typeof g.id === "string" && g.id.endsWith("@g.us"))
+    .map((g) => ({ id: g.id as string, name: clip(String(g.subject ?? "Grupo sem nome"), 100), size: typeof g.size === "number" ? g.size : null }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+
+/**
+ * Telefones de quem está no grupo. O WhatsApp esconde o número de parte dos participantes
+ * (ids "@lid"); esses só entram quando o gateway devolve o número junto (phoneNumber).
+ */
+export async function whatsappQrGroupMembers(
+  deps: IntegrationDeps,
+  agencyId: string,
+  connectionId: string,
+  groupId: string,
+  resolve?: Resolver,
+): Promise<{ phones: string[]; hidden: number }> {
+  if (!/^[\d-]{5,40}@g\.us$/.test(groupId)) throw new IntegrationError("Grupo inválido.", 400);
+  const gw = await qrGateway(deps, agencyId, connectionId);
+  const body = record(
+    await call<unknown>(deps.fetch, gw, "GET", `${path("group/participants", gw.instance)}?groupJid=${encodeURIComponent(groupId)}`, undefined, { resolve, timeoutMs: SLOW_TIMEOUT_MS }),
+  );
+  const list = Array.isArray(body.participants) ? body.participants : [];
+  const phones: string[] = [];
+  let hidden = 0;
+  for (const p of list.map(record)) {
+    const jid = [p.phoneNumber, p.jid, p.id].find((v) => typeof v === "string" && /@s\.whatsapp\.net$/.test(v)) as string | undefined;
+    if (!jid) { hidden++; continue; }
+    phones.push(jid.split("@")[0]);
+  }
+  return { phones, hidden };
+}

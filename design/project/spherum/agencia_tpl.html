@@ -1901,60 +1901,101 @@ a:hover{color:#3346D3;text-decoration:underline}
             <div role="tablist" style="display:flex;gap:22px;border-bottom:1px solid var(--bd,#E4E7EC);flex-wrap:wrap"><sc-for list="{{ pr.tabs }}" as="t"><button role="tab" aria-selected="{{ t.sel }}" sc-camel-on-click="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;height:38px;border:none;border-bottom:2px solid {{ t.bd }};margin-bottom:-1px;background:transparent;padding:0;color:{{ t.c }};font-weight:{{ t.fw }};font-size:13.5px;white-space:nowrap">{{ t.l }}<sc-if value="{{ t.hasN }}"><span style="min-width:18px;height:18px;padding:0 6px;border-radius:9px;background:var(--sf2,#F2F4F7);color:var(--tx2,#475467);font-size:11px;display:grid;place-items:center">{{ t.n }}</span></sc-if></button></sc-for></div>
 
             <sc-if value="{{ pr.isCap }}">
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px">
-                <sc-for list="{{ pr.sources }}" as="s"><button sc-camel-on-click="{{ s.pick }}" style="text-align:left;background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;border:1.5px solid {{ s.bd }};background:{{ s.bg }};padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--tx,#101828);font:inherit">
-                  <span style="width:34px;height:34px;border-radius:9px;background:{{ s.icBg }};color:{{ s.icC }};display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px">{{ s.icon }}</span></span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px">
+                <sc-for list="{{ pr.sources }}" as="s"><button sc-camel-on-click="{{ s.pick }}" aria-pressed="{{ s.on }}" style="text-align:left;border-radius:12px;border:1.5px solid {{ s.bd }};background:{{ s.bg }};padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--tx,#101828);font:inherit;cursor:pointer">
+                  <span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="width:34px;height:34px;border-radius:9px;background:{{ s.icBg }};color:{{ s.icC }};display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px">{{ s.icon }}</span></span><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;background:{{ s.tagBg }};color:{{ s.tagC }};white-space:nowrap">{{ s.tag }}</span></span>
                   <span style="font-size:14px;font-weight:600">{{ s.n }}</span><span style="font-size:12.5px;color:var(--tx2,#667085);text-wrap:pretty">{{ s.d }}</span>
                 </button></sc-for>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px;align-items:start">
-                <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px">
-                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font-size:15px;font-weight:600">{{ pr.src.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ pr.src.hint }}</span></div>
 
-                  <sc-if value="{{ pr.src.isWa }}">
-                    <div style="display:flex;flex-direction:column;border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:hidden">
-                      <sc-for list="{{ pr.groups }}" as="g"><button sc-camel-on-click="{{ g.toggle }}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:none;border-top:1px solid {{ g.line }};background:transparent;color:var(--tx,#101828);font:inherit;text-align:left"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid {{ g.cbBd }};background:{{ g.cbBg }};color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0">{{ g.mark }}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ g.sub }}</span></span><span style="font-size:12.5px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ g.m }}</span></button></sc-for>
+              <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:15px;font-weight:600">{{ pr.capF.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ pr.capF.hint }}</span></div>
+
+                <sc-if value="{{ pr.capF.needKey }}">
+                  <div style="border-radius:10px;background:var(--bg,#F7F8FA);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                    <span style="font-size:13.5px;font-weight:600">{{ pr.capF.keyTitle }}</span>
+                    <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--tx,#344054)"><sc-for list="{{ pr.capF.keySteps }}" as="t"><li>{{ t }}</li></sc-for></ol>
+                    <button sc-camel-on-click="{{ pr.capF.addKey }}" style="align-self:flex-start;height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500">{{ pr.capF.addKeyL }}</button>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ pr.capF.isMaps }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px">
+                    <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">O que buscar</span><input value="{{ pr.capM.q }}" sc-camel-on-change="{{ pr.capM.onQ }}" sc-camel-on-key-down="{{ pr.capF.onEnter }}" placeholder="Ex.: clínica odontológica" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
+                    <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Cidade</span><input value="{{ pr.capM.city }}" sc-camel-on-change="{{ pr.capM.onCity }}" sc-camel-on-key-down="{{ pr.capF.onEnter }}" placeholder="Ex.: Campinas, SP" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
+                  </div>
+                  <span style="font-size:12px;color:var(--tx2,#667085)">Traz nome, telefone, site, endereço e nota de cada negócio. Até 60 por busca (20 por página).</span>
+                </sc-if>
+
+                <sc-if value="{{ pr.capF.isCnpj }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;position:relative">
+                    <span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Atividade (CNAE)</span>
+                    <sc-if value="{{ pr.capC.hasSel }}"><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ pr.capC.sel }}" as="o"><button sc-camel-on-click="{{ o.del }}" title="Tirar" style="height:30px;padding:0 10px;border:1px solid #465FFF;border-radius:99px;background:rgba(70,95,255,0.08);color:#3538CD;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:4px">{{ o.l }}<span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:15px">close</span></button></sc-for></div></sc-if>
+                    <input value="{{ pr.capC.q }}" sc-camel-on-change="{{ pr.capC.onQ }}" placeholder="Digite a atividade ou o código. Ex.: academia, 9313-1" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box">
+                    <sc-if value="{{ pr.capC.hasOpts }}"><div style="border:1px solid var(--bd,#E4E7EC);border-radius:10px;max-height:220px;overflow:auto;background:var(--sf,#fff)"><sc-for list="{{ pr.capC.opts }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="display:block;width:100%;text-align:left;padding:9px 12px;border:none;border-top:1px solid var(--bd,#F2F4F7);background:transparent;color:var(--tx,#101828);font:inherit;font-size:13px">{{ o.l }}</button></sc-for></div></sc-if>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px">
+                    <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Estado</span><select value="{{ pr.capC.uf }}" sc-camel-on-change="{{ pr.capC.onUf }}" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 9px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%"><sc-for list="{{ pr.capC.ufs }}" as="o"><option value="{{ o.v }}">{{ o.v }}</option></sc-for></select></label>
+                    <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Cidade (opcional)</span><input value="{{ pr.capC.city }}" sc-camel-on-change="{{ pr.capC.onCity }}" placeholder="Todas do estado" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
+                  </div>
+                  <sc-for list="{{ pr.capC.toggles }}" as="o"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">{{ o.l }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ o.d }}</span></span><button sc-camel-on-click="{{ o.toggle }}" role="switch" aria-checked="{{ o.on }}" aria-label="{{ o.l }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ o.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ o.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for>
+                  <span style="font-size:12px;color:var(--tx2,#667085)">Empresas ativas na Receita Federal com telefone cadastrado. Cada empresa encontrada usa créditos da sua conta na CNPJá.</span>
+                </sc-if>
+
+                <sc-if value="{{ pr.capF.isIg }}">
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Perfis (um por linha ou separados por vírgula)</span><textarea value="{{ pr.capI.text }}" sc-camel-on-change="{{ pr.capI.onText }}" rows="4" spellcheck="false" placeholder="@padariasol, @studiobella, @academiaforte" style="border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:9px 11px;background:var(--sf,#fff);color:var(--tx,#101828);font:inherit;font-size:13.5px;outline:none;resize:vertical"></textarea></label>
+                  <span style="font-size:12px;color:var(--tx2,#667085)">Só perfis comerciais (empresa ou criador) aparecem. O telefone vem da bio ou do link de WhatsApp. Até 50 por vez.</span>
+                </sc-if>
+
+                <sc-if value="{{ pr.capF.isWa }}">
+                  <sc-if value="{{ pr.capW.hasGroups }}">
+                    <input value="{{ pr.capW.q }}" sc-camel-on-change="{{ pr.capW.onQ }}" placeholder="Filtrar grupos" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box">
+                    <div style="display:flex;flex-direction:column;border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:auto;max-height:300px">
+                      <sc-for list="{{ pr.capW.groups }}" as="g"><button sc-camel-on-click="{{ g.pick }}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:none;border-top:1px solid var(--bd,#F2F4F7);background:{{ g.bg }};color:var(--tx,#101828);font:inherit;text-align:left"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ g.ring }};box-shadow:inset 0 0 0 3px var(--sf,#fff);background:{{ g.fill }};flex-shrink:0"></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ g.n }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ g.sub }}</span></span></button></sc-for>
                     </div>
-                    <span style="font-size:12px;color:var(--tx2,#667085)">Só aparecem grupos em que o número conectado participa. Admins e o seu próprio número ficam de fora.</span>
                   </sc-if>
+                  <sc-if value="{{ pr.capW.noGroups }}"><button sc-camel-on-click="{{ pr.capW.load }}" style="align-self:flex-start;height:34px;padding:0 14px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">{{ pr.capW.loadL }}</button></sc-if>
+                  <span style="font-size:12px;color:var(--tx2,#667085)">Lê os grupos do número ligado por QR Code. O WhatsApp esconde o número de alguns participantes: esses ficam de fora.</span>
+                </sc-if>
 
-                  <sc-if value="{{ pr.src.isIg }}">
-                    <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Perfil de referência</span><input value="{{ pr.igHandle }}" sc-camel-on-change="{{ pr.onIg }}" placeholder="@perfil" spellcheck="false" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
-                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Quem captar</span><div style="display:flex;background:var(--sf2,#F2F4F7);border-radius:8px;padding:3px;gap:3px;flex-wrap:wrap"><sc-for list="{{ pr.igModes }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="flex:1;min-width:110px;height:30px;border:none;border-radius:6px;background:{{ o.bg }};color:var(--tx,#101828);font-size:12.5px;font-weight:{{ o.fw }};box-shadow:{{ o.sh }}">{{ o.l }}</button></sc-for></div></div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">Só perfis comerciais com contato público</span><span style="font-size:12px;color:var(--tx2,#667085)">Pega o WhatsApp do botão de contato ou da bio</span></span><button sc-camel-on-click="{{ pr.igBiz.toggle }}" role="switch" aria-checked="{{ pr.igBiz.on }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ pr.igBiz.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ pr.igBiz.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div>
-                  </sc-if>
+                <sc-if value="{{ pr.capF.isCsv }}">
+                  <button sc-camel-on-click="{{ pr.capF.csv }}" style="border:1.5px dashed var(--bd,#D0D5DD);border-radius:10px;background:transparent;padding:26px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--tx2,#667085);font:inherit"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:26px;line-height:1">upload_file</span><span style="font-size:13.5px;font-weight:500;color:var(--tx,#101828)">Clique para escolher o arquivo CSV</span><span style="font-size:12px">Colunas: telefone (obrigatória), nome, empresa, e-mail, segmento e cidade</span></button>
+                </sc-if>
 
-                  <sc-if value="{{ pr.src.isMaps }}">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">O que buscar</span><input value="{{ pr.mapsQ }}" sc-camel-on-change="{{ pr.onMapsQ }}" placeholder="clínica estética" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
-                      <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Cidade</span><input value="{{ pr.mapsC }}" sc-camel-on-change="{{ pr.onMapsC }}" placeholder="Cidade, UF" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
-                    </div>
-                    <span style="font-size:12px;color:var(--tx2,#667085)">Traz nome, telefone, site, nota e número de avaliações de cada negócio.</span>
-                  </sc-if>
+                <sc-if value="{{ pr.capF.canSearch }}"><div style="display:flex;justify-content:flex-end;border-top:1px solid var(--bd,#E4E7EC);padding-top:14px"><button sc-camel-on-click="{{ pr.capF.search }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;opacity:{{ pr.capF.op }}"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">travel_explore</span>{{ pr.capF.searchL }}</button></div></sc-if>
+              </div>
 
-                  <sc-if value="{{ pr.src.isCnpj }}">
-                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Atividade (CNAE)</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ pr.cnaes }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:30px;padding:0 11px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12.5px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
-                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Estado</span><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ pr.ufs }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:30px;min-width:44px;padding:0 10px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12.5px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
-                    <span style="font-size:12px;color:var(--tx2,#667085)">Empresas ativas com telefone cadastrado na Receita Federal.</span>
-                  </sc-if>
-
-                  <sc-if value="{{ pr.src.isCsv }}">
-                    <button sc-camel-on-click="{{ pr.fakeCsv }}" style="border:1.5px dashed var(--bd,#D0D5DD);border-radius:10px;background:transparent;padding:26px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--tx2,#667085);font:inherit"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:26px;line-height:1">upload_file</span><span style="font-size:13.5px;font-weight:500;color:var(--tx,#101828)">{{ pr.csvL }}</span><span style="font-size:12px">CSV ou XLSX com colunas nome e telefone</span></button>
-                  </sc-if>
-
-                  <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Salvar na lista</span><input value="{{ pr.listName }}" sc-camel-on-change="{{ pr.onList }}" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--bd,#E4E7EC);padding-top:14px"><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ pr.est }}</span><button sc-camel-on-click="{{ pr.start }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;white-space:nowrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1">travel_explore</span>Iniciar captação</button></div>
-                </div>
-
+              <sc-if value="{{ pr.capR.has }}">
                 <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
-                  <div style="padding:14px 16px;font-size:13px;font-weight:600">Captações</div>
-                  <sc-if value="{{ pr.noJobs }}"><div style="padding:18px 16px;border-top:1px solid var(--bd,#E4E7EC);font-size:13px;color:var(--tx2,#667085)">Nenhuma captação ainda.</div></sc-if>
-                  <sc-for list="{{ pr.jobs }}" as="j"><div style="padding:12px 16px;border-top:1px solid var(--bd,#E4E7EC);display:flex;flex-direction:column;gap:8px">
-                    <div style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:8px;background:{{ j.icBg }};color:{{ j.icC }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px">{{ j.icon }}</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ j.label }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ j.sub }}</span></span><span style="font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:5px;background:{{ j.stBg }};color:{{ j.stC }};white-space:nowrap">{{ j.st }}</span></div>
-                    <div style="height:5px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ j.w }};background:{{ j.barC }};border-radius:3px;transition:width .6s"></div></div>
-                    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums"><span>{{ j.found }}</span><span>{{ j.phones }}</span><span>{{ j.dup }}</span><sc-if value="{{ j.done }}"><button sc-camel-on-click="{{ j.see }}" style="margin-left:auto;border:none;background:transparent;padding:0;color:#465FFF;font-size:12.5px;font-weight:500">Ver leads →</button></sc-if></div>
-                  </div></sc-for>
+                  <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">{{ pr.capR.title }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ pr.capR.sub }}</span></span>
+                    <button sc-camel-on-click="{{ pr.capR.selAll }}" style="height:32px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:12.5px;font-weight:500">{{ pr.capR.selAllL }}</button>
+                  </div>
+                  <sc-for list="{{ pr.capR.rows }}" as="x"><button sc-camel-on-click="{{ x.toggle }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:11px 16px;border:none;border-top:1px solid var(--bd,#E4E7EC);background:{{ x.bg }};color:var(--tx,#101828);font:inherit;text-align:left;opacity:{{ x.op }};cursor:pointer">
+                    <span style="width:18px;height:18px;border-radius:5px;border:1.5px solid {{ x.cbBd }};background:{{ x.cbBg }};color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0">{{ x.mark }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ x.n }}</span><span style="font-size:12px;color:var(--tx2,#667085);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ x.info }}</span></span>
+                    <span style="font-size:13px;font-variant-numeric:tabular-nums;color:{{ x.phC }};white-space:nowrap">{{ x.ph }}</span>
+                    <sc-if value="{{ x.hasTag }}"><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;background:{{ x.tagBg }};color:{{ x.tagC }};white-space:nowrap">{{ x.tag }}</span></sc-if>
+                  </button></sc-for>
+                  <sc-if value="{{ pr.capR.hasMore }}"><div style="padding:10px 16px;border-top:1px solid var(--bd,#E4E7EC)"><button sc-camel-on-click="{{ pr.capR.more }}" style="border:none;background:transparent;padding:0;color:#465FFF;font-size:13px;font-weight:500">{{ pr.capR.moreL }}</button></div></sc-if>
+                  <div style="padding:14px 16px;border-top:1px solid var(--bd,#E4E7EC);background:var(--bg,#F9FAFB);display:flex;flex-direction:column;gap:10px">
+                    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                      <label style="flex:1 1 220px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Salvar na lista</span><input value="{{ pr.capR.list }}" sc-camel-on-change="{{ pr.capR.onList }}" maxlength="80" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
+                      <button sc-camel-on-click="{{ pr.capR.doImport }}" style="height:36px;padding:0 16px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;opacity:{{ pr.capR.op }}">{{ pr.capR.importL }}</button>
+                    </div>
+                    <span style="font-size:12px;color:var(--tx2,#667085)">A origem de cada contato fica registrada. Quem responder SAIR é bloqueado para sempre, conforme a LGPD.</span>
+                  </div>
                 </div>
+              </sc-if>
+
+              <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
+                <div style="padding:14px 16px;font-size:13px;font-weight:600">Listas</div>
+                <sc-if value="{{ pr.noJobs }}"><div style="padding:18px 16px;border-top:1px solid var(--bd,#E4E7EC);font-size:13px;color:var(--tx2,#667085)">Nenhuma lista ainda. Busque contatos acima e importe.</div></sc-if>
+                <sc-for list="{{ pr.jobs }}" as="j"><div style="padding:12px 16px;border-top:1px solid var(--bd,#E4E7EC);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="width:30px;height:30px;border-radius:8px;background:{{ j.icBg }};color:{{ j.icC }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px">{{ j.icon }}</span></span>
+                  <span style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:500">{{ j.label }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ j.found }} · {{ j.phones }} · {{ j.dup }}</span></span>
+                  <button sc-camel-on-click="{{ j.see }}" style="border:none;background:transparent;padding:0;color:#465FFF;font-size:12.5px;font-weight:500">Ver leads →</button>
+                </div></sc-for>
               </div>
             </sc-if>
 
@@ -2046,61 +2087,61 @@ a:hover{color:#3346D3;text-decoration:underline}
               <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:300px minmax(380px,1fr) 300px;min-width:1000px;height:660px;background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;overflow:hidden">
                 <div style="border-right:1px solid var(--bd,#E4E7EC);display:flex;flex-direction:column;min-height:0">
                   <div style="padding:12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--bd,#E4E7EC)">
-                    <input value="{{ pr.c.q }}" sc-camel-on-change="{{ pr.c.onQ }}" placeholder="Buscar conversa…" aria-label="Buscar conversa" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box;height:34px">
-                    <div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ pr.c.filters }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:26px;padding:0 9px;border:none;border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500;display:flex;gap:5px;align-items:center">{{ o.l }}<sc-if value="{{ o.hasN }}"><span style="opacity:.75;font-variant-numeric:tabular-nums">{{ o.n }}</span></sc-if></button></sc-for></div>
+                    <input value="{{ pr.capC.q }}" sc-camel-on-change="{{ pr.capC.onQ }}" placeholder="Buscar conversa…" aria-label="Buscar conversa" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box;height:34px">
+                    <div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ pr.capC.filters }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:26px;padding:0 9px;border:none;border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500;display:flex;gap:5px;align-items:center">{{ o.l }}<sc-if value="{{ o.hasN }}"><span style="opacity:.75;font-variant-numeric:tabular-nums">{{ o.n }}</span></sc-if></button></sc-for></div>
                   </div>
                   <div style="flex:1;overflow:auto;min-height:0">
-                    <sc-for list="{{ pr.c.list }}" as="x"><button sc-camel-on-click="{{ x.open }}" style="display:flex;gap:10px;width:100%;text-align:left;padding:11px 12px;border:none;border-bottom:1px solid var(--bd,#F2F4F7);background:{{ x.bg }};color:var(--tx,#101828);font:inherit;align-items:flex-start">
+                    <sc-for list="{{ pr.capC.list }}" as="x"><button sc-camel-on-click="{{ x.open }}" style="display:flex;gap:10px;width:100%;text-align:left;padding:11px 12px;border:none;border-bottom:1px solid var(--bd,#F2F4F7);background:{{ x.bg }};color:var(--tx,#101828);font:inherit;align-items:flex-start">
                       <span style="position:relative;flex-shrink:0"><span style="width:38px;height:38px;border-radius:50%;background:{{ x.avBg }};color:{{ x.avC }};display:grid;place-items:center;font-size:12.5px;font-weight:600">{{ x.ini }}</span><span style="position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--sf,#fff);display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:13px;color:{{ x.srcC }}">{{ x.srcIc }}</span></span></span>
                       <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:13.5px;font-weight:{{ x.fw }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.n }}</span><span style="font-size:11.5px;color:{{ x.tc }};flex-shrink:0">{{ x.time }}</span></span>
                       <span style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:12.5px;color:var(--tx2,#667085);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.last }}</span><sc-if value="{{ x.unread }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#25D366;color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;flex-shrink:0">{{ x.un }}</span></sc-if></span>
                       <span style="display:flex;gap:6px;align-items:center"><span style="width:6px;height:6px;border-radius:50%;background:{{ x.stDot }}"></span><span style="font-size:11.5px;color:var(--tx2,#667085)">{{ x.st }}</span></span></span>
                     </button></sc-for>
-                    <sc-if value="{{ pr.c.empty }}"><div style="padding:20px 14px;font-size:13px;color:var(--tx2,#667085)">Nenhuma conversa nesse filtro.</div></sc-if>
+                    <sc-if value="{{ pr.capC.empty }}"><div style="padding:20px 14px;font-size:13px;color:var(--tx2,#667085)">Nenhuma conversa nesse filtro.</div></sc-if>
                   </div>
                 </div>
 
                 <div style="display:flex;flex-direction:column;min-height:0;min-width:0">
-                  <sc-if value="{{ pr.c.has }}">
+                  <sc-if value="{{ pr.capC.has }}">
                   <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd,#E4E7EC)">
-                    <span style="width:36px;height:36px;border-radius:50%;background:{{ pr.c.s.avBg }};color:{{ pr.c.s.avC }};display:grid;place-items:center;font-size:12.5px;font-weight:600;flex-shrink:0">{{ pr.c.s.ini }}</span>
-                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pr.c.s.n }}</span><span style="font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ pr.c.s.sub }}</span></span>
-                    <span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">via {{ pr.c.s.via }}</span>
+                    <span style="width:36px;height:36px;border-radius:50%;background:{{ pr.capC.s.avBg }};color:{{ pr.capC.s.avC }};display:grid;place-items:center;font-size:12.5px;font-weight:600;flex-shrink:0">{{ pr.capC.s.ini }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pr.capC.s.n }}</span><span style="font-size:12px;color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ pr.capC.s.sub }}</span></span>
+                    <span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">via {{ pr.capC.s.via }}</span>
                   </div>
                   <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column-reverse;background:#EFEAE2;background-image:radial-gradient(rgba(0,0,0,0.035) 1px,transparent 1px);background-size:14px 14px">
                     <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px">
-                      <sc-for list="{{ pr.c.s.msgs }}" as="m">
+                      <sc-for list="{{ pr.capC.s.msgs }}" as="m">
                         <sc-if value="{{ m.isSys }}"><div style="align-self:center;background:#FFF5C4;color:#54504A;border-radius:7px;padding:5px 10px;font-size:11.5px;margin:4px 0;text-align:center;max-width:80%">{{ m.t }}</div></sc-if>
                         <sc-if value="{{ m.isIn }}"><div style="align-self:flex-start;max-width:74%;background:#fff;color:#111B21;border-radius:2px 10px 10px 10px;padding:7px 10px 5px;font-size:14px;line-height:1.45;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.08)">{{ m.t }}<span style="display:block;text-align:right;font-size:11px;color:#667781;margin-top:1px">{{ m.time }}</span></div></sc-if>
                         <sc-if value="{{ m.isOut }}"><div style="align-self:flex-end;max-width:74%;background:#D9FDD3;color:#111B21;border-radius:10px 2px 10px 10px;padding:7px 10px 5px;font-size:14px;line-height:1.45;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.08)"><sc-if value="{{ m.hasTag }}"><span style="display:block;font-size:11px;font-weight:600;color:#1F7A55;margin-bottom:2px">{{ m.tag }}</span></sc-if>{{ m.t }}<span style="display:block;text-align:right;font-size:11px;color:#667781;margin-top:1px">{{ m.time }} ✓✓</span></div></sc-if>
                         <sc-if value="{{ m.isNote }}"><div style="align-self:flex-end;max-width:74%;background:#FEF0C7;color:#4E3A0E;border:1px dashed #F5C04B;border-radius:10px;padding:7px 10px 5px;font-size:13.5px;line-height:1.45;white-space:pre-wrap"><span style="display:block;font-size:11px;font-weight:600;margin-bottom:2px">Nota interna · só a equipe vê</span>{{ m.t }}<span style="display:block;text-align:right;font-size:11px;opacity:.7;margin-top:1px">{{ m.time }}</span></div></sc-if>
                       </sc-for>
-                      <sc-if value="{{ pr.c.s.typing }}"><div style="align-self:flex-start;background:#fff;border-radius:2px 10px 10px 10px;padding:8px 12px;font-size:12.5px;color:#667781">digitando…</div></sc-if>
+                      <sc-if value="{{ pr.capC.s.typing }}"><div style="align-self:flex-start;background:#fff;border-radius:2px 10px 10px 10px;padding:8px 12px;font-size:12.5px;color:#667781">digitando…</div></sc-if>
                     </div>
                   </div>
-                  <sc-if value="{{ pr.c.s.blocked }}"><div style="padding:14px 16px;border-top:1px solid var(--bd,#E4E7EC);font-size:13px;color:var(--tx2,#667085);text-align:center">Este contato pediu para sair. Não é possível enviar mensagens.</div></sc-if>
-                  <sc-if value="{{ pr.c.s.canSend }}">
-                  <sc-if value="{{ pr.c.s.hasSug }}"><div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--bd,#E4E7EC);background:rgba(70,95,255,0.04)"><span style="font:700 12px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 8px;flex-shrink:0">xodó</span><span style="flex:1;min-width:0;font-size:13px;color:var(--tx,#344054);text-wrap:pretty">{{ pr.c.s.sug }}</span><button sc-camel-on-click="{{ pr.c.s.useSug }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap;height:28px;font-size:12px">Usar</button></div></sc-if>
+                  <sc-if value="{{ pr.capC.s.blocked }}"><div style="padding:14px 16px;border-top:1px solid var(--bd,#E4E7EC);font-size:13px;color:var(--tx2,#667085);text-align:center">Este contato pediu para sair. Não é possível enviar mensagens.</div></sc-if>
+                  <sc-if value="{{ pr.capC.s.canSend }}">
+                  <sc-if value="{{ pr.capC.s.hasSug }}"><div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--bd,#E4E7EC);background:rgba(70,95,255,0.04)"><span style="font:700 12px/1.6 'Fredoka',sans-serif;background:#EF5B3B;color:#2B1D16;border-radius:99px;padding:0 8px;flex-shrink:0">xodó</span><span style="flex:1;min-width:0;font-size:13px;color:var(--tx,#344054);text-wrap:pretty">{{ pr.capC.s.sug }}</span><button sc-camel-on-click="{{ pr.capC.s.useSug }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap;height:28px;font-size:12px">Usar</button></div></sc-if>
                   <div style="padding:10px 14px 12px;border-top:1px solid var(--bd,#E4E7EC);display:flex;flex-direction:column;gap:8px">
-                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><div style="display:flex;background:var(--sf2,#F2F4F7);border-radius:7px;padding:2px;gap:2px"><sc-for list="{{ pr.c.modes }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:26px;padding:0 10px;border:none;border-radius:5px;background:{{ o.bg }};color:var(--tx,#101828);font-size:12px;font-weight:{{ o.fw }};box-shadow:{{ o.sh }}">{{ o.l }}</button></sc-for></div><span style="width:1px;height:18px;background:var(--bd,#E4E7EC);margin:0 2px"></span><sc-for list="{{ pr.c.quick }}" as="q"><button sc-camel-on-click="{{ q.use }}" style="height:26px;padding:0 9px;border:1px solid var(--bd,#E4E7EC);border-radius:99px;background:var(--sf,#fff);color:var(--tx2,#475467);font-size:12px">{{ q.l }}</button></sc-for></div>
-                    <div style="display:flex;gap:8px;align-items:flex-end"><textarea value="{{ pr.c.draft }}" sc-camel-on-change="{{ pr.c.onDraft }}" sc-camel-on-key-down="{{ pr.c.onKey }}" rows="2" placeholder="{{ pr.c.ph }}" aria-label="Mensagem" style="flex:1;min-width:0;border:1px solid {{ pr.c.inBd }};border-radius:10px;padding:9px 12px;background:{{ pr.c.inBg }};color:var(--tx,#101828);font:400 14px/1.45 inherit;resize:none;outline:none"></textarea><button sc-camel-on-click="{{ pr.c.send }}" aria-label="Enviar" style="width:40px;height:40px;border:none;border-radius:50%;background:{{ pr.c.sendBg }};color:#fff;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">send</span></button></div>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><div style="display:flex;background:var(--sf2,#F2F4F7);border-radius:7px;padding:2px;gap:2px"><sc-for list="{{ pr.capC.modes }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:26px;padding:0 10px;border:none;border-radius:5px;background:{{ o.bg }};color:var(--tx,#101828);font-size:12px;font-weight:{{ o.fw }};box-shadow:{{ o.sh }}">{{ o.l }}</button></sc-for></div><span style="width:1px;height:18px;background:var(--bd,#E4E7EC);margin:0 2px"></span><sc-for list="{{ pr.capC.quick }}" as="q"><button sc-camel-on-click="{{ q.use }}" style="height:26px;padding:0 9px;border:1px solid var(--bd,#E4E7EC);border-radius:99px;background:var(--sf,#fff);color:var(--tx2,#475467);font-size:12px">{{ q.l }}</button></sc-for></div>
+                    <div style="display:flex;gap:8px;align-items:flex-end"><textarea value="{{ pr.capC.draft }}" sc-camel-on-change="{{ pr.capC.onDraft }}" sc-camel-on-key-down="{{ pr.capC.onKey }}" rows="2" placeholder="{{ pr.capC.ph }}" aria-label="Mensagem" style="flex:1;min-width:0;border:1px solid {{ pr.capC.inBd }};border-radius:10px;padding:9px 12px;background:{{ pr.capC.inBg }};color:var(--tx,#101828);font:400 14px/1.45 inherit;resize:none;outline:none"></textarea><button sc-camel-on-click="{{ pr.capC.send }}" aria-label="Enviar" style="width:40px;height:40px;border:none;border-radius:50%;background:{{ pr.capC.sendBg }};color:#fff;display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">send</span></button></div>
                   </div>
                   </sc-if>
                   </sc-if>
-                  <sc-if value="{{ pr.c.none }}"><div style="flex:1;display:grid;place-items:center;color:var(--tx2,#667085);font-size:13.5px;padding:20px;text-align:center">Escolha uma conversa à esquerda.</div></sc-if>
+                  <sc-if value="{{ pr.capC.none }}"><div style="flex:1;display:grid;place-items:center;color:var(--tx2,#667085);font-size:13.5px;padding:20px;text-align:center">Escolha uma conversa à esquerda.</div></sc-if>
                 </div>
 
                 <div style="border-left:1px solid var(--bd,#E4E7EC);overflow:auto;min-height:0">
-                  <sc-if value="{{ pr.c.has }}">
+                  <sc-if value="{{ pr.capC.has }}">
                   <div style="padding:14px;display:flex;flex-direction:column;gap:14px">
-                    <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Etapa</span><span style="font-size:12px;color:{{ pr.c.s.stC }};font-weight:600">{{ pr.c.s.st }}</span></div>
-                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px"><sc-for list="{{ pr.c.s.steps }}" as="k"><button sc-camel-on-click="{{ k.pick }}" title="{{ k.l }}" aria-label="{{ k.l }}" style="height:8px;border:none;border-radius:3px;padding:0;background:{{ k.bg }}"></button></sc-for></div>
-                      <div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.c.s.steps }}" as="k"><button sc-camel-on-click="{{ k.pick }}" style="height:24px;padding:0 8px;border:1px solid {{ k.bd }};border-radius:99px;background:{{ k.chipBg }};color:{{ k.c }};font-size:11.5px;font-weight:500">{{ k.l }}</button></sc-for></div>
+                    <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Etapa</span><span style="font-size:12px;color:{{ pr.capC.s.stC }};font-weight:600">{{ pr.capC.s.st }}</span></div>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px"><sc-for list="{{ pr.capC.s.steps }}" as="k"><button sc-camel-on-click="{{ k.pick }}" title="{{ k.l }}" aria-label="{{ k.l }}" style="height:8px;border:none;border-radius:3px;padding:0;background:{{ k.bg }}"></button></sc-for></div>
+                      <div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.capC.s.steps }}" as="k"><button sc-camel-on-click="{{ k.pick }}" style="height:24px;padding:0 8px;border:1px solid {{ k.bd }};border-radius:99px;background:{{ k.chipBg }};color:{{ k.c }};font-size:11.5px;font-weight:500">{{ k.l }}</button></sc-for></div>
                     </div>
-                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Responsável</span><div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.c.s.owners }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:28px;padding:0 10px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
-                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Etiquetas</span><div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.c.s.tags }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:24px;padding:0 9px;border:1px solid {{ o.bd }};border-radius:6px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
-                    <div style="display:flex;flex-direction:column;border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:hidden"><sc-for list="{{ pr.c.s.fields }}" as="f"><div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-top:1px solid {{ f.line }};font-size:12.5px"><span style="color:var(--tx2,#667085)">{{ f.l }}</span><span style="font-weight:500;text-align:right;font-variant-numeric:tabular-nums">{{ f.v }}</span></div></sc-for></div>
-                    <div style="display:flex;flex-direction:column;gap:6px"><button sc-camel-on-click="{{ pr.c.s.toCrm }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;white-space:nowrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1">handshake</span>{{ pr.c.s.crmL }}</button><button sc-camel-on-click="{{ pr.c.s.block }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap;color:#B42318">Bloquear contato</button></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Responsável</span><div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.capC.s.owners }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:28px;padding:0 10px;border:1px solid {{ o.bd }};border-radius:99px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:var(--tx2,#667085);text-transform:uppercase;letter-spacing:.04em">Etiquetas</span><div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ pr.capC.s.tags }}" as="o"><button sc-camel-on-click="{{ o.pick }}" style="height:24px;padding:0 9px;border:1px solid {{ o.bd }};border-radius:6px;background:{{ o.bg }};color:{{ o.c }};font-size:12px;font-weight:500">{{ o.l }}</button></sc-for></div></div>
+                    <div style="display:flex;flex-direction:column;border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:hidden"><sc-for list="{{ pr.capC.s.fields }}" as="f"><div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-top:1px solid {{ f.line }};font-size:12.5px"><span style="color:var(--tx2,#667085)">{{ f.l }}</span><span style="font-weight:500;text-align:right;font-variant-numeric:tabular-nums">{{ f.v }}</span></div></sc-for></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><button sc-camel-on-click="{{ pr.capC.s.toCrm }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;white-space:nowrap"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1">handshake</span>{{ pr.capC.s.crmL }}</button><button sc-camel-on-click="{{ pr.capC.s.block }}" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;white-space:nowrap;color:#B42318">Bloquear contato</button></div>
                   </div>
                   </sc-if>
                 </div>
@@ -5398,6 +5439,99 @@ class Component extends DCLogic {
         const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list: v.list.trim(), source: 'planilha', consent: true, rows: rows.slice(0, 10000) } });
         await this.spPrLoad(); this.setState({ prTab: 'leads', prLf: v.list.trim() }); this.toastMsg(r.added + ' leads importados · ' + r.dup + ' repetidos · ' + r.bad + ' inválidos' + (r.blocked ? ' · ' + r.blocked + ' bloqueados' : '')); } catch (e) { this.spErr(e); } } });
   }
+  // Captar (no jeito do ReDrive): escolhe a fonte, busca, confere, marca e importa para uma lista.
+  async spPrSrcLoad() { this.PRS = await SP.api('/api/prospect/sources?agency_id=' + this.spAg); this.setState({ real: Date.now() }); }
+  async spPrFind(more) {
+    const S = this.state, src = S.prSrc || 'maps', R0 = S.prRes;
+    if (S.prBusy) return;
+    let body, title;
+    if (more) { body = Object.assign({}, R0.input, src === 'maps' ? { page_token: R0.next } : { token: R0.next }); title = R0.title; }
+    else if (src === 'maps') { const m = S.prM || {}; if (!(m.q || '').trim() || !(m.city || '').trim()) return this.toastMsg('Diga o que buscar e a cidade'); body = { fonte: 'maps', query: m.q.trim(), city: m.city.trim() }; title = m.q.trim() + ' em ' + m.city.trim(); }
+    else if (src === 'cnpj') { const c = S.prC || {}; if (!(c.cnae || []).length) return this.toastMsg('Escolha ao menos uma atividade (CNAE)'); body = { fonte: 'cnpj', cnae: c.cnae.map(x => x.id), uf: c.uf || 'SP', city: (c.city || '').trim() || undefined, mobile_only: c.mobile !== false, with_email: !!c.email, limit: 50 }; title = c.cnae.map(x => x.text).join(', ') + ' · ' + ((c.city || '').trim() || c.uf || 'SP'); }
+    else if (src === 'ig') { const u = ((S.prI || {}).text || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean); if (!u.length) return this.toastMsg('Cole ao menos um @perfil'); body = { fonte: 'instagram', usernames: u.slice(0, 50) }; title = u.length + (u.length === 1 ? ' perfil do Instagram' : ' perfis do Instagram'); }
+    else if (src === 'wa') { const g = (S.prW || {}).sel; if (!g) return this.toastMsg('Escolha um grupo'); body = { fonte: 'grupo', connection_id: g.connection_id, group_id: g.id, group_name: g.name }; title = 'Grupo "' + g.name + '"'; }
+    else return;
+    this.setState({ prBusy: true });
+    try {
+      const r = await SP.api('/api/prospect/sources', { method: 'POST', body: Object.assign({ agency_id: this.spAg }, body) });
+      const items = (more ? R0.items : []).concat(r.items || []), pick = Object.assign({}, more ? S.prPick : {});
+      (r.items || []).forEach(x => { if (x.phone && !x.exists && !x.blocked) pick[x.key] = true; });
+      const notes = [r.hidden ? r.hidden + ' participantes com número escondido pelo WhatsApp' : '', (r.missing || []).length ? 'Sem perfil comercial: @' + r.missing.join(', @') : ''].filter(Boolean).join(' · ');
+      this.setState({ prBusy: false, prPick: pick, prRes: { src, title, items, next: r.next || null, input: body, notes }, prRList: more ? S.prRList : title.slice(0, 80) });
+      if (!items.length) this.toastMsg('Nada encontrado. Tente outra busca.');
+    } catch (e) { this.setState({ prBusy: false }); this.spErr(e); }
+  }
+  spPrKey(src) {
+    if (this.levelOf('comercial') !== 'editar' || !['owner', 'admin'].includes(this.R.me.role)) return this.toastMsg('Peça ao dono ou a um admin para cadastrar a chave');
+    this.fm({ title: src === 'maps' ? 'Chave do Google Maps' : 'Chave da CNPJá', desc: src === 'maps' ? 'Chave de API do Google Cloud com a "Places API (New)" ativada. O Google cobra direto da sua conta, com um crédito grátis todo mês.' : 'Chave da sua conta na CNPJá. Os créditos são cobrados direto pela CNPJá.', icon: 'key',
+      fields: [{ k: 'key', l: 'Chave de API', req: 1, min: 16 }], okL: 'Conferir e guardar', busyL: 'Conferindo…',
+      ok: async v => { try { await SP.api('/api/prospect/sources', { method: 'POST', body: { agency_id: this.spAg, fonte: 'chave', source: src, key: v.key.trim() } }); await this.spPrSrcLoad(); this.toastMsg('Chave conferida e guardada'); } catch (e) { this.spErr(e); } } });
+  }
+  async spPrGroups() {
+    this.setState({ prGBusy: true });
+    try { const r = await SP.api('/api/prospect/sources', { method: 'POST', body: { agency_id: this.spAg, fonte: 'grupos' } }); this.PRG = r.numbers || []; this.setState({ prGBusy: false }); if (!this.PRG.some(n => n.groups.length)) this.toastMsg('O número não participa de nenhum grupo'); }
+    catch (e) { this.setState({ prGBusy: false }); this.spErr(e); }
+  }
+  prCapV() {
+    const S = this.state, src = S.prSrc || 'maps', ST = this.PRS;
+    if (!ST && this.state.view === 'prospect' && !this._prsL) { this._prsL = 1; this.spPrSrcLoad().catch(() => { this._prsL = 0; }); }
+    const ready = { maps: !!(ST && ST.maps), cnpj: !!(ST && ST.cnpj), ig: !!(ST && ST.instagram), wa: !!(ST && ST.groups), csv: true };
+    const SRC = [['maps', 'Google Maps', 'Negócios por segmento e cidade', 'location_on', '#D93025'], ['cnpj', 'Empresas por CNAE', 'Base da Receita Federal, por atividade', 'domain', '#1570EF'],
+      ['ig', 'Instagram', 'Perfis comerciais pelo @', 'photo_camera', '#C13584'], ['wa', 'Grupos de WhatsApp', 'Participantes dos seus grupos', 'groups', '#128C7E'], ['csv', 'Planilha', 'Uma lista que você já tem', 'table_view', '#475467']];
+    const sources = SRC.map(s => { const on = s[0] === src, ok = ready[s[0]];
+      return { n: s[1], d: s[2], icon: s[3], icC: s[4], icBg: s[4] + '1A', on: on ? 'true' : 'false', bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.04)' : 'var(--sf,#fff)',
+        tag: !ST && s[0] !== 'csv' ? '' : ok ? 'Pronto' : s[0] === 'maps' || s[0] === 'cnpj' ? 'Precisa de chave' : 'Conectar', tagBg: ok ? 'rgba(18,183,106,0.12)' : 'rgba(247,144,9,0.14)', tagC: ok ? '#067647' : '#B54708',
+        pick: () => this.setState({ prSrc: s[0] }) }; });
+    const cur = SRC.find(s => s[0] === src);
+    const KEYS = {
+      maps: ['Cadastre a chave do Google Maps', ['Entre em console.cloud.google.com e crie um projeto (ou use um que já tem).', 'Em APIs e serviços, ative a "Places API (New)" e cadastre a forma de pagamento. O Google dá um crédito grátis todo mês.', 'Em Credenciais, crie uma chave de API e restrinja à Places API.', 'Clique abaixo e cole a chave.'], 'Cadastrar chave', () => this.spPrKey('maps')],
+      cnpj: ['Cadastre a chave da CNPJá', ['Crie a conta em cnpja.com e escolha um pacote de créditos.', 'No painel da CNPJá, copie a sua chave de API.', 'Clique abaixo e cole a chave. Cada empresa encontrada consome créditos da sua conta.'], 'Cadastrar chave', () => this.spPrKey('cnpj')],
+      ig: ['Conecte a Meta primeiro', ['Em Integrações, conecte a Meta (Instagram e Facebook).', 'O Instagram da agência precisa ser profissional e estar ligado a uma página do Facebook.', 'Volte aqui e cole os @ dos perfis.'], 'Ir para Integrações', () => this.go('integrations')],
+      wa: ['Ligue um número de WhatsApp por QR Code', ['Em Xodós → Integrações → WhatsApp, escolha QR Code.', 'Leia o QR com o número que participa dos grupos.', 'Volte aqui e escolha o grupo.'], 'Ir para Integrações dos xodós', () => this.go('xodo', { xoTab: 'integ', xoSel: null, xoNew: false })] };
+    const need = !!ST && !ready[src] && !!KEYS[src], K = KEYS[src] || ['', [], '', () => {}];
+    const HINT = { maps: 'Places API do Google · até 60 por busca', cnpj: 'CNPJá · empresas ativas', ig: 'Business Discovery da Meta', wa: 'Número ligado por QR Code', csv: 'Até 10 mil linhas' };
+    const f = { n: cur[1], hint: HINT[src], isMaps: src === 'maps' && !need, isCnpj: src === 'cnpj' && !need, isIg: src === 'ig' && !need, isWa: src === 'wa' && !need, isCsv: src === 'csv', needKey: need, keyTitle: K[0], keySteps: K[1], addKeyL: K[2], addKey: K[3],
+      canSearch: src !== 'csv' && !need && !!ST, search: () => this.spPrFind(false), searchL: S.prBusy ? 'Buscando…' : 'Buscar contatos', op: S.prBusy ? 0.6 : 1, csv: () => this.spPrImport(),
+      onEnter: e => { if (e.key === 'Enter') this.spPrFind(false); } };
+    const setO = (k, p) => this.setState(s => ({ [k]: Object.assign({}, s[k], p) }));
+    const M = S.prM || {}, m = { q: M.q || '', city: M.city || '', onQ: e => setO('prM', { q: e.target.value }), onCity: e => setO('prM', { city: e.target.value }) };
+    const C = S.prC || {}, csel = C.cnae || [];
+    const onCq = e => { const v = e.target.value; setO('prC', { q: v }); clearTimeout(this._cnT); if (v.trim().length < 2) return this.setState({ prCOpts: [] });
+      this._cnT = setTimeout(() => SP.api('/api/prospect/sources?agency_id=' + this.spAg + '&cnae=' + encodeURIComponent(v.trim())).then(r => this.setState({ prCOpts: r.cnae || [] }), () => {}), 350); };
+    const sw = (on, toggle) => ({ on: on ? 'true' : 'false', swBg: on ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: on ? '18px' : '2px', toggle });
+    const cnL = x => x.id.replace(/^(\d{4})(\d)(\d{2})$/, '$1-$2/$3') + ' · ' + x.text;
+    const c = { q: C.q || '', onQ: onCq, hasSel: csel.length > 0, sel: csel.map(x => ({ l: cnL(x), del: () => setO('prC', { cnae: csel.filter(y => y.id !== x.id) }) })),
+      hasOpts: (S.prCOpts || []).length > 0, opts: (S.prCOpts || []).map(x => ({ l: cnL(x), pick: () => { setO('prC', { cnae: csel.some(y => y.id === x.id) ? csel : csel.concat(x).slice(0, 10), q: '' }); this.setState({ prCOpts: [] }); } })),
+      uf: C.uf || 'SP', onUf: e => setO('prC', { uf: e.target.value }), ufs: ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SP', 'SE', 'TO'].map(v => ({ v })),
+      city: C.city || '', onCity: e => setO('prC', { city: e.target.value }),
+      toggles: [Object.assign({ l: 'Só celular', d: 'Telefones fixos raramente têm WhatsApp' }, sw(C.mobile !== false, () => setO('prC', { mobile: C.mobile === false }))), Object.assign({ l: 'Só com e-mail', d: 'Empresas com e-mail cadastrado' }, sw(!!C.email, () => setO('prC', { email: !C.email })))] };
+    const i = { text: (S.prI || {}).text || '', onText: e => setO('prI', { text: e.target.value }) };
+    const W = S.prW || {}, wq = (W.q || '').toLowerCase(), G = this.PRG;
+    const groups = (G || []).flatMap(n => n.groups.map(g => Object.assign({ connection_id: n.connection_id, number: n.number }, g))).filter(g => !wq || g.name.toLowerCase().includes(wq)).slice(0, 300);
+    const w = { hasGroups: !!G && groups.length > 0, noGroups: !G || !groups.length, q: W.q || '', onQ: e => setO('prW', { q: e.target.value }), load: () => this.spPrGroups(), loadL: S.prGBusy ? 'Lendo os grupos…' : G ? 'Ler os grupos de novo' : 'Ler os grupos',
+      groups: groups.map(g => { const on = !!W.sel && W.sel.id === g.id && W.sel.connection_id === g.connection_id;
+        return { n: g.name, sub: (g.size ? g.size + ' participantes · ' : '') + g.number, bg: on ? 'rgba(70,95,255,0.05)' : 'transparent', ring: on ? '#465FFF' : 'var(--bd,#D0D5DD)', fill: on ? '#465FFF' : 'transparent', pick: () => setO('prW', { sel: { connection_id: g.connection_id, id: g.id, name: g.name } }) }; }) };
+    // Resultados
+    const R = S.prRes && S.prRes.src === src ? S.prRes : null, pk = S.prPick || {}, items = R ? R.items : [];
+    const fmt = p => { const d = p.slice(2); return '(' + d.slice(0, 2) + ') ' + d.slice(2, -4) + '-' + d.slice(-4); };
+    const can = x => !!x.phone && !x.exists && !x.blocked, ok = items.filter(can), nSel = ok.filter(x => pk[x.key]).length, allOn = ok.length > 0 && nSel === ok.length;
+    const SRCK = { maps: 'google_maps', cnpj: 'cnpj', ig: 'instagram', wa: 'grupo_whatsapp' };
+    const doImport = () => { const list = (S.prRList || '').trim(); if (!nSel) return this.toastMsg('Marque ao menos um contato'); if (!list) return this.toastMsg('Dê um nome para a lista');
+      const OK = 'Sim: vou abordar com mensagem relevante para o negócio e respeitar quem pedir para sair';
+      this.fm({ title: 'Importar ' + nSel + (nSel === 1 ? ' contato' : ' contatos'), desc: 'Eles entram na lista "' + list + '" como novos. Depois, em Leads, você escolhe quem vai para a cadência.', icon: 'playlist_add', fields: [{ k: 'ok', l: 'Uso dos contatos', type: 'pick', opts: [OK], req: 1, reqMsg: 'Confirme para importar' }], okL: 'Importar',
+        ok: async () => { try { const rows = ok.filter(x => pk[x.key]).map(x => ({ phone: x.phone, name: x.name || undefined, company: x.company || undefined, email: x.email || undefined, segment: x.segment || undefined, city: x.city || undefined, website: x.website || undefined, origin: x.origin }));
+          const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list, source: SRCK[src], consent: true, rows } });
+          await this.spPrLoad(); this.setState({ prRes: null, prPick: {}, prTab: 'leads', prLf: list }); this.toastMsg(r.added + ' contatos na lista "' + list + '"' + (r.dup ? ' · ' + r.dup + ' repetidos' : '') + (r.blocked ? ' · ' + r.blocked + ' bloqueados' : '')); } catch (e) { this.spErr(e); } } }); };
+    const r = { has: !!R && items.length > 0, title: R ? R.title : '', sub: items.length + ' encontrados · ' + ok.length + ' com telefone novo' + (R && R.notes ? ' · ' + R.notes : ''),
+      selAllL: allOn ? 'Desmarcar todos' : 'Marcar todos', selAll: () => this.setState(s => { const n = Object.assign({}, s.prPick); ok.forEach(x => n[x.key] = !allOn); return { prPick: n }; }),
+      rows: items.map(x => { const on = can(x) && !!pk[x.key], tag = x.blocked ? ['Pediu para sair', 'rgba(240,68,56,0.12)', '#B42318'] : x.exists ? ['Já está numa lista', 'var(--sf2,#F2F4F7)', 'var(--tx2,#667085)'] : !x.phone ? ['Sem telefone', 'var(--sf2,#F2F4F7)', 'var(--tx2,#667085)'] : !x.mobile ? ['Fixo', 'rgba(247,144,9,0.14)', '#B54708'] : null;
+        return { n: x.company || x.name || (x.phone ? fmt(x.phone) : '—'), info: [x.segment, x.info, x.website].filter(Boolean).join(' · ') || x.origin, ph: x.phone ? fmt(x.phone) : '—', phC: x.phone ? 'var(--tx,#101828)' : 'var(--tx2,#98A2B3)',
+          hasTag: !!tag, tag: tag ? tag[0] : '', tagBg: tag ? tag[1] : '', tagC: tag ? tag[2] : '', op: can(x) ? 1 : 0.55, bg: on ? 'rgba(70,95,255,0.04)' : 'transparent',
+          mark: on ? '✓' : '', cbBd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', cbBg: on ? '#465FFF' : 'transparent', toggle: () => { if (!can(x)) return; this.setState(s => ({ prPick: Object.assign({}, s.prPick, { [x.key]: !(s.prPick || {})[x.key] }) })); } }; }),
+      hasMore: !!(R && R.next), more: () => this.spPrFind(true), moreL: S.prBusy ? 'Carregando…' : 'Carregar mais',
+      list: S.prRList || '', onList: e => this.setState({ prRList: e.target.value }), importL: 'Importar ' + nSel + (nSel === 1 ? ' contato' : ' contatos'), op: nSel ? 1 : 0.5, doImport };
+    return { sources, capF: f, capM: m, capC: c, capI: i, capW: w, capR: r };
+  }
   vProspect() {
     const S = this.state, P = this.PR;
     if (!P) this.spLazy('pr', 'prospect', () => this.spPrLoad());
@@ -5413,17 +5547,16 @@ class Component extends DCLogic {
     const swv = (on, toggle) => ({ on: on ? 'true' : 'false', swBg: on ? '#465FFF' : 'var(--bd,#D0D5DD)', swX: on ? '18px' : '2px', toggle });
     const lists = {}; L.forEach(l => { lists[l.list_name] = (lists[l.list_name] || 0) + 1; });
     const listNames = Object.keys(lists);
-    // Captar: só listas da própria agência.
-    const SRC = [['csv', 'Planilha', 'Importe uma lista que você já tem', 'table_view', '#475467', 'var(--sf2,#F2F4F7)']];
-    const sources = SRC.map(s => ({ n: s[1], d: s[2], icon: s[3], icC: s[4], icBg: s[5], bd: '#465FFF', bg: 'rgba(70,95,255,0.04)', pick: () => {} }));
-    const jobs = listNames.map(n => { const ls = L.filter(l => l.list_name === n), sent = ls.filter(l => l.last_out_at).length; return { label: n, icon: 'table_view', icC: '#475467', icBg: 'var(--sf2,#F2F4F7)', sub: ls.length + (ls.length === 1 ? ' contato' : ' contatos'), w: '100%', barC: '#12B76A', st: 'Importada', stBg: 'rgba(18,183,106,0.12)', stC: '#067647', found: brl(ls.length) + ' na lista', phones: brl(sent) + ' abordados', dup: brl(ls.filter(l => l.stage === 'saiu').length) + ' saíram', done: true, see: () => this.setState({ prTab: 'leads', prLf: n }) }; });
+    const SRCI = { google_maps: ['location_on', '#D93025', 'Google Maps'], cnpj: ['domain', '#1570EF', 'CNPJ'], instagram: ['photo_camera', '#C13584', 'Instagram'], grupo_whatsapp: ['groups', '#128C7E', 'Grupo de WhatsApp'], colado: ['content_paste', '#475467', 'Colado'], formulario: ['dynamic_form', '#475467', 'Formulário'], planilha: ['table_view', '#475467', 'Planilha'], manual: ['edit', '#475467', 'Manual'] };
+    const srcOf = l => SRCI[l.source] || SRCI.planilha;
+    const jobs = listNames.map(n => { const ls = L.filter(l => l.list_name === n), sent = ls.filter(l => l.last_out_at).length, si0 = srcOf(ls[0]); return { label: n, icon: si0[0], icC: si0[1], icBg: si0[1] + '1A', sub: ls.length + (ls.length === 1 ? ' contato' : ' contatos'), w: '100%', barC: '#12B76A', st: 'Importada', stBg: 'rgba(18,183,106,0.12)', stC: '#067647', found: brl(ls.length) + ' na lista', phones: brl(sent) + ' abordados', dup: brl(ls.filter(l => l.stage === 'saiu').length) + ' saíram', done: true, see: () => this.setState({ prTab: 'leads', prLf: n }) }; });
     // Leads
     const lf = [['all', 'Todos', L.length]].concat(listNames.map(n => [n, n, lists[n]])).map(([k, l, n]) => { const on = (S.prLf || 'all') === k; return { l, n, bd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', bg: on ? 'rgba(70,95,255,0.08)' : 'var(--sf,#fff)', c: on ? '#3538CD' : 'var(--tx,#101828)', pick: () => this.setState({ prLf: k }) }; });
     const q = (S.prQ || '').toLowerCase(), lfk = listNames.includes(S.prLf) ? S.prLf : 'all';
     const vis = L.filter(l => (lfk === 'all' || l.list_name === lfk) && (!q || [l.name, l.company, l.segment, l.phone].join(' ').toLowerCase().includes(q))).slice(0, 500);
     const sel = S.prSel || {}, selIds = Object.keys(sel).filter(k => sel[k]), allOn = vis.length > 0 && vis.every(l => sel[l.id]);
     const leads = vis.map(l => { const on = !!sel[l.id], t = STG[l.stage] || STG.novo, c = avC[ci(l.id)]; return { n: nm(l), seg: [l.name && l.company ? l.name : '', l.segment, l.city].filter(Boolean).join(' · ') || (l.error || ''), ini: nm(l).split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(), avBg: c + '1F', avC: c,
-      src: l.source === 'colado' ? 'Colado' : 'Planilha', srcIc: 'table_view', srcC: '#475467', ph: fmtPh(l.phone), list: l.list_name, sc: '—', scW: '0%', scC: '#98A2B3', st: t[0], stBg: t[1] + '1F', stC: t[1],
+      src: srcOf(l)[2], srcIc: srcOf(l)[0], srcC: srcOf(l)[1], ph: fmtPh(l.phone), list: l.list_name, sc: '—', scW: '0%', scC: '#98A2B3', st: t[0], stBg: t[1] + '1F', stC: t[1],
       rowBg: on ? 'rgba(70,95,255,0.04)' : 'transparent', mark: on ? '✓' : '', cbBd: on ? '#465FFF' : 'var(--bd,#D0D5DD)', cbBg: on ? '#465FFF' : 'transparent', toggle: () => this.setState(s => ({ prSel: Object.assign({}, s.prSel, { [l.id]: !(s.prSel || {})[l.id] }) })) }; });
     const toCad = async () => { try { const r = await SP.api('/api/prospect/leads', { method: 'PATCH', body: { agency_id: this.spAg, ids: selIds, acao: 'fila' } }); this.setState({ prSel: {} }); await this.spPrLoad(); this.toastMsg(r.queued + (r.queued === 1 ? ' lead na fila' : ' leads na fila') + (C.running ? '' : ' · ligue a cadência para começar')); } catch (e) { this.spErr(e); } };
     // Cadência
@@ -5520,13 +5653,10 @@ class Component extends DCLogic {
       cards: all.slice(0, 4).map(l => ({ n: nm(l), srcIc: 'table_view', srcC: '#475467', note: note(l), hasAct: ['respondeu', 'qualificado', 'reuniao'].includes(k), actL: k === 'respondeu' ? 'Qualificar' : k === 'qualificado' ? 'Agendar reunião' : 'Mover para o CRM',
         act: () => k === 'reuniao' ? this.spPrLead(l.id, { acao: 'crm' }, nm(l) + ' agora está no CRM como oportunidade') : this.spPrLead(l.id, { acao: 'etapa', stage: k === 'respondeu' ? 'qualificado' : 'reuniao' }, k === 'respondeu' ? nm(l) + ' qualificado' : 'Reunião registrada com ' + nm(l)) })) }; });
     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-    return { pr: {
+    return { pr: Object.assign(this.prCapV(), {
       tabs, isCap: tab === 'cap', isLeads: tab === 'leads', isCad: tab === 'cad', isFun: tab === 'fun', isDisp: tab === 'disp', isChat: tab === 'chat', d, c,
       chipDot: C.running ? '#12B76A' : '#98A2B3', chipL: C.running ? (st.in_window ? 'Cadência enviando' : 'Cadência ligada · volta no horário comercial') : conn ? 'WhatsApp ' + conn.label + ' conectado' : 'WhatsApp oficial não conectado',
-      newCapture: () => this.spPrImport(), sources, src: { n: 'Planilha', hint: 'Até 10 mil linhas', isIg: false, isWa: false, isMaps: false, isCnpj: false, isCsv: true },
-      groups: [], igHandle: '', onIg: () => {}, igModes: [], igBiz: swv(false, () => {}), mapsQ: '', mapsC: '', onMapsQ: () => {}, onMapsC: () => {}, cnaes: [], ufs: [],
-      csvL: 'Clique para escolher o arquivo CSV', fakeCsv: () => this.spPrImport(S.prList),
-      listName: S.prList || 'Planilha importada', onList: e => this.setState({ prList: e.target.value }), est: 'Só contatos da agência: clientes, eventos, indicações', start: () => this.spPrImport(S.prList), jobs, noJobs: !jobs.length,
+      newCapture: () => this.setState({ prTab: 'cap' }), jobs, noJobs: !jobs.length,
       lf, q: S.prQ || '', onQ: e => this.setState({ prQ: e.target.value }), leads, noLeads: !leads.length,
       hasSel: selIds.length > 0, selL: selIds.length + (selIds.length === 1 ? ' lead selecionado' : ' leads selecionados'), clearSel: () => this.setState({ prSel: {} }), toCad,
       selAll: () => this.setState(s => { const n = Object.assign({}, s.prSel); vis.forEach(l => n[l.id] = !allOn); return { prSel: n }; }), allMark: allOn ? '✓' : '', allBd: allOn ? '#465FFF' : 'var(--bd,#D0D5DD)', allBg: allOn ? '#465FFF' : 'transparent',
@@ -5543,7 +5673,7 @@ class Component extends DCLogic {
       dayW: Math.min(100, st.sent_today / C.daily_limit * 100) + '%', dayL: st.sent_today + ' de ' + C.daily_limit,
       kpis: [['Abordados', String(st.contacted), st.queued + ' na fila', 'var(--tx2,#667085)'], ['Responderam', String(st.replied), pct(st.replied, st.contacted) + ' de resposta', '#079455'], ['Qualificados', String(st.qualified), 'pela equipe', 'var(--tx2,#667085)'], ['Reuniões', String(st.meetings), 'combinadas', 'var(--tx2,#667085)'], ['No CRM', String(st.crm), 'viraram oportunidade', '#079455'], ['Saíram da lista', String(st.opted_out), 'pediram para parar', st.opted_out ? '#B54708' : 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
       cols,
-    } };
+    }) };
   }
   vXodo() {
     const S = this.state, plan = this.xoPlan(), bots = this.xoBots(), enabled = plan.xn > 0;

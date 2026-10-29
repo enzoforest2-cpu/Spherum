@@ -125,10 +125,13 @@ const row = z.object({
   email: z.string().trim().max(254).optional(),
   segment: z.string().trim().max(80).optional(),
   city: z.string().trim().max(80).optional(),
+  website: z.string().trim().max(300).optional(),
+  // De onde veio o contato (LGPD): "Google Maps: ...", "Receita Federal (CNPJ ...)", "Instagram @...".
+  origin: z.string().trim().max(200).optional(),
 });
 export const importInput = z.object({
   list: z.string().trim().min(1).max(80),
-  source: z.enum(["planilha", "colado", "manual"]).default("planilha"),
+  source: z.enum(["planilha", "colado", "manual", "google_maps", "cnpj", "instagram", "grupo_whatsapp"]).default("planilha"),
   rows: z.array(row).max(10_000).optional(),
   // Uma linha por contato: "telefone, nome, empresa".
   text: z.string().max(400_000).optional(),
@@ -164,9 +167,9 @@ export async function importLeads(sql: Sql, agencyId: string, userId: string, ra
   if (!dryRun) {
     for (const g of fresh) {
       await sql.query(
-        `insert into prospect_leads (agency_id, list_name, name, company, phone, email, segment, city, source, created_by)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict do nothing`,
-        [agencyId, input.list, g.name || null, g.company || null, g.phone, g.email || null, g.segment || null, g.city || null, input.source, userId],
+        `insert into prospect_leads (agency_id, list_name, name, company, phone, email, segment, city, source, created_by, website, origin)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict do nothing`,
+        [agencyId, input.list, g.name || null, g.company || null, g.phone, g.email || null, g.segment || null, g.city || null, input.source, userId, g.website || null, g.origin || null],
       );
     }
   }
@@ -375,8 +378,8 @@ export async function prospectSweep(sql: Sql, senderFor: SenderFor, now = new Da
 export async function prospectBoard(sql: Sql, agencyId: string, now = new Date()) {
   const [config, leads, sent, byVar] = await Promise.all([
     getConfig(sql, agencyId),
-    sql.query<{ id: string; list_name: string; name: string | null; company: string | null; phone: string; email: string | null; segment: string | null; city: string | null; source: string; stage: string; step: number; next_at: string | null; variation: number | null; last_out_at: string | null; last_in_at: string | null; read_at: string | null; owner_user: string | null; deal_id: string | null; error: string | null; created_at: string; last_text: string | null }>(
-      `select l.id, l.list_name, l.name, l.company, l.phone, l.email, l.segment, l.city, l.source, l.stage, l.step, l.next_at::text, l.variation,
+    sql.query<{ id: string; list_name: string; name: string | null; company: string | null; phone: string; email: string | null; segment: string | null; city: string | null; source: string; website: string | null; origin: string | null; stage: string; step: number; next_at: string | null; variation: number | null; last_out_at: string | null; last_in_at: string | null; read_at: string | null; owner_user: string | null; deal_id: string | null; error: string | null; created_at: string; last_text: string | null }>(
+      `select l.id, l.list_name, l.name, l.company, l.phone, l.email, l.segment, l.city, l.source, l.website, l.origin, l.stage, l.step, l.next_at::text, l.variation,
               l.last_out_at::text, l.last_in_at::text, l.read_at::text, l.owner_user, l.deal_id, l.error, l.created_at::text,
               (select text from prospect_messages m where m.lead_id = l.id and m.dir in ('in', 'out') order by m.id desc limit 1) as last_text
          from prospect_leads l where l.agency_id = $1 order by coalesce(l.last_in_at, l.last_out_at, l.created_at) desc limit 3000`,
