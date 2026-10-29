@@ -2206,38 +2206,77 @@ a:hover{color:#3346D3;text-decoration:underline}
               </sc-if>
 
               <sc-if value="{{ xo.isDetail }}">
-                <button sc-camel-on-click="{{ xo.back }}" style="align-self:flex-start;display:flex;align-items:center;gap:4px;border:none;background:transparent;padding:0;color:#465FFF;font-size:13px;font-weight:500"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:17px;line-height:1">arrow_back</span>Todos os xodós</button>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;align-items:start">
-                  <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;display:flex;flex-direction:column;min-height:560px;overflow:hidden">
-                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:12px 16px;border-bottom:1px solid var(--bd,#E4E7EC)">
-                      <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ xo.d.char }}</div>
-                      <div style="flex:1 1 120px;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:{{ xo.d.nameFont }}">{{ xo.d.name }}</span><span style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--tx2,#667085);min-width:0"><span style="width:7px;height:7px;border-radius:50%;background:{{ xo.d.dot }};flex-shrink:0"></span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ xo.d.status }} · {{ xo.d.role }}</span></span></div>
-                      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--bd,#E4E7EC);border-radius:99px;padding:6px 10px;font-size:12.5px;font-weight:500;white-space:nowrap"><span style="font:600 10px/1 'Geist Mono',ui-monospace,monospace;color:var(--tx2,#667085)">CÉREBRO</span>{{ xo.d.brain }}</span><sc-if value="{{ xo.d.canManage }}"><button sc-camel-on-click="{{ xo.d.manage }}" aria-label="Gerenciar xodó" title="Pausar ou excluir" style="width:32px;height:32px;border:1px solid var(--bd,#E4E7EC);border-radius:8px;background:var(--sf,#fff);color:var(--tx2,#667085);display:grid;place-items:center;padding:0" style-hover="border-color:#465FFF;color:#465FFF"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px;line-height:1">more_horiz</span></button></sc-if>
-                    </div>
-                    <div ref="{{ xo.feedRef }}" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:560px">
+                <button sc-camel-on-click="{{ xo.back }}" style="align-self:flex-start;display:flex;align-items:center;gap:4px;border:none;background:transparent;padding:0;color:#465FFF;font-size:13px;font-weight:500"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:18px">arrow_back</span>Todos os xodós</button>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                  <div style="width:92px;height:92px;display:grid;place-items:center;flex-shrink:0">{{ xo.d.bigChar }}</div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <span style="font:{{ xo.d.nameFont }};font-size:28px">{{ xo.d.name }}</span>
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--tx2,#667085)"><span style="width:8px;height:8px;border-radius:50%;background:{{ xo.d.dot }}"></span>{{ xo.d.headLine }}</span>
+                  </div>
+                </div>
+                <div role="tablist" style="display:flex;gap:22px;border-bottom:1px solid var(--bd,#E4E7EC);overflow-x:auto"><sc-for list="{{ xo.d.tabs }}" as="t"><button role="tab" aria-selected="{{ t.sel }}" sc-camel-on-click="{{ t.pick }}" style="height:40px;border:none;border-bottom:2px solid {{ t.bd }};margin-bottom:-1px;background:transparent;padding:0;color:{{ t.c }};font-weight:{{ t.fw }};font-size:14px;white-space:nowrap">{{ t.l }}</button></sc-for></div>
+
+                <sc-if value="{{ xo.d.isChat }}">
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <div ref="{{ xo.feedRef }}" style="min-height:300px;max-height:calc(100vh - 380px);overflow:auto;padding:4px 2px 8px;display:flex;flex-direction:column;gap:10px">
+                      <sc-if value="{{ xo.d.hello }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+                        <span style="font-size:14.5px">{{ xo.d.helloText }}</span>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ xo.d.chips }}" as="c"><button sc-camel-on-click="{{ c.pick }}" style="border:1px solid var(--bd,#D0D5DD);background:var(--bg,#F7F8FA);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--tx,#101828);text-align:left;cursor:pointer">{{ c.l }}</button></sc-for></div>
+                      </div></sc-if>
                       <sc-for list="{{ xo.d.feed }}" as="m">
                         <sc-if value="{{ m.isSys }}"><div style="align-self:center;background:var(--sf2,#F2F4F7);color:var(--tx2,#667085);border-radius:99px;padding:5px 12px;font:500 11.5px/1.3 'Geist Mono',ui-monospace,monospace">{{ m.text }}</div></sc-if>
-                        <sc-if value="{{ m.isBot }}"><div style="align-self:flex-start;max-width:86%;background:var(--sf2,#F2F4F7);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14px;text-wrap:pretty">{{ m.text }}</div></sc-if>
-                        <sc-if value="{{ m.isUser }}"><div style="align-self:flex-end;max-width:80%;background:{{ xo.d.accent }};color:{{ xo.d.accentFg }};border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;font-weight:500;text-wrap:pretty">{{ m.text }}</div></sc-if>
-                        <sc-if value="{{ m.isTyping }}"><div style="align-self:flex-start;background:var(--sf2,#F2F4F7);border-radius:16px 16px 16px 4px;padding:12px 16px;font-size:13px;color:var(--tx2,#667085)">digitando…</div></sc-if>
+                        <sc-if value="{{ m.isBot }}"><div style="align-self:flex-start;max-width:78%;background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);box-shadow:0 1px 2px rgba(16,24,40,.05);border-radius:16px 16px 16px 6px;padding:10px 14px;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;text-wrap:pretty">{{ m.text }}</div></sc-if>
+                        <sc-if value="{{ m.isUser }}"><div style="align-self:flex-end;max-width:78%;background:#465FFF;color:#FFFFFF;border-radius:16px 16px 6px 16px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 14px;font-size:14px;font-weight:500;text-wrap:pretty">{{ m.text }}</div></sc-if>
+                        <sc-if value="{{ m.isTyping }}"><div style="align-self:flex-start;background:var(--sf2,#F2F4F7);border-radius:16px 16px 16px 4px;padding:12px 16px;font-size:13px;color:var(--tx2,#667085)">trabalhando… {{ xo.d.stepL }}</div></sc-if>
                         <sc-if value="{{ m.isTask }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-width:440px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13.5px"><span style="font-weight:600">{{ m.title }}</span><span style="color:var(--tx2,#667085);font-variant-numeric:tabular-nums">{{ m.count }}</span></div><div style="height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ m.pct }};background:{{ xo.d.accent }};border-radius:3px;transition:width .6s"></div></div><sc-for list="{{ m.steps }}" as="s"><div style="display:flex;align-items:center;gap:8px;font-size:13px;color:{{ s.c }}"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ s.ring }};background:{{ s.fill }};color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;box-sizing:border-box">{{ s.mark }}</span>{{ s.l }}</div></sc-for></div></sc-if>
                         <sc-if value="{{ m.isAsk }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-color:{{ m.a.bd }}">
 <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:{{ m.a.dot }};margin-top:6px;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">{{ m.a.title }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ m.a.sub }}</div></div><sc-if value="{{ m.a.showBot }}"><span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">{{ m.a.botName }}</span></sc-if></div>
 <sc-if value="{{ m.a.open }}"><div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ m.a.details }}" as="d"><div style="background:var(--sf2,#F2F4F7);border-radius:8px;padding:8px 10px;font-size:13px">{{ d }}</div></sc-for></div></sc-if>
 <sc-if value="{{ m.a.pending }}">
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button sc-camel-on-click="{{ m.a.onOnce }}" style="height:32px;padding:0 12px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500">Permitir uma vez</button><button sc-camel-on-click="{{ m.a.onAlways }}" style="height:32px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">Sempre permitir</button><button sc-camel-on-click="{{ m.a.onDeny }}" style="height:32px;padding:0 10px;border:none;background:transparent;color:var(--tx2,#667085);font-size:13px;font-weight:500">Negar</button><span style="flex:1"></span><button sc-camel-on-click="{{ m.a.onReview }}" style="height:32px;padding:0 4px;border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500">{{ m.a.reviewL }}</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button sc-camel-on-click="{{ m.a.onOnce }}" style="height:32px;padding:0 12px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500">Pode fazer</button><button sc-camel-on-click="{{ m.a.onAlways }}" style="height:32px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">Pode sempre</button><button sc-camel-on-click="{{ m.a.onDeny }}" style="height:32px;padding:0 10px;border:none;background:transparent;color:var(--tx2,#667085);font-size:13px;font-weight:500">Não</button><span style="flex:1"></span><button sc-camel-on-click="{{ m.a.onReview }}" style="height:32px;padding:0 4px;border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500">{{ m.a.reviewL }}</button></div>
 <div style="font-size:12px;color:var(--tx2,#667085)">{{ m.a.scope }}</div>
 </sc-if>
 <sc-if value="{{ m.a.resolved }}"><span style="align-self:flex-start;font-size:12px;font-weight:500;padding:3px 9px;border-radius:5px;background:{{ m.a.resBg }};color:{{ m.a.resC }}">{{ m.a.resL }}</span></sc-if>
 </div></sc-if>
                       </sc-for>
                     </div>
-                    <div style="padding:12px 16px;border-top:1px solid var(--bd,#E4E7EC);display:flex;gap:8px;align-items:center">
-                      <input value="{{ xo.draft }}" sc-camel-on-change="{{ xo.onDraft }}" sc-camel-on-key-down="{{ xo.onKey }}" placeholder="{{ xo.ph }}" aria-label="Mensagem para o xodó" style="flex:1;min-width:0;height:38px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 12px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:14px;outline:none">
-                      <button sc-camel-on-click="{{ xo.send }}" aria-label="Enviar" style="width:38px;height:38px;border:none;border-radius:8px;background:#465FFF;color:#fff;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">arrow_upward</span></button>
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:flex-end;box-shadow:0 1px 2px rgba(16,24,40,.05)">
+                      <textarea value="{{ xo.draft }}" sc-camel-on-change="{{ xo.onDraft }}" sc-camel-on-key-down="{{ xo.onKey }}" placeholder="{{ xo.ph }}" aria-label="Mensagem para o xodó" rows="2" style="flex:1;min-width:0;min-height:44px;max-height:200px;resize:none;border:none;outline:none;background:transparent;padding:10px 8px;font:inherit;font-size:14px;color:var(--tx,#101828)"></textarea>
+                      <button sc-camel-on-click="{{ xo.send }}" style="height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;cursor:pointer;height:44px;opacity:{{ xo.sendOp }}">Enviar</button>
                     </div>
+                    <span style="font-size:12px;color:var(--tx2,#667085)">Enter envia · Shift + Enter quebra a linha</span>
                   </div>
+                </sc-if>
+
+                <sc-if value="{{ xo.d.isRot }}">
                   <div style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span style="color:var(--tx2,#667085);font-size:14px">Tarefas que {{ xo.d.name }} faz sozinho no horário marcado.</span><button sc-camel-on-click="{{ xo.d.newRot }}" style="height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;cursor:pointer">+ Nova rotina</button></div>
+                    <sc-if value="{{ xo.d.noRot }}"><div style="border:1.5px dashed var(--bd,#D0D5DD);border-radius:12px;padding:28px;text-align:center;display:flex;flex-direction:column;gap:6px"><span style="font-weight:600">Nenhuma rotina ainda</span><span style="font-size:13.5px;color:var(--tx2,#667085)">Ex.: toda segunda às 8h, monte o relatório semanal de cada cliente.</span></div></sc-if>
+                    <sc-for list="{{ xo.d.rots }}" as="r"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;opacity:{{ r.op }}">
+                      <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-weight:600">{{ r.n }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ r.when }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ r.last }}</span></div>
+                      <button sc-camel-on-click="{{ r.toggle }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer">{{ r.toggleL }}</button>
+                      <button sc-camel-on-click="{{ r.del }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer;color:#D92D20">Apagar</button>
+                    </div></sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ xo.d.isMem }}">
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <span style="color:var(--tx2,#667085);font-size:14px">O que {{ xo.d.name }} sabe sobre a agência e os clientes. Ele aprende conversando; vocês também podem ensinar e apagar.</span>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap"><input value="{{ xo.d.memDraft }}" sc-camel-on-change="{{ xo.d.onMemDraft }}" sc-camel-on-key-down="{{ xo.d.onMemKey }}" placeholder="Ex.: A Clínica Sorriso quer o relatório em uma página só." aria-label="Nova anotação" style="flex:1 1 260px;min-width:0;height:40px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);font-size:14px;color:var(--tx,#101828);outline:none"><button sc-camel-on-click="{{ xo.d.teach }}" style="height:34px;padding:0 14px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500;cursor:pointer;height:40px">Ensinar</button></div>
+                    <input value="{{ xo.d.memQ }}" sc-camel-on-change="{{ xo.d.onMemQ }}" type="search" placeholder="Buscar na memória" aria-label="Buscar na memória" style="height:38px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);font-size:14px;color:var(--tx,#101828);outline:none">
+                    <sc-if value="{{ xo.d.memLoading }}"><span style="color:var(--tx2,#667085);font-size:13.5px">Carregando a memória…</span></sc-if>
+                    <sc-if value="{{ xo.d.memEmpty }}"><div style="border:1.5px dashed var(--bd,#D0D5DD);border-radius:12px;padding:24px;text-align:center;color:var(--tx2,#667085);font-size:13.5px">{{ xo.d.memEmptyL }}</div></sc-if>
+                    <sc-for list="{{ xo.d.notes }}" as="n"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+                      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="font-size:12px;font-weight:600;padding:2px 9px;border-radius:7px;background:var(--sf2,#F2F4F7);color:var(--tx2,#667085)">{{ n.kind }}</span><button sc-camel-on-click="{{ n.forget }}" style="border:none;background:transparent;padding:0;color:#465FFF;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer">Esquecer</button></div>
+                      <span style="font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere">{{ n.text }}</span>
+                      <sc-if value="{{ n.hasWhere }}"><span style="font-size:12px;color:var(--tx2,#667085)">{{ n.where }}</span></sc-if>
+                    </div></sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ xo.d.isPc }}">
+                  <div style="max-width:720px;display:flex;flex-direction:column;gap:12px">
                     <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
                       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:13px;font-weight:600">Computador na nuvem</div><div style="font-size:12px;color:var(--tx2,#667085);margin-top:2px">{{ xo.pc.shared }}</div></div><span style="display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;font:600 10.5px/1 'Geist Mono',ui-monospace,monospace;color:var(--tx2,#667085)"><span style="width:7px;height:7px;border-radius:50%;background:{{ xo.pc.dot }};animation:{{ xo.pc.anim }}"></span>{{ xo.pc.live }}</span></div>
                       <div style="border:1px solid var(--bd,#E4E7EC);border-radius:10px;overflow:hidden;background:#FFFFFF;color:#101828">
@@ -2251,23 +2290,42 @@ a:hover{color:#3346D3;text-decoration:underline}
                       <span style="font-size:12.5px;color:var(--tx2,#667085);text-wrap:pretty">{{ xo.pc.caption }}</span>
                       <sc-if value="{{ xo.pc.canTake }}"><button sc-camel-on-click="{{ xo.pc.toggle }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">{{ xo.pc.takeL }}</button></sc-if>
                     </div>
-                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-                      <div style="font-size:13px;font-weight:600">Memória</div>
-                      <sc-for list="{{ xo.d.mem }}" as="x"><div style="background:var(--sf2,#F2F4F7);border-radius:8px;padding:8px 10px;font-size:13px">{{ x }}</div></sc-for>
-                      <div style="font-size:12px;color:var(--tx2,#667085)">Só deste xodó. O que importa fica salvo no Spherum:</div>
-                      <sc-for list="{{ xo.d.saved }}" as="x"><div style="display:flex;justify-content:space-between;gap:10px;border:1px dashed var(--bd,#D0D5DD);border-radius:8px;padding:8px 10px;font-size:13px"><span>{{ x.w }}</span><span style="font:500 11.5px/1.3 'Geist Mono',ui-monospace,monospace;color:var(--tx2,#667085)">{{ x.where }}</span></div></sc-for>
-                    </div>
-                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-                      <div style="font-size:13px;font-weight:600">Pode usar</div>
-                      <sc-for list="{{ xo.d.conns }}" as="x"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><span style="font-weight:500">{{ x.n }}</span><span style="color:var(--tx2,#667085);text-align:right">{{ x.p }}</span></div></sc-for>
-                    </div>
-                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-                      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:600">Hoje</span><span style="font-variant-numeric:tabular-nums;font-weight:500">{{ xo.d.spendL }}</span></div>
-                      <div style="height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ xo.d.spendW }};background:{{ xo.d.spendC }};border-radius:3px;transition:width .5s"></div></div>
-                      <span style="font-size:12px;color:var(--tx2,#667085)">{{ xo.d.spendNote }}</span>
-                    </div>
                   </div>
-                </div>
+                </sc-if>
+
+                <sc-if value="{{ xo.d.isCfg }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px;align-items:start">
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-weight:600">Jeito e instruções</span><sc-if value="{{ xo.d.canEdit }}"><button sc-camel-on-click="{{ xo.d.editInfo }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer">Editar</button></sc-if></div>
+                      <sc-for list="{{ xo.d.info }}" as="f"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--tx2,#667085)">{{ f.l }}</span><span style="font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere">{{ f.v }}</span></div></sc-for>
+                    </div>
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                      <span style="font-weight:600">Quanta liberdade ele tem</span>
+                      <sc-for list="{{ xo.d.autos }}" as="a"><button sc-camel-on-click="{{ a.pick }}" aria-pressed="{{ a.on }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:12px 14px;border:1.5px solid {{ a.bd }};border-radius:12px;background:{{ a.bg }};color:var(--tx,#101828);font:inherit;cursor:pointer"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ a.ring }};background:{{ a.fill }};box-shadow:inset 0 0 0 3px var(--sf,#fff);flex-shrink:0;margin-top:2px"></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;font-size:14px">{{ a.l }}</span><span style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.d }}</span></span></button></sc-for>
+                    </div>
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-weight:600">Cérebro</span><sc-if value="{{ xo.d.canEdit }}"><button sc-camel-on-click="{{ xo.d.editBrain }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer">Trocar modelo</button></sc-if></div>
+                      <span style="font-size:14px">{{ xo.d.brainL }}</span>
+                      <span style="font-size:12.5px;color:var(--tx2,#667085)">Trocar de chave ou de modelo não apaga a memória dele.</span>
+                    </div>
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                      <span style="font-weight:600">Limite de gasto por dia</span>
+                      <div style="display:flex;justify-content:space-between;font-size:13px"><span>{{ xo.d.spendL }}</span></div>
+                      <div style="height:6px;border-radius:3px;background:var(--sf2,#F2F4F7);overflow:hidden"><div style="height:100%;width:{{ xo.d.spendW }};background:{{ xo.d.spendC }};border-radius:3px"></div></div>
+                      <span style="font-size:12.5px;color:var(--tx2,#667085)">{{ xo.d.spendNote }}</span>
+                      <sc-if value="{{ xo.d.canEdit }}"><button sc-camel-on-click="{{ xo.d.editCap }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer;align-self:flex-start">Mudar o limite</button></sc-if>
+                    </div>
+                    <div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+                      <span style="font-weight:600">Pode usar</span>
+                      <sc-for list="{{ xo.d.conns }}" as="x"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13.5px"><span style="font-weight:500">{{ x.n }}</span><span style="color:var(--tx2,#667085)">{{ x.p }}</span></div></sc-for>
+                    </div>
+                    <sc-if value="{{ xo.d.canManage }}"><div style="background:var(--sf,#fff);border:1px solid var(--bd,#E4E7EC);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                      <span style="font-weight:600">Pausar ou excluir</span>
+                      <span style="font-size:12.5px;color:var(--tx2,#667085)">{{ xo.d.pauseNote }}</span>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap"><button sc-camel-on-click="{{ xo.d.pause }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer">{{ xo.d.pauseL }}</button><button sc-camel-on-click="{{ xo.d.remove }}" style="height:34px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500;cursor:pointer;color:#D92D20;border-color:rgba(217,45,32,.4)">Excluir xodó</button></div>
+                    </div></sc-if>
+                  </div>
+                </sc-if>
               </sc-if>
 
               <sc-if value="{{ xo.isAppr }}">
@@ -2277,7 +2335,7 @@ a:hover{color:#3346D3;text-decoration:underline}
 <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }};margin-top:6px;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">{{ a.title }}</div><div style="font-size:12.5px;color:var(--tx2,#667085)">{{ a.sub }}</div></div><sc-if value="{{ a.showBot }}"><span style="font-size:12px;color:var(--tx2,#667085);white-space:nowrap">{{ a.botName }}</span></sc-if></div>
 <sc-if value="{{ a.open }}"><div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ a.details }}" as="d"><div style="background:var(--sf2,#F2F4F7);border-radius:8px;padding:8px 10px;font-size:13px">{{ d }}</div></sc-for></div></sc-if>
 <sc-if value="{{ a.pending }}">
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button sc-camel-on-click="{{ a.onOnce }}" style="height:32px;padding:0 12px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500">Permitir uma vez</button><button sc-camel-on-click="{{ a.onAlways }}" style="height:32px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">Sempre permitir</button><button sc-camel-on-click="{{ a.onDeny }}" style="height:32px;padding:0 10px;border:none;background:transparent;color:var(--tx2,#667085);font-size:13px;font-weight:500">Negar</button><span style="flex:1"></span><button sc-camel-on-click="{{ a.onReview }}" style="height:32px;padding:0 4px;border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500">{{ a.reviewL }}</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button sc-camel-on-click="{{ a.onOnce }}" style="height:32px;padding:0 12px;border:none;border-radius:8px;background:#465FFF;color:#fff;font-size:13px;font-weight:500">Pode fazer</button><button sc-camel-on-click="{{ a.onAlways }}" style="height:32px;padding:0 12px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13px;font-weight:500">Pode sempre</button><button sc-camel-on-click="{{ a.onDeny }}" style="height:32px;padding:0 10px;border:none;background:transparent;color:var(--tx2,#667085);font-size:13px;font-weight:500">Não</button><span style="flex:1"></span><button sc-camel-on-click="{{ a.onReview }}" style="height:32px;padding:0 4px;border:none;background:transparent;color:#465FFF;font-size:13px;font-weight:500">{{ a.reviewL }}</button></div>
 <div style="font-size:12px;color:var(--tx2,#667085)">{{ a.scope }}</div>
 </sc-if>
 <sc-if value="{{ a.resolved }}"><span style="align-self:flex-start;font-size:12px;font-weight:500;padding:3px 9px;border-radius:5px;background:{{ a.resBg }};color:{{ a.resC }}">{{ a.resL }}</span></sc-if>
@@ -2827,7 +2885,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                     <div style="padding:6px 16px 10px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">{{ app.title }}</span><span style="width:30px;height:30px;border-radius:50%;background:#465FFF;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">JS</span></div>
                     <div style="flex:1;overflow:auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">
                       <sc-if value="{{ app.isHome }}"><sc-for list="{{ app.home }}" as="h"><button sc-camel-on-click="{{ h.go }}" style="text-align:left;border:none;background:#fff;border-radius:16px;padding:12px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 2px rgba(16,24,40,.06);color:#101828;font:inherit"><span style="width:34px;height:34px;border-radius:10px;background:{{ h.bg }};color:{{ h.c }};display:grid;place-items:center;flex-shrink:0"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:19px;line-height:1">{{ h.icon }}</span></span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600">{{ h.t }}</span><span style="font-size:11.5px;color:#667085">{{ h.s }}</span></span></button></sc-for></sc-if>
-                      <sc-if value="{{ app.isAppr }}"><sc-if value="{{ app.noAppr }}"><div style="padding:30px 10px;text-align:center;font-size:13px;color:#667085">Tudo aprovado. Nada esperando você.</div></sc-if><sc-for list="{{ app.appr }}" as="a"><div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.06)"><span style="font-size:11px;color:#667085">{{ a.who }}</span><span style="font-size:13px;font-weight:600;line-height:1.35">{{ a.t }}</span><div style="display:flex;gap:6px"><button sc-camel-on-click="{{ a.ok }}" style="flex:1;height:32px;border:none;border-radius:9px;background:#465FFF;color:#fff;font-size:12.5px;font-weight:600">Aprovar</button><button sc-camel-on-click="{{ a.no }}" style="flex:1;height:32px;border:1px solid #D0D5DD;border-radius:9px;background:#fff;color:#101828;font-size:12.5px;font-weight:500">Negar</button></div></div></sc-for></sc-if>
+                      <sc-if value="{{ app.isAppr }}"><sc-if value="{{ app.noAppr }}"><div style="padding:30px 10px;text-align:center;font-size:13px;color:#667085">Tudo aprovado. Nada esperando você.</div></sc-if><sc-for list="{{ app.appr }}" as="a"><div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.06)"><span style="font-size:11px;color:#667085">{{ a.who }}</span><span style="font-size:13px;font-weight:600;line-height:1.35">{{ a.t }}</span><div style="display:flex;gap:6px"><button sc-camel-on-click="{{ a.ok }}" style="flex:1;height:32px;border:none;border-radius:9px;background:#465FFF;color:#fff;font-size:12.5px;font-weight:600">Aprovar</button><button sc-camel-on-click="{{ a.no }}" style="flex:1;height:32px;border:1px solid #D0D5DD;border-radius:9px;background:#fff;color:#101828;font-size:12.5px;font-weight:500">Não</button></div></div></sc-for></sc-if>
                       <sc-if value="{{ app.isChat }}"><sc-for list="{{ app.chat }}" as="m"><div style="display:flex;gap:8px;align-items:flex-start"><span style="width:26px;height:26px;border-radius:50%;background:{{ m.avBg }};color:{{ m.avC }};display:grid;place-items:center;font-size:9px;font-weight:600;flex-shrink:0">{{ m.ini }}</span><div style="background:#fff;border-radius:4px 14px 14px 14px;padding:8px 10px;box-shadow:0 1px 2px rgba(16,24,40,.06);min-width:0"><div style="font-size:11px;font-weight:600">{{ m.who }}</div><div style="font-size:12.5px;line-height:1.4">{{ m.t }}</div></div></div></sc-for></sc-if>
                     </div>
                     <div style="height:62px;border-top:1px solid #EAECF0;background:#fff;display:grid;grid-template-columns:repeat(3,1fr)"><sc-for list="{{ app.tabbar }}" as="t"><button sc-camel-on-click="{{ t.pick }}" style="border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:{{ t.c }};font-size:10.5px;font-weight:600;position:relative"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:22px;line-height:1">{{ t.icon }}</span>{{ t.l }}<sc-if value="{{ t.hasN }}"><span style="position:absolute;top:8px;left:calc(50% + 6px);min-width:16px;height:16px;border-radius:8px;background:#F04438;color:#fff;font-size:10px;display:grid;place-items:center;padding:0 4px;box-sizing:border-box">{{ t.n }}</span></sc-if></button></sc-for></div>
@@ -4550,6 +4608,90 @@ class Component extends DCLogic {
           fields: [{ k: 'n', l: 'Digite "' + b.name + '" para confirmar', req: 1, check: x => String(x || '').trim().toLowerCase() === b.name.trim().toLowerCase() ? '' : 'O nome não confere' }], okL: 'Excluir de vez', busyL: 'Excluindo…',
           ok: async w => { try { await SP.api('/api/xodos/' + b.id + '?confirmar=' + encodeURIComponent(w.n.trim()), { method: 'DELETE' }); this.setState({ xoSel: null }); await this.spXoLoad(); this.toastMsg(b.name + ' foi excluído'); } catch (e) { this.spErr(e); } } }); } });
   }
+  // Página de um xodó no jeito do app dos Xodós: Conversa, Rotinas, Memória, Computador e Ajustes.
+  xoDetail(sel, st, M, feed, sd) {
+    const S = this.state, sub = S.xoSub || 'chat', x = sel.x, mgr = ['owner', 'admin'].includes(this.R.me.role), can = this.levelOf('xodos') === 'editar';
+    const brl = v => 'R$ ' + (+v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const tabs = this.tabsOf([['chat', 'Conversa'], ['rot', 'Rotinas'], ['mem', 'Memória'], ['pc', 'Computador'], ['cfg', 'Ajustes']], sub, v => { this.setState({ xoSub: v }); if (v === 'mem') this.xoMemLoad(sel.id); });
+    const PERS = { curioso: ['Curioso', 'Faz perguntas e sugere ideias.'], brincalhao: ['Brincalhão', 'Leve, com piada na hora certa.'], direto: ['Direto', 'Curto, objetivo, sem rodeio.'], zen: ['Zen', 'Calmo, organiza o caos.'] };
+    const AUTO = [['sempre_pergunta', 'Sempre pergunta', 'Só lê sozinho. Para escrever, mudar, enviar ou avisar alguém, pede antes.'], ['pergunta_no_que_importa', 'Pergunta no que importa (recomendado)', 'Lê, rascunha e organiza sozinho. Pede antes de enviar, apagar, pagar ou mexer em campanha e cliente.'], ['age_sozinho', 'Age sozinho', 'Faz e conta depois. Falar com cliente e pagar continuam pedindo aprovação.']];
+    const real = M.messages.length + (S.xoFeeds[sel.id] || []).length;
+    const run = M.last_run || x.last_run || {};
+    const out = { tabs, isChat: sub === 'chat', isRot: sub === 'rot', isMem: sub === 'mem', isPc: sub === 'pc', isCfg: sub === 'cfg', canEdit: can, bigChar: this.xoChar(sel, 84, st === 'paused' ? 'idle' : st, true),
+      headLine: [sel.role, XO_STATUS[st], 'hoje ' + brl(x.spent_today) + (x.daily_budget_brl ? ' de ' + brl(x.daily_budget_brl) : '')].filter(Boolean).join(' · '),
+      stepL: run.steps ? 'passo ' + run.steps : '',
+      hello: !real && !RXp(this).length, helloText: 'Oi! Eu sou ' + sel.name + (PERS[x.personality] ? ' (' + PERS[x.personality][0].toLowerCase() + ')' : '') + '. Me peça algo, por exemplo:',
+      chips: ['Monte o relatório do mês do cliente com os números das campanhas', 'Quais clientes estão fora da meta de CPA esta semana?', 'Escreva um resumo das campanhas de ontem para eu mandar no grupo'].map(l => ({ l, pick: () => this.setState({ xoDraft: l }) })) };
+    function RXp(self) { return ((self.XR && self.XR.approvals) || []).filter(a => a.xodo_id === sel.id); }
+    // Rotinas
+    const DW = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    const cronL = c => { const p = String(c).trim().split(/\s+/); if (p.length !== 5 || !/^\d+$/.test(p[0]) || !/^\d+$/.test(p[1])) return 'Agenda: ' + c; const at = 'às ' + p[1].padStart(2, '0') + ':' + p[0].padStart(2, '0');
+      if (p[2] === '*' && p[3] === '*' && p[4] === '*') return 'Todo dia ' + at; if (p[2] === '*' && p[4] === '1-5') return 'Dias úteis ' + at; if (p[2] === '*' && /^[0-6]$/.test(p[4])) return 'Toda ' + DW[+p[4]] + ' ' + at; if (/^\d+$/.test(p[2]) && p[4] === '*') return 'Todo dia ' + p[2] + ' do mês ' + at; return 'Agenda: ' + c; };
+    out.rots = (x.routines || []).map(r => ({ n: r.name, when: cronL(r.cron) + (r.active && r.next_run_at ? ' · próxima: ' + new Date(r.next_run_at).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : r.active ? '' : ' · desligada'),
+      last: r.last_summary ? 'Última vez: ' + r.last_summary.slice(0, 140) : '', op: r.active ? 1 : 0.6, toggleL: r.active ? 'Desligar' : 'Ligar',
+      toggle: async () => { try { await SP.api('/api/xodos/' + sel.id + '/routines?routine_id=' + r.id, { method: 'PATCH', body: { active: !r.active } }); await this.spXoLoad(); this.toastMsg(r.active ? 'Rotina desligada' : 'Rotina ligada'); } catch (e) { this.spErr(e); } },
+      del: () => this.fm({ title: 'Apagar a rotina "' + r.name + '"?', desc: 'Ela para de rodar. Dá para criar de novo quando quiser.', icon: 'delete', danger: 1, fields: [], okL: 'Apagar',
+        ok: async () => { try { await SP.api('/api/xodos/' + sel.id + '/routines?routine_id=' + r.id, { method: 'DELETE' }); await this.spXoLoad(); this.toastMsg('Rotina apagada'); } catch (e) { this.spErr(e); } } }) }));
+    out.noRot = !out.rots.length;
+    out.newRot = () => this.fm({ title: 'Nova rotina de ' + sel.name, desc: 'Uma tarefa que ele faz sozinho no horário marcado.', icon: 'event_repeat',
+      fields: [{ k: 'name', l: 'Nome', req: 1, ph: 'Ex.: Relatório semanal' }, { k: 'prompt', l: 'O que ele deve fazer', type: 'area', req: 1, min: 3, ph: 'Escreva como se fosse pedir na conversa. Ex.: Monte o relatório semanal de cada cliente e deixe em rascunho para eu revisar.' },
+        { k: 'freq', l: 'Quando', type: 'pick', opts: [['uteis', 'Dias úteis'], ['diario', 'Todo dia'], ['semanal', 'Toda semana'], ['mensal', 'Todo mês']], req: 1 },
+        { k: 'dow', l: 'Dia da semana (se for toda semana)', type: 'pick', opts: DW.map((d, i) => [String(i), d]) }, { k: 'dom', l: 'Dia do mês (se for todo mês)', ph: '1 a 28' },
+        { k: 'time', l: 'Horário', req: 1, ph: '08:00', check: v => /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(v || '').trim()) ? '' : 'Use o formato 08:00' }, { k: 'cont', l: 'Lembrar da vez anterior', type: 'pick', opts: [['nao', 'Não'], ['sim', 'Sim, para acompanhar algo ao longo dos dias']] }],
+      init: { freq: 'uteis', dow: '1', dom: '1', time: '08:00', cont: 'nao' }, okL: 'Criar rotina',
+      ok: async v => { const [h, m] = v.time.trim().split(':').map(Number), dom = Math.min(28, Math.max(1, parseInt(v.dom, 10) || 1));
+        const cron = v.freq === 'diario' ? m + ' ' + h + ' * * *' : v.freq === 'uteis' ? m + ' ' + h + ' * * 1-5' : v.freq === 'semanal' ? m + ' ' + h + ' * * ' + v.dow : m + ' ' + h + ' ' + dom + ' * *';
+        try { await SP.api('/api/xodos/' + sel.id + '/routines', { method: 'POST', body: { name: v.name.trim(), prompt: v.prompt.trim(), cron, continuity: v.cont === 'sim' } }); await this.spXoLoad(); this.toastMsg('Rotina criada'); } catch (e) { this.spErr(e); } } });
+    // Memória
+    const MM = (S.xoMem || {})[sel.id], q = (S.xoMemQ || '').trim().toLowerCase(), KIND = { fato: 'Fato', preferencia: 'Preferência', decisao: 'Decisão', resultado: 'Resultado' };
+    const notes = MM && MM.notas ? MM.notas.filter(n => !q || (n.content || '').toLowerCase().includes(q)) : [];
+    Object.assign(out, { memLoading: !MM, memDraft: S.xoMemDraft || '', memQ: S.xoMemQ || '', memEmpty: !!MM && !notes.length, memEmptyL: q ? 'Nada encontrado.' : 'A memória está vazia. Conforme vocês conversam, ele guarda o que for útil lembrar.',
+      onMemDraft: e => this.setState({ xoMemDraft: e.target.value }), onMemQ: e => this.setState({ xoMemQ: e.target.value }), onMemKey: e => { if (e.key === 'Enter') this.xoTeach(sel); }, teach: () => this.xoTeach(sel),
+      notes: notes.map(n => ({ kind: KIND[n.kind] || n.kind, text: n.content, where: [n.client_name, n.topic].filter(Boolean).join(' · '), hasWhere: !!(n.client_name || n.topic),
+        forget: () => this.fm({ title: 'Esquecer esta nota?', desc: n.content.slice(0, 200), icon: 'delete', danger: 1, fields: [], okL: 'Esquecer',
+          ok: async () => { try { await SP.api('/api/xodos/' + sel.id + '/memory/' + n.n + '?version=' + n.version + '&motivo=' + encodeURIComponent('apagada pela equipe na tela'), { method: 'DELETE' }); this.xoMemLoad(sel.id); this.toastMsg('Nota esquecida'); } catch (e) { this.spErr(e); } } }) })) });
+    if (sub === 'mem' && !MM && !(this._memLd || {})[sel.id]) this.xoMemLoad(sel.id);
+    // Ajustes
+    const pers = PERS[x.personality] || ['—', ''];
+    out.info = [['Nome', x.name], ['Função', x.role || '—'], ['Jeito', pers[0] + (pers[1] ? ' · ' + pers[1] : '')], ['Instruções', (x.instructions || '').trim() || 'Sem instruções ainda. Diga como ele deve trabalhar para a agência.']].map(f => ({ l: f[0], v: f[1] }));
+    out.autos = AUTO.map(a => { const on = x.autonomy === a[0]; return { l: a[1], d: a[2], on: on ? 'true' : 'false', bd: on ? '#465FFF' : 'var(--bd,#E4E7EC)', bg: on ? 'rgba(70,95,255,0.06)' : 'var(--sf,#fff)', ring: on ? '#465FFF' : 'var(--bd,#D0D5DD)', fill: on ? '#465FFF' : 'transparent',
+      pick: () => { if (!can) return this.toastMsg('Seu cargo só permite ver os xodós.'); if (on) return; this.xoPatch(sel, { autonomy: a[0] }, 'Liberdade ajustada'); } }; });
+    out.editInfo = () => this.fm({ title: 'Jeito e instruções de ' + sel.name, desc: 'Ele segue as instruções sempre.', icon: 'tune',
+      fields: [{ k: 'name', l: 'Nome', req: 1 }, { k: 'role', l: 'Função', ph: 'Ex.: Relatórios, Atendimento' }, { k: 'pers', l: 'Jeito', type: 'pick', opts: Object.keys(PERS).map(k => [k, PERS[k][0], PERS[k][1]]), req: 1 }, { k: 'ins', l: 'Instruções', type: 'area', ph: 'Ex.: Sempre responda em tópicos. Relatórios em uma página.' }],
+      init: { name: x.name, role: x.role || '', pers: x.personality, ins: x.instructions || '' }, okL: 'Salvar',
+      ok: v => this.xoPatch(sel, { name: v.name.trim(), role: v.role.trim() || null, personality: v.pers, instructions: v.ins || '' }, 'Ajustes salvos') });
+    const cred = ((this.XR && this.XR.credentials) || []).find(c => c.id === x.credential_id);
+    out.brainL = (x.model || '—') + (cred ? ' · chave ' + cred.label : '');
+    out.editBrain = () => this.xoBrain(sel);
+    out.editCap = () => this.fm({ title: 'Limite de gasto por dia', desc: 'Quando chega no limite, ' + sel.name + ' para e retoma no dia seguinte. Vazio: sem limite.', icon: 'payments', fields: [{ k: 'cap', l: 'Limite em R$ por dia', ph: 'Ex.: 10,00' }],
+      init: { cap: x.daily_budget_brl ? String(x.daily_budget_brl).replace('.', ',') : '' }, okL: 'Salvar',
+      ok: v => { const t = String(v.cap || '').trim().replace(',', '.'), n = t ? Number(t) : null; if (t && !(n > 0)) return this.toastMsg('Use um valor como 10,00'); this.xoPatch(sel, { daily_budget_brl: n }, 'Limite salvo'); } });
+    out.canManage = mgr; out.pauseL = x.status === 'paused' ? 'Voltar a trabalhar' : 'Pausar';
+    out.pauseNote = x.status === 'paused' ? 'Pausado: não responde, não roda rotinas e ignora os gatilhos até voltar.' : 'Pausar para tudo, mas guarda memória, rotinas e conversas.';
+    out.pause = () => this.spXoPause(sel);
+    out.remove = () => this.fm({ title: 'Excluir ' + sel.name + '?', desc: 'Conversas, memória, rotinas, gatilhos e canais dele são apagados. O histórico de gasto e os relatórios que ele fez continuam. Se só quer parar por um tempo, use Pausar.', icon: 'delete', danger: true,
+      fields: [{ k: 'n', l: 'Digite "' + sel.name + '" para confirmar', req: 1, check: v => String(v || '').trim().toLowerCase() === sel.name.trim().toLowerCase() ? '' : 'O nome não confere' }], okL: 'Excluir de vez', busyL: 'Excluindo…',
+      ok: async w => { try { await SP.api('/api/xodos/' + sel.id + '?confirmar=' + encodeURIComponent(w.n.trim()), { method: 'DELETE' }); this.setState({ xoSel: null }); await this.spXoLoad(); this.toastMsg(sel.name + ' foi excluído'); } catch (e) { this.spErr(e); } } });
+    return out;
+  }
+  async xoMemLoad(id) { this._memLd = Object.assign({}, this._memLd, { [id]: 1 });
+    try { const r = await SP.api('/api/xodos/' + id + '/memory?status=ativo&limite=200'); this.setState(s => ({ xoMem: Object.assign({}, s.xoMem, { [id]: r }) })); } catch (e) { this.spErr(e); this.setState(s => ({ xoMem: Object.assign({}, s.xoMem, { [id]: { notas: [] } }) })); } }
+  async xoTeach(sel) { const t = (this.state.xoMemDraft || '').trim(); if (!t) return;
+    try { await SP.api('/api/xodos/' + sel.id + '/memory', { method: 'POST', body: { texto: t, motivo: 'anotada pela equipe na tela' } }); this.setState({ xoMemDraft: '' }); this.xoMemLoad(sel.id); this.toastMsg('Guardado na memória'); } catch (e) { this.spErr(e); } }
+  async xoPatch(sel, body, msg) { try { await SP.api('/api/xodos/' + sel.id, { method: 'PATCH', body }); await this.spXoLoad(); this.toastMsg(msg); } catch (e) { this.spErr(e); } }
+  async xoBrain(sel) {
+    const creds = ((this.XR && this.XR.credentials) || []).filter(c => c.kind !== 'sandbox');
+    if (!creds.length) return this.spXoKey();
+    const pickModel = async credId => { const c = creds.find(k => k.id === credId) || creds[0]; let models = [];
+      try { models = (await SP.api('/api/xodos/catalog?provider=' + encodeURIComponent(c.provider))).models || []; } catch (e) {}
+      const self = c.provider === 'local' || c.provider === 'custom' || !models.length;
+      this.fm({ title: 'Modelo de ' + sel.name, desc: 'Os maiores pensam melhor e custam mais. Preço em dólar por milhão de palavras (lidas / escritas).', icon: 'psychology',
+        fields: [self ? { k: 'model', l: 'Nome do modelo', req: 1, ph: 'Ex.: llama3.1' } : { k: 'model', l: 'Modelo', type: 'pick', req: 1, opts: models.slice().sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true })).slice(0, 40).map(m => [m.id, m.name, 'US$ ' + m.cost.input + ' / ' + m.cost.output]) }],
+        init: { model: sel.x.credential_id === c.id ? sel.x.model : '' }, okL: 'Salvar',
+        ok: v => this.xoPatch(sel, { provider: c.provider, credential_id: c.id, model: v.model.trim ? v.model.trim() : v.model }, 'Modelo trocado') }); };
+    if (creds.length === 1) return pickModel(creds[0].id);
+    this.fm({ title: 'Qual chave de IA ' + sel.name + ' usa?', icon: 'key', fields: [{ k: 'c', l: 'Chave', type: 'pick', req: 1, opts: creds.map(c => [c.id, c.label, c.provider]) }], init: { c: sel.x.credential_id }, okL: 'Continuar', ok: v => pickModel(v.c) });
+  }
   async spXoPause(b) { try { await SP.api('/api/xodos/' + b.id, { method: 'PATCH', body: { status: b.x.status === 'paused' ? 'active' : 'paused' } }); await this.spXoLoad(); this.toastMsg(b.x.status === 'paused' ? b.name + ' voltou a trabalhar' : b.name + ' pausado'); } catch (e) { this.spErr(e); } }
   // ---- Computador na nuvem: ligar, ver ao vivo, assumir e devolver o controle ----
   spPcBeat(lease) { if (this._pcLease === lease && this._pcT) return; this.spPcStop(); this._pcLease = lease;
@@ -5335,7 +5477,7 @@ class Component extends DCLogic {
       const exp = a.expires_at ? 'Vence ' + new Date(a.expires_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '') : '';
       const det = Object.entries(a.input || {}).filter(e => e[1] != null && typeof e[1] !== 'object').slice(0, 6).map(e => e[0].replace(/_/g, ' ') + ': ' + String(e[1]).slice(0, 120));
       return { title: a.summary, sub: [a.category, exp].filter(Boolean).join(' · '), details: det.length ? det : ['Sem detalhes extras'], open, pending: true, resolved: false, showBot, botName: bx.name + ' · ' + bx.role,
-        bd: spx.colors[bx.ci].body, dot: '#F04438', reviewL: open ? 'Esconder detalhes' : 'Revisar detalhes', scope: '“Sempre permitir” vale para: ' + a.category, resL: '', resBg: '', resC: '',
+        bd: spx.colors[bx.ci].body, dot: '#F04438', reviewL: open ? 'Esconder detalhes' : 'Ver detalhes', scope: '“Pode sempre” vale para: ' + a.category, resL: '', resBg: '', resC: '',
         onOnce: () => this.xoResolve(a, 'once'), onAlways: () => this.xoResolve(a, 'always'), onDeny: () => this.xoResolve(a, 'deny'),
         onReview: () => this.setState(s => ({ xoOpen: Object.assign({}, s.xoOpen, { [a.id]: !s.xoOpen[a.id] }) })) };
     };
@@ -5360,12 +5502,12 @@ class Component extends DCLogic {
         ['Consumo de IA no mês', brl(month), 'Pago direto na chave de API da agência', 'var(--tx2,#667085)']].map(k => ({ l: k[0], v: k[1], s: k[2], c: k[3] })),
       bots: bots.map(b => { const st = stOf(b), sp = SPECIES[b.sp], c = sp.colors[b.ci], sd = spend(b), pn = pend(b.id).length;
         return Object.assign({ name: b.name, role: b.role, job: b.job, brain: b.brain, nameFont: sp.nameFont, stage: c.stage, img: sp.dotted ? DOT_IMG : 'none', status: XO_STATUS[st], dot: dotOf(st), anim: st === 'working' ? 'xo-live 1.2s ease-in-out infinite' : 'none',
-          hasAsk: pn > 0, askL: pn + (pn === 1 ? ' aprovação' : ' aprovações'), line: lineOf(b, st), char: this.xoChar(b, 96, st === 'paused' ? 'idle' : st, true), open: () => { this.setState({ xoSel: b.id }); this.spXoMsgs(b.id); } }, sd); }),
+          hasAsk: pn > 0, askL: pn + (pn === 1 ? ' aprovação' : ' aprovações'), line: lineOf(b, st), char: this.xoChar(b, 96, st === 'paused' ? 'idle' : st, true), open: () => { this.setState({ xoSel: b.id, xoSub: 'chat' }); this.spXoMsgs(b.id); } }, sd); }),
       back: () => this.setState({ xoSel: null }),
       appr: RX.approvals.map(a => apprV(a, true)), noPending: !RX.approvals.length,
       rules: RX.rules.map(r => { const t = RL[r.effect] || RL.require_approval, bx = bots.find(b => b.id === r.xodo_id); return { tag: t[0], bg: t[1], c: t[2], text: (r.match_kind === 'tool' ? r.match_value.replace(/_/g, ' ') : 'categoria ' + r.match_value), who: bx ? bx.name : 'Todos' }; })
         .concat(XO_FIXED.map(r => ({ tag: r[0], bg: r[0] === 'SÓ VOCÊ' ? '#101828' : 'var(--sf2,#F2F4F7)', c: r[0] === 'SÓ VOCÊ' ? '#FFFFFF' : 'var(--tx,#101828)', text: r[1], who: 'Todos' }))),
-      draft: S.xoDraft, onDraft: e => this.setState({ xoDraft: e.target.value }), onKey: e => { if (e.key === 'Enter') this.xoSend(); }, send: () => this.xoSend(),
+      draft: S.xoDraft, onDraft: e => this.setState({ xoDraft: e.target.value }), onKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.xoSend(); } }, send: () => this.xoSend(), sendOp: (S.xoDraft || '').trim() ? 1 : 0.5,
       ph: sel ? 'Fale com ' + sel.name + '…' : '', feedRef: this.xoFeedRef || (this.xoFeedRef = React.createRef()), extras: true,
     };
     if (sel) {
@@ -5375,11 +5517,11 @@ class Component extends DCLogic {
         .concat((S.xoFeeds[sel.id] || []).map(m => ({ isUser: true, isSys: false, isBot: false, isTyping: false, isTask: false, isAsk: false, text: m[1] })))
         .concat(RX.approvals.filter(a => a.xodo_id === sel.id).map(a => ({ isAsk: true, isSys: false, isBot: false, isUser: false, isTyping: false, isTask: false, text: '', a: apprV(a, false) })))
         .concat(st === 'working' ? [{ isTyping: true, isSys: false, isBot: false, isUser: false, isTask: false, isAsk: false, text: '' }] : []);
-      if (!feed.length) feed = [{ isSys: true, isBot: false, isUser: false, isTyping: false, isTask: false, isAsk: false, text: 'Comece pedindo uma tarefa para ' + sel.name + '.' }];
       out.d = Object.assign({ name: sel.name, role: sel.role, brain: sel.brain, nameFont: sp.nameFont, status: XO_STATUS[st], dot: dotOf(st), accent: c.body, accentFg: xoFg(c.body), char: this.xoChar(sel, 48, st === 'paused' ? 'idle' : st, true), feed,
         mem: sel.mem, saved: sel.saved.map(x => ({ w: x[0], where: x[1] })), conns: sel.conns.map(x => ({ n: x[0], p: x[1] })),
         canManage: ['owner', 'admin'].includes(this.R.me.role), manage: () => this.spXoManage(sel),
-        spendNote: sel.x.daily_budget_brl ? (sd.pct >= 100 ? 'Pausado no teto do dia. Aumente em Uso e limites para continuar hoje.' : sd.pct >= 80 ? 'Passou de 80% do teto do dia.' : 'Chave de API da agência · teto definido por você') : 'Chave de API da agência · sem teto' }, sd);
+        spendNote: sel.x.daily_budget_brl ? (sd.pct >= 100 ? 'Pausado no teto do dia. Aumente o limite para continuar hoje.' : sd.pct >= 80 ? 'Passou de 80% do teto do dia.' : 'Chave de API da agência · teto definido por você') : 'Chave de API da agência · sem teto' }, sd);
+      Object.assign(out.d, this.xoDetail(sel, st, M, feed, sd));
     }
     const rowW = [['22%', '58%'], ['30%', '46%'], ['18%', '62%'], ['26%', '50%'], ['34%', '40%'], ['20%', '55%'], ['28%', '44%']];
     const PC = this.PC, mgr = ['owner', 'admin'].includes(this.R.me.role), user = mgr || this.R.me.role === 'member';
