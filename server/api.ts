@@ -10,6 +10,9 @@ import { createRoutine, nextRunAt } from "../src/xodos/routines";
 import { loadXodo, startRun, type EngineDeps } from "../src/xodos/runner";
 import { TOOLS_BY_NAME } from "../src/xodos/tools";
 import { NATIVE_APP_TOOLS } from "../src/integrations/registry";
+import type { IntegrationDeps } from "../src/integrations/store";
+import type { Channels } from "./channels";
+import { connections, disconnect, googleConfigured, saveGoogleClient, startGoogleLogin } from "./integrations";
 import { ensureOwner, writeSettings, type AppState } from "./state";
 import type { Worker } from "./worker";
 
@@ -18,7 +21,12 @@ import type { Worker } from "./worker";
  * (ver main.ts) e toda chamada leva o token da página.
  */
 
-export type Ctx = { deps: EngineDeps; state: AppState; worker: Worker };
+export type Ctx = { deps: EngineDeps; state: AppState; worker: Worker; channels: Channels };
+
+function integrationsOf(c: Ctx): IntegrationDeps {
+  if (!c.deps.integrations) throw new XodoError("Integrações desligadas.", 503);
+  return { ...c.deps.integrations, sql: c.deps.sql, now: c.deps.now };
+}
 type Req = { method: string; path: string; query: URLSearchParams; body: unknown };
 export type Res = { status: number; body: unknown };
 
@@ -67,6 +75,8 @@ async function overview(c: Ctx) {
               x.daily_budget_brl::float8 as daily_budget_brl, x.status, x.memory_enabled, x.created_at::text,
               coalesce((select b.spent_brl::float8 from xodo_budget_days b where b.xodo_id = x.id and b.day = (now() at time zone x.timezone)::date), 0) as spent_today_brl,
               (select count(*)::int from xodo_actions a where a.xodo_id = x.id and a.status = 'pending') as pending,
+              (select coalesce(json_agg(json_build_object('app', p.app, 'connection_id', p.connection_id) order by p.app), '[]'::json)
+                 from xodo_apps p where p.xodo_id = x.id) as apps,
               (select json_build_object('id', r.id, 'status', r.status, 'error', r.error, 'started_at', r.started_at::text)
                  from xodo_runs r where r.xodo_id = x.id order by r.started_at desc limit 1) as last_run
          from xodos x where x.agency_id = $1 order by x.created_at`,
@@ -128,6 +138,45 @@ export async function handle(c: Ctx, req: Req): Promise<Res> {
       }
       if (method === "DELETE" && seg[1]) {
         await revokeCredential(sql, owner, uuid.parse(seg[1]));
+        return ok({ ok: true });
+      }
+    }
+
+    // ---- integrações (Google) e canais (Telegram, WhatsApp)
+    if (seg[0] === "integracoes") {
+      const integ = integrationsOf(c);
+      if (!seg[1] && method === "GET") {
+        return ok({
+          google: { configurado: googleConfigured(), volta: `${integ.appUrl}/api/integrations/google/callback` },
+          contas: (await connections(integ, owner)).filter((r) => r.provider === "google"),
+          canais: await c.channels.list(),
+          webhook_whatsapp: `${integ.appUrl}/webhook/whatsapp`,
+        });
+      }
+      if (seg[1] === "google" && seg[2] === "app" && method === "PUT") {
+        await saveGoogleClient(c.state.dataDir, c.state.masterKey, body);
+        return ok({ ok: true });
+      }
+      if (seg[1] === "google" && seg[2] === "conectar" && method === "POST") {
+        return ok({ url: await startGoogleLogin(integ, owner, c.state.userId, body) });
+      }
+      if (seg[1] && !seg[2] && method === "DELETE") {
+        await disconnect(integ, owner, uuid.parse(seg[1]));
+        await c.channels.refresh();
+        return ok({ ok: true });
+      }
+    }
+    if (seg[0] === "canais") {
+      if (seg[1] === "telegram" && method === "POST") return ok(await c.channels.connectTelegram(body), 201);
+      if (seg[1] === "whatsapp" && method === "POST") return ok(await c.channels.connectWhatsapp(body), 201);
+      const id = uuid.parse(seg[1]);
+      if (!seg[2] && method === "PATCH") {
+        await c.channels.update(id, body);
+        return ok({ ok: true });
+      }
+      if (seg[2] === "codigo" && method === "POST") return ok(await c.channels.pairingCode(id));
+      if (seg[2] === "teste" && method === "POST") {
+        await c.channels.test(id);
         return ok({ ok: true });
       }
     }

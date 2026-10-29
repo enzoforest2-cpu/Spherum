@@ -106,3 +106,42 @@ test("chave local, xodó, rotina e memória pela API", async () => {
   const conversa = await api(`/api/xodos/${id}/conversa`);
   assert.equal(conversa.status, 200);
 });
+
+test("Google: guarda o app, monta o login com volta para o próprio app e recusa state falso", async () => {
+  const antes = (await (await api("/api/integracoes")).json()) as { google: { configurado: boolean }; contas: unknown[]; canais: unknown[] };
+  assert.equal(antes.google.configurado, false);
+  assert.deepEqual(antes.contas, []);
+  assert.equal((await api("/api/integracoes/google/conectar", { method: "POST", body: JSON.stringify({ apps: ["gmail"] }) })).status, 409);
+
+  const ruim = await api("/api/integracoes/google/app", { method: "PUT", body: JSON.stringify({ client_id: "abc", client_secret: "segredo" }) });
+  assert.equal(ruim.status, 400);
+  const salvo = await api("/api/integracoes/google/app", {
+    method: "PUT",
+    body: JSON.stringify({ client_id: "123-abc.apps.googleusercontent.com", client_secret: "GOCSPX-segredo" }),
+  });
+  assert.equal(salvo.status, 200);
+
+  const r = (await (await api("/api/integracoes/google/conectar", { method: "POST", body: JSON.stringify({ apps: ["gmail", "calendar"] }) })).json()) as { url: string };
+  const u = new URL(r.url);
+  assert.equal(u.hostname, "accounts.google.com");
+  assert.equal(u.searchParams.get("redirect_uri"), `${app.url}/api/integrations/google/callback`);
+  assert.equal(u.searchParams.get("code_challenge_method"), "S256");
+  assert.match(u.searchParams.get("scope")!, /gmail\.modify/);
+  assert.match(u.searchParams.get("scope")!, /calendar\.events/);
+
+  // A volta do Google não leva o token da página; quem protege é o state.
+  const volta = await fetch(`${app.url}/api/integrations/google/callback?state=falso&code=x`);
+  assert.equal(volta.status, 200);
+  assert.match(await volta.text(), /venceu ou já foi usado/);
+  const cancelou = await fetch(`${app.url}/api/integrations/google/callback?error=access_denied&state=${u.searchParams.get("state")}`);
+  assert.match(await cancelou.text(), /cancelou o login/);
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+});
+
+test("webhook do WhatsApp recusa token de verificação errado e corpo sem assinatura", async () => {
+  const get = await fetch(`${app.url}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=x&hub.challenge=1`);
+  assert.equal(get.status, 403);
+  const post = await fetch(`${app.url}/webhook/whatsapp`, { method: "POST", body: "{}" });
+  assert.equal(post.status, 200);
+});

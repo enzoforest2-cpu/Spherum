@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api, onServerChange } from "./api.js";
 import { SPECIES, SP_KEYS, XodoChar } from "./bots.js";
@@ -42,6 +42,57 @@ const FEATURED = [
 ];
 
 const WEEKDAYS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+const THEMES = [
+  { k: "sistema", l: "Igual ao Windows", d: "Claro de dia, escuro de noite, como o computador estiver." },
+  { k: "claro", l: "Claro", d: "Sempre claro." },
+  { k: "escuro", l: "Escuro", d: "Sempre escuro." },
+];
+
+// ---------------------------------------------------------------------------
+// Tema (claro ou escuro). Fica guardado neste navegador.
+// ---------------------------------------------------------------------------
+
+const THEME_KEY = "xodos-tema";
+const darkQuery = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
+
+function savedTheme() {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    return THEMES.some((x) => x.k === t) ? t : "sistema";
+  } catch {
+    return "sistema";
+  }
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === "claro") root.dataset.theme = "light";
+  else if (theme === "escuro") root.dataset.theme = "dark";
+  else delete root.dataset.theme;
+}
+
+// Antes da primeira pintura, para não piscar claro quando você escolheu escuro.
+applyTheme(savedTheme());
+
+function useTheme() {
+  const [theme, setTheme] = useState(savedTheme);
+  const [systemDark, setSystemDark] = useState(() => !!darkQuery?.matches);
+  useEffect(() => {
+    applyTheme(theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {}
+  }, [theme]);
+  useEffect(() => {
+    if (!darkQuery) return;
+    const f = (e) => setSystemDark(e.matches);
+    darkQuery.addEventListener("change", f);
+    return () => darkQuery.removeEventListener("change", f);
+  }, []);
+  const dark = theme === "escuro" || (theme === "sistema" && systemDark);
+  return { theme, setTheme, dark };
+}
 
 // ---------------------------------------------------------------------------
 // Pequenas peças
@@ -141,6 +192,7 @@ function App() {
   const [toast, setToast] = useState(null);
   const [tick, setTick] = useState(0);
   const toastTimer = useRef(0);
+  const theme = useTheme();
 
   const notify = useCallback((msg, bad = false) => {
     setToast({ msg, bad });
@@ -195,7 +247,7 @@ function App() {
   }
   if (!overview) return <div className="boot">Abrindo…</div>;
 
-  const ctx = { overview, reload, notify, tick };
+  const ctx = { overview, reload, notify, tick, theme };
   const needsSetup = !overview.nome || !overview.chaves.some((c) => !c.revoked_at) || overview.xodos.length === 0;
   if (needsSetup && !hash.startsWith("/configuracoes")) {
     return (
@@ -212,19 +264,55 @@ function App() {
   else if (section === "aprovacoes") page = <ApprovalsPage {...ctx} />;
   else if (section === "avisos") page = <NoticesPage {...ctx} />;
   else if (section === "configuracoes") page = <SettingsPage {...ctx} />;
+  else if (section === "integracoes") page = <IntegrationsPage {...ctx} />;
   else if (section === "novo") page = <NewXodoPage {...ctx} />;
   else page = <Home {...ctx} />;
 
   return (
     <div className="shell">
-      <Sidebar overview={overview} hash={hash} />
+      <Sidebar overview={overview} hash={hash} theme={theme} />
       <main className="main">{page}</main>
       <Toast toast={toast} />
     </div>
   );
 }
 
-function Sidebar({ overview, hash }) {
+const BRAND_TRIO = [
+  { species: "pingo", color: "Tomate" },
+  { species: "bibo", color: "Menta" },
+  { species: "oki", color: "Ultramar" },
+];
+
+function Brand() {
+  return (
+    <a href="#/" className="brand" aria-label="Xodós, início">
+      <span className="brand-crew" aria-hidden="true">
+        {BRAND_TRIO.map((x, i) => (
+          <XodoChar key={x.species} xodo={x} size={i === 1 ? 26 : 30} follow={false} />
+        ))}
+      </span>
+      <span className="brand-text">
+        <span className="brand-name">Xodós</span>
+        <span className="brand-tag">seus ajudantes de IA</span>
+      </span>
+    </a>
+  );
+}
+
+function ThemeIcon({ dark }) {
+  return dark ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </svg>
+  );
+}
+
+function Sidebar({ overview, hash, theme }) {
   const item = (path, label, badge) => (
     <a href={"#" + path} className={cx("nav", (hash === path || (path !== "/" && hash.startsWith(path))) && "nav-on")}>
       <span>{label}</span>
@@ -233,9 +321,7 @@ function Sidebar({ overview, hash }) {
   );
   return (
     <nav className="side" aria-label="Menu">
-      <a href="#/" className="brand">
-        Xodós
-      </a>
+      <Brand />
       {item("/", "Início")}
       {item("/aprovacoes", "Aprovações", overview.aprovacoes_pendentes)}
       {item("/avisos", "Avisos", overview.avisos_nao_lidos)}
@@ -252,7 +338,14 @@ function Sidebar({ overview, hash }) {
       <a href="#/novo" className="side-add">
         + Novo xodó
       </a>
-      <div className="side-foot">{item("/configuracoes", "Configurações")}</div>
+      <div className="side-foot">
+        {item("/integracoes", "Integrações")}
+        <button type="button" className="theme-toggle" onClick={() => theme.setTheme(theme.dark ? "claro" : "escuro")}>
+          <ThemeIcon dark={theme.dark} />
+          <span>{theme.dark ? "Modo claro" : "Modo escuro"}</span>
+        </button>
+        {item("/configuracoes", "Configurações")}
+      </div>
     </nav>
   );
 }
@@ -904,6 +997,53 @@ function suggestModel(models) {
   return (pick(/sonnet/) || pick(/^gpt-[\d.]+-sol$/) || pick(/^gemini-[\d.]+-flash$/) || pick(/^gemini-.*flash(?!-lite)/) || models[0]).id;
 }
 
+/** "Pode usar": quais apps do Google o xodó mexe e, com mais de uma conta, qual. */
+function AppsPicker({ xodo, accounts, value, onChange }) {
+  if (!accounts) return null;
+  const active = accounts.filter((a) => a.status === "active");
+  const current = (k) => value.find((a) => a.app === k);
+  const toggle = (k) => onChange(current(k) ? value.filter((a) => a.app !== k) : [...value, { app: k, connection_id: null }]);
+  const pin = (k, id) => onChange(value.map((a) => (a.app === k ? { ...a, connection_id: id || null } : a)));
+  return (
+    <fieldset className="choices">
+      <legend className="field-label">Pode usar</legend>
+      {!active.length ? (
+        <p className="muted small">
+          Nenhuma conta do Google conectada ainda. <a href="#/integracoes">Conectar em Integrações</a>.
+        </p>
+      ) : (
+        <div className="stack-tight">
+          {GOOGLE_APPS.map((a) => {
+            const able = active.filter((acc) => acc.apps.includes(a.k));
+            const on = current(a.k);
+            return (
+              <div key={a.k} className={cx("choice", "choice-app", on && "choice-on")}>
+                <label className="app-pick">
+                  <input type="checkbox" checked={!!on} disabled={!able.length && !on} onChange={() => toggle(a.k)} />
+                  <span>
+                    <strong>{a.l}</strong>
+                    <span className="muted small">{able.length ? a.d : "Nenhuma conta conectada deu essa permissão. Conecte de novo em Integrações marcando este app."}</span>
+                  </span>
+                </label>
+                {on && able.length > 1 && (
+                  <select value={on.connection_id || ""} onChange={(e) => pin(a.k, e.target.value)} aria-label={`Conta do ${a.l} para ${xodo.name}`}>
+                    <option value="">A mais recente</option>
+                    {able.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.external_account}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function XodoSettings({ xodo, overview, reload, notify }) {
   const [f, setF] = useState(() => ({
     name: xodo.name,
@@ -913,8 +1053,10 @@ function XodoSettings({ xodo, overview, reload, notify }) {
     personality: xodo.personality,
     budget: xodo.daily_budget_brl ? String(xodo.daily_budget_brl).replace(".", ",") : "",
     model: { provider: xodo.provider, model: xodo.model, credential_id: xodo.credential_id },
+    apps: xodo.apps || [],
   }));
   const [busy, setBusy] = useState(false);
+  const [integrations] = useIntegrations(0);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = async (e) => {
     e.preventDefault();
@@ -930,6 +1072,7 @@ function XodoSettings({ xodo, overview, reload, notify }) {
           autonomy: f.autonomy,
           personality: f.personality,
           daily_budget_brl: budget,
+          apps: f.apps,
           ...f.model,
         },
       });
@@ -996,6 +1139,7 @@ function XodoSettings({ xodo, overview, reload, notify }) {
         ))}
       </fieldset>
       <ModelPicker chaves={overview.chaves} value={f.model} onChange={(model) => setF((s) => ({ ...s, model }))} />
+      <AppsPicker xodo={xodo} accounts={integrations?.contas} value={f.apps} onChange={(apps) => setF((s) => ({ ...s, apps }))} />
       <Field label="Limite de gasto por dia (R$)" hint="Vazio: sem limite (o gasto aparece mesmo assim).">
         <input inputMode="decimal" value={f.budget} onChange={set("budget")} placeholder="Ex.: 5,00" />
       </Field>
@@ -1260,7 +1404,7 @@ function KeyForm({ notify, onSaved }) {
 // Configurações
 // ---------------------------------------------------------------------------
 
-function SettingsPage({ overview, reload, notify }) {
+function SettingsPage({ overview, reload, notify, theme }) {
   const [nome, setNome] = useState(overview.nome);
   const [pasta, setPasta] = useState(overview.pasta);
   const [adding, setAdding] = useState(false);
@@ -1302,6 +1446,25 @@ function SettingsPage({ overview, reload, notify }) {
         </form>
       </section>
       <section className="block">
+        <h2>Aparência</h2>
+        <div className="card">
+          <fieldset className="choices">
+            <legend className="field-label">Tema</legend>
+            <div className="grid-keys">
+              {THEMES.map((t) => (
+                <label key={t.k} className={cx("choice", theme.theme === t.k && "choice-on")}>
+                  <input type="radio" name="tema" value={t.k} checked={theme.theme === t.k} onChange={() => theme.setTheme(t.k)} />
+                  <span>
+                    <strong>{t.l}</strong>
+                    <span className="muted small">{t.d}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+      </section>
+      <section className="block">
         <h2>Chaves de IA</h2>
         <div className="stack">
           {keys.map((c) => (
@@ -1339,6 +1502,451 @@ function SettingsPage({ overview, reload, notify }) {
 }
 
 // ---------------------------------------------------------------------------
+// Integrações: Google (Gmail, Agenda, Drive), Telegram e WhatsApp
+// ---------------------------------------------------------------------------
+
+const GOOGLE_APPS = [
+  { k: "gmail", l: "Gmail", d: "Ler, organizar, escrever rascunhos e enviar e-mails (enviar pede sua aprovação)." },
+  { k: "calendar", l: "Agenda", d: "Ver seus compromissos e marcar ou mudar eventos." },
+  { k: "drive", l: "Drive", d: "Procurar e ler seus arquivos, e criar novos." },
+];
+const appLabel = (k) => GOOGLE_APPS.find((a) => a.k === k)?.l || k;
+
+function useIntegrations(tick) {
+  const [data, setData] = useState(null);
+  const load = useCallback(() => api("/integracoes").then(setData), []);
+  useEffect(() => {
+    load().catch(() => {});
+  }, [load, tick]);
+  return [data, load];
+}
+
+function XodoSelect({ xodos, value, onChange }) {
+  return (
+    <select value={value || ""} onChange={(e) => onChange(e.target.value)} required>
+      <option value="" disabled>
+        Escolher…
+      </option>
+      {xodos.map((x) => (
+        <option key={x.id} value={x.id}>
+          {x.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function GoogleClientForm({ data, notify, onSaved, onCancel }) {
+  const [f, setF] = useState({ client_id: "", client_secret: "" });
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api("/integracoes/google/app", { method: "PUT", body: f });
+      notify("App do Google guardado. Agora conecte sua conta.");
+      onSaved();
+    } catch (err) {
+      notify(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="card form" onSubmit={save}>
+      <p>
+        <strong>Primeiro, uma vez só: crie o seu “app do Google”.</strong> É grátis e leva uns 5 minutos. Ele é o que deixa os xodós pedirem acesso à sua conta.
+      </p>
+      <ol className="howto">
+        <li>
+          Abra o{" "}
+          <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">
+            Google Cloud
+          </a>{" "}
+          e crie um projeto (ex.: “Xodós”).
+        </li>
+        <li>
+          Em <em>APIs e serviços → Biblioteca</em>, ative{" "}
+          <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noreferrer">
+            Gmail API
+          </a>
+          ,{" "}
+          <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">
+            Google Calendar API
+          </a>{" "}
+          e{" "}
+          <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noreferrer">
+            Google Drive API
+          </a>
+          .
+        </li>
+        <li>
+          Em <em>Tela de consentimento OAuth</em> (Google Auth Platform), escolha <em>Externo</em> e, em <em>Público-alvo → Usuários de teste</em>, adicione o seu Gmail.
+        </li>
+        <li>
+          Em <em>Credenciais → Criar credenciais → ID do cliente OAuth</em>, escolha o tipo <strong>App para computador</strong> e crie.
+        </li>
+        <li>Copie o ID do cliente e a chave secreta e cole aqui.</li>
+      </ol>
+      <Field label="ID do cliente" hint="Termina em .apps.googleusercontent.com">
+        <input value={f.client_id} onChange={(e) => setF({ ...f, client_id: e.target.value })} required spellCheck={false} autoComplete="off" />
+      </Field>
+      <Field label="Chave secreta do cliente" hint="Fica cifrada só neste computador.">
+        <input type="password" value={f.client_secret} onChange={(e) => setF({ ...f, client_secret: e.target.value })} required spellCheck={false} autoComplete="off" />
+      </Field>
+      <p className="muted small">O Google volta para {data.google.volta} depois do login; não precisa cadastrar esse endereço (apps para computador aceitam).</p>
+      <div className="row gap">
+        <button className="btn" disabled={busy}>
+          {busy ? "Guardando…" : "Guardar app do Google"}
+        </button>
+        {onCancel && (
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            Cancelar
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+function GoogleSection({ data, reload, notify }) {
+  const [editing, setEditing] = useState(false);
+  const [apps, setApps] = useState(["gmail", "calendar"]);
+  const [busy, setBusy] = useState(false);
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const r = await api("/integracoes/google/conectar", { method: "POST", body: { apps } });
+      window.open(r.url, "_blank", "noopener");
+      notify("Abri o login do Google numa nova aba. Quando terminar, a conta aparece aqui.");
+    } catch (err) {
+      notify(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (acc) => {
+    if (!confirm(`Desconectar ${acc.label}? Os xodós param de usar essa conta.`)) return;
+    try {
+      await api(`/integracoes/${acc.id}`, { method: "DELETE" });
+      reload();
+    } catch (err) {
+      notify(err.message, true);
+    }
+  };
+  const toggle = (k) => setApps((a) => (a.includes(k) ? a.filter((x) => x !== k) : [...a, k]));
+
+  return (
+    <section className="block">
+      <h2>Google: Gmail, Agenda e Drive</h2>
+      {!data.google.configurado || editing ? (
+        <GoogleClientForm
+          data={data}
+          notify={notify}
+          onCancel={data.google.configurado ? () => setEditing(false) : null}
+          onSaved={() => {
+            setEditing(false);
+            reload();
+          }}
+        />
+      ) : (
+        <div className="stack">
+          {data.contas.map((acc) => (
+            <div key={acc.id} className="card row between gap wrap">
+              <div>
+                <strong>{acc.label}</strong>
+                <p className="muted small">
+                  {acc.apps.length ? acc.apps.map(appLabel).join(", ") : "Sem permissões"}
+                  {acc.status !== "active" ? ` · ${acc.status === "expired" ? "o login venceu, conecte de novo" : acc.last_error || "com erro"}` : ""}
+                </p>
+              </div>
+              <button className="btn btn-ghost" onClick={() => remove(acc)}>
+                Desconectar
+              </button>
+            </div>
+          ))}
+          <div className="card form">
+            <p>
+              <strong>{data.contas.length ? "Conectar outra conta (ou dar mais permissões)" : "Conectar sua conta do Google"}</strong>
+            </p>
+            <div className="stack-tight">
+              {GOOGLE_APPS.map((a) => (
+                <label key={a.k} className={cx("choice", apps.includes(a.k) && "choice-on")}>
+                  <input type="checkbox" checked={apps.includes(a.k)} onChange={() => toggle(a.k)} />
+                  <span>
+                    <strong>{a.l}</strong>
+                    <span className="muted small">{a.d}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="muted small">Depois, em cada xodó → Ajustes → “Pode usar”, escolha quais ele pode mexer.</p>
+            <div className="row gap wrap">
+              <button className="btn" disabled={busy || !apps.length} onClick={connect}>
+                Entrar com o Google
+              </button>
+              <button className="link small" onClick={() => setEditing(true)}>
+                Trocar o app do Google
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChannelCard({ ch, overview, reload, notify }) {
+  const [code, setCode] = useState(null);
+  const label = ch.canal === "telegram" ? "Telegram" : "WhatsApp";
+  const call = async (fn, msg) => {
+    try {
+      await fn();
+      if (msg) notify(msg);
+      reload();
+    } catch (err) {
+      notify(err.message, true);
+    }
+  };
+  const newCode = () => call(async () => setCode(await api(`/canais/${ch.id}/codigo`, { method: "POST", body: {} })));
+  const remove = () => {
+    if (!confirm(`Desconectar ${ch.nome} (${label})? O xodó para de responder por lá.`)) return;
+    call(() => api(`/integracoes/${ch.id}`, { method: "DELETE" }));
+  };
+  return (
+    <article className="card stack-tight">
+      <div className="row between gap wrap">
+        <div>
+          <strong>
+            {label} · {ch.nome}
+          </strong>
+          <p className="muted small">
+            {ch.canal === "whatsapp" && ch.meu_numero ? `Fala com o seu número ${ch.meu_numero}` : ch.vinculado ? `Vinculado a ${ch.vinculado}` : "Falta vincular o seu Telegram"}
+            {ch.status !== "active" ? ` · ${ch.erro || "com erro"}` : ""}
+          </p>
+        </div>
+        <span className={cx("pill", ch.status === "active" && (ch.vinculado || ch.canal === "whatsapp") ? "pill-live" : "pill-warn")}>
+          {ch.status !== "active" ? "Com erro" : ch.vinculado || ch.canal === "whatsapp" ? "Ligado" : "Esperando você"}
+        </span>
+      </div>
+      <div className="row gap wrap">
+        <Field label="Quem responde">
+          <XodoSelect xodos={overview.xodos} value={ch.xodo_id} onChange={(id) => call(() => api(`/canais/${ch.id}`, { method: "PATCH", body: { xodo_id: id } }), "Trocado.")} />
+        </Field>
+      </div>
+      <label className="check">
+        <input type="checkbox" checked={ch.avisos} onChange={(e) => call(() => api(`/canais/${ch.id}`, { method: "PATCH", body: { avisos: e.target.checked } }))} />
+        Mandar por aqui também os avisos do sino (lembretes, pedidos de aprovação, rotinas)
+      </label>
+      {ch.canal === "telegram" && (!ch.vinculado || code) && (
+        <div className="pairing">
+          {code ? (
+            <>
+              <p>
+                Mande este código para o bot{ch.usuario_bot ? ` @${ch.usuario_bot}` : ""} no Telegram (vale 10 minutos):
+              </p>
+              <p className="code">{code.codigo}</p>
+              {code.link && (
+                <a className="btn btn-soft" href={code.link} target="_blank" rel="noreferrer">
+                  Abrir o bot no Telegram
+                </a>
+              )}
+            </>
+          ) : (
+            <button className="btn btn-soft" onClick={newCode}>
+              Gerar código de vínculo
+            </button>
+          )}
+        </div>
+      )}
+      {ch.canal === "whatsapp" && (
+        <details className="muted small">
+          <summary>Para o xodó também receber suas mensagens</summary>
+          <p>
+            A Meta entrega as mensagens num endereço público. Exponha este app por um túnel (ex.: <em>cloudflared tunnel --url http://127.0.0.1:4747</em>) e, no painel do app da Meta → WhatsApp → Configuração, cadastre:
+          </p>
+          <p>
+            URL de retorno: <code>https://SEU-TUNEL/webhook/whatsapp</code>
+            <br />
+            Token de verificação: <code>{ch.verify_token}</code>
+          </p>
+          <p>Assine o campo “messages”. A chave secreta do app da Meta precisa estar cadastrada (ela confere que a mensagem veio mesmo da Meta).</p>
+        </details>
+      )}
+      <div className="row gap wrap">
+        <button className="btn btn-soft" onClick={() => call(() => api(`/canais/${ch.id}/teste`, { method: "POST", body: {} }), "Mensagem de teste enviada.")}>
+          Mandar teste
+        </button>
+        {ch.canal === "telegram" && ch.vinculado && (
+          <button className="btn btn-ghost" onClick={newCode}>
+            Vincular outro Telegram
+          </button>
+        )}
+        <button className="btn btn-ghost" onClick={remove}>
+          Desconectar
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function TelegramForm({ overview, notify, onDone }) {
+  const [f, setF] = useState({ token: "", xodo_id: overview.xodos[0]?.id || "" });
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api("/canais/telegram", { method: "POST", body: f });
+      notify("Bot conectado. Agora mande o código para ele no Telegram.");
+      onDone();
+    } catch (err) {
+      notify(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="card form" onSubmit={save}>
+      <ol className="howto">
+        <li>
+          No Telegram, abra o{" "}
+          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">
+            @BotFather
+          </a>{" "}
+          e mande <code>/newbot</code>.
+        </li>
+        <li>Escolha um nome (ex.: “Pipoca dos Xodós”) e um usuário terminando em “bot”.</li>
+        <li>Ele responde com um token. Cole aqui.</li>
+      </ol>
+      <div className="row gap wrap">
+        <Field label="Token do bot">
+          <input type="password" value={f.token} onChange={(e) => setF({ ...f, token: e.target.value })} required spellCheck={false} autoComplete="off" placeholder="123456789:ABC…" />
+        </Field>
+        <Field label="Quem responde">
+          <XodoSelect xodos={overview.xodos} value={f.xodo_id} onChange={(id) => setF({ ...f, xodo_id: id })} />
+        </Field>
+      </div>
+      <button className="btn" disabled={busy}>
+        {busy ? "Conferindo…" : "Conectar Telegram"}
+      </button>
+    </form>
+  );
+}
+
+function WhatsappForm({ overview, notify, onDone }) {
+  const [f, setF] = useState({ phone_number_id: "", token: "", app_secret: "", meu_numero: "", xodo_id: overview.xodos[0]?.id || "" });
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api("/canais/whatsapp", { method: "POST", body: f });
+      notify("WhatsApp conectado.");
+      onDone();
+    } catch (err) {
+      notify(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="card form" onSubmit={save}>
+      <ol className="howto">
+        <li>
+          Em{" "}
+          <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer">
+            developers.facebook.com
+          </a>
+          , crie um app do tipo <em>Empresa</em> e adicione o produto <em>WhatsApp</em>.
+        </li>
+        <li>
+          Em <em>WhatsApp → Configuração da API</em>, copie o <strong>ID do número de telefone</strong> e gere um token (para não vencer, use um token de usuário do sistema no Gerenciador de Negócios).
+        </li>
+        <li>No número de teste, cadastre o seu número como destinatário.</li>
+      </ol>
+      <div className="row gap wrap">
+        <Field label="ID do número de telefone">
+          <input value={f.phone_number_id} onChange={set("phone_number_id")} required inputMode="numeric" spellCheck={false} />
+        </Field>
+        <Field label="Seu número (quem o xodó atende)" hint="Com DDI e DDD: 55 41 99999-8888">
+          <input value={f.meu_numero} onChange={set("meu_numero")} required inputMode="tel" />
+        </Field>
+      </div>
+      <Field label="Token de acesso" hint="Fica cifrado só neste computador.">
+        <input type="password" value={f.token} onChange={set("token")} required spellCheck={false} autoComplete="off" />
+      </Field>
+      <div className="row gap wrap">
+        <Field label="Chave secreta do app (opcional)" hint="Em Configurações do app → Básico. Precisa dela para receber mensagens.">
+          <input type="password" value={f.app_secret} onChange={set("app_secret")} spellCheck={false} autoComplete="off" />
+        </Field>
+        <Field label="Quem responde">
+          <XodoSelect xodos={overview.xodos} value={f.xodo_id} onChange={(id) => setF({ ...f, xodo_id: id })} />
+        </Field>
+      </div>
+      <p className="muted small">A Meta só deixa o xodó escrever livremente até 24 h depois da sua última mensagem para ele. Mande um “oi” para o número do xodó antes do teste.</p>
+      <button className="btn" disabled={busy}>
+        {busy ? "Conferindo…" : "Conectar WhatsApp"}
+      </button>
+    </form>
+  );
+}
+
+function IntegrationsPage({ overview, notify, tick }) {
+  const [data, load] = useIntegrations(tick);
+  const [adding, setAdding] = useState(null);
+  const reload = () => load().catch((e) => notify(e.message, true));
+  if (!data) {
+    return (
+      <div className="page">
+        <p className="muted">Carregando…</p>
+      </div>
+    );
+  }
+  const has = (canal) => data.canais.some((c) => c.canal === canal);
+  return (
+    <div className="page">
+      <header className="page-head">
+        <h1>Integrações</h1>
+        <p className="muted">Ligue suas contas para os xodós cuidarem de e-mail e agenda, e fale com eles pelo Telegram ou WhatsApp.</p>
+      </header>
+
+      <GoogleSection data={data} reload={reload} notify={notify} />
+
+      <section className="block">
+        <h2>Falar com os xodós pelo celular</h2>
+        <div className="stack">
+          {data.canais.map((ch) => (
+            <ChannelCard key={ch.id} ch={ch} overview={overview} reload={reload} notify={notify} />
+          ))}
+          {adding === "telegram" && <TelegramForm overview={overview} notify={notify} onDone={() => (setAdding(null), reload())} />}
+          {adding === "whatsapp" && <WhatsappForm overview={overview} notify={notify} onDone={() => (setAdding(null), reload())} />}
+          {!adding && (
+            <div className="row gap wrap">
+              <button className="btn btn-soft" onClick={() => setAdding("telegram")}>
+                + {has("telegram") ? "Outro bot do Telegram" : "Conectar Telegram"}
+              </button>
+              <button className="btn btn-soft" onClick={() => setAdding("whatsapp")}>
+                + {has("whatsapp") ? "Outro número de WhatsApp" : "Conectar WhatsApp"}
+              </button>
+            </div>
+          )}
+          {adding && (
+            <button className="link small" onClick={() => setAdding(null)}>
+              Cancelar
+            </button>
+          )}
+          {!data.canais.length && !adding && (
+            <p className="muted small">Telegram é o jeito mais fácil: grátis, funciona direto do seu computador e você aprova os pedidos com um toque.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Primeira vez
 // ---------------------------------------------------------------------------
 
@@ -1356,14 +1964,7 @@ function Welcome({ overview, reload, notify }) {
       notify(err.message, true);
     }
   };
-  const trio = useMemo(
-    () => [
-      { species: "pingo", color: "Tomate" },
-      { species: "bibo", color: "Menta" },
-      { species: "oki", color: "Ultramar" },
-    ],
-    [],
-  );
+  const trio = BRAND_TRIO;
   return (
     <div className="welcome">
       <div className="welcome-card">

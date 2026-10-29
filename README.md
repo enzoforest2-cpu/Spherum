@@ -34,3 +34,21 @@ Variáveis úteis: `XODOS_DADOS` (pasta dos dados), `XODOS_PORTA`, `XODOS_NAO_AB
 - `src/xodos/` — motor dos xodós (execução, aprovações, memória, rotinas).
 - `src/local/` — ferramentas pessoais: pesquisa na web, leitura de páginas, pasta de arquivos.
 - `db/` — esquema do banco (migrações do Spherum + base).
+
+## Integrações
+
+Na tela **Integrações**:
+
+- **Google (Gmail, Agenda, Drive):** cada pessoa cria o próprio "app do Google" (ID do cliente OAuth do
+  tipo *App para computador*) e cola na tela; ele fica cifrado em `google-oauth.json` na pasta de dados.
+  O login volta para `http://127.0.0.1:<porta>/api/integrations/google/callback`. Depois, em cada xodó →
+  Ajustes → **Pode usar**, escolha o que ele mexe. Variáveis `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+  têm prioridade, como no Spherum.
+- **Telegram:** token de um bot do @BotFather. O app escuta por long polling (não precisa de endereço
+  público) e só atende quem mandar o código de vínculo. Pedidos de aprovação viram botões.
+- **WhatsApp (API oficial da Meta):** ID do número + token + o seu número. O envio funciona direto;
+  para receber, a Meta chama `/webhook/whatsapp` (precisa de endereço público, ex.: túnel), assinado
+  com a chave secreta do app da Meta.
+
+Nos dois canais, os avisos do sino também são repassados (dá para desligar por canal). O código fica em
+`server/integrations.ts` e `server/channels.ts`; o motor (`src/`) é o mesmo do Spherum.

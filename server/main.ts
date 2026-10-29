@@ -5,8 +5,12 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { IntegrationError } from "../src/integrations/http";
 import { localDeps } from "../src/xodos";
+import { XodoError } from "../src/xodos/errors";
 import { failure, handle, type Ctx } from "./api";
+import { Channels } from "./channels";
+import { callbackPage, finishGoogleLogin, loadGoogleClient } from "./integrations";
 import { openDatabase } from "./database";
 import { dataDir as defaultDataDir, PORT } from "./paths";
 import { prepare } from "./state";
@@ -73,6 +77,24 @@ function readBody(req: IncomingMessage): Promise<unknown> {
   });
 }
 
+function readRaw(req: IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        reject(Object.assign(new Error("grande demais"), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
 function sameToken(given: string | null | undefined, token: string) {
   if (!given) return false;
   const a = Buffer.from(given);
@@ -87,9 +109,12 @@ export async function startApp(opts: { dataDir?: string; port?: number; quiet?: 
   mkdirSync(dir, { recursive: true });
   const { pg, sql } = await openDatabase(path.join(dir, "banco"));
   const state = await prepare(sql, dir);
+  await loadGoogleClient(dir, state.masterKey);
   const deps = localDeps(sql, state.masterKey);
   const worker = new Worker(deps);
-  const ctx: Ctx = { deps, state, worker };
+  const ctx = { deps, state, worker } as Ctx;
+  const channels = new Channels(ctx);
+  ctx.channels = channels;
   const token = randomBytes(24).toString("base64url");
   const ui = uiDir();
 
@@ -109,11 +134,49 @@ export async function startApp(opts: { dataDir?: string; port?: number; quiet?: 
 
   const server = createServer(async (req, res) => {
     try {
+      // A Meta chama o webhook do WhatsApp por um endereço público (túnel), com outro Host. Ele não
+      // abre nada da API: só vale com a assinatura do app da Meta (ver channels.ts).
+      if (req.url?.split("?")[0] === "/webhook/whatsapp") {
+        const url = new URL(req.url, `http://127.0.0.1:${port}`);
+        if (req.method === "GET") {
+          const challenge = await channels.whatsappVerify(url.searchParams);
+          if (challenge === null) return send(res, 403, { error: "Token de verificação errado." });
+          res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+          return res.end(challenge);
+        }
+        if (req.method !== "POST") return send(res, 405, { error: "Método não permitido." });
+        const raw = await readRaw(req);
+        const status = await channels.whatsappWebhook(raw, req.headers["x-hub-signature-256"]?.toString());
+        return send(res, status, status === 200 ? { ok: true } : { error: "Recusado." });
+      }
+
       // Endereço errado = alguém tentando chegar aqui por outro nome (DNS rebinding). Recusa.
       if (!allowedHosts().has(String(req.headers.host ?? ""))) return send(res, 421, { error: "Endereço não permitido." });
       const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
       const origin = req.headers.origin;
       if (origin && !allowedOrigins().has(origin)) return send(res, 403, { error: "Origem não permitida." });
+
+      // Volta do login do Google: o navegador chega aqui sem o token da página. Quem protege é
+      // o state (sorteado no começo do login, uso único, vence em 10 minutos).
+      if (url.pathname === "/api/integrations/google/callback" && req.method === "GET") {
+        let page: string;
+        try {
+          const label = await finishGoogleLogin({ ...deps.integrations!, sql, now: deps.now }, url.searchParams);
+          page = callbackPage(true, `A conta ${label} já está nos Xodós. Pode fechar esta aba.`);
+          worker.onChange("*");
+        } catch (error) {
+          const message = error instanceof IntegrationError || error instanceof XodoError ? error.message : "Erro inesperado. Veja a janela preta do app.";
+          if (!(error instanceof IntegrationError || error instanceof XodoError)) console.error("[google] login falhou", error);
+          page = callbackPage(false, message);
+        }
+        res.writeHead(200, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "referrer-policy": "no-referrer",
+          "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+        });
+        return res.end(page);
+      }
 
       if (url.pathname.startsWith("/api/")) {
         // O EventSource do navegador não manda cabeçalhos; ali o token vai no endereço.
@@ -163,10 +226,13 @@ export async function startApp(opts: { dataDir?: string; port?: number; quiet?: 
     });
   });
   port = (server.address() as AddressInfo).port;
+  deps.integrations!.appUrl = `http://127.0.0.1:${port}`;
   worker.start();
+  channels.start();
 
   const close = async () => {
     clearInterval(ping);
+    channels.stop();
     worker.stop();
     for (const res of listeners) res.end();
     server.closeAllConnections();
