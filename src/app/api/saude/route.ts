@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
  * GET /api/saude  diz se o servidor fala com o banco. Em caso de erro, mostra só o tipo do
  * problema e o formato do endereço (porta, se é o pooler), nunca a senha nem o endereço inteiro.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const raw = databaseUrl(process.env);
   let formato: Record<string, unknown> = { configurada: Boolean(raw) };
   if (raw) {
@@ -24,7 +24,19 @@ export async function GET() {
   try {
     const sql = await serverSql();
     await sql.query("select 1");
-    return NextResponse.json({ banco: "ok", formato });
+    // Diagnóstico temporário: a tela de Xodós carrega para esta agência? (só ok ou o erro)
+    const ag = new URL(request.url).searchParams.get("xodos");
+    let xodos: string | undefined;
+    if (ag && /^[0-9a-f-]{36}$/.test(ag)) {
+      try {
+        const { xodoScreen } = await import("@/lib/xodos/screen");
+        const r = await xodoScreen(sql, ag);
+        xodos = `ok (${r.xodos.length} xodós)`;
+      } catch (error) {
+        xodos = `erro: ${String((error as Error).message).slice(0, 300)}`;
+      }
+    }
+    return NextResponse.json({ banco: "ok", formato, xodos });
   } catch (error) {
     const e = error as { code?: string; message?: string };
     const message = String(e.message ?? "").replace(/postgres(ql)?:\/\/\S+/gi, "[endereço]");
