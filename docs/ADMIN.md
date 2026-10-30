@@ -2,8 +2,8 @@
 
 Código em `src/lib/core/admin.ts`, `src/lib/core/platform.ts` e `src/lib/core/support.ts`. Tabelas em
 `supabase/migrations/20261027100000_admin.sql`. A tela é `design/project/spherum/admin_tpl.html`,
-aberta em `/admin`. Só entra quem está em `spherum_staff`; o login do site leva a equipe direto
-para lá.
+aberta em `/admin`. Só entra quem está em `spherum_staff`, com verificação em duas etapas; o login
+do site leva a equipe direto para lá.
 
 - **Primeiro acesso**: a pessoa cria a conta pelo site e alguém com acesso ao banco a coloca como
   dona: `insert into spherum_staff (user_id, role) select id, 'dono' from auth.users where email = '...';`.
@@ -13,14 +13,48 @@ para lá.
   | Função | O que pode fazer |
   |---|---|
   | dono | tudo, inclusive equipe, chaves da plataforma, preços e faturas |
-  | operacao | plano, suspensão, mensagens, cupons, comunicados, status, suporte e leads |
-  | suporte | mensagens, suporte e leads |
+  | operacao | plano, suspensão, mensagens, cupons, comunicados, status, suporte, leads e ver a conta da agência |
+  | suporte | mensagens, suporte, leads e ver a conta da agência |
   | financeiro | plano, cupons, estorno e cancelamento de faturas |
   | leitura | só vê |
 
   A equipe nunca fica sem dono: rebaixar ou remover o último é recusado. A conta é feita com trava,
   então dois donos rebaixando um ao outro ao mesmo tempo não zeram a equipe. Para entrar na equipe,
   a pessoa já precisa ter conta.
+
+## Verificação em duas etapas
+
+Obrigatória para toda a equipe do Spherum. Usa o MFA por app autenticador (TOTP) do Supabase Auth,
+que precisa estar ligado no projeto (Authentication → Multi-Factor, "TOTP", vem ligado por padrão).
+
+- **No servidor**: todas as rotas da equipe (`/api/admin/**`, `GET /api/leads`, `PATCH /api/leads/:id`
+  e `PUT /api/site/demo`) passam por `requireAdmin` em `src/lib/core/http.ts`. Ele confere o token no
+  Supabase, a pessoa em `spherum_staff` e o claim `aal` do token. Sem `aal2`, responde 403 com
+  `{ error, code: "mfa_required" }`. Quem não é da equipe continua recebendo 404, sem saber da rota.
+- **Na tela**: ao receber `mfa_required`, o admin abre o passo da verificação.
+  - Primeira vez: cadastra o app (QR code e chave para digitar) e pede o código de 6 dígitos.
+  - Depois: a cada login pede o código. O token novo (`aal2`) fica na sessão; renovar a sessão
+    mantém o nível.
+  - Chamadas direto ao Supabase Auth: `POST /auth/v1/factors`, `/factors/:id/challenge` e
+    `/factors/:id/verify`, as mesmas de `supabase.auth.mfa.enroll/challenge/verify`.
+- **Equipe Spherum** mostra quem já ativou ("Duas etapas ativas", lido de `auth.mfa_factors`).
+- **Perdeu o celular**: alguém com acesso ao banco apaga o fator e a pessoa cadastra de novo no
+  próximo login: `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '...');`.
+
+## Página pública de status
+
+`/status` (sem login), com os mesmos dados em `GET /api/public/status`. Código em
+`src/lib/core/status.ts` e `src/app/status/page.tsx`. O admin tem o link no rodapé do menu e na tela
+Status.
+
+- **Serviços**: situação agora (o incidente aberto mais grave) e 30 dias em barras. Um dia fica
+  amarelo quando mais de 10% das execuções do agendador falharam nas etapas do serviço, e da cor do
+  incidente quando houve um. Sem execução no dia, fica cinza ("sem dados"). O "% no ar" é a parte
+  das execuções sem falha nos 30 dias.
+- **Incidentes abertos** e **histórico dos últimos 30 dias**, com as atualizações.
+- Não mostra agência, pessoa nem quem escreveu. O texto dos incidentes é público: escreva para a
+  agência.
+- A página é refeita a cada 60 s.
 
 ## O que cada tela faz
 
@@ -44,6 +78,16 @@ para lá.
   - **Estender o teste**: move a data do fim do teste. Só volta a situação para "em teste" se a
     agência estava em teste ou com pagamento pendente. Quem paga ou cancelou continua como está.
   - Todas as mudanças de um pedido entram juntas ou nenhuma entra.
+  - **Ver como a agência** (suporte, operação e dono): mostra a conta como o dono da agência vê,
+    só para ler, sem abrir o app da agência. Mostra:
+    - clientes, equipe, integrações e erros de sincronização;
+    - assinatura e últimas faturas;
+    - últimos chamados com o Spherum e o que pede atenção.
+
+    Não mostra o chat interno da equipe da agência. Cada abertura entra na auditoria. A agência
+    recebe um aviso no app ("A equipe do Spherum abriu sua conta para atender o chamado…, só para
+    ver, sem alterar nada"), no máximo um por hora. Se a agência tem chamado aberto, o aviso cita o
+    mais recente.
 - **Leads e demos**: os formulários do site viram um funil (novo, em contato, demo marcada, em
   teste, ganho, perdido), com responsável e anotação. Dá para cadastrar um lead à mão.
 - **Receita**: receita mensal pelas faturas pagas da assinatura (veja `docs/ASSINATURA.md`). O anual
@@ -63,8 +107,8 @@ para lá.
   - **Envio cortado no meio**: se o prazo acabar, o comunicado fica "enviando" e o cron continua de
     onde parou. Ele só vira "enviado" quando o último e-mail sai.
 - **Status**: incidentes por serviço com atualizações. A disponibilidade de cada serviço vem das
-  execuções do cron dos últimos 14 dias (`cron_runs`). Cada execução guarda as etapas que falharam
-  e fica 14 dias.
+  execuções do cron das últimas 24 horas (`cron_runs`). Cada execução guarda as etapas que falharam
+  e fica 31 dias, para a página pública mostrar 30.
 - **Suporte**: chamados das agências para o Spherum. A resposta vai como aviso e e-mail para quem
   abriu o chamado. Se essa pessoa saiu da agência, vai para os donos e administradores. Uma resposta
   da agência reabre o chamado.
@@ -99,19 +143,22 @@ para lá.
 ## Ainda não existe
 
 Estes botões avisam que ainda não estão disponíveis: conceder créditos, convidar agência pelo
-admin, entrar como a agência, ligar e desligar provedores de IA, encerrar sessões, editar a matriz
-de permissões e publicar a página pública de status. A matriz de permissões é fixa no código (`CAN`
-em `admin.ts`).
+admin, ligar e desligar provedores de IA, encerrar sessões e editar a matriz de permissões. A
+matriz de permissões é fixa no código (`CAN` em `admin.ts`).
 
 ## API
 
-Todas exigem alguém da equipe do Spherum. Cada ação confere a função e entra na auditoria.
+Todas exigem alguém da equipe do Spherum com verificação em duas etapas (sem ela: 403 com
+`code: "mfa_required"`). Cada ação confere a função e entra na auditoria.
 
 - `GET /api/admin` devolve
   `{ me, flags, prices, agencies, mrr, metrics, leads, coupons, comms, incidents, cron, staff, audit, tickets, ai }`.
 - `PATCH /api/admin/agencies/:id` muda
   `{ plan?, plan_status?, trial_days?, suspend?: { reason }, reactivate? }`.
 - `POST /api/admin/agencies/:id` envia mensagem, com `{ subject, body }`.
+- `GET /api/admin/agencies/:id/view?ticket=` devolve `{ read_only, viewed_at, summary, portal }`.
+  `portal` é o mesmo de `/api/portal/agencia`, visto pelo dono, sem o chat da equipe. `summary` é o
+  resumo da tela. `ticket` (opcional) é o chamado citado no aviso.
 - `POST /api/admin/staff` com `{ email, role }`.
 - `PATCH /api/admin/staff/:userId` com `{ role }`.
 - `DELETE /api/admin/staff/:userId`.

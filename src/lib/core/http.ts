@@ -1,13 +1,29 @@
-import { one, type Sql } from "../xodos/db";
+import { one, serverSql, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
+import { requireAuth } from "../xodos/http";
 
 /** Ajudas das rotas da base (as de autenticação e papel ficam em xodos/http). */
 
-/** Equipe do Spherum (portal admin). Mesmo erro para quem não é, sem revelar a rota. */
-export async function requireStaff(sql: Sql, userId: string): Promise<string> {
-  const row = await one<{ role: string }>(sql, `select role from spherum_staff where user_id = $1`, [userId]);
+/** Código da resposta 403 quando falta o código do app autenticador (a tela do admin pede o código). */
+export const MFA_REQUIRED = "mfa_required";
+
+/**
+ * Equipe do Spherum (portal admin). Mesmo erro para quem não é, sem revelar a rota. Quem é da
+ * equipe precisa ter entrado com a verificação em duas etapas (aal2 no token); sem ela, 403 com
+ * o código "mfa_required" para a tela pedir o código (ou o cadastro do app autenticador).
+ */
+export async function requireStaff(sql: Sql, user: { id: string; aal: string | null }): Promise<string> {
+  const row = await one<{ role: string }>(sql, `select role from spherum_staff where user_id = $1`, [user.id]);
   if (!row) throw new XodoError("Não encontrado", 404);
+  if (user.aal !== "aal2") throw new XodoError("Confirme o código do app autenticador para entrar no admin.", 403, MFA_REQUIRED);
   return row.role;
+}
+
+/** Rotas do admin: login, equipe do Spherum e verificação em duas etapas. */
+export async function requireAdmin(request: Request): Promise<{ userId: string; role: string; sql: Sql }> {
+  const user = await requireAuth(request);
+  const sql = await serverSql();
+  return { userId: user.id, role: await requireStaff(sql, user), sql };
 }
 
 /** Agência dona do cliente (para conferir o papel de quem pede). */

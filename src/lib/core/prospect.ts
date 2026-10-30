@@ -5,6 +5,7 @@ import { XodoError } from "../xodos/errors";
 import { createDeal } from "./crm";
 import { platformFlags, requireFeature } from "./platform";
 import { limitsOf } from "./subscription";
+import { emitEvent } from "./webhooks";
 
 /**
  * Prospecção: listas próprias da agência (planilha ou números colados) e uma cadência pelo
@@ -36,12 +37,18 @@ export const configInput = z.object({
   lang: z.string().trim().regex(/^[a-z]{2}(_[A-Z]{2})?$/).optional(),
   steps: z.array(z.object({ t: z.string().trim().min(1).max(60), day: z.number().int().min(0).max(30), text: body, template })).min(1).max(5).optional(),
   // Variações do primeiro passo: cada lead recebe uma das ativas (teste A/B entre modelos).
-  variations: z.array(z.object({ style: z.string().trim().min(1).max(40), text: body, template, on: z.boolean().default(true) })).max(8).optional(),
+  variations: z.array(z.object({
+    style: z.string().trim().min(1).max(40), text: body, template, on: z.boolean().default(true),
+    // Situação do modelo na Meta, quando a variação foi enviada pelo Spherum (Disparos com variação).
+    status: z.string().trim().max(30).nullable().optional(), reason: z.string().trim().max(200).nullable().optional(),
+  })).max(8).optional(),
+  waba_id: z.string().trim().regex(/^\d{5,25}$/).nullable().optional(),
 });
 export type ProspectConfig = {
   connection_id: string | null; daily_limit: number; running: boolean; lang: string;
   steps: { t: string; day: number; text: string; template: string | null }[];
-  variations: { style: string; text: string; template: string | null; on: boolean }[];
+  variations: { style: string; text: string; template: string | null; on: boolean; status?: string | null; reason?: string | null }[];
+  waba_id?: string | null;
 };
 
 export const DEFAULT_CONFIG: ProspectConfig = {
@@ -70,7 +77,7 @@ export async function setConfig(sql: Sql, agencyId: string, raw: unknown) {
     if (!next.connection_id) throw new XodoError("Conecte o WhatsApp oficial antes de disparar.", 400);
     const missing = next.steps.findIndex((s) => !s.template);
     if (missing >= 0) throw new XodoError(`Falta o modelo aprovado da Meta no passo ${missing + 1}.`, 400);
-    if (next.variations.some((v) => v.on && !v.template)) throw new XodoError("Toda variação ativa precisa de um modelo aprovado.", 400);
+    if (next.variations.some((v) => v.on && (!v.template || (v.status && v.status !== "APPROVED")))) throw new XodoError("Toda variação ativa precisa de um modelo aprovado.", 400);
     if (!/sair|parar/i.test(next.steps[next.steps.length - 1].text)) throw new XodoError("A última mensagem precisa oferecer a saída (ex.: “responda SAIR”).", 400);
   }
   await sql.query(`update agencies set prospect_config = $2::jsonb where id = $1`, [agencyId, json(next)]);
@@ -320,6 +327,7 @@ export async function prospectInbound(sql: Sql, agencyId: string, waId: string, 
             stage = case when stage in ('fila', 'abordado', 'erro') then 'respondeu' else stage end where id = $1`,
     [lead.id, at.toISOString()],
   );
+  await emitEvent(sql, agencyId, "lead.replied", { id: lead.id, phone: lead.phone, text: text.slice(0, 4096), replied_at: at.toISOString() });
   return { status: "reply" as const, leadId: lead.id };
 }
 

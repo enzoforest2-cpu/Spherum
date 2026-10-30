@@ -5,6 +5,7 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/api/public/manifest">
 <script src="95c4cf7d-8bf1-49af-858b-d380d15f687e"></script>
 
 </head>
@@ -640,6 +641,18 @@ a:hover{color:#3346D3;text-decoration:underline}
   </sc-if>
 </div>
 
+<sc-if value="{{ cl.show }}"><div role="dialog" aria-modal="true" aria-label="{{ cl.title }}" style="position:fixed;inset:0;z-index:2100;background:radial-gradient(60% 50% at 50% 40%,#FFFFFF 0%,#F2F4F7 80%);display:grid;place-items:center;padding:24px;font-family:'Geist',system-ui,sans-serif;color:#101828"><div style="width:min(380px,100%);background:#fff;border:1px solid #EAECF0;border-radius:18px;box-shadow:0 12px 32px rgba(16,24,40,.08);padding:26px;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:12px;background-color:{{ br.lgBg }};background-image:{{ br.lgImg }};background-size:contain;background-position:center;background-repeat:no-repeat;color:{{ br.lgFg }};display:grid;place-items:center;font-size:14px;font-weight:700;box-shadow:0 0 0 1px rgba(16,24,40,.06)">{{ br.lgIni }}</span><div><div style="font-weight:600;font-size:16px">{{ br.name }}</div><div style="font-size:12.5px;color:#667085">Portal do cliente</div></div></div>
+  <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em">{{ cl.title }}</div>
+  <sc-if value="{{ cl.hasInfo }}"><div style="font-size:13px;color:#067647;background:#ECFDF3;border-radius:10px;padding:9px 11px">{{ cl.info }}</div></sc-if>
+  <sc-if value="{{ cl.isReset }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">Senha nova<input type="password" value="{{ cl.pass }}" sc-camel-on-change="{{ cl.onPass }}" sc-camel-on-key-down="{{ cl.onKey }}" autocomplete="new-password" style="height:42px;border:1px solid #D0D5DD;border-radius:10px;padding:0 12px;font:inherit;outline:none"></label></sc-if>
+  <sc-if value="{{ cl.isLogin }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">E-mail<input type="email" value="{{ cl.email }}" sc-camel-on-change="{{ cl.onEmail }}" autocomplete="email" style="height:42px;border:1px solid #D0D5DD;border-radius:10px;padding:0 12px;font:inherit;outline:none"></label><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">Senha<input type="password" value="{{ cl.pass }}" sc-camel-on-change="{{ cl.onPass }}" sc-camel-on-key-down="{{ cl.onKey }}" autocomplete="current-password" style="height:42px;border:1px solid #D0D5DD;border-radius:10px;padding:0 12px;font:inherit;outline:none"></label></sc-if>
+  <sc-if value="{{ cl.isForgot }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">E-mail da sua conta<input type="email" value="{{ cl.email }}" sc-camel-on-change="{{ cl.onEmail }}" sc-camel-on-key-down="{{ cl.onKey }}" autocomplete="email" style="height:42px;border:1px solid #D0D5DD;border-radius:10px;padding:0 12px;font:inherit;outline:none"></label></sc-if>
+  <sc-if value="{{ cl.hasErr }}"><div style="font-size:13px;color:#B42318">{{ cl.err }}</div></sc-if>
+  <button sc-camel-on-click="{{ cl.submit }}" style="height:44px;border:none;border-radius:11px;background:{{ br.acc }};color:{{ br.lgFg }};font-size:14.5px;font-weight:600">{{ cl.btnL }}</button>
+  <sc-if value="{{ cl.isLogin }}"><button sc-camel-on-click="{{ cl.forgot }}" style="border:none;background:transparent;color:#475467;font-size:13px">Esqueci a senha</button></sc-if>
+  <sc-if value="{{ cl.isForgot }}"><button sc-camel-on-click="{{ cl.back }}" style="border:none;background:transparent;color:#475467;font-size:13px">Voltar para entrar</button></sc-if>
+</div></div></sc-if>
 <sc-if value="{{ out.has }}"><div role="dialog" aria-modal="true" aria-label="Sessão encerrada" style="position:fixed;inset:0;z-index:2000;background:radial-gradient(60% 50% at 50% 42%,#FFFFFF 0%,#F2F4F7 75%);display:grid;place-items:center;padding:24px;font-family:'Geist',system-ui,sans-serif;color:#101828"><div style="width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center"><span style="width:56px;height:56px;border-radius:16px;background:#EEF1FF;color:#465FFF;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Outlined';font-size:28px;line-height:1">logout</span></span><span style="font-size:22px;font-weight:600;letter-spacing:-0.02em">Você saiu {{ out.where }}</span><span style="font-size:14.5px;color:#667085;text-wrap:pretty">Sua sessão foi encerrada neste navegador.</span><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px"><button sc-camel-on-click="{{ out.home }}" style="height:42px;padding:0 18px;border:none;border-radius:11px;background:#465FFF;color:#fff;font-size:14px;font-weight:600">Voltar para o site</button><button sc-camel-on-click="{{ out.back }}" style="height:42px;padding:0 18px;border:1px solid #D0D5DD;border-radius:11px;background:#fff;color:#101828;font-size:14px;font-weight:600">Entrar de novo</button></div></div></div></sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script="">
@@ -775,7 +788,17 @@ class Component extends DCLogic {
   componentDidMount() { this.spInit(); this.pl = setInterval(() => { if (this.R && this.state.view === 'msgs' && !document.hidden) this.spReload(); }, 20000); this.rs = () => { const n = window.innerWidth < 900; if (n !== this.state.narrow) this.setState({ narrow: n }); }; this.rs(); window.addEventListener('resize', this.rs); }
   componentWillUnmount() { window.removeEventListener('resize', this.rs); clearTimeout(this.tt); clearInterval(this.pl); }
   // Tudo vem de /api/portal/cliente; o que o cliente responde vai para /api/portal/cliente/collab. Sem sessão, vai para o login.
+  // Domínio próprio da agência (ou subdomínio): o login acontece aqui mesmo, com a marca dela.
+  spOwnHost() { return !/^((www|app|status)\.)?spherum\.com\.br$|\.vercel\.app$|^localhost$|^127\.0\.0\.1$/.test(location.hostname); }
+  async spHostBrand() { try { const r = await fetch('/api/public/brand').then(x => x.json()); this.HB = r.brand || null; if (this.HB && /^#[0-9a-f]{6}$/i.test(this.HB.color || '')) window.__spBrand = { c: this.HB.color }; if (this.HB) { try { document.title = this.HB.name; const ic = document.querySelector('link[rel="apple-touch-icon"]'); if (ic && this.HB.logo_url) ic.href = this.HB.logo_url; } catch (e) {} } this.setState({ real: Date.now() }); } catch (e) {} }
   async spInit() {
+    if (this.spOwnHost()) {
+      this.spHostBrand();
+      const h = new URLSearchParams(location.hash.slice(1)), q = new URLSearchParams(location.search);
+      // Link de "esqueci a senha": o Supabase volta com a sessão no endereço.
+      if (h.get('access_token') && h.get('type') === 'recovery') { SP.save({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token'), expires_in: +h.get('expires_in') || 3600 }); try { history.replaceState(null, '', location.pathname); } catch (e) {} this.setState({ cl: { mode: 'reset' } }); return; }
+      if (!SP.get() || q.get('entrar')) { this.setState({ cl: { mode: 'login' } }); return; }
+    }
     if (!SP.requireLogin()) return;
     try {
       const me = await SP.api('/api/me'), list = me.portals || []; let id = null;
@@ -860,7 +883,8 @@ class Component extends DCLogic {
       open: () => { const w2 = window.open(URL.createObjectURL(new Blob([this.spReportHtml(r)], { type: 'text/html' })), '_blank'); if (!w2) this.toastMsg('Permita pop-ups para abrir o relatório'); },
       pdf: () => { spDl(r.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\W+/g, '-') + '.html', this.spReportHtml(r), 'text/html'); this.toastMsg('Relatório baixado'); } }));
     const nm = R.agency.name, fg = (() => { const n = parseInt(acc.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
-    o.br = Object.assign({}, o.br, { acc, name: nm, lgBg: acc, lgImg: 'none', lgFg: fg, lgIni: (nm.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'A').toUpperCase() });
+    const lu = R.agency.logo_url;
+    o.br = Object.assign({}, o.br, { acc, name: nm, lgBg: lu ? '#FFFFFF' : acc, lgImg: lu ? 'url("' + lu + '")' : 'none', lgFg: fg, lgIni: lu ? '' : (nm.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || 'A').toUpperCase() });
     const first = (R.me.name || '').split(' ')[0];
     o.docs = (R.documents || []).map(d => ({ name: d.name, cat: d.category, date: this.spDate(d.created_at), type: ((d.name.match(/\.([a-z0-9]{1,5})$/i) || [])[1] || 'ARQ').toUpperCase(),
       dl: async () => { try { const r = await SP.api('/api/documents/' + d.id + '/download'); (window.top || window).open(r.url, '_blank') || (location.href = r.url); } catch (e) { this.toastMsg(e.message); } } }));
@@ -1074,11 +1098,26 @@ class Component extends DCLogic {
     const d = arr => arr.map((v, i) => (i ? 'L' : 'M') + (i * w / (arr.length - 1)).toFixed(1) + ' ' + (h - (v - mn) / (mx - mn) * h).toFixed(1)).join(' ');
     const line = d(a); return { line, area: line + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z', prev: d(b) }; }
   renderVals() {
-    if (this._br === undefined) { try { this._br = JSON.parse(localStorage.getItem('spherum.brand') || 'null'); } catch (e) { this._br = null; } window.__spBrand = this._br && this._br.onClient && /^#[0-9a-f]{6}$/i.test(this._br.brand) ? { c: this._br.brand } : null; }
-    const brS = (this._br && this._br.onClient) ? this._br : null, brC = ACC(), brLogo = brS && brS.logo ? brS.logo : '', brName = brS && brS.name ? brS.name : '';
+    // Marca da agência vinda do servidor (R.agency), ou do domínio próprio antes do login (HB).
+    const RA = this.R && this.R.agency, HB = this.HB;
+    const brS = RA && RA.branded ? { logo: RA.logo_url, name: RA.name, powered: RA.powered } : HB ? { logo: HB.logo_url, name: HB.name, powered: HB.powered } : null;
+    const brC = ACC(), brLogo = brS && brS.logo ? brS.logo : '', brName = brS && brS.name ? brS.name : '';
     const brFg = (() => { const n = parseInt(brC.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160 ? '#101828' : '#FFFFFF'; })();
     const br = { acc: brC, name: brName, lgBg: brLogo ? '#FFFFFF' : brC, lgImg: brLogo ? 'url("' + brLogo + '")' : 'none', lgFg: brFg, lgIni: brLogo ? '' : brName.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase(), powOpen: this.state.sbOpen !== false && !(brS && brS.powered === false) };
     const S = this.state; const open = !S.narrow;
+    const CL = S.cl || null, setCl = p => this.setState(s => ({ cl: Object.assign({}, s.cl, p) }));
+    const clSubmit = async () => { const c = this.state.cl; if (c.busy) return; setCl({ busy: true, err: '' });
+      try {
+        if (c.mode === 'login') { await SP.login((c.email || '').trim(), c.pass || ''); this.setState({ cl: null }); this.spInit(); }
+        else if (c.mode === 'forgot') { await SP.recover((c.email || '').trim()); setCl({ busy: false, mode: 'login', info: 'Se o e-mail tiver conta, chega um link para criar a senha nova.' }); }
+        else { if ((c.pass || '').length < 8) throw new Error('Use pelo menos 8 caracteres.'); await SP.auth('user', { password: c.pass }, SP.get().access_token); this.setState({ cl: null }); this.spInit(); }
+      } catch (e) { setCl({ busy: false, err: e.message || 'Não deu certo agora.' }); } };
+    const cl = { show: !!CL, isLogin: !!CL && CL.mode === 'login', isForgot: !!CL && CL.mode === 'forgot', isReset: !!CL && CL.mode === 'reset', email: (CL && CL.email) || '', pass: (CL && CL.pass) || '',
+      onEmail: e => setCl({ email: e.target.value }), onPass: e => setCl({ pass: e.target.value }), onKey: e => { if (e.key === 'Enter') clSubmit(); }, submit: clSubmit,
+      btnL: CL && CL.busy ? 'Aguarde…' : CL && CL.mode === 'forgot' ? 'Enviar link' : CL && CL.mode === 'reset' ? 'Salvar senha nova' : 'Entrar',
+      err: (CL && CL.err) || '', hasErr: !!(CL && CL.err), info: (CL && CL.info) || '', hasInfo: !!(CL && CL.info),
+      forgot: () => setCl({ mode: 'forgot', err: '', info: '' }), back: () => setCl({ mode: 'login', err: '', info: '' }),
+      title: CL && CL.mode === 'forgot' ? 'Esqueci a senha' : CL && CL.mode === 'reset' ? 'Crie a senha nova' : 'Entrar no portal' };
     const f = n => n.toLocaleString('pt-BR'); const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR'); const brl2 = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Sem os dados de /api/portal/cliente (carregando ou sem acesso), as telas abrem vazias.
     const cb = this.R ? this.spBadges() : null;
@@ -1096,10 +1135,10 @@ class Component extends DCLogic {
       .map((q, i) => ({ q: q[0], a: q[1], open: S.faq === i, icon: S.faq === i ? 'remove' : 'add', toggle: () => this.setState({ faq: S.faq === i ? -1 : i }) }));
     const npsV = S.npsV;
     const out = {
-      soon, showAppr: false, approvals: [], pendingN: 0,
+      cl, soon, showAppr: false, approvals: [], pendingN: 0,
       nextInv: { v: '—', d: '', has1: false, has2: false, b1: '', b2: '', act1: () => {}, act2: () => {} },
       who: { name: '', client: '', ini: '' }, hello: S.noPortal ? 'Este login ainda não tem acesso a um portal de cliente. Peça o convite à sua agência.' : '', msgSub: '',
-      logout: () => { SP.logout(); this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); else location.href = '/'; } catch (e) {} }, back: () => { location.href = '/?entrar=1'; } }, br: Object.assign(br, { powOpen: br.powOpen && open }),
+      logout: () => { SP.logout(); if (this.spOwnHost()) { this.R = null; this.setState({ cl: { mode: 'login' } }); return; } this.setState({ __out: true }); try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); } catch (e) {} }, out: { has: !!this.state.__out, where: 'do portal', home: () => { try { if (window.parent && window.parent !== window) window.parent.postMessage('spherum:close', '*'); else location.href = '/'; } catch (e) {} }, back: () => { location.href = '/?entrar=1'; } }, br: Object.assign(br, { powOpen: br.powOpen && open }),
       liveLogo: React.createElement(LiveLogo, { size: 15, ink: '#475467', bg: '#FFFFFF', intro: false }),
       mainRef: this.mainRef, open, sbW: open ? '240px' : '64px', nav, is,
       periods: this.seg([['30D', '30 dias'], ['90D', '90 dias']], S.period, v => this.setState({ period: v })), periodLabel: S.period === '30D' ? 'últimos 30 dias' : 'últimos 90 dias', kpis: [],

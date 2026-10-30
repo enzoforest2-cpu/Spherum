@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { mailerFromEnv } from "@/lib/core/email";
-import { clientIp, leadSalt, requireStaff } from "@/lib/core/http";
+import { clientIp, leadSalt, requireAdmin } from "@/lib/core/http";
 import { createLead, listLeads } from "@/lib/core/leads";
 import { serverSql } from "@/lib/xodos/db";
-import { fail, requireUser } from "@/lib/xodos/http";
+import { fail } from "@/lib/xodos/http";
 
 /**
  * POST /api/leads  (público)  { kind, name, email, phone, company, message, scheduled_for, details }
@@ -26,9 +26,7 @@ export async function POST(request: Request) {
 /** GET /api/leads?kind=&open=1  (equipe do Spherum) */
 export async function GET(request: Request) {
   try {
-    const userId = await requireUser(request);
-    const sql = await serverSql();
-    await requireStaff(sql, userId);
+    const { sql } = await requireAdmin(request);
     const url = new URL(request.url);
     return NextResponse.json({
       leads: await listLeads(sql, { kind: url.searchParams.get("kind") ?? undefined, open: url.searchParams.get("open") === "1" }),

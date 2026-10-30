@@ -9,7 +9,7 @@ import { XodoError } from "../xodos/errors";
  */
 
 export const CATEGORIES = ["appr", "hot", "fail", "chat", "xodo"] as const;
-type Cat = (typeof CATEGORIES)[number];
+export type Cat = (typeof CATEGORIES)[number];
 const TZ = "America/Sao_Paulo";
 
 /** Categoria de cada tipo de aviso (o que não está aqui não vira push). */
@@ -52,21 +52,21 @@ export async function removeDevice(sql: Sql, userId: string, id: string) {
   if (!r) throw new XodoError("Aparelho não encontrado.", 404);
 }
 
-export const prefsInput = z.object({ categories: z.array(z.enum(CATEGORIES)).max(5).optional(), quiet_start: z.number().int().min(0).max(23).nullable().optional(), quiet_end: z.number().int().min(0).max(23).nullable().optional() });
+export const prefsInput = z.object({ categories: z.array(z.enum(CATEGORIES)).max(5).optional(), quiet_start: z.number().int().min(0).max(23).nullable().optional(), quiet_end: z.number().int().min(0).max(23).nullable().optional(), channels: z.boolean().optional() });
 
 export async function getPrefs(sql: Sql, agencyId: string, userId: string) {
-  const p = await one<{ categories: Cat[]; quiet_start: number | null; quiet_end: number | null }>(sql, `select categories, quiet_start, quiet_end from push_prefs where agency_id = $1 and user_id = $2`, [agencyId, userId]);
-  return p ?? { categories: ["appr", "hot", "fail", "chat"] as Cat[], quiet_start: 22, quiet_end: 7 };
+  const p = await one<{ categories: Cat[]; quiet_start: number | null; quiet_end: number | null; channels: boolean }>(sql, `select categories, quiet_start, quiet_end, channels from push_prefs where agency_id = $1 and user_id = $2`, [agencyId, userId]);
+  return p ?? { categories: ["appr", "hot", "fail", "chat"] as Cat[], quiet_start: 22, quiet_end: 7, channels: true };
 }
 
 export async function setPrefs(sql: Sql, agencyId: string, userId: string, raw: unknown) {
   const i = prefsInput.parse(raw);
   const cur = await getPrefs(sql, agencyId, userId);
-  const next = { categories: i.categories ?? cur.categories, quiet_start: i.quiet_start === undefined ? cur.quiet_start : i.quiet_start, quiet_end: i.quiet_end === undefined ? cur.quiet_end : i.quiet_end };
+  const next = { categories: i.categories ?? cur.categories, quiet_start: i.quiet_start === undefined ? cur.quiet_start : i.quiet_start, quiet_end: i.quiet_end === undefined ? cur.quiet_end : i.quiet_end, channels: i.channels ?? cur.channels };
   await sql.query(
-    `insert into push_prefs (agency_id, user_id, categories, quiet_start, quiet_end) values ($1, $2, $3, $4, $5)
-     on conflict (agency_id, user_id) do update set categories = excluded.categories, quiet_start = excluded.quiet_start, quiet_end = excluded.quiet_end, updated_at = now()`,
-    [agencyId, userId, next.categories, next.quiet_start, next.quiet_end],
+    `insert into push_prefs (agency_id, user_id, categories, quiet_start, quiet_end, channels) values ($1, $2, $3, $4, $5, $6)
+     on conflict (agency_id, user_id) do update set categories = excluded.categories, quiet_start = excluded.quiet_start, quiet_end = excluded.quiet_end, channels = excluded.channels, updated_at = now()`,
+    [agencyId, userId, next.categories, next.quiet_start, next.quiet_end, next.channels],
   );
   return next;
 }

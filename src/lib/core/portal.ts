@@ -13,6 +13,7 @@ import { listForms } from "./forms";
 import { profitBoard } from "./profit";
 import { prospectUnread } from "./prospect";
 import { listProposals } from "./proposals";
+import { brandOf } from "./brand";
 import { riskBoard } from "./risk";
 import { chatBoard } from "./team-chat";
 import { ticketBoard } from "./tickets";
@@ -334,7 +335,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
   const access = (await memberAccess(sql, agencyId, userId)) ?? { owner: false, perms: NONE, roleId: null, roleName: null };
   return withoutHiddenAreas(access, {
     access,
-    agency: { id: agencyId, ...agency },
+    agency: { id: agencyId, ...agency, brand: await brandOf(sql, agencyId) },
     me: { user_id: userId, name: me?.full_name || me?.email || "", role: me?.role ?? null, email: me?.email ?? null },
     period: cur,
     clients,

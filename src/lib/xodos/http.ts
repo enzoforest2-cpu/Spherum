@@ -22,16 +22,30 @@ export async function requireUser(request: Request): Promise<string> {
   return (await requireAuth(request)).id;
 }
 
-export type AuthUser = { id: string; email: string | null; meta: Record<string, unknown> };
+/**
+ * Nível de verificação do login (claim "aal" do token do Supabase Auth): "aal1" com senha,
+ * "aal2" depois do código do app autenticador. Só lê o token: quem confere a assinatura é o
+ * Supabase (getUser em requireAuth), então só use com um token que já passou por lá.
+ */
+export function tokenAal(token: string): string | null {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as { aal?: unknown };
+    return typeof payload.aal === "string" ? payload.aal : null;
+  } catch {
+    return null;
+  }
+}
 
-/** Usuário do token, com e-mail e os dados guardados no cadastro (user_metadata). */
+export type AuthUser = { id: string; email: string | null; meta: Record<string, unknown>; aal: string | null };
+
+/** Usuário do token, com e-mail, os dados guardados no cadastro (user_metadata) e o nível de verificação (aal). */
 export async function requireAuth(request: Request): Promise<AuthUser> {
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) throw new XodoError("Faça login para continuar.", 401);
   const { supabase } = await import("@/lib/supabase");
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) throw new XodoError("Sessão inválida ou expirada.", 401);
-  return { id: data.user.id, email: data.user.email?.toLowerCase() ?? null, meta: data.user.user_metadata ?? {} };
+  return { id: data.user.id, email: data.user.email?.toLowerCase() ?? null, meta: data.user.user_metadata ?? {}, aal: tokenAal(token) };
 }
 
 const LOCKED: Record<string, string> = {
@@ -93,7 +107,7 @@ export async function requireRole(sql: Sql, userId: string, agencyId: string, al
 export const uuid = z.uuid();
 
 export function fail(error: unknown) {
-  if (error instanceof XodoError) return NextResponse.json({ error: error.message }, { status: error.status });
+  if (error instanceof XodoError) return NextResponse.json(error.code ? { error: error.message, code: error.code } : { error: error.message }, { status: error.status });
   if (error instanceof IntegrationError) return NextResponse.json({ error: error.message, reconnect: error.reauth }, { status: error.status });
   if (error instanceof ZodError) return NextResponse.json({ error: "Dados inválidos", issues: z.treeifyError(error) }, { status: 400 });
   if (error instanceof SyntaxError) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });

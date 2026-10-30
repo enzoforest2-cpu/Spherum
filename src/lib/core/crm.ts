@@ -6,6 +6,7 @@ import { createClient } from "./clients";
 import { createContract } from "./contracts";
 import { createProject } from "./projects";
 import { getScoring, scoreDeal } from "./scoring";
+import { emitEvent } from "./webhooks";
 
 /**
  * CRM: negócios (leads) no funil de vendas. Negócio ganho vira cliente: cria o cliente com o
@@ -148,13 +149,17 @@ export async function winDeal(sql: Sql, agencyId: string, userId: string, id: st
       client_id: client.id, monthly_fee: d.value_cents / 100, start_date: today, end_date: addDays(end, 0), billing: "nova", billing_day: input.billing_day,
     }, now)).id;
   }
-  const won = await one(tx,
+  const won = await one<{ won_at: string }>(tx,
     `update deals set stage = 'ganho', won_at = now(), stage_changed_at = now(), lost_at = null, lost_reason = null, client_id = $3,
-            next_action = 'Convertido em cliente', next_action_date = null where id = $1 and agency_id = $2 and stage <> 'ganho' returning id`,
+            next_action = 'Convertido em cliente', next_action_date = null where id = $1 and agency_id = $2 and stage <> 'ganho' returning id, won_at::text`,
     [id, agencyId, client.id],
   );
   if (!won) throw new XodoError("Esse negócio já virou cliente.", 409);
   await audit(tx, { agencyId, actor: userId, action: "negocio_ganho", targetType: "deal", targetId: id });
+  await emitEvent(tx, agencyId, "deal.won", {
+    id, company: d.company, contact_name: d.contact_name, email: d.email, phone: d.phone, value_cents: d.value_cents,
+    client_id: client.id, project_id: projectId, contract_id: contractId, won_at: won.won_at,
+  });
   return { client_id: client.id, project_id: projectId, contract_id: contractId, email: d.email };
   });
 }

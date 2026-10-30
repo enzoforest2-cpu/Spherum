@@ -1,3 +1,4 @@
+import { emitEvent } from "../core/webhooks";
 import { z } from "zod";
 import type { ComputerDeps } from "../computer/lifecycle";
 import type { AppAccess } from "../integrations/access";
@@ -415,14 +416,15 @@ export const TOOLS: ToolDef[] = [
     summarize: () => "publicar um relatório no portal do cliente",
     async execute(ctx, i) {
       await findReport(ctx, i.report_id);
-      const row = await one<{ id: string }>(
+      const row = await one<{ id: string; client_id: string; title: string; period_start: string; period_end: string; published_at: string }>(
         ctx.sql,
         `update reports set status = 'published', published_at = now(), updated_at = now()
-          where id = $1 and agency_id = $2 and status = 'draft' returning id`,
+          where id = $1 and agency_id = $2 and status = 'draft' returning id, client_id, title, period_start, period_end, published_at`,
         [i.report_id, ctx.xodo.agency_id],
       );
       if (!row) throw new ToolError("Só rascunhos podem ser publicados.");
       await recordReportUpdate(ctx.sql, row.id, ctx.xodo.id);
+      await emitEvent(ctx.sql, ctx.xodo.agency_id, "report.published", row);
       return { report_id: row.id, status: "published" };
     },
   }),

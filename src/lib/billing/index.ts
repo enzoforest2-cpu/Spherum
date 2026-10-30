@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { audit } from "../core/audit";
+import { emitEvent } from "../core/webhooks";
 import { IntegrationError, type Fetch } from "../integrations/http";
 import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
@@ -303,14 +304,24 @@ async function cancelCharge(deps: BillingDeps, invoiceId: string): Promise<strin
   }
 }
 
+type PaidRow = { id: string; agency_id: string; client_id: string; description: string; amount_cents: number; paid_cents: number; paid_at: string; paid_method: string | null; paid_manually: boolean; due_date: string };
+const PAID_COLS = `id, agency_id, client_id, description, amount_cents::float8 as amount_cents, paid_cents::float8 as paid_cents, paid_at::text, paid_method, paid_manually, due_date::text`;
+/** Fatura de cliente paga: vira o evento invoice.paid dos webhooks. */
+const paidEvent = (sql: Sql, r: PaidRow) =>
+  emitEvent(sql, r.agency_id, "invoice.paid", {
+    id: r.id, client_id: r.client_id, description: r.description, amount_cents: r.amount_cents, paid_cents: r.paid_cents,
+    paid_at: r.paid_at, method: r.paid_method, manual: r.paid_manually, due_date: r.due_date,
+  });
+
 /** Aplica o status que o provedor confirmou. Fatura paga só volta atrás por estorno. */
 async function applyState(sql: Sql, invoiceId: string, state: ChargeState) {
   if (state.status === "pago") {
-    await sql.query(
+    const paid = await one<PaidRow>(sql,
       `update invoices set status = 'pago', paid_at = coalesce($2::timestamptz, paid_at, now()), paid_cents = coalesce($3, paid_cents, amount_cents), paid_method = coalesce($4, paid_method)
-        where id = $1 and status in ('pendente', 'vencido')`,
+        where id = $1 and status in ('pendente', 'vencido') returning ${PAID_COLS}`,
       [invoiceId, state.paidAt ?? null, state.paidCents ?? null, state.method ?? null],
     );
+    if (paid) await paidEvent(sql, paid);
   } else if (state.status === "estornado") {
     await sql.query(`update invoices set status = 'estornado' where id = $1 and status = 'pago'`, [invoiceId]);
   } else if (state.status === "cancelado") {
@@ -352,10 +363,12 @@ export async function updateInvoice(deps: BillingDeps, agencyId: string, userId:
     if (!open) throw new XodoError("Essa fatura não está em aberto.", 409);
     // A cobrança no provedor é cancelada para o cliente não pagar duas vezes (boleto que já está com ele).
     warning = await cancelCharge(deps, id);
-    await deps.sql.query(
-      `update invoices set status = 'pago', paid_manually = true, paid_at = coalesce($2::timestamptz, now()), paid_cents = amount_cents, paid_method = 'manual' where id = $1`,
+    const paid = await one<PaidRow>(deps.sql,
+      `update invoices set status = 'pago', paid_manually = true, paid_at = coalesce($2::timestamptz, now()), paid_cents = amount_cents, paid_method = 'manual'
+        where id = $1 and status in ('pendente', 'vencido') returning ${PAID_COLS}`,
       [id, input.paid_at ? `${input.paid_at}T12:00:00Z` : null],
     );
+    if (paid) await paidEvent(deps.sql, paid);
   } else if (input.action === "reenviar") {
     if (!open) throw new XodoError("Essa fatura não está em aberto.", 409);
     // Cancela a cobrança anterior antes de criar outra: senão as duas ficam pagáveis e a antiga chega como "desconhecida".

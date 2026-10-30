@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/core/http";
+import { requireAdmin } from "@/lib/core/http";
 import { bookedSlots, demoCalendarInput, getSetting, setSetting } from "@/lib/core/leads";
 import { serverSql } from "@/lib/xodos/db";
-import { fail, requireUser } from "@/lib/xodos/http";
+import { fail } from "@/lib/xodos/http";
 
 /** GET /api/site/demo  (público)  agenda de demonstrações e horários já reservados (sem dados de ninguém). */
 export async function GET() {
@@ -18,9 +18,7 @@ export async function GET() {
 /** PUT /api/site/demo  { dur, buffer, days, from, to, lunch, notice, ahead, video?, owner? }  (equipe do Spherum) */
 export async function PUT(request: Request) {
   try {
-    const userId = await requireUser(request);
-    const sql = await serverSql();
-    await requireStaff(sql, userId);
+    const { userId, sql } = await requireAdmin(request);
     const calendar = demoCalendarInput.parse(await request.json());
     await setSetting(sql, "demo_calendar", calendar, userId);
     return NextResponse.json({ calendar });

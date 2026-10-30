@@ -3,6 +3,7 @@ import { cronAlerts } from "@/lib/core/alerts";
 import { NextResponse } from "next/server";
 import { billingDepsFromEnv, billingSweep } from "@/lib/billing";
 import { ADAPTERS } from "@/lib/channels";
+import { forwardSweep } from "@/lib/channels/notify-forward";
 import { cleanupChannels, flushOutbox } from "@/lib/channels/outbox";
 import { pollEmailTriggers } from "@/lib/channels/triggers";
 import type { ChannelDeps } from "@/lib/channels/types";
@@ -24,6 +25,7 @@ import { mailerFromEnv } from "@/lib/core/email";
 import { subDepsFromEnv, subscriptionSweep } from "@/lib/core/subscription";
 import { cleanupPendingUploads, documentsStorage } from "@/lib/core/documents";
 import { pushSweep } from "@/lib/core/push";
+import { webhookSweep } from "@/lib/core/webhooks";
 import { webPushSender } from "@/lib/core/push-web";
 import { videoSweep } from "@/lib/core/studio";
 import { studioDeps } from "@/lib/core/studio-providers";
@@ -99,17 +101,21 @@ export async function GET(request: Request) {
     // App de celular: os avisos novos viram notificação nos aparelhos (se as chaves VAPID estiverem configuradas).
     const sender = webPushSender();
     const push = sender ? await step("push", () => pushSweep(deps.sql, sender, new Date(), { deadline })) : "sem VAPID";
+    // Os mesmos avisos no Telegram e no WhatsApp de quem ligou o celular aos xodós.
+    const forwarded = await step("avisos_canais", () => forwardSweep(channelDeps, ADAPTERS, new Date(), { deadline }));
     // Uploads que o navegador começou e nunca terminou.
     const uploads = await step("uploads", () => cleanupPendingUploads(deps.sql, documentsStorage(), new Date()));
     // Comunicados do Spherum agendados para agora.
     const comms = await step("comunicados", () => announcementSweep(adminDeps(deps.sql), new Date(), { deadline }));
     // Assinatura do Spherum: conferência no Asaas, renovações, atrasos e bloqueios.
     const subs = await step("assinaturas", () => subscriptionSweep(subDepsFromEnv(deps.sql, mailerFromEnv()), new Date(), { deadline }));
+    // Webhooks da API: entregas na fila (assinadas), novas tentativas e desativação de endereços que só falham.
+    const webhooks = await step("webhooks", () => webhookSweep(deps.sql, fetch, new Date(), { deadline }));
     // De novo no fim: pedidos vencidos e execuções encerradas avisam pelo canal.
     const delivered = await step("fila_fim", () => flushOutbox(channelDeps, ADAPTERS, { limit: 100, deadline }));
-    const result = { fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, uploads, comms, subs, channels, delivered: { antes: queued, depois: delivered } };
+    const result = { fx, ads, expiring, billing, cleanup, computers, routines, email, prospect, posts, automations, fiscal, aivis, studio, push, forwarded, uploads, comms, subs, webhooks, channels, delivered: { antes: queued, depois: delivered } };
     // Registro da execução: o admin mostra a saúde de cada serviço pelas etapas que falharam.
-    const steps: Record<string, unknown> = { canais: channels, fila: queued, cotacao: fx, anuncios: ads, logins: expiring, cobranca: billing, computador: computers, execucoes: cleanup, rotinas: routines, email, fiscal, busca_ia: aivis, estudio: studio, automacoes: automations, posts, prospeccao: prospect, push, uploads, comunicados: comms, assinaturas: subs, fila_fim: delivered };
+    const steps: Record<string, unknown> = { canais: channels, fila: queued, cotacao: fx, anuncios: ads, logins: expiring, cobranca: billing, computador: computers, execucoes: cleanup, rotinas: routines, email, fiscal, busca_ia: aivis, estudio: studio, automacoes: automations, posts, prospeccao: prospect, push, avisos_canais: forwarded, uploads, comunicados: comms, assinaturas: subs, webhooks, fila_fim: delivered };
     await recordCronRun(deps.sql, startedAt, steps).catch((error) => console.error("[cron] registro falhou", error));
     // Etapa falhando em dois ciclos seguidos avisa a equipe do Spherum por e-mail.
     await cronAlerts(deps.sql, mailerFromEnv()).catch((error) => console.error("[cron] alerta falhou", error));

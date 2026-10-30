@@ -75,3 +75,13 @@ O portal da agência traz `prospect_unread`.
 - **Reserva antes do envio:** a varredura reserva o lead por 10 minutos (`next_at`) antes de mandar a mensagem; duas varreduras ao mesmo tempo não repetem o passo. Se o envio falhar por limite, a reserva é desfeita.
 - **Limite do Meta:** reconhecido tanto como HTTP 429 quanto como HTTP 400 com os códigos 130429, 131056, 131048 e 80007. A agência para neste ciclo sem marcar o lead como erro.
 - **Lead que virou cliente ou foi para o CRM** não é mais tratado pela prospecção: a resposta dele vai para o canal normal (xodó ou conversa).
+
+## Disparos com variação automática
+
+Add-on “Disparos com variação de mensagem” (`disp`): incluso no Escala e acima, à venda a partir do Agência.
+
+1. **Gerar** (`POST /api/prospect/variations {acao:"gerar", base, count?, tone?}`): a IA da agência (a primeira chave de modelo cadastrada em Xodós, no modelo mais barato do catálogo) reescreve a mensagem base com outras aberturas. Só aceita as variáveis `{nome}`, `{empresa}`, `{segmento}` e `{cidade}`; o custo entra em `ai_usage` com finalidade `prospeccao`. Nada é gravado.
+2. **Enviar** (`{acao:"enviar", waba_id, style, text}`): cria o modelo `spherum_v_xxxxxxxx` (categoria MARKETING, idioma da cadência) na conta do WhatsApp Business, com `{nome}…` virando `{{1}}…` na ordem do texto e exemplos para a Meta. A variação entra na lista desligada, com `status: "PENDING"`. O `waba_id` fica guardado na configuração.
+3. **Sincronizar** (`{acao:"sincronizar"}`): lê a situação dos modelos na Meta; aprovado liga sozinho, recusado fica desligado com o motivo. A tela da agência sincroniza sozinha a cada 2 minutos enquanto houver variação em análise.
+
+Variação que veio da Meta não muda de texto (o modelo aprovado é fixo) e não liga antes de aprovar. Com a prospecção rodando, cada lead recebe uma das variações ativas no primeiro passo; a taxa de resposta de cada uma aparece em Disparos.

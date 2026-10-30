@@ -3,6 +3,7 @@ import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
 import { assertLimit } from "./subscription";
+import { emitEvent } from "./webhooks";
 
 /** Clientes da agência e seus contatos. Arquivar esconde; os dados ficam (contratos, relatórios). */
 
@@ -112,7 +113,12 @@ export async function createClient(sql: Sql, agencyId: string, actorId: string, 
     [agencyId, ...keys.map((k) => row[k])],
   );
   await audit(sql, { agencyId, actor: actorId, action: "cliente_criado", targetType: "client", targetId: created!.id });
-  return getClient(sql, agencyId, created!.id);
+  const client = await getClient(sql, agencyId, created!.id);
+  await emitEvent(sql, agencyId, "client.created", {
+    id: client.id, name: client.name, segment: client.segment, status: client.status,
+    monthly_fee_cents: client.monthly_fee == null ? null : Math.round(client.monthly_fee * 100), created_at: client.created_at,
+  });
+  return client;
 }
 
 export async function updateClient(sql: Sql, agencyId: string, actorId: string, clientId: string, raw: unknown) {

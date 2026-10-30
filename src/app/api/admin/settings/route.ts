@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/core/audit";
 import { staffCan } from "@/lib/core/admin";
-import { requireStaff } from "@/lib/core/http";
+import { requireAdmin } from "@/lib/core/http";
 import { setFlags, setPrices } from "@/lib/core/platform";
-import { serverSql } from "@/lib/xodos/db";
-import { fail, requireUser } from "@/lib/xodos/http";
+import { fail } from "@/lib/xodos/http";
 
 /** PATCH /api/admin/settings  { flags?: { xodo?, studio?, prospect?, signup?, maint? }, prices?: { solo, agencia, escala, rede, empresarial } }  (dono) */
 export async function PATCH(request: Request) {
   try {
-    const userId = await requireUser(request);
-    const sql = await serverSql();
-    staffCan(await requireStaff(sql, userId), "settings");
+    const { userId, role, sql } = await requireAdmin(request);
+    staffCan(role, "settings");
     const body = await request.json();
     const out: Record<string, unknown> = {};
     if (body.flags) {

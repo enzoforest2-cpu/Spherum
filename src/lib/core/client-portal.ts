@@ -1,3 +1,4 @@
+import { brandOf } from "./brand";
 import { num, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { listClientInvoices } from "../billing";
@@ -121,7 +122,8 @@ export async function clientPortal(sql: Sql, clientId: string, userId: string, n
   return {
     as: access.as,
     client: { id: clientId, name: client!.name, goal_metric: client!.goal_metric, goal_value: client!.goal_value },
-    agency: { name: client!.agency, brand_color: client!.brand_color },
+    // A marca só vale aqui quando a agência ligou "portal do cliente com a sua marca" (e o plano permite).
+    agency: await (async () => { const b = await brandOf(sql, access.agencyId); return { name: b.on_client ? b.name : client!.agency, brand_color: client!.brand_color, logo_url: b.on_client ? b.logo_url : null, branded: b.on_client, powered: b.powered }; })(),
     owner: client!.owner ? { name: client!.owner, email: client!.owner_email } : null,
     me: { name: me?.full_name || me?.email || "" },
     period: { to },

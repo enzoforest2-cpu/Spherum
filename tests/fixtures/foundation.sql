@@ -20,3 +20,14 @@ create table auth.users (
   last_sign_in_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- Fatores da verificação em duas etapas (MFA) do Supabase Auth: o admin mostra quem já cadastrou.
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  friendly_name text,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);

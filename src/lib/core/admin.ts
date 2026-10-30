@@ -5,6 +5,7 @@ import { XodoError } from "../xodos/errors";
 import { audit } from "./audit";
 import type { Mailer } from "./email";
 import { PLAN_IDS, planPrices, platformFlags, type Prices } from "./platform";
+import { agencyPortal } from "./portal";
 import { adminInvoices } from "./subscription";
 
 /**
@@ -28,6 +29,7 @@ const CAN = {
   support: ["dono", "operacao", "suporte"],
   leads: ["dono", "operacao", "suporte"],
   billing: ["dono", "financeiro"],
+  view: ["dono", "operacao", "suporte"],
 } satisfies Record<string, StaffRole[]>;
 export type StaffAction = keyof typeof CAN;
 
@@ -38,6 +40,9 @@ export function staffCan(role: string, what: StaffAction) {
 export type AdminDeps = { sql: Sql; mail: Mailer; appUrl: string };
 
 const TZ = "America/Sao_Paulo";
+
+/** Etapas do agendador (cron) que cada serviço usa: a saúde do serviço vem das falhas delas. */
+export const SERVICE_STEPS: Record<string, string[]> = { app: ["canais", "fila", "fila_fim", "uploads", "comunicados"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal", "assinaturas"] };
 const daysAgo = (now: Date, n: number) => dayIn(TZ, new Date(now.getTime() - n * 864e5));
 
 /** Saúde 0 a 100: acesso recente, clientes, integrações e xodós (regras simples, explicáveis). */
@@ -90,8 +95,9 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
     sql.query<{ incident_id: string; status: string; text: string; created_at: string }>(
       `select incident_id, status, text, created_at::text from status_updates where incident_id in (select id from status_incidents order by started_at desc limit 50) order by created_at desc`),
     sql.query<{ started_at: string; finished_at: string | null; failed: string[] }>(`select started_at::text, finished_at::text, failed from cron_runs order by started_at desc limit 96`),
-    sql.query<{ user_id: string; role: string; name: string | null; email: string | null; last_seen: string | null; created_at: string }>(
-      `select s.user_id, s.role, p.full_name as name, u.email, u.last_sign_in_at::text as last_seen, s.created_at::text
+    sql.query<{ user_id: string; role: string; name: string | null; email: string | null; last_seen: string | null; created_at: string; mfa: boolean }>(
+      `select s.user_id, s.role, p.full_name as name, u.email, u.last_sign_in_at::text as last_seen, s.created_at::text,
+              exists (select 1 from auth.mfa_factors f where f.user_id = s.user_id and f.status = 'verified') as mfa
          from spherum_staff s join auth.users u on u.id = s.user_id left join profiles p on p.id = s.user_id order by s.created_at`),
     sql.query<{ id: number; agency_id: string | null; agency_name: string | null; action: string; summary: string | null; actor: string | null; staff: boolean; created_at: string }>(
       `select e.id, e.agency_id, a.name as agency_name, e.action, e.summary, coalesce(p.full_name, u.email) as actor,
@@ -135,9 +141,8 @@ export async function adminBoard(sql: Sql, userId: string, role: string, now = n
   const byIncident = new Map<string, typeof updates>();
   for (const u of updates) byIncident.set(u.incident_id, [...(byIncident.get(u.incident_id) ?? []), u]);
   // Saúde por serviço pelas etapas do cron nas últimas 24 h.
-  const STEPS: Record<string, string[]> = { app: ["canais", "fila", "fila_fim", "uploads", "comunicados"], meta: ["anuncios", "logins", "posts"], google: ["anuncios"], wa: ["prospeccao", "canais"], xodo: ["execucoes", "rotinas", "computador", "email"], pay: ["cobranca", "fiscal", "assinaturas"] };
   const day = cron.filter((r) => now.getTime() - Date.parse(r.started_at) < 864e5);
-  const services = Object.entries(STEPS).map(([id, steps]) => {
+  const services = Object.entries(SERVICE_STEPS).map(([id, steps]) => {
     const bad = day.filter((r) => r.failed.some((f) => steps.includes(f))).length;
     return { id, runs: day.length, failed: bad, uptime: day.length ? Math.round(((day.length - bad) / day.length) * 10000) / 100 : null };
   });
@@ -256,6 +261,72 @@ export async function messageAgency(deps: AdminDeps, actor: { id: string; role: 
   const sent = to.length ? await deps.mail({ to, subject: `${i.subject} · Spherum`, text: `${i.body}\n\nEquipe Spherum`, replyTo: "suporte@spherum.com.br" }).catch(() => false) : false;
   await audit(deps.sql, { agencyId, actor: actor.id, action: "admin_mensagem", targetType: "agency", targetId: agencyId, summary: `Mensagem para ${a.name}: ${i.subject}` });
   return { emailed: sent };
+}
+
+// ---------------------------------------------------------------------------
+// Ver a conta da agência (só leitura, para o suporte)
+// ---------------------------------------------------------------------------
+
+export const viewInput = z.object({ ticket: z.uuid().optional() });
+
+/**
+ * Abre a conta da agência como o dono dela vê (agencyPortal), só para ler: a rota é GET e nada
+ * aqui altera os dados da agência. Fica na auditoria (quem abriu e quando) e a agência recebe um
+ * aviso no app (no máximo um por hora, para não encher a caixa). As conversas internas da
+ * equipe da agência (chat) ficam de fora.
+ */
+export async function viewAgency(deps: AdminDeps, actor: { id: string; role: string }, agencyId: string, raw: unknown, now = new Date()) {
+  staffCan(actor.role, "view");
+  const i = viewInput.parse(raw ?? {});
+  const a = await one<{ name: string; owner: string | null }>(deps.sql,
+    `select a.name, (select m.user_id from agency_members m where m.agency_id = a.id and m.role = 'owner' order by m.created_at limit 1) as owner
+       from agencies a where a.id = $1`, [agencyId]);
+  if (!a) throw new XodoError("Agência não encontrada.", 404);
+  if (!a.owner) throw new XodoError("Esta agência não tem dono para abrir a conta.", 409);
+  const ticket = i.ticket ? await one<{ subject: string }>(deps.sql, `select subject from support_tickets where id = $1 and agency_id = $2`, [i.ticket, agencyId]) : null;
+  if (i.ticket && !ticket) throw new XodoError("Chamado não encontrado nesta agência.", 404);
+
+  const portal = await agencyPortal(deps.sql, agencyId, a.owner, now);
+  const { teamChat: _chat, ...visible } = portal;
+  void _chat;
+
+  const why = ticket ? `para atender o chamado “${ticket.subject}”` : "para dar suporte";
+  await deps.sql.query(
+    `insert into notifications (agency_id, kind, title, body, data)
+     select $1, 'spherum_acesso', 'A equipe do Spherum abriu sua conta', $2, $3::jsonb
+      where not exists (select 1 from notifications where agency_id = $1 and kind = 'spherum_acesso' and created_at > $4::timestamptz - interval '1 hour')`,
+    [agencyId, `A equipe do Spherum abriu sua conta ${why}, só para ver, sem alterar nada.`, json(i.ticket ? { ticket: i.ticket } : {}), now.toISOString()]);
+  await audit(deps.sql, { agencyId, actor: actor.id, action: "admin_ver_agencia", targetType: "agency", targetId: agencyId, summary: `Conta da ${a.name} aberta só para leitura ${why}` });
+  return { read_only: true, viewed_at: now.toISOString(), summary: agencyViewSummary(visible), portal: visible };
+}
+
+type Portal = Awaited<ReturnType<typeof agencyPortal>>;
+
+/** Resumo legível da conta para a tela do admin: clientes, equipe, integrações e erros, assinatura e chamados. */
+export function agencyViewSummary(p: Omit<Portal, "teamChat">) {
+  const conns = p.connections as { provider: string; label: string | null; status: string; last_error: string | null }[];
+  const sub = p.subscription as { plan: string; plan_status: string; cycle: string; current_period_end: string | null; cancel_at_period_end: boolean; locked: boolean; locked_reason: string | null; monthly_cents: number; invoices: { due_date: string; amount_cents: number; status: string }[] } | null;
+  return {
+    agency: { name: p.agency.name, plan: p.agency.plan, plan_status: p.agency.plan_status, trial_ends_at: p.agency.trial_ends_at },
+    owner: p.me.name,
+    clients: {
+      total: p.clients.length,
+      active: p.clients.filter((c) => c.status === "ativo" || c.status === "onboarding").length,
+      list: p.clients.slice(0, 30).map((c) => ({ name: c.name, status: c.status, health: c.health, mrr: c.mrr, reasons: c.reasons })),
+    },
+    team: p.team.map((m) => ({ name: m.name, perm: m.perm })),
+    invites: p.invites.length,
+    integrations: conns.map((c) => ({ provider: c.provider, label: c.label, status: c.status, error: c.last_error })),
+    sync_errors: p.accounts.filter((a) => a.last_sync_error).map((a) => ({ platform: a.platform, name: a.name, client: p.clients.find((c) => c.id === a.client_id)?.name ?? "", error: a.last_sync_error })),
+    attention: p.attention.map((x) => ({ kind: x.kind, title: x.title, ev: x.ev })),
+    subscription: sub ? {
+      plan: sub.plan, plan_status: sub.plan_status, cycle: sub.cycle, current_period_end: sub.current_period_end, cancel_at_period_end: sub.cancel_at_period_end,
+      locked: sub.locked, locked_reason: sub.locked_reason, monthly_cents: sub.monthly_cents,
+      invoices: (sub.invoices ?? []).slice(0, 5).map((v) => ({ due_date: v.due_date, amount_cents: v.amount_cents, status: v.status })),
+    } : null,
+    support: p.support.slice(0, 5).map((t) => ({ subject: t.subject, status: t.status, priority: t.priority, updated_at: t.updated_at, last: t.messages[t.messages.length - 1]?.text.slice(0, 200) ?? "" })),
+    notice: p.notice,
+  };
 }
 
 async function leaders(sql: Sql, agencyId: string) {
@@ -495,11 +566,11 @@ export async function updateIncident(sql: Sql, actor: { id: string; role: string
   await audit(sql, { agencyId: null, actor: actor.id, action: "admin_status", targetType: "incident", targetId: id, summary: `Incidente "${r.title}": ${i.status}` });
 }
 
-/** Agendador: cada execução registra o que falhou (o admin mostra a saúde por serviço). */
+/** Agendador: cada execução registra o que falhou (o admin e a página pública de status mostram a saúde por serviço). */
 export async function recordCronRun(sql: Sql, startedAt: Date, result: Record<string, unknown>) {
   const failed = Object.entries(result).filter(([, v]) => typeof v === "string" && v.startsWith("falhou")).map(([k]) => k);
   await sql.query(`insert into cron_runs (started_at, finished_at, failed, result) values ($1, now(), $2, $3::jsonb)`, [startedAt.toISOString(), failed, json(result)]);
-  await sql.query(`delete from cron_runs where started_at < now() - interval '14 days'`);
+  await sql.query(`delete from cron_runs where started_at < now() - interval '31 days'`);
 }
 
 // ---------------------------------------------------------------------------

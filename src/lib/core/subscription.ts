@@ -73,7 +73,7 @@ export const ADDONS: Record<string, Addon> = {
   seat: { name: "Pessoa a mais", price: 29, from: 0, incl: null, max: 20, available: true },
   clients: { name: "+5 clientes", price: 59, from: 0, incl: null, max: 20, available: true },
   storage: { name: "+25 GB de armazenamento", price: 19, from: 0, incl: null, max: 20, available: true },
-  api: { name: "API e webhooks", price: 149, from: 2, incl: 3, max: 0, available: false },
+  api: { name: "API e webhooks", price: 149, from: 2, incl: 3, max: 0, available: true },
   sso: { name: "Login único (SSO) e auditoria", price: 299, from: 3, incl: 4, max: 0, available: false },
 };
 
@@ -209,6 +209,18 @@ export async function limitsOf(sql: Sql, agencyId: string) {
     studio_images: 50 * extra("studio"),
     studio_videos: 10 * extra("video"),
   };
+}
+
+/**
+ * API e webhooks: vêm no Rede e no Empresarial; no Escala, com o add-on. No teste, como em
+ * limitsOf, vale o plano Agência (sem API).
+ */
+export async function apiEnabled(sql: Sql, agencyId: string): Promise<boolean> {
+  const a = await one<{ plan: PlanId; plan_status: string }>(sql, `select plan, plan_status from agencies where id = $1`, [agencyId]);
+  if (!a) return false;
+  const st = addonState(ADDONS.api, rankOf(a.plan_status === "trial" ? "agencia" : a.plan));
+  if (st !== "buy") return st === "incl";
+  return ((await addonsOf(sql, agencyId)).api ?? 0) > 0;
 }
 
 const LIMIT_MSG = {
