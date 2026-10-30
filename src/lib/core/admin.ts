@@ -207,7 +207,13 @@ export async function updateAgencyAdmin(sql: Sql, actor: { id: string; role: str
     }
     const status = i.plan_status ?? a.plan_status;
     if (status !== a.plan_status) {
-      await tx.query(`update agencies set plan_status = $2 where id = $1`, [agencyId, status]);
+      // Pagante à mão (pagamento por fora): sem bloqueio e sem fim de período, fica fora das renovações,
+      // do atraso e do bloqueio por cobrança.
+      await tx.query(`update agencies set plan_status = $2,
+                             locked_at = case when $2 = 'active' then null else locked_at end, locked_reason = case when $2 = 'active' then null else locked_reason end,
+                             current_period_end = case when $2 = 'active' then null else current_period_end end,
+                             cancel_at_period_end = case when $2 = 'active' then false else cancel_at_period_end end
+                       where id = $1`, [agencyId, status]);
       await log("admin_situacao", `Situação de ${a.name}: ${a.plan_status} → ${status}`);
     }
     if (i.custom_price !== undefined) {
@@ -218,7 +224,12 @@ export async function updateAgencyAdmin(sql: Sql, actor: { id: string; role: str
       const from = a.trial_ends_at && Date.parse(a.trial_ends_at) > now.getTime() ? new Date(a.trial_ends_at) : now;
       const until = new Date(from.getTime() + i.trial_days * 864e5).toISOString();
       // Quem paga ou cancelou continua como está; só quem está em teste (ou com pagamento pendente) volta para o teste.
-      await tx.query(`update agencies set trial_ends_at = $2::timestamptz, plan_status = case when plan_status in ('trial', 'past_due') then 'trial' else plan_status end where id = $1`, [agencyId, until]);
+      // De volta ao teste: sai do bloqueio e do período (não entra nas renovações nem no atraso).
+      await tx.query(`update agencies set trial_ends_at = $2::timestamptz,
+                             locked_at = case when plan_status in ('trial', 'past_due') then null else locked_at end,
+                             locked_reason = case when plan_status in ('trial', 'past_due') then null else locked_reason end,
+                             current_period_end = case when plan_status in ('trial', 'past_due') then null else current_period_end end,
+                             plan_status = case when plan_status in ('trial', 'past_due') then 'trial' else plan_status end where id = $1`, [agencyId, until]);
       await log("admin_teste", `Teste de ${a.name} estendido em ${i.trial_days} dias`);
     }
     if (i.suspend) {

@@ -9,7 +9,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await params).id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, area: "financeiro" });
+    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, anyArea: ["financeiro", "configuracoes"] });
     await setBillingInfo(sql, agencyId, userId, await request.json());
     return NextResponse.json({ ok: true });
   } catch (error) {

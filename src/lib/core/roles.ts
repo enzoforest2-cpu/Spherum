@@ -64,7 +64,7 @@ export async function memberAccess(sql: Sql, agencyId: string, userId: string): 
   const row = await one<{ role: string; perms: unknown | null; role_id: string | null; role_name: string | null }>(
     sql,
     `select m.role, r.perms, m.role_id, r.name as role_name
-       from agency_members m left join agency_roles r on r.id = m.role_id
+       from agency_members m left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
       where m.agency_id = $1 and m.user_id = $2`,
     [agencyId, userId],
   );
@@ -142,7 +142,10 @@ export async function updateRole(sql: Sql, agencyId: string, actor: Access & { i
           where id = $1 and agency_id = $2`,
         [roleId, agencyId, input.name ?? null, input.description ?? null, perms ? JSON.stringify(perms) : null],
       );
-      if (perms) await tx.query(`update agency_members set role = $3 where agency_id = $1 and role_id = $2 and role <> 'owner'`, [agencyId, roleId, legacyRole(perms)]);
+      if (perms) {
+        await tx.query(`update agency_members set role = $3 where agency_id = $1 and role_id = $2 and role <> 'owner'`, [agencyId, roleId, legacyRole(perms)]);
+        await tx.query(`update invites set role = $3 where agency_id = $1 and role_id = $2 and accepted_at is null`, [agencyId, roleId, legacyRole(perms)]);
+      }
       await audit(tx, { agencyId, actor: actor.id, action: "cargo_alterado", targetType: "cargo", targetId: roleId, summary: input.name ?? "" });
     });
   } catch (error) {
@@ -152,7 +155,10 @@ export async function updateRole(sql: Sql, agencyId: string, actor: Access & { i
   return { ok: true };
 }
 
-/** Apaga o cargo. Se alguém usa, precisa dizer para qual cargo essas pessoas vão (mover_para). */
+/**
+ * Apaga o cargo. Se alguém usa, precisa dizer para qual cargo essas pessoas vão (mover_para), e os
+ * convites em aberto vão junto. Sem destino, os convites em aberto desse cargo são cancelados.
+ */
 export async function deleteRole(sql: Sql, agencyId: string, actor: Access & { id: string }, roleId: string, moveTo: string | null) {
   assertTeamEditor(actor);
   return sql.transaction(async (tx) => {
@@ -164,14 +170,24 @@ export async function deleteRole(sql: Sql, agencyId: string, actor: Access & { i
     if (!role) throw new XodoError("Cargo não encontrado.", 404);
     if (!actor.owner && actor.roleId === roleId) throw new XodoError("Você não pode apagar o seu próprio cargo.", 403);
     assertCanGrant(actor, normalizePerms(role.perms));
-    if (role.members > 0) {
-      if (!moveTo) throw new XodoError(`${role.members} ${role.members === 1 ? "pessoa usa" : "pessoas usam"} este cargo. Escolha para qual cargo ${role.members === 1 ? "ela vai" : "elas vão"}.`, 409);
-      const target = await one<{ perms: unknown }>(tx, `select perms from agency_roles where id = $1 and agency_id = $2 and id <> $3`, [moveTo, agencyId, roleId]);
-      if (!target) throw new XodoError("Cargo de destino não encontrado.", 404);
-      assertCanGrant(actor, normalizePerms(target.perms));
-      await tx.query(`update agency_members set role_id = $3, role = $4 where agency_id = $1 and role_id = $2`, [agencyId, roleId, moveTo, legacyRole(normalizePerms(target.perms))]);
+    // Trava quem está no cargo: ninguém entra nele entre a contagem e a exclusão.
+    const members = (await tx.query(`select user_id from agency_members where agency_id = $1 and role_id = $2 for update`, [agencyId, roleId])).length;
+    // O destino é conferido sempre que vier (mesma agência, outro cargo, até o acesso de quem apaga).
+    let target: Perms | null = null;
+    if (moveTo) {
+      const row = await one<{ perms: unknown }>(tx, `select perms from agency_roles where id = $1 and agency_id = $2 and id <> $3`, [moveTo, agencyId, roleId]);
+      if (!row) throw new XodoError("Cargo de destino não encontrado.", 404);
+      target = normalizePerms(row.perms);
+      assertCanGrant(actor, target);
     }
-    await tx.query(`update invites set role_id = $3 where agency_id = $1 and role_id = $2 and accepted_at is null`, [agencyId, roleId, moveTo]);
+    if (members > 0) {
+      if (!target) throw new XodoError(`${members} ${members === 1 ? "pessoa usa" : "pessoas usam"} este cargo. Escolha para qual cargo ${members === 1 ? "ela vai" : "elas vão"}.`, 409);
+      await tx.query(`update agency_members set role_id = $3, role = $4 where agency_id = $1 and role_id = $2`, [agencyId, roleId, moveTo, legacyRole(target)]);
+    }
+    if (target) await tx.query(`update invites set role_id = $3, role = $4 where agency_id = $1 and role_id = $2 and accepted_at is null`, [agencyId, roleId, moveTo, legacyRole(target)]);
+    else await tx.query(`update invites set revoked_at = now() where agency_id = $1 and role_id = $2 and accepted_at is null and revoked_at is null`, [agencyId, roleId]);
+    // Convites antigos (aceitos ou cancelados) só guardam o histórico: soltam o cargo.
+    await tx.query(`update invites set role_id = null where agency_id = $1 and role_id = $2`, [agencyId, roleId]);
     await tx.query(`delete from agency_roles where id = $1`, [roleId]);
     await audit(tx, { agencyId, actor: actor.id, action: "cargo_apagado", targetType: "cargo", targetId: roleId, summary: role.name });
     return { ok: true };

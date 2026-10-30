@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { removeMember, updateMember } from "@/lib/core/team";
 import { memberAccess } from "@/lib/core/roles";
 import { serverSql } from "@/lib/xodos/db";
-import { CAN_READ, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
+import { CAN_MANAGE, CAN_READ, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 
 type Ctx = { params: Promise<{ id: string; userId: string }> };
 
@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     const p = await params;
     const agencyId = uuid.parse(p.id);
     const sql = await serverSql();
-    await requireRole(sql, actorId, agencyId, CAN_READ);
+    await requireRole(sql, actorId, agencyId, CAN_MANAGE, { area: "equipe" });
     await updateMember(sql, agencyId, { id: actorId, access: (await memberAccess(sql, agencyId, actorId))! }, uuid.parse(p.userId), await request.json());
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const userId = await requireUser(request);
     const agencyId = uuid.parse((await request.json()).agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, area: "configuracoes" });
+    await requireRole(sql, userId, agencyId, CAN_BILL, { allowLocked: true, anyArea: ["financeiro", "configuracoes"] });
     return NextResponse.json({ invoice: await payLink(subDepsFromEnv(sql, mailerFromEnv()), agencyId, uuid.parse((await params).id)) });
   } catch (error) {
     return fail(error);

@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { one, type Sql } from "../xodos/db";
-import { CAN_USE, type Role } from "../xodos/http";
+import { type Role } from "../xodos/http";
+import { accessOf } from "../core/roles";
 import { sha256Hex } from "./security";
 import type { ChannelKind } from "./types";
 
@@ -73,13 +74,17 @@ export async function identityFor(
   provider: ChannelKind,
   externalUser: string,
 ): Promise<{ userId: string; role: Role; displayName: string | null } | null> {
-  const row = await one<{ user_id: string; role: Role; display_name: string | null }>(
+  const row = await one<{ user_id: string; role: Role; display_name: string | null; perms: unknown | null; role_id: string | null; role_name: string | null }>(
     sql,
-    `select i.user_id, m.role, i.display_name from channel_identities i
+    `select i.user_id, m.role, i.display_name, r.perms, m.role_id, r.name as role_name from channel_identities i
        join agency_members m on m.agency_id = i.agency_id and m.user_id = i.user_id
+       left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
       where i.agency_id = $1 and i.provider = $2 and i.external_user = $3`,
     [agencyId, provider, externalUser],
   );
-  if (!row || !CAN_USE.includes(row.role)) return null;
+  // Pelo canal a pessoa conversa com os xodós e aprova o que eles pedem: precisa editar Xodós.
+  if (!row) return null;
+  const access = accessOf(row);
+  if (!access.owner && access.perms.xodos !== "editar") return null;
   return { userId: row.user_id, role: row.role, displayName: row.display_name };
 }

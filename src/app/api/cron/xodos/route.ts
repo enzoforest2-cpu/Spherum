@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { cronAlerts } from "@/lib/core/alerts";
 import { NextResponse } from "next/server";
 import { billingDepsFromEnv, billingSweep } from "@/lib/billing";
 import { ADAPTERS } from "@/lib/channels";
@@ -110,6 +111,8 @@ export async function GET(request: Request) {
     // Registro da execução: o admin mostra a saúde de cada serviço pelas etapas que falharam.
     const steps: Record<string, unknown> = { canais: channels, fila: queued, cotacao: fx, anuncios: ads, logins: expiring, cobranca: billing, computador: computers, execucoes: cleanup, rotinas: routines, email, fiscal, busca_ia: aivis, estudio: studio, automacoes: automations, posts, prospeccao: prospect, push, uploads, comunicados: comms, assinaturas: subs, fila_fim: delivered };
     await recordCronRun(deps.sql, startedAt, steps).catch((error) => console.error("[cron] registro falhou", error));
+    // Etapa falhando em dois ciclos seguidos avisa a equipe do Spherum por e-mail.
+    await cronAlerts(deps.sql, mailerFromEnv()).catch((error) => console.error("[cron] alerta falhou", error));
     return NextResponse.json(result);
   } catch (error) {
     return fail(error);

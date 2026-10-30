@@ -142,3 +142,14 @@ Todas exigem alguém da equipe do Spherum. Cada ação confere a função e entr
 
   Quem recebe o aviso de chamado novo é `SUPPORT_NOTIFY_EMAIL`. Se não estiver definido, vai para
   `LEADS_NOTIFY_EMAIL`.
+
+## Alertas para a equipe
+
+`src/lib/core/alerts.ts`. Vão por e-mail para `ALERT_EMAIL` (ou `SUPPORT_NOTIFY_EMAIL`, ou
+`LEADS_NOTIFY_EMAIL`) e ficam na tabela `staff_alerts`. Cada assunto avisa uma vez por janela.
+
+- Etapa do agendador que falha em dois ciclos seguidos (janela de 6 horas).
+- Fatura do Spherum paga no Asaas depois de cancelada (vira crédito para devolver ou abater).
+
+Agendador parado: `GET /api/saude` devolve `agendador_minutos` (minutos desde o último ciclo). Um
+monitor externo (ex.: UptimeRobot, com alerta por palavra-chave) avisa quando passar de 30.

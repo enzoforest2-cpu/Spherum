@@ -67,7 +67,8 @@ test("Google Maps: pede a chave, busca com a chave guardada e marca quem já est
 
   await importLeads(sql, agencyId, dona, { list: "Antiga", consent: true, text: "19991112222" });
   const r = await searchMaps(deps, agencyId, { query: "padaria", city: "Campinas" });
-  assert.equal(r.next, "pg2");
+  assert.match(r.next!, /\.pg2$/, "token embrulhado com os filtros");
+  await assert.rejects(searchMaps(deps, agencyId, { query: "farmácia", city: "Campinas", page_token: r.next! }), /A busca mudou/);
   assert.deepEqual(r.items.map((i) => [i.company, i.phone, i.mobile, i.exists]), [
     ["Pão Quente", "5519991112222", true, true],
     ["Estrela", "551932221111", false, false],
@@ -129,4 +130,37 @@ test("Instagram: Business Discovery pela conta da Meta; perfil pessoal fica em '
   assert.deepEqual(r.missing, ["fulano.pessoal"]);
   assert.equal(r.items[0].phone, "5541992215850");
   assert.match(r.items[0].info!, /5\.400 seguidores/);
+});
+
+test("cota de contatos de busca: 500 no teste (plano Agência), planilha não conta, pacote soma 1.000", async () => {
+  const { agencyId, dona } = await agency();
+  const { importLeads: imp, prospectQuota } = await import("../src/lib/core/prospect");
+  const rows = (n: number, from: number) => Array.from({ length: n }, (_, i) => ({ phone: `119${String(10000000 + from + i)}`, company: `Empresa ${from + i}`, origin: "Teste" }));
+  assert.equal((await imp(sql, agencyId, dona, { list: "Maps", source: "google_maps", consent: true, rows: rows(499, 0) })).added, 499);
+  await assert.rejects(imp(sql, agencyId, dona, { list: "Maps", source: "cnpj", consent: true, rows: rows(2, 1000) }), /restam 1/);
+  assert.equal((await imp(sql, agencyId, dona, { list: "Planilha", source: "planilha", consent: true, rows: rows(10, 2000) })).added, 10);
+  assert.deepEqual(await prospectQuota(sql, agencyId), { limit: 500, used: 499 });
+  await sql.query(`insert into agency_addons (agency_id, addon_id, qty) values ($1, 'pros', 1)`, [agencyId]);
+  assert.equal((await prospectQuota(sql, agencyId)).limit, 1500);
+  assert.equal((await imp(sql, agencyId, dona, { list: "Maps", source: "instagram", consent: true, rows: rows(2, 1000) })).added, 2);
+});
+
+test("celular antigo sem o 9 casa com a lista de bloqueio", async () => {
+  const { normPhone } = await import("../src/lib/core/prospect");
+  assert.equal(normPhone("(11) 9888-7777"), "5511998887777");
+  assert.equal(normPhone("(11) 3222-1111"), "551132221111", "fixo continua fixo");
+  assert.equal(normPhone("0800 123 4567"), null);
+});
+
+test("limite de buscas pagas por minuto", async () => {
+  const { agencyId, dona } = await agency();
+  const f = fakeFetch((url, init) => {
+    const body = JSON.parse(String(init.body ?? "{}"));
+    return body.pageSize === 1 ? { places: [] } : { places: [] };
+  });
+  const deps: IntegrationDeps = { sql, masterKey: MASTER, fetch: f.fn, appUrl: "https://spherum.com.br" };
+  await connectSourceKey(deps, agencyId, dona, { source: "maps", key: "AIzaChaveDeTesteValida123" });
+  const { SEARCH_LIMITS } = await import("../src/lib/core/prospect-sources");
+  for (let i = 0; i < SEARCH_LIMITS.minute; i++) await searchMaps(deps, agencyId, { query: "padaria", city: "Campinas" });
+  await assert.rejects(searchMaps(deps, agencyId, { query: "padaria", city: "Campinas" }), /Espere um minuto/);
 });

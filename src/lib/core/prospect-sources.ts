@@ -1,9 +1,10 @@
+import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { whatsappQrGroupMembers, whatsappQrGroups } from "../channels/whatsapp-qr";
 import { IntegrationError, requestJson } from "../integrations/http";
 import { metaGraph } from "../integrations/oauth-providers";
 import { access, saveConnection, type IntegrationDeps } from "../integrations/store";
-import type { Sql } from "../xodos/db";
+import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { normPhone } from "./prospect";
 
@@ -53,6 +54,37 @@ async function mark(sql: Sql, agencyId: string, items: Omit<Candidate, "exists" 
   return items.map((i) => ({ ...i, exists: !!i.phone && e.has(i.phone), blocked: !!i.phone && b.has(i.phone) }));
 }
 
+/**
+ * O token de "carregar mais" volta para a tela embrulhado com a assinatura dos filtros: com outro
+ * filtro (ou de outra agência) ele não vale.
+ */
+function filtersSig(deps: IntegrationDeps, agencyId: string, filters: unknown) {
+  return createHmac("sha256", deps.masterKey).update(`prospeccao:${agencyId}:${JSON.stringify(filters)}`).digest("base64url").slice(0, 22);
+}
+function wrapToken(deps: IntegrationDeps, agencyId: string, filters: unknown, token: string | null | undefined) {
+  return token ? `${filtersSig(deps, agencyId, filters)}.${token}` : null;
+}
+function unwrapToken(deps: IntegrationDeps, agencyId: string, filters: unknown, wrapped: string | undefined) {
+  if (!wrapped) return undefined;
+  const dot = wrapped.indexOf(".");
+  if (dot < 0 || wrapped.slice(0, dot) !== filtersSig(deps, agencyId, filters)) {
+    throw new XodoError("A busca mudou desde a última página. Busque de novo.", 400);
+  }
+  return wrapped.slice(dot + 1);
+}
+
+/** Buscas pagas por agência e fonte: até 20 por minuto e 300 por dia (protege os créditos da agência). */
+export const SEARCH_LIMITS = { minute: 20, day: 300 };
+async function countSearch(sql: Sql, agencyId: string, source: string) {
+  const r = await one<{ m: number; d: number }>(sql,
+    `select count(*) filter (where created_at > now() - interval '1 minute')::int as m,
+            count(*) filter (where created_at > now() - interval '1 day')::int as d
+       from prospect_search_log where agency_id = $1 and source = $2`, [agencyId, source]);
+  if ((r?.m ?? 0) >= SEARCH_LIMITS.minute) throw new XodoError("Muitas buscas seguidas. Espere um minuto.", 429);
+  if ((r?.d ?? 0) >= SEARCH_LIMITS.day) throw new XodoError(`Limite de ${SEARCH_LIMITS.day} buscas por dia nesta fonte. Volta amanhã.`, 429);
+  await sql.query(`insert into prospect_search_log (agency_id, source) values ($1, $2)`, [agencyId, source]);
+}
+
 async function keyConnection(sql: Sql, agencyId: string, provider: string) {
   const rows = await sql.query<{ id: string }>(
     `select id from integration_connections where agency_id = $1 and provider = $2 and status = 'active' order by created_at desc limit 1`,
@@ -80,17 +112,20 @@ export async function connectSourceKey(deps: IntegrationDeps, agencyId: string, 
   const { source, key } = keyInput.parse(raw);
   if (source === "maps") await placesSearch(deps, key, "padaria em São Paulo", undefined, 1);
   else await cnpjaSearch(deps, key, { "mainActivity.id.in": "4721102", "address.state.in": "SP", limit: "1" });
-  const id = await saveConnection(deps, {
-    agencyId,
-    provider: SOURCE_KEYS[source],
-    label: source === "maps" ? "Google Maps" : "CNPJá",
-    account: `${SOURCE_KEYS[source]}:${key.slice(-6)}`,
-    secret: { apiKey: key },
-    createdBy: userId,
+  // Uma chave por fonte: a nova substitui as anteriores (com trava, para dois cadastros juntos não se anularem).
+  return deps.sql.transaction(async (tx) => {
+    await tx.query(`select pg_advisory_xact_lock(hashtext($1))`, [`chave:${agencyId}:${SOURCE_KEYS[source]}`]);
+    const id = await saveConnection({ ...deps, sql: tx }, {
+      agencyId,
+      provider: SOURCE_KEYS[source],
+      label: source === "maps" ? "Google Maps" : "CNPJá",
+      account: `${SOURCE_KEYS[source]}:${key.slice(-4)}`,
+      secret: { apiKey: key },
+      createdBy: userId,
+    });
+    await tx.query(`update integration_connections set status = 'revoked' where agency_id = $1 and provider = $2 and id <> $3 and status <> 'revoked'`, [agencyId, SOURCE_KEYS[source], id]);
+    return { id };
   });
-  // Uma chave por fonte: a nova substitui as anteriores.
-  await deps.sql.query(`update integration_connections set status = 'revoked' where agency_id = $1 and provider = $2 and id <> $3 and status <> 'revoked'`, [agencyId, SOURCE_KEYS[source], id]);
-  return { id };
 }
 
 // ---------------------------------------------------------------------------
@@ -124,8 +159,9 @@ async function placesSearch(deps: IntegrationDeps, key: string, textQuery: strin
       json: { textQuery, languageCode: "pt-BR", regionCode: "BR", pageSize, ...(pageToken ? { pageToken } : {}) },
     });
   } catch (error) {
-    if (error instanceof IntegrationError && [400, 401, 403].includes(error.status))
-      throw new XodoError(`O Google recusou a chave: ${error.message} Confira se a "Places API (New)" está ativada no projeto do Google Cloud.`, 400);
+    const keyProblem = error instanceof IntegrationError && ([401, 403].includes(error.status) || (error.status === 400 && /api.?key|permission|not authorized|has not been used|disabled/i.test(error.message)));
+    if (keyProblem) throw new XodoError(`O Google recusou a chave: ${error.message} Confira se a "Places API (New)" está ativada no projeto do Google Cloud.`, 400);
+    if (error instanceof IntegrationError && error.status === 400) throw new XodoError(`O Google não aceitou a busca: ${error.message}`, 400);
     throw error;
   }
 }
@@ -138,8 +174,11 @@ export const mapsInput = z.object({
 
 export async function searchMaps(deps: IntegrationDeps, agencyId: string, raw: unknown) {
   const input = mapsInput.parse(raw);
+  const filters = { q: input.query.toLowerCase(), c: input.city.toLowerCase() };
+  const pageToken = unwrapToken(deps, agencyId, filters, input.page_token);
   const key = await keyOf(deps, agencyId, "maps");
-  const r = await placesSearch(deps, key, `${input.query} em ${input.city}`, input.page_token);
+  await countSearch(deps.sql, agencyId, "maps");
+  const r = await placesSearch(deps, key, `${input.query} em ${input.city}`, pageToken);
   const items = (r.places ?? [])
     .filter((p) => p.businessStatus !== "CLOSED_PERMANENTLY")
     .map((p) => {
@@ -160,7 +199,7 @@ export async function searchMaps(deps: IntegrationDeps, agencyId: string, raw: u
         info: [p.formattedAddress, p.rating ? `★ ${p.rating.toFixed(1)} (${p.userRatingCount ?? 0})` : null].filter(Boolean).join(" · ") || null,
       };
     });
-  return { items: await mark(deps.sql, agencyId, items), next: r.nextPageToken ?? null };
+  return { items: await mark(deps.sql, agencyId, items), next: wrapToken(deps, agencyId, filters, r.nextPageToken) };
 }
 
 // ---------------------------------------------------------------------------
@@ -204,43 +243,57 @@ export const cnpjInput = z.object({
 });
 
 const strip = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-let ibgeCache: Map<string, { id: number; nome: string }[]> | null = null;
+const IBGE_TTL_MS = 24 * 60 * 60 * 1000;
+const ibgeCache = new Map<string, { at: number; list: { id: number; nome: string }[] }>();
+const municipios = z.array(z.object({ id: z.number(), nome: z.string() })).min(1);
+
+/** Lista do IBGE conferida antes de guardar: resposta estranha (manutenção) não fica no cache. */
+async function ibge<T>(deps: IntegrationDeps, url: string, schema: z.ZodType<T>): Promise<T> {
+  try {
+    return schema.parse(await requestJson<unknown>(deps.fetch, url, { timeoutMs: 30_000 }));
+  } catch {
+    throw new XodoError("O IBGE (lista de cidades e atividades) não respondeu agora. Tente de novo em alguns minutos.", 503);
+  }
+}
 
 /** Código IBGE da cidade (a CNPJá filtra município pelo código). */
 async function municipality(deps: IntegrationDeps, uf: string, city: string): Promise<number> {
-  ibgeCache ??= new Map();
-  let list = ibgeCache.get(uf);
+  let list = ibgeCache.get(uf)?.at && Date.now() - ibgeCache.get(uf)!.at < IBGE_TTL_MS ? ibgeCache.get(uf)!.list : null;
   if (!list) {
-    list = await requestJson<{ id: number; nome: string }[]>(deps.fetch, `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
-    ibgeCache.set(uf, list);
+    list = await ibge(deps, `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`, municipios);
+    ibgeCache.set(uf, { at: Date.now(), list });
   }
   const hit = list.find((m) => strip(m.nome) === strip(city));
   if (!hit) throw new XodoError(`Não achei a cidade "${city}" em ${uf}. Confira a grafia.`, 400);
   return hit.id;
 }
 
-let cnaeCache: { id: string; text: string }[] | null = null;
+let cnaeCache: { at: number; list: { id: string; text: string }[] } | null = null;
+const cnaes = z.array(z.object({ id: z.string(), descricao: z.string() })).min(100);
 
 /** Atividades (CNAE subclasses do IBGE) pelo texto ou pelo código, para a tela escolher. */
 export async function searchCnae(deps: IntegrationDeps, text: string) {
   const q = strip(text);
   if (q.length < 2) return [];
-  if (!cnaeCache) {
-    const raw = await requestJson<{ id: string; descricao: string }[]>(deps.fetch, "https://servicodados.ibge.gov.br/api/v2/cnae/subclasses", { timeoutMs: 30_000 });
-    cnaeCache = raw.map((c) => ({ id: c.id.replace(/\D/g, ""), text: c.descricao.charAt(0) + c.descricao.slice(1).toLowerCase() }));
+  if (!cnaeCache || Date.now() - cnaeCache.at > IBGE_TTL_MS) {
+    const raw = await ibge(deps, "https://servicodados.ibge.gov.br/api/v2/cnae/subclasses", cnaes);
+    cnaeCache = { at: Date.now(), list: raw.map((c) => ({ id: c.id.replace(/\D/g, ""), text: c.descricao.charAt(0) + c.descricao.slice(1).toLowerCase() })) };
   }
   const digits = q.replace(/\D/g, "");
   const words = q.split(/\s+/);
-  return cnaeCache
+  return cnaeCache.list
     .filter((c) => (digits.length >= 4 ? c.id.startsWith(digits) : words.every((w) => strip(c.text).includes(w))))
     .slice(0, 20);
 }
 
 export async function searchCnpj(deps: IntegrationDeps, agencyId: string, raw: unknown) {
   const input = cnpjInput.parse(raw);
+  const filters = { cnae: [...input.cnae].sort(), uf: input.uf, city: (input.city ?? "").toLowerCase(), m: input.mobile_only, e: input.with_email, l: input.limit };
+  const token = unwrapToken(deps, agencyId, filters, input.token);
   const key = await keyOf(deps, agencyId, "cnpj");
-  const query: Record<string, string> = input.token
-    ? { token: input.token }
+  await countSearch(deps.sql, agencyId, "cnpj");
+  const query: Record<string, string> = token
+    ? { token }
     : {
         "mainActivity.id.in": input.cnae.join(","),
         "address.state.in": input.uf,
@@ -271,7 +324,7 @@ export async function searchCnpj(deps: IntegrationDeps, agencyId: string, raw: u
       info: [o.alias && o.company?.name ? o.company.name : null, `CNPJ ${cnpj}`, o.address?.district, o.founded ? `desde ${o.founded.slice(0, 4)}` : null].filter(Boolean).join(" · "),
     };
   });
-  return { items: await mark(deps.sql, agencyId, items), next: r.next ?? null };
+  return { items: await mark(deps.sql, agencyId, items), next: wrapToken(deps, agencyId, filters, r.next) };
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +340,8 @@ type Discovery = { business_discovery?: { username?: string; name?: string; biog
 /** Telefone na bio ou no link (wa.me, api.whatsapp.com, números com DDD). */
 export function phoneInText(text: string): string | null {
   const wa = text.match(/(?:wa\.me\/|whatsapp\.com\/send\?phone=)(\d{10,13})/i);
-  if (wa) return normPhone(wa[1]);
+  const fromLink = wa ? normPhone(wa[1]) : null;
+  if (fromLink) return fromLink;
   for (const m of text.matchAll(/(?:\+?55\s*)?\(?\d{2}\)?[\s.-]*9?\s*\d{4}[\s.-]?\d{4}/g)) {
     const p = normPhone(m[0]);
     if (p) return p;
@@ -311,9 +365,14 @@ export async function searchInstagram(deps: IntegrationDeps, agencyId: string, r
   }
   if (!igId) throw new XodoError("A conta da Meta conectada não tem um Instagram profissional ligado a uma página.", 409);
   const names = [...new Set(input.usernames.map((u) => u.replace(/^@/, "").toLowerCase()))];
+  await countSearch(deps.sql, agencyId, "instagram");
   const items: Omit<Candidate, "exists" | "blocked">[] = [];
-  const missing: string[] = [];
-  for (const u of names) {
+  const missing: string[] = [], skipped: string[] = [];
+  // Até 6 perfis por vez e no máximo 40 s: o que não deu tempo volta em "skipped" para buscar de novo.
+  const deadline = Date.now() + 40_000;
+  let fatal: unknown = null;
+  const one_ = async (u: string) => {
+    if (fatal || Date.now() > deadline) { skipped.push(u); return; }
     try {
       const r = await requestJson<Discovery>(
         deps.fetch,
@@ -321,7 +380,7 @@ export async function searchInstagram(deps: IntegrationDeps, agencyId: string, r
         { bearer: token },
       );
       const d = r.business_discovery;
-      if (!d) { missing.push(u); continue; }
+      if (!d) { missing.push(u); return; }
       const phone = phoneInText(`${d.biography ?? ""} ${d.website ?? ""}`);
       items.push({
         key: `ig:${u}`,
@@ -336,12 +395,19 @@ export async function searchInstagram(deps: IntegrationDeps, agencyId: string, r
         origin: `Instagram @${u}`,
         info: [`@${u}`, d.followers_count != null ? `${d.followers_count.toLocaleString("pt-BR")} seguidores` : null, phone ? null : "sem telefone na bio"].filter(Boolean).join(" · "),
       });
-    } catch {
-      // Perfil pessoal, inexistente ou privado: a Meta só mostra contas profissionais.
-      missing.push(u);
+    } catch (error) {
+      // Token vencido ou limite da Meta: para tudo e avisa. O resto é perfil pessoal, inexistente ou privado.
+      if (error instanceof IntegrationError && (error.reauth || error.status === 429 || /limit|too many|rate/i.test(error.message))) fatal = error;
+      else missing.push(u);
     }
+  };
+  const queue = [...names];
+  await Promise.all(Array.from({ length: Math.min(6, queue.length) }, async () => { while (queue.length) await one_(queue.shift()!); }));
+  if (fatal && !items.length) {
+    const e = fatal as IntegrationError;
+    throw e.reauth ? new XodoError("A conexão com a Meta venceu. Conecte de novo em Integrações.", 409) : new XodoError("A Meta limitou as consultas por agora. Tente de novo em alguns minutos.", 429);
   }
-  return { items: await mark(deps.sql, agencyId, items), missing };
+  return { items: await mark(deps.sql, agencyId, items), missing, skipped };
 }
 
 // ---------------------------------------------------------------------------
@@ -354,9 +420,14 @@ export async function listGroups(deps: IntegrationDeps, agencyId: string) {
     [agencyId],
   );
   if (!conns.length) throw new XodoError("Ligue um número por QR Code em Xodós → Integrações → WhatsApp para ler os grupos.", 409);
-  const out: { connection_id: string; number: string; groups: Awaited<ReturnType<typeof whatsappQrGroups>> }[] = [];
-  for (const c of conns) out.push({ connection_id: c.id, number: c.label, groups: await whatsappQrGroups(deps, agencyId, c.id) });
-  return out;
+  // Cada número separado: um gateway fora do ar não esconde os grupos dos outros.
+  const res = await Promise.allSettled(conns.map((c) => whatsappQrGroups(deps, agencyId, c.id)));
+  return conns.map((c, i) => {
+    const r = res[i];
+    return r.status === "fulfilled"
+      ? { connection_id: c.id, number: c.label, groups: r.value, error: null }
+      : { connection_id: c.id, number: c.label, groups: [], error: r.reason instanceof Error ? r.reason.message : "O gateway não respondeu." };
+  });
 }
 
 export const groupInput = z.object({ connection_id: z.uuid(), group_id: z.string().max(60), group_name: z.string().trim().max(100).default("grupo") });

@@ -1939,7 +1939,7 @@ a:hover{color:#3346D3;text-decoration:underline}
                     <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:500;color:var(--tx2,#475467)">Cidade (opcional)</span><input value="{{ pr.capC.city }}" sc-camel-on-change="{{ pr.capC.onCity }}" placeholder="Todas do estado" style="height:36px;border:1px solid var(--bd,#D0D5DD);border-radius:8px;padding:0 11px;background:var(--sf,#fff);color:var(--tx,#101828);font-size:13.5px;outline:none;width:100%;box-sizing:border-box"></label>
                   </div>
                   <sc-for list="{{ pr.capC.toggles }}" as="o"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">{{ o.l }}</span><span style="font-size:12px;color:var(--tx2,#667085)">{{ o.d }}</span></span><button sc-camel-on-click="{{ o.toggle }}" role="switch" aria-checked="{{ o.on }}" aria-label="{{ o.l }}" style="width:36px;height:20px;border:none;border-radius:10px;background:{{ o.swBg }};position:relative;padding:0;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ o.swX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left 150ms"></span></button></div></sc-for>
-                  <span style="font-size:12px;color:var(--tx2,#667085)">Empresas ativas na Receita Federal com telefone cadastrado. Cada empresa encontrada usa créditos da sua conta na CNPJá.</span>
+                  <span style="font-size:12px;color:var(--tx2,#667085)">Empresas ativas na Receita Federal com telefone cadastrado. Cada busca traz até 50 empresas e cada empresa encontrada usa 1 crédito da sua conta na CNPJá (até 50 por busca).</span>
                 </sc-if>
 
                 <sc-if value="{{ pr.capF.isIg }}">
@@ -5456,7 +5456,7 @@ class Component extends DCLogic {
       const r = await SP.api('/api/prospect/sources', { method: 'POST', body: Object.assign({ agency_id: this.spAg }, body) });
       const items = (more ? R0.items : []).concat(r.items || []), pick = Object.assign({}, more ? S.prPick : {});
       (r.items || []).forEach(x => { if (x.phone && !x.exists && !x.blocked) pick[x.key] = true; });
-      const notes = [r.hidden ? r.hidden + ' participantes com número escondido pelo WhatsApp' : '', (r.missing || []).length ? 'Sem perfil comercial: @' + r.missing.join(', @') : ''].filter(Boolean).join(' · ');
+      const notes = [r.hidden ? r.hidden + ' participantes com número escondido pelo WhatsApp' : '', (r.missing || []).length ? 'Sem perfil comercial: @' + r.missing.join(', @') : '', (r.skipped || []).length ? 'Não deu tempo de ler: @' + r.skipped.join(', @') + ' (busque de novo)' : ''].filter(Boolean).join(' · ');
       this.setState({ prBusy: false, prPick: pick, prRes: { src, title, items, next: r.next || null, input: body, notes }, prRList: more ? S.prRList : title.slice(0, 80) });
       if (!items.length) this.toastMsg('Nada encontrado. Tente outra busca.');
     } catch (e) { this.setState({ prBusy: false }); this.spErr(e); }
@@ -5469,7 +5469,7 @@ class Component extends DCLogic {
   }
   async spPrGroups() {
     this.setState({ prGBusy: true });
-    try { const r = await SP.api('/api/prospect/sources', { method: 'POST', body: { agency_id: this.spAg, fonte: 'grupos' } }); this.PRG = r.numbers || []; this.setState({ prGBusy: false }); if (!this.PRG.some(n => n.groups.length)) this.toastMsg('O número não participa de nenhum grupo'); }
+    try { const r = await SP.api('/api/prospect/sources', { method: 'POST', body: { agency_id: this.spAg, fonte: 'grupos' } }); this.PRG = r.numbers || []; this.setState({ prGBusy: false }); const bad = this.PRG.filter(n => n.error); if (bad.length) this.toastMsg(bad.map(n => n.number + ': ' + n.error).join(' · ')); else if (!this.PRG.some(n => n.groups.length)) this.toastMsg('O número não participa de nenhum grupo'); }
     catch (e) { this.setState({ prGBusy: false }); this.spErr(e); }
   }
   prCapV() {
@@ -5490,7 +5490,8 @@ class Component extends DCLogic {
       wa: ['Ligue um número de WhatsApp por QR Code', ['Em Xodós → Integrações → WhatsApp, escolha QR Code.', 'Leia o QR com o número que participa dos grupos.', 'Volte aqui e escolha o grupo.'], 'Ir para Integrações dos xodós', () => this.go('xodo', { xoTab: 'integ', xoSel: null, xoNew: false })] };
     const need = !!ST && !ready[src] && !!KEYS[src], K = KEYS[src] || ['', [], '', () => {}];
     const HINT = { maps: 'Places API do Google · até 60 por busca', cnpj: 'CNPJá · empresas ativas', ig: 'Business Discovery da Meta', wa: 'Número ligado por QR Code', csv: 'Até 10 mil linhas' };
-    const f = { n: cur[1], hint: HINT[src], isMaps: src === 'maps' && !need, isCnpj: src === 'cnpj' && !need, isIg: src === 'ig' && !need, isWa: src === 'wa' && !need, isCsv: src === 'csv', needKey: need, keyTitle: K[0], keySteps: K[1], addKeyL: K[2], addKey: K[3],
+    const Q = ST && ST.quota, qL = !Q ? '' : Q.limit == null ? Q.used.toLocaleString('pt-BR') + ' contatos de busca este mês · sem limite no plano' : Q.limit === 0 ? 'A busca de contatos começa no plano Agência' : Q.used.toLocaleString('pt-BR') + ' de ' + Q.limit.toLocaleString('pt-BR') + ' contatos de busca usados este mês';
+    const f = { n: cur[1], hint: src === 'csv' ? HINT[src] : (qL || HINT[src]), isMaps: src === 'maps' && !need, isCnpj: src === 'cnpj' && !need, isIg: src === 'ig' && !need, isWa: src === 'wa' && !need, isCsv: src === 'csv', needKey: need, keyTitle: K[0], keySteps: K[1], addKeyL: K[2], addKey: K[3],
       canSearch: src !== 'csv' && !need && !!ST, search: () => this.spPrFind(false), searchL: S.prBusy ? 'Buscando…' : 'Buscar contatos', op: S.prBusy ? 0.6 : 1, csv: () => this.spPrImport(),
       onEnter: e => { if (e.key === 'Enter') this.spPrFind(false); } };
     const setO = (k, p) => this.setState(s => ({ [k]: Object.assign({}, s[k], p) }));
@@ -5521,7 +5522,7 @@ class Component extends DCLogic {
       this.fm({ title: 'Importar ' + nSel + (nSel === 1 ? ' contato' : ' contatos'), desc: 'Eles entram na lista "' + list + '" como novos. Depois, em Leads, você escolhe quem vai para a cadência.', icon: 'playlist_add', fields: [{ k: 'ok', l: 'Uso dos contatos', type: 'pick', opts: [OK], req: 1, reqMsg: 'Confirme para importar' }], okL: 'Importar',
         ok: async () => { try { const rows = ok.filter(x => pk[x.key]).map(x => ({ phone: x.phone, name: x.name || undefined, company: x.company || undefined, email: x.email || undefined, segment: x.segment || undefined, city: x.city || undefined, website: x.website || undefined, origin: x.origin }));
           const r = await SP.api('/api/prospect/leads', { method: 'POST', body: { agency_id: this.spAg, list, source: SRCK[src], consent: true, rows } });
-          await this.spPrLoad(); this.setState({ prRes: null, prPick: {}, prTab: 'leads', prLf: list }); this.toastMsg(r.added + ' contatos na lista "' + list + '"' + (r.dup ? ' · ' + r.dup + ' repetidos' : '') + (r.blocked ? ' · ' + r.blocked + ' bloqueados' : '')); } catch (e) { this.spErr(e); } } }); };
+          await this.spPrLoad(); this.spPrSrcLoad().catch(() => {}); this.setState({ prRes: null, prPick: {}, prTab: 'leads', prLf: list }); this.toastMsg(r.added + ' contatos na lista "' + list + '"' + (r.dup ? ' · ' + r.dup + ' repetidos' : '') + (r.blocked ? ' · ' + r.blocked + ' bloqueados' : '')); } catch (e) { this.spErr(e); } } }); };
     const r = { has: !!R && items.length > 0, title: R ? R.title : '', sub: items.length + ' encontrados · ' + ok.length + ' com telefone novo' + (R && R.notes ? ' · ' + R.notes : ''),
       selAllL: allOn ? 'Desmarcar todos' : 'Marcar todos', selAll: () => this.setState(s => { const n = Object.assign({}, s.prPick); ok.forEach(x => n[x.key] = !allOn); return { prPick: n }; }),
       rows: items.map(x => { const on = can(x) && !!pk[x.key], tag = x.blocked ? ['Pediu para sair', 'rgba(240,68,56,0.12)', '#B42318'] : x.exists ? ['Já está numa lista', 'var(--sf2,#F2F4F7)', 'var(--tx2,#667085)'] : !x.phone ? ['Sem telefone', 'var(--sf2,#F2F4F7)', 'var(--tx2,#667085)'] : !x.mobile ? ['Fixo', 'rgba(247,144,9,0.14)', '#B54708'] : null;

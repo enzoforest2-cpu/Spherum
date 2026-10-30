@@ -673,7 +673,7 @@ export const whatsappQrAdapter: ChannelAdapter = {
 
 async function qrGateway(deps: IntegrationDeps, agencyId: string, connectionId: string): Promise<Gateway> {
   const row = await loadConnection(deps.sql, agencyId, connectionId);
-  if (row.provider !== PROVIDER || row.status === "revoked") throw new IntegrationError("Conexão do WhatsApp por QR Code não encontrada.", 404);
+  if (row.provider !== PROVIDER || row.status !== "active") throw new IntegrationError("Conexão do WhatsApp por QR Code não encontrada ou desligada.", 404);
   try {
     return gatewayOf(row, (await readSecret(deps, row)).apiKey);
   } catch (error) {

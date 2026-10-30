@@ -1,24 +1,37 @@
 # Prospecção
 
-Cadência de mensagens pelo WhatsApp para listas que a agência já tem. Código em
+Busca de contatos (Google Maps, CNPJ, Instagram, grupos de WhatsApp e planilha) e cadência de mensagens pelo WhatsApp. Código em
 `src/lib/core/prospect.ts`; tabelas em `supabase/migrations/20261022220000_prospect.sql`. O navegador
 só lê (RLS); importação, envios e respostas passam pelo servidor.
 
-## O que ficou de fora do design (de propósito)
+## Fontes
 
-O design capta telefones de seguidores do Instagram e de participantes de grupos de WhatsApp e
-dispara por números "aquecidos" via QR Code, com variações reescritas para escapar do bloqueio. Isso
-fere a LGPD (dados pessoais coletados sem base legal) e os termos do WhatsApp, e põe os números da
-agência em risco. Por isso a versão real:
+Código das buscas em `src/lib/core/prospect-sources.ts`, rota `/api/prospect/sources`. A busca só
+devolve candidatos; a tela marca e importa pela rota de leads, que confere telefone, repetidos e a
+lista de bloqueio. Cada contato guarda a origem (`origin`), obrigatória nas fontes de busca.
 
-- só importa listas da própria agência (planilha CSV ou números colados), com a confirmação de que
-  os contatos podem receber mensagem;
-- envia só pela API oficial da Meta, com modelos aprovados (a Meta exige modelo para começar
-  conversa);
-- usa variações como teste A/B entre modelos aprovados, com a taxa de resposta de cada uma.
+- **Google Maps**: Places API (Text Search) com a chave do Google Cloud da agência.
+- **Empresas por CNAE**: pesquisa da CNPJá (Receita Federal) com a chave da agência; cidade pelo
+  código do IBGE.
+- **Instagram**: perfis comerciais pelo @, pela conta da Meta conectada (Business Discovery). A lista
+  de seguidores de um perfil não existe em API oficial e ficou de fora.
+- **Grupos de WhatsApp**: participantes dos grupos do número ligado por QR Code. Não é a API
+  oficial; o número pode ser banido, e a tela avisa.
+- **Planilha** (CSV) ou números colados, como antes.
 
-Google Maps (API Places) e CNPJ (base pública da Receita) podem entrar depois, como fontes de
-negócios (não de pessoas).
+Regras:
+
+- **Cota mensal** de contatos vindos de busca (planilha não conta), como no site: Solo 0, Agência
+  500 (também no teste), Escala 3.000, Rede 15.000, Empresarial sem limite, mais 1.000 por pacote
+  "+1.000 contatos de prospecção". Mês pelo fuso de Brasília.
+- **Buscas pagas** (Maps, CNPJá, Instagram): até 20 por minuto e 300 por dia, por agência e fonte.
+- **"Carregar mais"**: o token de página vem assinado com os filtros; mudou o filtro, busca de novo.
+- **Chaves** (Google Maps e CNPJá): só quem edita Vendas e Configurações cadastra; a nova substitui
+  a anterior.
+- **Celular sem o 9** (8 dígitos começando com 6 a 9) ganha o 9, para casar com a lista de bloqueio.
+
+O disparo continua só pela API oficial da Meta, com modelos aprovados; as variações são teste A/B
+entre modelos.
 
 ## Fluxo
 

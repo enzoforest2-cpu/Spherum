@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fiscalBoard, setConfig } from "@/lib/core/fiscal";
 import { serverSql } from "@/lib/xodos/db";
-import { CAN_BILL, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
+import { CAN_BILL, CAN_READ, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 
 /** GET /api/fiscal?agency_id=  configuração, notas, faturas sem nota, mensalidades, atrasos e conexões da Focus NFe. */
 export async function GET(request: Request) {
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const userId = await requireUser(request);
     const agencyId = uuid.parse(new URL(request.url).searchParams.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "financeiro" });
     return NextResponse.json(await fiscalBoard(sql, agencyId));
   } catch (error) {
     return fail(error);

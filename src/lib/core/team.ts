@@ -4,7 +4,7 @@ import { one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import type { Role } from "../xodos/http";
 import { audit } from "./audit";
-import { accessOf, assertCanGrant, legacyRole, roleIdForLegacy, rolePerms, type Access } from "./roles";
+import { accessOf, assertCanGrant, legacyRole, normalizePerms, roleIdForLegacy, rolePerms, type Access } from "./roles";
 import { assertLimit } from "./subscription";
 
 /**
@@ -22,7 +22,7 @@ export async function listMembers(sql: Sql, agencyId: string) {
   return sql.query(
     `select m.user_id, m.role, m.title, m.created_at::text, p.full_name, u.email, m.role_id, r.name as role_name
        from agency_members m
-       left join agency_roles r on r.id = m.role_id
+       left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
        left join profiles p on p.id = m.user_id
        left join auth.users u on u.id = m.user_id
       where m.agency_id = $1
@@ -54,7 +54,7 @@ export async function updateMember(sql: Sql, agencyId: string, actor: Actor, tar
   return sql.transaction(async (tx) => {
     const target = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null }>(
       tx,
-      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id
+      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
         where m.agency_id = $1 and m.user_id = $2 for update of m`,
       [agencyId, targetId],
     );
@@ -100,7 +100,7 @@ export async function removeMember(sql: Sql, agencyId: string, actor: Actor, tar
   return sql.transaction(async (tx) => {
     const target = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null }>(
       tx,
-      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id
+      `select m.role, r.perms, m.role_id, r.name as role_name from agency_members m left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
         where m.agency_id = $1 and m.user_id = $2 for update of m`,
       [agencyId, targetId],
     );
@@ -135,7 +135,7 @@ export type CreatedInvite = { id: string; email: string; role: string; expires_a
 
 async function insertInvite(
   sql: Sql,
-  o: { agencyId: string; kind: "equipe" | "cliente"; clientId: string | null; email: string; role: string; roleId?: string | null; actor: string; now?: () => Date },
+  o: { agencyId: string; kind: "equipe" | "cliente"; clientId: string | null; email: string; role: string; roleId?: string | null; actor: string; grant?: Access; now?: () => Date },
 ): Promise<CreatedInvite> {
   // Vaga na equipe: convite pendente conta como pessoa (reenviar para o mesmo e-mail não conta de novo).
   if (o.kind === "equipe") {
@@ -145,6 +145,15 @@ async function insertInvite(
   const token = randomBytes(24).toString("base64url");
   const now = nowOf(o.now);
   return sql.transaction(async (tx) => {
+    // Quem tem menos acesso não substitui o convite de um cargo maior que o dele.
+    if (o.grant) {
+      const open = await tx.query<{ perms: unknown }>(
+        `select r.perms from invites i join agency_roles r on r.id = i.role_id and r.agency_id = i.agency_id
+          where i.agency_id = $1 and lower(i.email) = $2 and i.accepted_at is null and i.revoked_at is null`,
+        [o.agencyId, o.email],
+      );
+      for (const r of open) assertCanGrant(o.grant, normalizePerms(r.perms));
+    }
     // Convite novo para o mesmo e-mail substitui o anterior ainda aberto.
     await tx.query(
       `update invites set revoked_at = $4::timestamptz
@@ -186,7 +195,7 @@ export async function inviteMember(sql: Sql, agencyId: string, actor: Actor, raw
     [agencyId, nowOf(now).toISOString()],
   );
   if ((pending?.n ?? 0) >= 50) throw new XodoError("Há convites demais em aberto. Cancele alguns antes.", 429);
-  return insertInvite(sql, { agencyId, kind: "equipe", clientId: null, email: input.email, role: inviteRole, roleId, actor: actor.id, now });
+  return insertInvite(sql, { agencyId, kind: "equipe", clientId: null, email: input.email, role: inviteRole, roleId, actor: actor.id, grant: me, now });
 }
 
 /** Dá a alguém do cliente acesso ao portal do cliente (só o que é daquele cliente). */
@@ -208,7 +217,14 @@ export async function listInvites(sql: Sql, agencyId: string, now?: () => Date) 
   );
 }
 
-export async function revokeInvite(sql: Sql, agencyId: string, actorId: string, inviteId: string, now?: () => Date) {
+export async function revokeInvite(sql: Sql, agencyId: string, actor: string | Actor, inviteId: string, now?: () => Date) {
+  const actorId = typeof actor === "string" ? actor : actor.id;
+  // Convite de um cargo com mais acesso que o de quem cancela fica.
+  if (typeof actor !== "string") {
+    const inv = await one<{ perms: unknown }>(sql,
+      `select r.perms from invites i join agency_roles r on r.id = i.role_id and r.agency_id = i.agency_id where i.id = $1 and i.agency_id = $2`, [inviteId, agencyId]);
+    if (inv) assertCanGrant(accessOfActor(actor), normalizePerms(inv.perms));
+  }
   const row = await one(
     sql,
     `update invites set revoked_at = $3::timestamptz where id = $1 and agency_id = $2 and accepted_at is null and revoked_at is null returning id`,
@@ -285,12 +301,16 @@ export async function acceptInvite(sql: Sql, user: { id: string; email: string |
     );
     if (!claimed) throw new XodoError("Convite inválido, vencido ou já usado.", 404);
     if (invite.kind === "equipe") {
+      // O acesso vem do cargo atual do convite (da mesma agência). Convite sem cargo não vale.
+      const role = await one<{ id: string; perms: unknown }>(tx,
+        `select r.id, r.perms from invites i join agency_roles r on r.id = i.role_id and r.agency_id = i.agency_id where i.id = $1`, [invite.id]);
+      if (!role) throw new XodoError("O cargo deste convite foi apagado. Peça um convite novo a quem convidou.", 409);
       // Quem já está na equipe mantém o papel que tem.
       await tx.query(
         `insert into agency_members (agency_id, user_id, role, invited_by, role_id)
-         select $1, $2, $3, invited_by, role_id from invites where id = $4
+         select $1, $2, $3, invited_by, $5 from invites where id = $4
          on conflict (agency_id, user_id) do nothing`,
-        [invite.agency_id, user.id, invite.role, invite.id],
+        [invite.agency_id, user.id, legacyRole(normalizePerms(role.perms)), invite.id, role.id],
       );
     } else {
       await tx.query(

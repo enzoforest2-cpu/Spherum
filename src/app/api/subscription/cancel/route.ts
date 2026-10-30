@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const { agency_id, ...input } = await request.json();
     const agencyId = uuid.parse(agency_id);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_MANAGE, { allowLocked: true, area: "configuracoes" });
+    await requireRole(sql, userId, agencyId, CAN_MANAGE, { allowLocked: true, area: ["equipe", "configuracoes"] });
     return NextResponse.json(await cancelSubscription(subDepsFromEnv(sql, mailerFromEnv()), agencyId, userId, input));
   } catch (error) {
     return fail(error);

@@ -10,8 +10,9 @@ import { CAN_MANAGE, CAN_READ, CAN_USE, requireRole } from "../src/lib/xodos/htt
 import { createTestDb } from "./helpers";
 
 let sql: Sql;
+let db: Awaited<ReturnType<typeof createTestDb>>["db"];
 before(async () => {
-  ({ sql } = await createTestDb());
+  ({ sql, db } = await createTestDb());
 });
 
 async function user(email: string) {
@@ -106,4 +107,59 @@ test("o portal não manda o que o cargo não vê", async () => {
   const eu = daPessoa.team.find((t) => t.user_id === pessoa.id)!;
   assert.equal(eu.perm, "Gestor de tráfego");
   assert.equal(daPessoa.team.find((t) => t.user_id === dona.id)!.perm, "Proprietário");
+});
+
+test("apagar cargo sem ninguém: destino conferido sempre; sem destino, convites em aberto são cancelados", async () => {
+  const dona = await user(`dona-${randomUUID()}@exemplo.com`);
+  const { id: agencyId } = await createAgency(sql, dona.id, { name: `Agência ${randomUUID().slice(0, 6)}` });
+  const roles = await listRoles(sql, agencyId);
+  const admin = roles.find((r) => r.name === "Administrador")!;
+  // Quem edita a equipe mas tem pouco acesso no resto.
+  const rh = await createRole(sql, agencyId, { id: dona.id, ...(await memberAccess(sql, agencyId, dona.id))! }, { name: "RH", perms: { equipe: "editar", clientes: "ver" } });
+  const pessoa = await user(`rh-${randomUUID()}@exemplo.com`);
+  const t = await inviteMember(sql, agencyId, { id: dona.id, access: (await memberAccess(sql, agencyId, dona.id))! }, { email: pessoa.email, role_id: rh.id });
+  await acceptInvite(sql, pessoa, t.token);
+  const eu = await access(agencyId, pessoa.id);
+  const x = await createRole(sql, agencyId, eu, { name: "Estagiário", perms: { clientes: "ver" } });
+  const outro = await user(`alt-${randomUUID()}@exemplo.com`);
+  const inv = await inviteMember(sql, agencyId, asTeam(eu), { email: outro.email, role_id: x.id });
+  await assert.rejects(deleteRole(sql, agencyId, eu, x.id, admin.id), /mais acesso/);
+  // Cargo de outra agência como destino também não vale.
+  const dona2 = await user(`d2-${randomUUID()}@exemplo.com`);
+  const { id: other } = await createAgency(sql, dona2.id, { name: "Outra" });
+  const leitorOutra = (await listRoles(sql, other)).find((r) => r.name === "Leitor")!;
+  await assert.rejects(deleteRole(sql, agencyId, eu, x.id, leitorOutra.id), /não encontrado/);
+  await deleteRole(sql, agencyId, eu, x.id, null);
+  await assert.rejects(acceptInvite(sql, outro, inv.token), /inválido/);
+});
+
+test("convite sem cargo não vale e o cargo em uso não some", async () => {
+  const { agencyId, dona, role } = await agencyWith("Atendimento");
+  const novo = await user(`n-${randomUUID()}@exemplo.com`);
+  const inv = await inviteMember(sql, agencyId, { id: dona.id, access: (await memberAccess(sql, agencyId, dona.id))! }, { email: novo.email, role_id: role.id });
+  await sql.query(`update invites set role_id = null where agency_id = $1 and lower(email) = $2`, [agencyId, novo.email]);
+  await assert.rejects(acceptInvite(sql, novo, inv.token), /cargo deste convite foi apagado/);
+  await assert.rejects(sql.query(`delete from agency_roles where id = $1`, [role.id]), /violates foreign key/);
+});
+
+test("leitura direta pelo banco segue o cargo: financeiro em nenhum não lê faturas", async () => {
+  const { agencyId, pessoa, dona } = await agencyWith("Gestor de tráfego");
+  const client = await one<{ id: string }>(sql, `insert into clients (agency_id, name) values ($1, 'Loja') returning id`, [agencyId]);
+  await sql.query(`insert into finance_entries (agency_id, client_id, kind, category, description, amount_cents, month) values ($1, $2, 'receita', 'Mensalidade', 'Loja', 100000, '2026-11-01')`, [agencyId, client!.id]);
+  const asUser = async (id: string, fn: () => Promise<void>) => {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [id]);
+    await db.query(`set role authenticated`);
+    try { await fn(); } finally { await db.query(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  };
+  await asUser(dona.id, async () => assert.equal((await db.query(`select id from finance_entries`)).rows.length, 1, "a dona lê"));
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [pessoa.id]);
+  await db.query(`set role authenticated`);
+  try {
+    assert.equal((await db.query(`select id from clients`)).rows.length, 1, "clientes: editar");
+    assert.equal((await db.query(`select id from finance_entries`)).rows.length, 0, "financeiro: nenhum");
+    assert.equal((await db.query(`select id from invoices`)).rows.length, 0);
+  } finally {
+    await db.query(`reset role`);
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
 });

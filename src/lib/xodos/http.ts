@@ -45,16 +45,18 @@ const LOCKED: Record<string, string> = {
  * ler continua (CAN_READ) e o que tem allowLocked (assinatura, suporte) também; o resto é recusado.
  *
  * Com area, vale o cargo da pessoa (ver core/roles.ts): ler pede "ver" na área e o resto pede
- * "editar". Sem area, o que é de todos (CAN_READ, CAN_USE) passa; gerir (CAN_MANAGE) pede editar
- * nas configurações e cobrar (CAN_BILL) pede editar no financeiro. O dono pode tudo.
+ * "editar". area pode ser uma lista (precisa de todas); anyArea é uma lista em que basta uma.
+ * Sem área, ler (CAN_READ) passa; usar (CAN_USE) pede "editar" em alguma área (cargo só de
+ * leitura não age); gerir (CAN_MANAGE) pede editar nas configurações e cobrar (CAN_BILL) pede
+ * editar no financeiro. O dono pode tudo.
  * Devolve o papel antigo equivalente (algumas regras internas ainda usam).
  */
-export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[], opts: { allowLocked?: boolean; area?: Area } = {}): Promise<Role> {
+export async function requireRole(sql: Sql, userId: string, agencyId: string, allowed: Role[], opts: { allowLocked?: boolean; area?: Area | Area[]; anyArea?: Area[] } = {}): Promise<Role> {
   const member = await one<{ role: Role; perms: unknown | null; role_id: string | null; role_name: string | null; suspended: boolean; locked: string | null }>(
     sql,
     `select m.role, r.perms, m.role_id, r.name as role_name, a.suspended_at is not null as suspended,
             case when a.locked_at is not null then coalesce(a.locked_reason, 'teste') end as locked
-       from agency_members m join agencies a on a.id = m.agency_id left join agency_roles r on r.id = m.role_id
+       from agency_members m join agencies a on a.id = m.agency_id left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id
       where m.agency_id = $1 and m.user_id = $2`,
     [agencyId, userId],
   );
@@ -64,14 +66,23 @@ export async function requireRole(sql: Sql, userId: string, agencyId: string, al
   if (member.suspended) throw new XodoError("Esta agência está suspensa. Fale com o suporte do Spherum (suporte@spherum.com.br).", 403);
   const access = accessOf(member);
   if (!access.owner) {
-    const reading = allowed === CAN_READ;
-    const area: Area | null = opts.area ?? (allowed === CAN_MANAGE ? "configuracoes" : allowed === CAN_BILL ? "financeiro" : null);
-    if (area) {
-      if (!atLeast(access.perms[area], reading ? "ver" : "editar")) {
-        const label = AREAS.find((a) => a.key === area)?.label ?? area;
-        throw new XodoError(reading ? `Seu cargo não tem acesso a ${label}.` : `Seu cargo só permite ver ${label}, não alterar.`, 403);
+    const reading = allowed === CAN_READ, need = reading ? "ver" : "editar";
+    const fallback: Area | null = allowed === CAN_MANAGE ? "configuracoes" : allowed === CAN_BILL ? "financeiro" : null;
+    const all: Area[] = opts.area ? ([] as Area[]).concat(opts.area) : opts.anyArea ? [] : fallback ? [fallback] : [];
+    const labelOf = (a: Area) => AREAS.find((x) => x.key === a)?.label ?? a;
+    for (const area of all) {
+      if (!atLeast(access.perms[area], need)) {
+        throw new XodoError(reading ? `Seu cargo não tem acesso a ${labelOf(area)}.` : `Seu cargo só permite ver ${labelOf(area)}, não alterar.`, 403);
       }
-    } else if (!reading && allowed !== CAN_USE && !allowed.includes(member.role)) {
+    }
+    if (opts.anyArea && !opts.anyArea.some((a) => atLeast(access.perms[a], need))) {
+      throw new XodoError(`Seu cargo precisa ${reading ? "ver" : "editar"} ${opts.anyArea.map(labelOf).join(" ou ")}.`, 403);
+    }
+    if (!all.length && !opts.anyArea && !reading && !Object.values(access.perms).includes("editar")) {
+      throw new XodoError("Seu cargo só permite ver, não alterar.", 403);
+    }
+    // Lista própria de papéis (ex.: só o dono), sem área: vale o papel.
+    if (!all.length && !opts.anyArea && ![CAN_READ, CAN_USE, CAN_MANAGE, CAN_BILL].includes(allowed) && !allowed.includes(member.role)) {
       throw new XodoError("Seu cargo na agência não permite esta ação.", 403);
     }
   }

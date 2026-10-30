@@ -6,6 +6,7 @@ import { IntegrationError, requestJson } from "../integrations/http";
 import { dayIn } from "../xodos/budget";
 import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
+import { staffAlert } from "./alerts";
 import { audit } from "./audit";
 import type { Mailer } from "./email";
 import { PLAN_IDS, planPrices, type Prices } from "./platform";
@@ -30,13 +31,17 @@ export const RENEW_DAYS = 5;
 export const GRACE_DAYS = 7;
 export const TRIAL_GRACE_DAYS = 3;
 
-/** Limites de cada plano: clientes ativos, pessoas (membros e convites pendentes) e xodós. Nulo: sem limite. */
-export const PLAN_LIMITS: Record<PlanId, { clients: number | null; seats: number | null; xodos: number }> = {
-  solo: { clients: 5, seats: 1, xodos: 0 },
-  agencia: { clients: 20, seats: 10, xodos: 1 },
-  escala: { clients: 100, seats: 30, xodos: 3 },
-  rede: { clients: 250, seats: 75, xodos: 5 },
-  empresarial: { clients: null, seats: null, xodos: 10 },
+/**
+ * Limites de cada plano: clientes ativos, pessoas (membros e convites pendentes), xodós e contatos
+ * de prospecção por mês vindos das buscas (Google Maps, CNPJ, Instagram e grupos; planilha não conta),
+ * como no site. Nulo: sem limite.
+ */
+export const PLAN_LIMITS: Record<PlanId, { clients: number | null; seats: number | null; xodos: number; prospect: number | null }> = {
+  solo: { clients: 5, seats: 1, xodos: 0, prospect: 0 },
+  agencia: { clients: 20, seats: 10, xodos: 1, prospect: 500 },
+  escala: { clients: 100, seats: 30, xodos: 3, prospect: 3000 },
+  rede: { clients: 250, seats: 75, xodos: 5, prospect: 15000 },
+  empresarial: { clients: null, seats: null, xodos: 10, prospect: null },
 };
 
 /**
@@ -48,7 +53,7 @@ export const ADDONS: Record<string, Addon> = {
   crm: { name: "CRM com funil e playbooks", price: 79, from: 0, incl: 1, max: 0, available: true },
   score: { name: "Pontuação de leads", price: 39, from: 0, incl: 1, max: 0, available: true },
   prop: { name: "Propostas e contratos com assinatura", price: 59, from: 0, incl: 1, max: 0, available: true },
-  pros: { name: "+1.000 contatos de prospecção", price: 89, from: 0, incl: null, max: 10, available: false },
+  pros: { name: "+1.000 contatos de prospecção", price: 89, from: 0, incl: null, max: 10, available: true },
   disp: { name: "Disparos com variação de mensagem", price: 99, from: 1, incl: 2, max: 0, available: false },
   fin: { name: "Financeiro, cobranças e notas", price: 69, from: 0, incl: 1, max: 0, available: true },
   pub: { name: "Publicar no Meta e aprovar criativos", price: 59, from: 0, incl: 1, max: 0, available: true },
@@ -157,11 +162,16 @@ async function couponFor(sql: Sql, code: string, plan: PlanId, now: Date) {
   return c;
 }
 
-/** Desconto de uma fatura com o cupom: porcentagem do total ou valor fixo por mês coberto. */
-function discountOf(c: Pick<Coupon, "kind" | "value">, subtotal: number, months: number) {
-  const d = c.kind === "pct" ? Math.round((subtotal * c.value) / 100) : Math.round(c.value * 100) * months;
+/**
+ * Desconto de uma fatura com o cupom nos meses cobertos: porcentagem (no anual, só sobre a fração do
+ * ano coberta) ou valor fixo por mês.
+ */
+function discountOf(c: Pick<Coupon, "kind" | "value">, subtotal: number, months: number, cycle: "mensal" | "anual") {
+  const share = cycle === "anual" ? Math.min(12, months) / 12 : 1;
+  const d = c.kind === "pct" ? Math.round((subtotal * share * c.value) / 100) : Math.round(c.value * 100) * months;
   return Math.min(subtotal, Math.max(0, d));
 }
+const couponMonths = (cycle: "mensal" | "anual", left: number) => (cycle === "anual" ? Math.min(12, left) : 1);
 
 /** Valor de um período no ciclo: o anual é 12 meses com 20% de desconto. */
 function periodLines(lines: Line[], cycle: "mensal" | "anual"): Line[] {
@@ -195,6 +205,7 @@ export async function limitsOf(sql: Sql, agencyId: string) {
     clients: base.clients == null ? null : base.clients + 5 * extra("clients"),
     seats: base.seats == null ? null : base.seats + extra("seat"),
     xodos: base.xodos + extra("xodo"),
+    prospect: base.prospect == null ? null : base.prospect + 1000 * extra("pros"),
     studio_images: 50 * extra("studio"),
     studio_videos: 10 * extra("video"),
   };
@@ -258,7 +269,7 @@ export async function quote(sql: Sql, agencyId: string, raw: unknown, now = new 
   const code = red && red.months_left > 0 ? red.coupon_code : i.coupon;
   if (code) {
     const c = await couponFor(sql, code, i.plan, now).catch((e) => { if (red) return null; throw e; });
-    if (c) { discount = discountOf(c, subtotal, i.cycle === "anual" ? Math.min(12, red?.months_left ?? c.months) : 1); coupon = c.code; }
+    if (c) { discount = discountOf(c, subtotal, couponMonths(i.cycle, red?.months_left ?? c.months), i.cycle); coupon = c.code; }
   }
   return { plan: i.plan, cycle: i.cycle, lines, subtotal_cents: subtotal, discount_cents: discount, amount_cents: subtotal - discount, coupon };
 }
@@ -283,16 +294,18 @@ export async function subscribe(deps: SubDeps, agencyId: string, userId: string,
   const start = a.plan_status === "trial" && a.trial_ends_at && Date.parse(a.trial_ends_at) > now.getTime() ? dayIn(TZ, new Date(a.trial_ends_at)) : today(now);
   const inv = await deps.sql.transaction(async (tx) => {
     await agencyOf(tx, agencyId, true);
-    // Uma escolha nova substitui a fatura em aberto que ainda não foi paga.
-    const open = await tx.query<{ id: string; charge_id: string | null }>(
-      `update spherum_invoices set status = 'cancelado' where agency_id = $1 and kind = 'periodo' and status in ('pendente', 'vencido') returning id, charge_id`, [agencyId]);
+    // Uma escolha nova substitui a fatura de período em aberto que ainda não foi paga (inclusive a
+    // renovação vencida de quem está em atraso: o agendador não a recria, porque há fatura em aberto).
+    const open = await cancelInvoices(tx, `agency_id = $1 and kind = 'periodo'`, [agencyId]);
     if (i.coupon) await redeem(tx, agencyId, i.coupon, i.plan, now);
-    await tx.query(`update agencies set plan = $2, billing_cycle = $3, pending_plan = null, pending_cycle = null, cancel_at_period_end = false where id = $1`, [agencyId, i.plan, i.cycle]);
+    // O preço combinado é do plano combinado: outro plano volta ao preço de tabela.
+    await tx.query(`update agencies set plan = $2, billing_cycle = $3, pending_plan = null, pending_cycle = null, cancel_at_period_end = false,
+                           custom_price_cents = case when plan = $2 then custom_price_cents end where id = $1`, [agencyId, i.plan, i.cycle]);
     const created = await createPeriodInvoice(tx, agencyId, i.plan, i.cycle, start, start, now);
     await audit(tx, { agencyId, actor: userId, action: "assinatura_escolhida", targetType: "agency", targetId: agencyId, summary: `Plano ${planName(i.plan)} ${i.cycle}: ${brl(created.amount_cents)}` });
     return { created, open };
   });
-  for (const o of inv.open) if (o.charge_id) await deps.billing.provider.cancel(deps.billing.ctx, o.charge_id).catch(() => undefined);
+  await cancelCharges(deps, inv.open);
   return chargeAndNotify(deps, inv.created.id);
 }
 
@@ -336,27 +349,81 @@ async function redeem(tx: Sql, agencyId: string, code: string, plan: PlanId, now
   await tx.query(`insert into coupon_redemptions (agency_id, coupon_code, months_left) values ($1, $2, $3)`, [agencyId, c.code, c.months]);
 }
 
-/** Fatura de um período, com o cupom que ainda vale (desconta um mês, ou até 12 no anual). */
+/**
+ * Fatura de um período, com o cupom que ainda vale (desconta um mês, ou até 12 no anual). O preço
+ * combinado só vale para o plano atual da agência (como no quote).
+ */
 async function createPeriodInvoice(tx: Sql, agencyId: string, plan: PlanId, cycle: "mensal" | "anual", start: string, due: string, now: Date) {
   const [a, addons, prices] = await Promise.all([agencyOf(tx, agencyId), addonsOf(tx, agencyId), planPrices(tx)]);
-  const lines = periodLines(monthlyLines(plan, prices, a.custom_price_cents, addons), cycle);
+  const lines = periodLines(monthlyLines(plan, prices, plan === a.plan ? a.custom_price_cents : null, addons), cycle);
   const subtotal = sum(lines);
   const red = await one<{ coupon_code: string; months_left: number; kind: "pct" | "brl"; value: number }>(tx,
     `select r.coupon_code, r.months_left, c.kind, c.value::float8 as value from coupon_redemptions r join coupons c on c.code = r.coupon_code where r.agency_id = $1 and r.months_left > 0 for update of r`, [agencyId]);
-  let discount = 0;
+  let discount = 0, months = 0;
   if (red) {
-    const months = cycle === "anual" ? Math.min(12, red.months_left) : 1;
-    discount = discountOf(red, subtotal, months);
-    await tx.query(`update coupon_redemptions set months_left = greatest(0, months_left - $2) where agency_id = $1`, [agencyId, cycle === "anual" ? red.months_left : 1]);
+    months = couponMonths(cycle, red.months_left);
+    discount = discountOf(red, subtotal, months, cycle);
+    await tx.query(`update coupon_redemptions set months_left = greatest(0, months_left - $2) where agency_id = $1`, [agencyId, months]);
   }
   const end = addMonths(start, cycle === "anual" ? 12 : 1);
   const dueDay = due < today(now) ? today(now) : due;
   const row = await one<{ id: string; amount_cents: number }>(tx,
-    `insert into spherum_invoices (agency_id, kind, plan, cycle, period_start, period_end, items, subtotal_cents, discount_cents, amount_cents, coupon_code, due_date)
-     values ($1, 'periodo', $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11) returning id, amount_cents`,
-    [agencyId, plan, cycle, start, end, json(lines), subtotal, discount, subtotal - discount, red?.coupon_code ?? null, dueDay]);
+    `insert into spherum_invoices (agency_id, kind, plan, cycle, period_start, period_end, items, subtotal_cents, discount_cents, amount_cents, coupon_code, coupon_months, due_date)
+     values ($1, 'periodo', $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12) returning id, amount_cents`,
+    [agencyId, plan, cycle, start, end, json(lines), subtotal, discount, subtotal - discount, red?.coupon_code ?? null, months, dueDay]);
   return row!;
 }
+
+type Canceled = { id: string; agency_id: string; charge_id: string | null };
+
+/** Cancela no banco as faturas em aberto que casam com o filtro e devolve ao cupom os meses que elas usaram. */
+async function cancelInvoices(tx: Sql, where: string, params: unknown[]) {
+  const rows = await tx.query<Canceled & { coupon_code: string | null; coupon_months: number }>(
+    `update spherum_invoices set status = 'cancelado' where status in ('pendente', 'vencido') and ${where} returning id, agency_id, charge_id, coupon_code, coupon_months`, params);
+  for (const r of rows) {
+    if (r.coupon_code && r.coupon_months) await tx.query(`update coupon_redemptions set months_left = months_left + $3 where agency_id = $1 and coupon_code = $2`, [r.agency_id, r.coupon_code, r.coupon_months]);
+  }
+  return rows;
+}
+
+/** Cancela as cobranças no Asaas. A que falhar vai para a fila e o agendador tenta de novo. */
+async function cancelCharges(deps: SubDeps, rows: { charge_id: string | null }[]) {
+  for (const { charge_id } of rows) {
+    if (!charge_id) continue;
+    try {
+      if (!deps.billing) throw new Error("Cobrança não configurada.");
+      await deps.billing.provider.cancel(deps.billing.ctx, charge_id);
+    } catch (error) {
+      console.error("[assinatura] cancelar cobrança no Asaas falhou", charge_id, error);
+      await deps.sql.query(`insert into spherum_charge_cancels (charge_id, error) values ($1, $2) on conflict (charge_id) do update set error = excluded.error, updated_at = now()`,
+        [charge_id, (error instanceof Error ? error.message : String(error)).slice(0, 500)]);
+    }
+  }
+}
+
+/**
+ * Refaz a fatura de período ainda não começada e não paga (a renovação, ou a primeira no teste) depois
+ * de uma troca de plano, ciclo ou add-on: ela foi emitida com o que valia antes.
+ */
+async function redoUpcoming(deps: SubDeps, agencyId: string, now: Date) {
+  const r = await deps.sql.transaction(async (tx) => {
+    const a = await agencyOf(tx, agencyId, true);
+    const old = await one<{ id: string; period_start: string; due_date: string }>(tx,
+      `select id, period_start::text, due_date::text from spherum_invoices where agency_id = $1 and kind = 'periodo' and status = 'pendente' and period_start >= $2::date
+        order by period_start desc limit 1`, [agencyId, today(now)]);
+    if (!old || a.cancel_at_period_end) return null;
+    const canceled = await cancelInvoices(tx, `id = $1`, [old.id]);
+    const created = await createPeriodInvoice(tx, agencyId, a.pending_plan ?? a.plan, a.pending_cycle ?? a.billing_cycle, old.period_start, old.due_date, now);
+    return { canceled, created };
+  });
+  if (!r) return null;
+  await cancelCharges(deps, r.canceled);
+  return chargeAndNotify(deps, r.created.id, now);
+}
+
+/** Refaz a próxima fatura sem derrubar a ação que já foi gravada: se a cobrança falhar, o agendador cria depois. */
+const redoQuietly = (deps: SubDeps, agencyId: string, now: Date) =>
+  redoUpcoming(deps, agencyId, now).catch((error) => { console.error("[assinatura] refazer a próxima fatura falhou", agencyId, error); return null; });
 
 /** Upgrade agora (com ajuste proporcional); plano menor ou outro ciclo no próximo período. */
 async function changePlan(deps: SubDeps, a: AgencyRow, userId: string, i: z.infer<typeof subscribeInput>, now: Date) {
@@ -364,6 +431,7 @@ async function changePlan(deps: SubDeps, a: AgencyRow, userId: string, i: z.infe
   if (i.plan === a.plan && sameCycle) {
     if (a.pending_plan || a.pending_cycle || a.cancel_at_period_end) {
       await deps.sql.query(`update agencies set pending_plan = null, pending_cycle = null, cancel_at_period_end = false where id = $1`, [a.id]);
+      await redoQuietly(deps, a.id, now);
       return { invoice: null, message: `Vocês continuam no plano ${planName(a.plan)}.` };
     }
     throw new XodoError("Esse já é o plano de vocês.", 409);
@@ -371,21 +439,25 @@ async function changePlan(deps: SubDeps, a: AgencyRow, userId: string, i: z.infe
   const up = rankOf(i.plan) > rankOf(a.plan);
   if (up && sameCycle) {
     await assertFits(deps.sql, a.id, i.plan);
-    const prices = await planPrices(deps.sql);
-    const addons = await addonsOf(deps.sql, a.id);
-    const before = sum(periodLines(monthlyLines(a.plan, prices, a.custom_price_cents, addons), a.billing_cycle));
-    const after = sum(periodLines(monthlyLines(i.plan, prices, null, addons), a.billing_cycle));
     const created = await deps.sql.transaction(async (tx) => {
+      // Agência travada e relida aqui: um segundo clique espera o primeiro e não gera outro ajuste.
+      const cur = await agencyOf(tx, a.id, true);
+      if (rankOf(i.plan) <= rankOf(cur.plan) || cur.billing_cycle !== a.billing_cycle) return null;
+      const [prices, addons] = await Promise.all([planPrices(tx), addonsOf(tx, a.id)]);
+      const before = sum(periodLines(monthlyLines(cur.plan, prices, cur.custom_price_cents, addons), cur.billing_cycle));
+      const after = sum(periodLines(monthlyLines(i.plan, prices, null, addons), cur.billing_cycle));
       await tx.query(`update agencies set plan = $2, custom_price_cents = null, pending_plan = null where id = $1`, [a.id, i.plan]);
-      await audit(tx, { agencyId: a.id, actor: userId, action: "assinatura_upgrade", targetType: "agency", targetId: a.id, summary: `Plano ${planName(a.plan)} → ${planName(i.plan)}` });
-      return adjustment(tx, a, after - before, `Diferença para o plano ${planName(i.plan)}`, i.plan, now);
+      await audit(tx, { agencyId: a.id, actor: userId, action: "assinatura_upgrade", targetType: "agency", targetId: a.id, summary: `Plano ${planName(cur.plan)} → ${planName(i.plan)}` });
+      return adjustment(tx, cur, after - before, `Diferença para o plano ${planName(i.plan)}`, i.plan, now);
     });
+    await redoQuietly(deps, a.id, now);
     if (!created) return { invoice: null, message: `Pronto: vocês estão no plano ${planName(i.plan)}.` };
-    return chargeAndNotify(deps, created.id);
+    return chargeAndNotify(deps, created.id, now);
   }
   await assertFits(deps.sql, a.id, i.plan);
   await deps.sql.query(`update agencies set pending_plan = $2, pending_cycle = $3, cancel_at_period_end = false where id = $1`, [a.id, i.plan === a.plan ? null : i.plan, sameCycle ? null : i.cycle]);
   await audit(deps.sql, { agencyId: a.id, actor: userId, action: "assinatura_troca_agendada", targetType: "agency", targetId: a.id, summary: `Plano ${planName(i.plan)} ${i.cycle} a partir do próximo período` });
+  await redoQuietly(deps, a.id, now);
   return { invoice: null, message: `A troca para o plano ${planName(i.plan)} (${i.cycle}) vale a partir de ${fmtDay(dayIn(TZ, new Date(a.current_period_end!)))}.` };
 }
 
@@ -433,16 +505,24 @@ export async function setAddon(deps: SubDeps, agencyId: string, userId: string, 
     if (i.addon === "xodo" && use.xodos > lim.xodos - drop) throw new XodoError("Vocês estão usando esses xodós. Apague um xodó antes.", 409);
   }
   const paying = (a.plan_status === "active" || a.plan_status === "past_due") && a.current_period_end && Date.parse(a.current_period_end) > now.getTime();
-  const created = await deps.sql.transaction(async (tx) => {
+  const r = await deps.sql.transaction(async (tx) => {
+    // Agência travada e quantidade relida aqui: um segundo clique espera o primeiro e não gera outro ajuste.
+    const locked = await agencyOf(tx, agencyId, true);
+    const had = (await addonsOf(tx, agencyId))[i.addon] ?? 0;
+    if (i.qty === had) return { changed: false, created: null };
     if (i.qty === 0) await tx.query(`delete from agency_addons where agency_id = $1 and addon_id = $2`, [agencyId, i.addon]);
     else await tx.query(`insert into agency_addons (agency_id, addon_id, qty) values ($1, $2, $3) on conflict (agency_id, addon_id) do update set qty = excluded.qty, updated_at = now()`, [agencyId, i.addon, i.qty]);
-    await audit(tx, { agencyId, actor: userId, action: "assinatura_addon", targetType: "agency", targetId: agencyId, summary: `${ad.name}: ${cur} → ${i.qty}` });
-    if (!paying || i.qty < cur) return null;
-    const diff = ad.price * 100 * (i.qty - cur) * (a.billing_cycle === "anual" ? 12 * ANNUAL_FACTOR : 1);
-    return adjustment(tx, a, Math.round(diff), ad.name, a.plan, now);
+    await audit(tx, { agencyId, actor: userId, action: "assinatura_addon", targetType: "agency", targetId: agencyId, summary: `${ad.name}: ${had} → ${i.qty}` });
+    if (!paying || i.qty < had) return { changed: true, created: null };
+    const diff = ad.price * 100 * (i.qty - had) * (locked.billing_cycle === "anual" ? 12 * ANNUAL_FACTOR : 1);
+    return { changed: true, created: await adjustment(tx, locked, Math.round(diff), ad.name, locked.plan, now) };
   });
+  if (!r.changed) return { invoice: null, message: "Nada mudou." };
+  // A próxima fatura já emitida (renovação ou a primeira) passa a ter o add-on novo.
+  await redoQuietly(deps, agencyId, now);
+  const created = r.created;
   if (!created) return { invoice: null, message: i.qty > cur ? `${ad.name} ativado${paying ? "" : "; entra na primeira fatura"}.` : `${ad.name} ${i.qty ? "reduzido" : "removido"}; sai da próxima fatura.` };
-  return chargeAndNotify(deps, created.id);
+  return chargeAndNotify(deps, created.id, now);
 }
 
 /** Cancela no fim do período (ou desfaz). No teste, só cancela a fatura em aberto. */
@@ -457,15 +537,13 @@ export async function cancelSubscription(deps: SubDeps, agencyId: string, userId
   if (a.plan_status === "active" || a.plan_status === "past_due") {
     await deps.sql.query(`update agencies set cancel_at_period_end = true where id = $1`, [agencyId]);
     // Renovação já gerada e não paga deixa de valer.
-    const open = await deps.sql.query<{ charge_id: string | null }>(
-      `update spherum_invoices set status = 'cancelado' where agency_id = $1 and kind = 'periodo' and status = 'pendente' and period_start >= $2::date returning charge_id`,
+    const open = await cancelInvoices(deps.sql, `agency_id = $1 and kind = 'periodo' and status = 'pendente' and period_start >= $2::date`,
       [agencyId, a.current_period_end ? dayIn(TZ, new Date(a.current_period_end)) : today(now)]);
-    for (const o of open) if (o.charge_id && deps.billing) await deps.billing.provider.cancel(deps.billing.ctx, o.charge_id).catch(() => undefined);
+    await cancelCharges(deps, open);
     await audit(deps.sql, { agencyId, actor: userId, action: "assinatura_cancelada", targetType: "agency", targetId: agencyId, summary: "Cancela no fim do período" });
     return { message: a.current_period_end ? `A assinatura fica ativa até ${fmtDay(dayIn(TZ, new Date(a.current_period_end)))} e não renova.` : "A assinatura não renova." };
   }
-  const open = await deps.sql.query<{ charge_id: string | null }>(`update spherum_invoices set status = 'cancelado' where agency_id = $1 and status in ('pendente', 'vencido') returning charge_id`, [agencyId]);
-  for (const o of open) if (o.charge_id && deps.billing) await deps.billing.provider.cancel(deps.billing.ctx, o.charge_id).catch(() => undefined);
+  await cancelCharges(deps, await cancelInvoices(deps.sql, `agency_id = $1`, [agencyId]));
   return { message: "Fatura em aberto cancelada." };
 }
 
@@ -474,70 +552,141 @@ export async function cancelSubscription(deps: SubDeps, agencyId: string, userId
 // ---------------------------------------------------------------------------
 
 /** Cria a cobrança no Asaas (se ainda não existe), avisa por e-mail e devolve a fatura com o link. */
-async function chargeAndNotify(deps: SubDeps, invoiceId: string) {
-  const inv = await createCharge(deps, invoiceId);
+async function chargeAndNotify(deps: SubDeps, invoiceId: string, now = new Date()) {
+  const inv = await createCharge(deps, invoiceId, now);
+  const due = inv.due_date < today(now) ? today(now) : inv.due_date;
   if (inv.amount_cents > 0 && inv.pay_url) await mailLeaders(deps, inv.agency_id, `Fatura do Spherum: ${brl(inv.amount_cents)}`,
-    `Sua fatura do Spherum de ${brl(inv.amount_cents)} vence em ${fmtDay(inv.due_date)}.\n\nPague por Pix, boleto ou cartão: ${inv.pay_url}\n\nAs faturas ficam em Configurações → Plano e cobrança.`);
+    `Sua fatura do Spherum de ${brl(inv.amount_cents)} vence em ${fmtDay(due)}.\n\nPague por Pix, boleto ou cartão: ${inv.pay_url}\n\nAs faturas ficam em Configurações → Plano e cobrança.`);
   return { invoice: inv, message: inv.amount_cents > 0 ? "Fatura gerada." : "Sem valor a pagar." };
 }
 
 type InvoiceRow = { id: string; agency_id: string; kind: string; plan: PlanId; cycle: "mensal" | "anual"; period_start: string; period_end: string; amount_cents: number; due_date: string; status: string; charge_id: string | null; pay_url: string | null; pix_code: string | null; boleto_line: string | null };
 const INVOICE_COLS = `id, agency_id, kind, plan, cycle, period_start::text, period_end::text, amount_cents, due_date::text, status, charge_id, pay_url, pix_code, boleto_line`;
+const invoiceById = async (sql: Sql, id: string) => (await one<InvoiceRow>(sql, `select ${INVOICE_COLS} from spherum_invoices where id = $1`, [id]))!;
 
-async function createCharge(deps: SubDeps, invoiceId: string): Promise<InvoiceRow> {
-  const inv = (await one<InvoiceRow>(deps.sql, `select ${INVOICE_COLS} from spherum_invoices where id = $1`, [invoiceId]))!;
-  if (inv.charge_id || inv.status !== "pendente") return inv;
+/** Fatura em aberto (pendente ou vencida) sem cobrança ganha uma no Asaas, que vence hoje se a fatura já venceu. */
+async function createCharge(deps: SubDeps, invoiceId: string, now = new Date()): Promise<InvoiceRow> {
+  const inv = await invoiceById(deps.sql, invoiceId);
+  if (inv.charge_id || (inv.status !== "pendente" && inv.status !== "vencido")) return inv;
   // Fatura zerada (cupom de 100%): já vale como paga.
-  if (inv.amount_cents === 0) { await applyState(deps, inv, { status: "pago", paidCents: 0, method: "cupom" }); return (await one<InvoiceRow>(deps.sql, `select ${INVOICE_COLS} from spherum_invoices where id = $1`, [invoiceId]))!; }
+  if (inv.amount_cents === 0) { await applyState(deps, inv, { status: "pago", paidCents: 0, method: "cupom" }, now); return invoiceById(deps.sql, invoiceId); }
   if (!deps.billing) throw new XodoError("A cobrança do Spherum ainda não está configurada.", 503);
   const a = await agencyOf(deps.sql, inv.agency_id);
   const email = a.billing_email ?? (await one<{ email: string | null }>(deps.sql,
     `select u.email from agency_members m join auth.users u on u.id = m.user_id where m.agency_id = $1 and m.role = 'owner' order by m.created_at limit 1`, [inv.agency_id]))?.email ?? null;
   const doc = a.billing_document ?? a.cnpj;
   if (!doc && !a.billing_customer_id) throw new XodoError("Informe o CPF ou o CNPJ de quem paga para gerar a fatura.", 400);
+  let c;
   try {
-    const c = await deps.billing.provider.createCharge(deps.billing.ctx, {
-      invoiceId: inv.id, amountCents: inv.amount_cents, dueDate: inv.due_date, methods: ["pix", "boleto", "cartao"],
+    c = await deps.billing.provider.createCharge(deps.billing.ctx, {
+      invoiceId: inv.id, amountCents: inv.amount_cents, dueDate: inv.due_date < today(now) ? today(now) : inv.due_date, methods: ["pix", "boleto", "cartao"],
       description: `Spherum · ${inv.kind === "ajuste" ? "ajuste" : `plano ${planName(inv.plan)} ${inv.cycle}`} · ${fmtDay(inv.period_start)} a ${fmtDay(addDays(inv.period_end, -1))}`,
       payer: { name: a.name, email, document: doc, phone: a.phone }, customerId: a.billing_customer_id,
       notifyUrl: `${deps.appUrl}/api/spherum/asaas`, returnUrl: `${deps.appUrl}/agencia`,
     });
-    if (c.customerId && c.customerId !== a.billing_customer_id) await deps.sql.query(`update agencies set billing_customer_id = $2 where id = $1`, [a.id, c.customerId]);
-    return (await one<InvoiceRow>(deps.sql, `update spherum_invoices set charge_id = $2, pay_url = $3, pix_code = $4, boleto_line = $5, error = null where id = $1 returning ${INVOICE_COLS}`,
-      [inv.id, c.chargeId, c.paymentUrl ?? null, c.pixCode ?? null, c.boletoLine ?? null]))!;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     await deps.sql.query(`update spherum_invoices set error = $2 where id = $1`, [inv.id, msg.slice(0, 500)]);
     if (error instanceof IntegrationError || error instanceof XodoError) throw new XodoError(`Não deu para gerar a cobrança no Asaas: ${msg}`, 502);
     throw error;
   }
+  if (c.customerId && c.customerId !== a.billing_customer_id) await deps.sql.query(`update agencies set billing_customer_id = $2 where id = $1`, [a.id, c.customerId]);
+  const row = await one<InvoiceRow>(deps.sql, `update spherum_invoices set charge_id = $2, pay_url = $3, pix_code = $4, boleto_line = $5, error = null
+      where id = $1 and status in ('pendente', 'vencido') and charge_id is null returning ${INVOICE_COLS}`,
+    [inv.id, c.chargeId, c.paymentUrl ?? null, c.pixCode ?? null, c.boletoLine ?? null]);
+  if (row) return row;
+  // A fatura foi cancelada (ou ganhou outra cobrança) enquanto esta era criada: a nova não vale.
+  await cancelCharges(deps, [{ charge_id: c.chargeId }]);
+  return invoiceById(deps.sql, invoiceId);
 }
 
-/** Aplica o status que o Asaas informou. Pagamento de período libera e estende a assinatura. */
+/**
+ * Aplica o status que o Asaas informou. Pagamento de período libera e estende a assinatura; estorno
+ * devolve o período. Vencida não volta a pendente, e fatura cancelada que foi paga vira crédito para o
+ * admin resolver (não reativa nada).
+ */
 async function applyState(deps: SubDeps, inv: InvoiceRow, st: ChargeState, now = new Date()) {
   const next = st.status === "pago" ? "pago" : st.status === "vencido" ? "vencido" : st.status === "cancelado" ? "cancelado" : st.status === "estornado" ? "estornado" : "pendente";
-  if (next === inv.status) return false;
-  const paid = await deps.sql.transaction(async (tx) => {
+  if (next === inv.status || inv.status === "estornado" || (inv.status === "vencido" && next === "pendente")) return false;
+  if (inv.status === "cancelado") return next === "pago" ? paidAfterCancel(deps, inv, st) : false;
+  const result = await deps.sql.transaction(async (tx) => {
     const row = await one<{ status: string }>(tx, `update spherum_invoices set status = $2, paid_at = case when $2 = 'pago' then coalesce($3::timestamptz, now()) else paid_at end, method = coalesce($4, method)
       where id = $1 and status = $5 returning status`, [inv.id, next, st.paidAt ?? null, st.method ?? null, inv.status]);
-    if (!row) return false;
-    if (next !== "pago" || inv.kind !== "periodo") return next === "pago";
-    const end = startOf(inv.period_end).toISOString();
-    await tx.query(
-      `update agencies set plan = $2, billing_cycle = $3, plan_status = 'active',
-              current_period_end = greatest(coalesce(current_period_end, $4::timestamptz), $4::timestamptz),
-              pending_plan = case when pending_plan = $2 then null else pending_plan end,
-              pending_cycle = case when pending_cycle = $3 then null else pending_cycle end,
-              locked_at = null, locked_reason = null
-        where id = $1`, [inv.agency_id, inv.plan, inv.cycle, end]);
+    if (!row) return null;
+    // Cancelada no Asaas sem pagar: os meses do cupom voltam.
+    if (next === "cancelado") await tx.query(`update coupon_redemptions r set months_left = r.months_left + i.coupon_months from spherum_invoices i
+      where i.id = $1 and r.agency_id = i.agency_id and r.coupon_code = i.coupon_code and i.coupon_months > 0`, [inv.id]);
+    if (inv.status === "pago") { if (inv.kind === "periodo") await reversePeriod(tx, inv, now); return "estorno"; }
+    if (next !== "pago") return null;
+    const a = await agencyOf(tx, inv.agency_id, true);
+    const day = today(now);
+    // Outras faturas vencidas: a agência continua em atraso (e bloqueada, se passaram da carência).
+    const late = await one<{ any: boolean; grace: boolean }>(tx,
+      `select count(*) > 0 as any, coalesce(bool_or(due_date < $3::date - ${GRACE_DAYS}), false) as grace from spherum_invoices where agency_id = $1 and id <> $2 and status = 'vencido'`, [inv.agency_id, inv.id, day]);
+    if (inv.kind === "periodo") {
+      // Período que já tinha acabado quando foi pago (sem outro período pago depois): recomeça no dia do
+      // pagamento, sem cobrar os meses parados.
+      const payDay = dayIn(TZ, st.paidAt ? new Date(st.paidAt) : now);
+      const covered = a.current_period_end && Date.parse(a.current_period_end) > startOf(payDay).getTime();
+      const endDay = inv.period_end <= payDay && !covered ? addMonths(payDay, inv.cycle === "anual" ? 12 : 1) : inv.period_end;
+      // Plano e ciclo da fatura valem na assinatura nova e na troca agendada; uma troca feita depois da emissão (upgrade) fica.
+      const fresh = a.plan_status !== "active" && a.plan_status !== "past_due";
+      const plan = fresh || a.pending_plan === inv.plan ? inv.plan : a.plan;
+      const cycle = fresh || a.pending_cycle === inv.cycle ? inv.cycle : a.billing_cycle;
+      const end = startOf(endDay).toISOString();
+      await tx.query(
+        `update agencies set plan = $2, billing_cycle = $3, plan_status = $5,
+                current_period_end = greatest(coalesce(current_period_end, $4::timestamptz), $4::timestamptz),
+                custom_price_cents = case when plan = $2 then custom_price_cents end,
+                pending_plan = case when pending_plan = $2 then null else pending_plan end,
+                pending_cycle = case when pending_cycle = $3 then null else pending_cycle end,
+                locked_at = case when $6 and locked_reason = 'atraso' then locked_at end,
+                locked_reason = case when $6 and locked_reason = 'atraso' then locked_reason end
+          where id = $1`, [inv.agency_id, plan, cycle, end, late!.any ? "past_due" : "active", late!.grace]);
+      if (endDay !== inv.period_end) await audit(tx, { agencyId: inv.agency_id, actor: null, action: "assinatura_periodo_recomecado", targetType: "spherum_invoice", targetId: inv.id, summary: `Período pago depois do fim: vale de ${fmtDay(payDay)} a ${fmtDay(endDay)}` });
+    } else if (!late!.any && a.current_period_end && Date.parse(a.current_period_end) > now.getTime()) {
+      // Ajuste pago e nada mais em aberto: sai do atraso e do bloqueio por atraso.
+      await tx.query(`update agencies set plan_status = case when plan_status = 'past_due' then 'active' else plan_status end,
+                             locked_at = case when locked_reason = 'atraso' then null else locked_at end,
+                             locked_reason = case when locked_reason = 'atraso' then null else locked_reason end where id = $1`, [inv.agency_id]);
+    }
     await audit(tx, { agencyId: inv.agency_id, actor: null, action: "assinatura_paga", targetType: "spherum_invoice", targetId: inv.id, summary: `Fatura de ${brl(inv.amount_cents)} paga` });
-    return true;
+    return "pago";
   });
-  if (paid) {
+  if (result === "pago") {
     await notify(deps.sql, inv.agency_id, "assinatura_paga", "Pagamento confirmado", `Recebemos ${brl(inv.amount_cents)}. Obrigado!`);
     await mailLeaders(deps, inv.agency_id, "Pagamento confirmado · Spherum", `Recebemos o pagamento de ${brl(inv.amount_cents)}. Obrigado por usar o Spherum!`);
   }
-  void now;
+  return result !== null;
+}
+
+/**
+ * Estorno ou chargeback de um período pago: a assinatura perde esse período (o fim volta um ciclo) e,
+ * se ele já começou, a agência fica em atraso; o bloqueio segue a carência a partir do novo fim.
+ */
+async function reversePeriod(tx: Sql, inv: InvoiceRow, now: Date) {
+  const a = await agencyOf(tx, inv.agency_id, true);
+  if (!a.current_period_end) return;
+  const back = startOf(addMonths(dayIn(TZ, new Date(a.current_period_end)), inv.cycle === "anual" ? -12 : -1));
+  await tx.query(`update agencies set current_period_end = $2::timestamptz, plan_status = case when plan_status = 'active' and $2::timestamptz <= $3::timestamptz then 'past_due' else plan_status end where id = $1`,
+    [inv.agency_id, back.toISOString(), now.toISOString()]);
+  await audit(tx, { agencyId: inv.agency_id, actor: null, action: "assinatura_estornada", targetType: "spherum_invoice", targetId: inv.id, summary: `Fatura de ${brl(inv.amount_cents)} estornada: período vai até ${fmtDay(dayIn(TZ, back))}` });
+}
+
+/** Fatura cancelada que mesmo assim foi paga no Asaas: fica registrada como crédito e o admin é avisado (em Receita e na auditoria). */
+async function paidAfterCancel(deps: SubDeps, inv: InvoiceRow, st: ChargeState) {
+  const row = await one(deps.sql, `update spherum_invoices set paid_at = coalesce($2::timestamptz, now()), method = coalesce($3, method),
+      error = $4 where id = $1 and status = 'cancelado' and paid_at is null returning id`,
+    [inv.id, st.paidAt ?? null, st.method ?? null, `Paga depois de cancelada: crédito de ${brl(st.paidCents ?? inv.amount_cents)} a devolver ou abater`]);
+  if (!row) return false;
+  await audit(deps.sql, { agencyId: inv.agency_id, actor: null, action: "assinatura_paga_cancelada", targetType: "spherum_invoice", targetId: inv.id, summary: `Fatura cancelada paga no Asaas (${brl(st.paidCents ?? inv.amount_cents)}): crédito para o admin resolver` });
+  console.error("[assinatura] fatura cancelada foi paga", inv.id);
+  await staffAlert(deps.sql, deps.mail, {
+    key: `asaas:pago-cancelado:${inv.id}`,
+    subject: "Uma agência pagou uma fatura já cancelada",
+    text: `A fatura ${inv.id} foi paga no Asaas depois de cancelada (${brl(st.paidCents ?? inv.amount_cents)}). O valor virou crédito: devolva ou abata na próxima fatura em Receita, no admin.`,
+    cooldownHours: 24 * 365,
+  }).catch((error) => console.error("[assinatura] alerta falhou", error));
   return true;
 }
 
@@ -554,15 +703,12 @@ async function mailLeaders(deps: SubDeps, agencyId: string, subject: string, tex
 }
 
 /** Link para pagar de novo (a cobrança do Asaas pode ter sido cancelada ou nunca criada). */
-export async function payLink(deps: SubDeps, agencyId: string, invoiceId: string) {
+export async function payLink(deps: SubDeps, agencyId: string, invoiceId: string, now = new Date()) {
   const inv = await one<InvoiceRow>(deps.sql, `select ${INVOICE_COLS} from spherum_invoices where id = $1 and agency_id = $2`, [invoiceId, agencyId]);
   if (!inv) throw new XodoError("Fatura não encontrada.", 404);
   if (inv.status !== "pendente" && inv.status !== "vencido") throw new XodoError("Essa fatura não está em aberto.", 409);
-  if (inv.status === "vencido" && inv.charge_id) {
-    // Vencida: o Asaas ainda aceita pagar a mesma cobrança; o link continua valendo.
-    return inv;
-  }
-  return createCharge(deps, inv.id);
+  // Com cobrança, o link continua valendo (o Asaas aceita pagar vencida); sem, cria uma que vence hoje.
+  return createCharge(deps, inv.id, now);
 }
 
 /** Aviso do Asaas (conta do Spherum). O status vale quando o Spherum pergunta de novo ao Asaas. */
@@ -605,7 +751,7 @@ async function lock(deps: SubDeps, agencyId: string, reason: "teste" | "atraso" 
 
 export async function subscriptionSweep(deps: SubDeps, now = new Date(), opts: { deadline?: number } = {}) {
   const { sql } = deps;
-  const out = { refreshed: 0, overdue: 0, renewed: 0, locked: 0, errors: 0 };
+  const out = { refreshed: 0, charged: 0, canceled: 0, overdue: 0, renewed: 0, locked: 0, errors: 0 };
   const left = () => !opts.deadline || Date.now() < opts.deadline;
   const day = today(now);
 
@@ -618,33 +764,53 @@ export async function subscriptionSweep(deps: SubDeps, now = new Date(), opts: {
       try { const st = await deps.billing.provider.status(deps.billing.ctx, inv.charge_id!, inv.id); if (st && (await applyState(deps, inv, st, now))) out.refreshed++; else await sql.query(`update spherum_invoices set updated_at = now() where id = $1`, [inv.id]); }
       catch (error) { out.errors++; console.error("[assinatura] conferência falhou", inv.id, error); }
     }
+    // Faturas em aberto sem cobrança (o Asaas falhou na hora): cria de novo, vencendo hoje se já venceu.
+    const uncharged = await sql.query<{ id: string }>(`select id from spherum_invoices where status in ('pendente', 'vencido') and charge_id is null
+      and updated_at < $1::timestamptz - interval '30 minutes' order by due_date limit 20`, [now.toISOString()]);
+    for (const inv of uncharged) {
+      if (!left()) break;
+      try { await chargeAndNotify(deps, inv.id, now); out.charged++; }
+      catch (error) { out.errors++; console.error("[assinatura] cobrança de novo falhou", inv.id, error); }
+    }
+    // Cobranças que ficaram para cancelar no Asaas.
+    const cancels = await sql.query<{ charge_id: string }>(`select charge_id from spherum_charge_cancels where attempts < 20 and updated_at < $1::timestamptz - interval '30 minutes' order by created_at limit 20`, [now.toISOString()]);
+    for (const c of cancels) {
+      if (!left()) break;
+      try { await deps.billing.provider.cancel(deps.billing.ctx, c.charge_id); await sql.query(`delete from spherum_charge_cancels where charge_id = $1`, [c.charge_id]); out.canceled++; }
+      catch (error) {
+        out.errors++;
+        await sql.query(`update spherum_charge_cancels set attempts = attempts + 1, error = $2, updated_at = now() where charge_id = $1`, [c.charge_id, (error instanceof Error ? error.message : String(error)).slice(0, 500)]);
+      }
+    }
   }
 
-  // 2. Vencidas: avisa uma vez e marca a agência como em atraso.
+  // 2. Vencidas (período ou ajuste): avisa uma vez e marca a agência como em atraso. Pagante à mão
+  // (sem fim de período) fica de fora.
   const overdue = await sql.query<{ id: string; agency_id: string; amount_cents: number; kind: string; pay_url: string | null }>(
     `update spherum_invoices set status = 'vencido' where status = 'pendente' and due_date < $1::date returning id, agency_id, amount_cents, kind, pay_url`, [day]);
   for (const o of overdue) {
     out.overdue++;
-    if (o.kind === "periodo") await sql.query(`update agencies set plan_status = 'past_due' where id = $1 and plan_status = 'active'`, [o.agency_id]);
+    await sql.query(`update agencies set plan_status = 'past_due' where id = $1 and plan_status = 'active' and current_period_end is not null`, [o.agency_id]);
     await notify(sql, o.agency_id, "assinatura_atraso", "Fatura do Spherum vencida", `A fatura de ${brl(o.amount_cents)} venceu. Vocês têm ${GRACE_DAYS} dias antes do bloqueio.`);
     await mailLeaders(deps, o.agency_id, "Fatura do Spherum vencida", `A fatura de ${brl(o.amount_cents)} venceu. Vocês têm ${GRACE_DAYS} dias para pagar antes que a agência seja bloqueada.${o.pay_url ? `\n\nPagar: ${o.pay_url}` : ""}`);
   }
 
-  // 3. Renovação: a fatura do próximo período sai 5 dias antes do fim do atual.
+  // 3. Renovação: a fatura do próximo período sai 5 dias antes do fim do atual. Quem já tem fatura de
+  // período em aberto (de qualquer início, ex.: reassinou em atraso) não ganha outra.
   const due = await sql.query<{ id: string; current_period_end: string; plan: PlanId; billing_cycle: "mensal" | "anual"; pending_plan: PlanId | null; pending_cycle: "mensal" | "anual" | null }>(
     `select a.id, a.current_period_end::text, a.plan, a.billing_cycle, a.pending_plan, a.pending_cycle from agencies a
       where a.plan_status in ('active', 'past_due') and not a.cancel_at_period_end and a.suspended_at is null
         and a.current_period_end is not null and a.current_period_end <= $1::timestamptz + interval '${RENEW_DAYS} days'
         and not exists (select 1 from spherum_invoices i where i.agency_id = a.id and i.kind = 'periodo' and i.status not in ('cancelado', 'estornado')
-                          and i.period_start = (a.current_period_end at time zone 'America/Sao_Paulo')::date)
+                          and (i.period_start = (a.current_period_end at time zone 'America/Sao_Paulo')::date or i.status in ('pendente', 'vencido')))
       order by a.current_period_end limit 50`, [now.toISOString()]);
   for (const a of due) {
     if (!left()) break;
     try {
       const start = dayIn(TZ, new Date(a.current_period_end));
       const created = await sql.transaction((tx) => createPeriodInvoice(tx, a.id, a.pending_plan ?? a.plan, a.pending_cycle ?? a.billing_cycle, start, start, now));
-      await chargeAndNotify(deps, created.id);
       out.renewed++;
+      await chargeAndNotify(deps, created.id, now);
     } catch (error) { out.errors++; console.error("[assinatura] renovação falhou", a.id, error); }
   }
 
@@ -665,7 +831,7 @@ export async function subscriptionSweep(deps: SubDeps, now = new Date(), opts: {
   const late = await sql.query<{ id: string }>(
     `select a.id from agencies a where a.plan_status = 'past_due' and a.locked_at is null
         and ((a.current_period_end is not null and a.current_period_end <= $1::timestamptz - interval '${GRACE_DAYS} days')
-          or exists (select 1 from spherum_invoices i where i.agency_id = a.id and i.kind = 'periodo' and i.status = 'vencido' and i.due_date < $2::date - ${GRACE_DAYS}))`,
+          or exists (select 1 from spherum_invoices i where i.agency_id = a.id and i.status = 'vencido' and i.due_date < $2::date - ${GRACE_DAYS}))`,
     [now.toISOString(), day]);
   for (const a of late) if (await lock(deps, a.id, "atraso", now)) out.locked++;
   return out;
@@ -693,11 +859,12 @@ export async function adminInvoiceAction(deps: SubDeps, actor: string, invoiceId
       const base = deps.billing.ctx.env === "producao" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
       await requestJson(deps.billing.ctx.http, `${base}/payments/${encodeURIComponent(inv.charge_id)}/refund`, { method: "POST", json: { description: reason }, headers: { access_token: deps.billing.ctx.creds.api_key, "user-agent": "Spherum" } });
     }
-    await deps.sql.query(`update spherum_invoices set status = 'estornado' where id = $1`, [invoiceId]);
+    // Mesmo caminho do aviso do Asaas: o período pago sai da assinatura.
+    await applyState(deps, inv, { status: "estornado" });
   } else {
-    if (inv.status !== "pendente" && inv.status !== "vencido") throw new XodoError("Só dá para cancelar fatura em aberto.", 409);
-    if (inv.charge_id && deps.billing) await deps.billing.provider.cancel(deps.billing.ctx, inv.charge_id).catch(() => undefined);
-    await deps.sql.query(`update spherum_invoices set status = 'cancelado' where id = $1`, [invoiceId]);
+    const canceled = await cancelInvoices(deps.sql, `id = $1`, [invoiceId]);
+    if (!canceled.length) throw new XodoError("Só dá para cancelar fatura em aberto.", 409);
+    await cancelCharges(deps, canceled);
   }
   await audit(deps.sql, { agencyId: inv.agency_id, actor, action: action === "refund" ? "admin_estorno" : "admin_fatura_cancelada", targetType: "spherum_invoice", targetId: invoiceId, summary: `${action === "refund" ? "Estorno" : "Cancelamento"} de ${brl(inv.amount_cents)}: ${reason}` });
 }

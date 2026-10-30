@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { addEntry, dreReport } from "@/lib/core/dre";
 import { serverSql } from "@/lib/xodos/db";
-import { CAN_BILL, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
+import { CAN_BILL, CAN_READ, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
 
 /** GET /api/finance/entries?agency_id=&months=  DRE dos últimos meses (padrão 3, até 12). */
 export async function GET(request: Request) {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams;
     const agencyId = uuid.parse(q.get("agency_id"));
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, CAN_BILL, { area: "financeiro" });
+    await requireRole(sql, userId, agencyId, CAN_READ, { area: "financeiro" });
     return NextResponse.json(await dreReport(sql, agencyId, Math.min(12, Math.max(1, Number(q.get("months")) || 3))));
   } catch (error) {
     return fail(error);

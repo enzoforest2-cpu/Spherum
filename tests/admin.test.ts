@@ -276,3 +276,18 @@ test("revisão: meses do admin pelo fuso de Brasília", async () => {
   assert.equal(b.mrr.series[b.mrr.series.length - 1].m, "2026-10");
   assert.equal(b.metrics.signups[b.metrics.signups.length - 1].m, "2026-10");
 });
+
+test("alerta da equipe: etapa do agendador falhando duas vezes seguidas avisa uma vez", async () => {
+  const { cronAlerts } = await import("../src/lib/core/alerts");
+  const { recordCronRun } = await import("../src/lib/core/admin");
+  const sent: string[] = [];
+  const mail = async (m: { subject: string }) => { sent.push(m.subject); return true; };
+  await sql.query(`delete from cron_runs`);
+  await recordCronRun(sql, new Date(Date.now() - 900_000), { fila: "falhou: gateway fora", posts: 3 });
+  assert.deepEqual(await cronAlerts(sql, mail, { ALERT_EMAIL: "ops@spherum.com.br" }), [], "uma falha só não avisa");
+  await recordCronRun(sql, new Date(), { fila: "falhou: gateway fora", posts: 3 });
+  assert.deepEqual(await cronAlerts(sql, mail, { ALERT_EMAIL: "ops@spherum.com.br" }), ["fila"]);
+  await recordCronRun(sql, new Date(), { fila: "falhou: de novo", posts: 3 });
+  assert.deepEqual(await cronAlerts(sql, mail, { ALERT_EMAIL: "ops@spherum.com.br" }), [], "não repete por 6 horas");
+  assert.equal(sent.length, 1);
+});

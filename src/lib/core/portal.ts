@@ -147,7 +147,7 @@ export async function agencyPortal(sql: Sql, agencyId: string, userId: string, n
     sql.query<{ user_id: string; role: string; title: string | null; full_name: string | null; email: string | null; clients: number; role_id: string | null; role_name: string | null }>(
       `select m.user_id, m.role, m.title, p.full_name, u.email, m.role_id, r.name as role_name,
               (select count(*)::int from clients c where c.agency_id = m.agency_id and c.owner_user_id = m.user_id and c.archived_at is null) as clients
-         from agency_members m left join agency_roles r on r.id = m.role_id left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
+         from agency_members m left join agency_roles r on r.id = m.role_id and r.agency_id = m.agency_id left join profiles p on p.id = m.user_id left join auth.users u on u.id = m.user_id
         where m.agency_id = $1
         order by case m.role when 'owner' then 0 when 'admin' then 1 when 'member' then 2 else 3 end, m.created_at`,
       [agencyId],
@@ -386,13 +386,18 @@ function withoutHiddenAreas<T extends Record<string, unknown>>(access: Access, d
   if (hide("financeiro")) {
     empty(["invoices", "recurrences", "paymentAccounts", "contracts"]);
     empty(["dre", "profit"], () => null);
-    out.clients = (out.clients as Record<string, unknown>[]).map((c) => ({ ...c, mrr: 0, fee: null }));
+    out.clients = (out.clients as Record<string, unknown>[]).map((c) => ({ ...c, mrr: 0, fee: null, fin: "" }));
     out.kpis = { ...(out.kpis as Record<string, unknown>), mrr: 0 };
+    const rk = out.risk as { rows: Record<string, unknown>[] } | null;
+    if (rk) out.risk = { ...rk, rows: rk.rows.map((r) => ({ ...r, mrr: 0, signals: ((r.signals as string[]) ?? []).filter((x) => !/fatura|pagamento|vencid/i.test(x)) })), revenue_at_risk: 0 };
   }
   if (hide("campanhas")) {
     empty(["camps", "plat", "daily", "reports", "accounts"]);
     out.cdaily = {};
-    out.attention = (out.attention as { kind: string }[]).filter((a) => a.kind !== "Campanha");
+    out.attention = (out.attention as { kind: string }[]).filter((a) => a.kind !== "Campanha" && a.kind !== "Integração");
+    const zero = { cur: 0, prev: 0 };
+    out.kpis = { ...(out.kpis as Record<string, unknown>), spend: zero, results: zero, revenue: zero };
+    out.clients = (out.clients as Record<string, unknown>[]).map((c) => ({ ...c, spend30: 0, cur: null, goal: null, reasons: [] }));
   }
   if (hide("comercial")) {
     empty(["forms", "meetings"]);
@@ -401,8 +406,16 @@ function withoutHiddenAreas<T extends Record<string, unknown>>(access: Access, d
     out.prospect_unread = 0;
   }
   if (hide("projetos")) empty(["projects"]);
-  if (hide("clientes")) empty(["documents", "collab", "tickets"]);
-  if (hide("equipe")) empty(["invites"]);
+  if (hide("clientes")) {
+    empty(["documents", "collab", "tickets"]);
+    out.risk = null;
+    out.clients = (out.clients as Record<string, unknown>[]).map((c) => ({ ...c, contact: "" }));
+  }
+  // A lista da equipe fica só com quem é a própria pessoa (o nome dela aparece no topo).
+  if (hide("equipe")) {
+    empty(["invites"]);
+    out.team = (out.team as { user_id?: string }[]).filter((m) => m.user_id === (data.me as { user_id?: string } | undefined)?.user_id);
+  }
   if (hide("configuracoes")) {
     empty(["connections"]);
     out.subscription = null;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectSourceKey, listGroups, searchCnae, searchCnpj, searchGroup, searchInstagram, searchMaps, sourcesStatus } from "@/lib/core/prospect-sources";
 import { requireFeature } from "@/lib/core/platform";
+import { prospectQuota } from "@/lib/core/prospect";
 import { serverIntegrations } from "@/lib/integrations";
 import { serverSql } from "@/lib/xodos/db";
 import { CAN_MANAGE, CAN_USE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
@@ -9,10 +10,10 @@ import { CAN_MANAGE, CAN_USE, fail, requireRole, requireUser, uuid } from "@/lib
 /**
  * Fontes da Prospecção. A busca só devolve candidatos; importar é em POST /api/prospect/leads.
  *
- * GET  /api/prospect/sources?agency_id=…              quais fontes estão prontas
+ * GET  /api/prospect/sources?agency_id=…              quais fontes estão prontas e a cota do mês
  * GET  /api/prospect/sources?agency_id=…&cnae=texto   atividades (CNAE) pelo nome ou código
  * POST /api/prospect/sources  { agency_id, fonte, ... }
- *   chave:     { source: maps | cnpj, key }       guarda a chave (quem edita Vendas)
+ *   chave:     { source: maps | cnpj, key }       guarda a chave (quem edita Vendas e Configurações)
  *   maps:      { query, city, page_token? }
  *   cnpj:      { cnae[], uf, city?, mobile_only?, with_email?, limit?, token? }
  *   instagram: { usernames[] }
@@ -31,7 +32,8 @@ export async function GET(request: Request) {
     await requireRole(sql, userId, agencyId, CAN_USE, { area: "comercial" });
     const cnae = url.searchParams.get("cnae");
     if (cnae != null) return NextResponse.json({ cnae: await searchCnae({ sql, ...serverIntegrations() }, cnae) });
-    return NextResponse.json(await sourcesStatus(sql, agencyId));
+    const [status, quota] = await Promise.all([sourcesStatus(sql, agencyId), prospectQuota(sql, agencyId)]);
+    return NextResponse.json({ ...status, quota });
   } catch (error) {
     return fail(error);
   }
@@ -44,7 +46,8 @@ export async function POST(request: Request) {
     const agencyId = uuid.parse(agency_id);
     const kind = z.enum(["chave", "maps", "cnpj", "instagram", "grupos", "grupo"]).parse(fonte);
     const sql = await serverSql();
-    await requireRole(sql, userId, agencyId, kind === "chave" ? CAN_MANAGE : CAN_USE, { area: "comercial" });
+    // Cadastrar a chave paga da agência pede também editar Integrações e configurações.
+    await requireRole(sql, userId, agencyId, kind === "chave" ? CAN_MANAGE : CAN_USE, { area: kind === "chave" ? ["comercial", "configuracoes"] : "comercial" });
     await requireFeature(sql, "prospect");
     const deps = { sql, ...serverIntegrations() };
     switch (kind) {

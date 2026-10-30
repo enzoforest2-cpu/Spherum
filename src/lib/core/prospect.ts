@@ -4,6 +4,7 @@ import { json, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { createDeal } from "./crm";
 import { platformFlags, requireFeature } from "./platform";
+import { limitsOf } from "./subscription";
 
 /**
  * Prospecção: listas próprias da agência (planilha ou números colados) e uma cadência pelo
@@ -88,6 +89,9 @@ export function normPhone(raw: string): string | null {
   if (d.startsWith("0")) d = d.slice(1);
   if (d.length !== 10 && d.length !== 11) return null;
   if (!/^[1-9][1-9]/.test(d) || (d.length === 11 && d[2] !== "9")) return null;
+  // Celular antigo sem o 9 da frente (8 dígitos começando com 6 a 9): o mesmo número com o 9, para
+  // casar com a lista de bloqueio e com quem já está numa lista.
+  if (d.length === 10 && /[6-9]/.test(d[2])) d = d.slice(0, 2) + "9" + d.slice(2);
   return "55" + d;
 }
 
@@ -135,13 +139,33 @@ export const importInput = z.object({
   rows: z.array(row).max(10_000).optional(),
   // Uma linha por contato: "telefone, nome, empresa".
   text: z.string().max(400_000).optional(),
-  // Quem importa confirma que os contatos são da agência (clientes, eventos, indicações) e podem receber mensagem.
+  // Quem importa confirma a base para abordar: contatos da agência (planilha) ou empresas de fontes públicas
+  // abordadas com mensagem relevante e saída a um "SAIR" (buscas).
   consent: z.literal(true, { error: "Confirme que a lista é da agência e que esses contatos podem receber mensagem." }),
 });
+
+/** Fontes de busca, que contam na cota mensal do plano (planilha, colado, manual e formulário não contam). */
+export const SEARCH_SOURCES: string[] = ["google_maps", "cnpj", "instagram", "grupo_whatsapp"];
+
+/** Contatos de busca importados no mês corrente (fuso de Brasília) e o limite do plano. */
+export async function prospectQuota(sql: Sql, agencyId: string) {
+  const [lim, row] = await Promise.all([
+    limitsOf(sql, agencyId),
+    one<{ n: number }>(sql,
+      `select count(*)::int as n from prospect_leads
+        where agency_id = $1 and source = any($2::text[])
+          and created_at >= (date_trunc('month', now() at time zone '${TZ}') at time zone '${TZ}')`,
+      [agencyId, SEARCH_SOURCES]),
+  ]);
+  return { limit: lim.prospect, used: row?.n ?? 0 };
+}
 
 export async function importLeads(sql: Sql, agencyId: string, userId: string, raw: unknown, dryRun = false) {
   await requireFeature(sql, "prospect");
   const input = importInput.parse(raw);
+  if (SEARCH_SOURCES.includes(input.source) && (input.rows ?? []).some((r) => !r.origin)) {
+    throw new XodoError("Cada contato de busca precisa dizer de onde veio.", 400);
+  }
   const rows = input.rows ?? (input.text ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     const [phone, name, company] = l.split(/[,;\t]/).map((x) => x.trim());
     return { phone: phone ?? "", name, company };
@@ -164,6 +188,18 @@ export async function importLeads(sql: Sql, agencyId: string, userId: string, ra
   ]);
   const ex = new Set(existing.map((e) => e.phone)), bl = new Set(blocked.map((e) => e.phone));
   const fresh = good.filter((g) => !ex.has(g.phone) && !bl.has(g.phone));
+  if (SEARCH_SOURCES.includes(input.source)) {
+    const q = await prospectQuota(sql, agencyId);
+    if (q.limit != null && q.used + fresh.length > q.limit) {
+      const left = Math.max(0, q.limit - q.used);
+      throw new XodoError(
+        q.limit === 0
+          ? "A busca de contatos começa no plano Agência. A planilha continua liberada."
+          : `O plano permite ${q.limit.toLocaleString("pt-BR")} contatos de busca por mês e ${left === 0 ? "este mês já acabou" : `restam ${left.toLocaleString("pt-BR")}`}. Marque menos contatos, contrate "+1.000 contatos de prospecção" ou mude de plano em Configurações → Plano e cobrança.`,
+        402,
+      );
+    }
+  }
   if (!dryRun) {
     for (const g of fresh) {
       await sql.query(
@@ -173,7 +209,7 @@ export async function importLeads(sql: Sql, agencyId: string, userId: string, ra
       );
     }
   }
-  return { added: fresh.length, bad, dup: dup + ex.size, blocked: bl.size };
+  return { added: fresh.length, bad, dup: dup + [...ex].filter((p) => !bl.has(p)).length, blocked: bl.size };
 }
 
 async function leadOf(sql: Sql, agencyId: string, id: string) {

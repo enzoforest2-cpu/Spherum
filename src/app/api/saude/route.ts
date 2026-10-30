@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lastCronMinutes } from "@/lib/core/alerts";
 import { databaseUrl, serverSql } from "@/lib/xodos/db";
 
 export const dynamic = "force-dynamic";
@@ -6,8 +7,9 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/saude  diz se o servidor fala com o banco. Em caso de erro, mostra só o tipo do
  * problema e o formato do endereço (porta, se é o pooler), nunca a senha nem o endereço inteiro.
+ * Não exige login (serve para conferir a configuração), então não devolve nada de agência.
  */
-export async function GET(request: Request) {
+export async function GET() {
   const raw = databaseUrl(process.env);
   let formato: Record<string, unknown> = { configurada: Boolean(raw) };
   if (raw) {
@@ -24,19 +26,9 @@ export async function GET(request: Request) {
   try {
     const sql = await serverSql();
     await sql.query("select 1");
-    // Diagnóstico temporário: a tela de Xodós carrega para esta agência? (só ok ou o erro)
-    const ag = new URL(request.url).searchParams.get("xodos");
-    let xodos: string | undefined;
-    if (ag && /^[0-9a-f-]{36}$/.test(ag)) {
-      try {
-        const { xodoScreen } = await import("@/lib/xodos/screen");
-        const r = await xodoScreen(sql, ag);
-        xodos = `ok (${r.xodos.length} xodós)`;
-      } catch (error) {
-        xodos = `erro: ${String((error as Error).message).slice(0, 300)}`;
-      }
-    }
-    return NextResponse.json({ banco: "ok", formato, xodos });
+    // Minutos desde o último ciclo do agendador: um monitor externo avisa se passar de 30.
+    const agendador = await lastCronMinutes(sql).catch(() => null);
+    return NextResponse.json({ banco: "ok", agendador_minutos: agendador });
   } catch (error) {
     const e = error as { code?: string; message?: string };
     const message = String(e.message ?? "").replace(/postgres(ql)?:\/\/\S+/gi, "[endereço]");

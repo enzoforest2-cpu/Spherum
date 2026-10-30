@@ -32,8 +32,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const sql = await serverSql();
     const agencyId = await channelAgency(sql, id);
     await requireRole(sql, userId, agencyId, CAN_USE);
-    const message = await postMessage(sql, agencyId, userId, id, text);
+    // Citar um xodó dá trabalho a ele: pede o mesmo acesso de conversar com ele em Xodós.
     const xodos = await mentionedXodos(sql, agencyId, text);
+    if (xodos.length) await requireRole(sql, userId, agencyId, CAN_USE, { area: "xodos" });
+    const message = await postMessage(sql, agencyId, userId, id, text);
     const runs: string[] = [];
     if (xodos.length) {
       const deps = await productionDeps();

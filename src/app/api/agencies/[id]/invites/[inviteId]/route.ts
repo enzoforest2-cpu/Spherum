@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { memberAccess } from "@/lib/core/roles";
 import { revokeInvite } from "@/lib/core/team";
 import { serverSql } from "@/lib/xodos/db";
 import { CAN_MANAGE, fail, requireRole, requireUser, uuid } from "@/lib/xodos/http";
@@ -11,7 +12,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const agencyId = uuid.parse(p.id);
     const sql = await serverSql();
     await requireRole(sql, userId, agencyId, CAN_MANAGE, { area: "equipe" });
-    await revokeInvite(sql, agencyId, userId, uuid.parse(p.inviteId));
+    await revokeInvite(sql, agencyId, { id: userId, access: (await memberAccess(sql, agencyId, userId))! }, uuid.parse(p.inviteId));
     return NextResponse.json({ ok: true });
   } catch (error) {
     return fail(error);
