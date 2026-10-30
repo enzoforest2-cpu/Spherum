@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { databaseUrl } from "../src/lib/xodos/db";
+import { databaseUrl, sslOption } from "../src/lib/xodos/db";
 
 test("usa DATABASE_URL e, sem ela, a POSTGRES_URL da integração sem os parâmetros só da Supabase", () => {
   assert.equal(databaseUrl({}), null);
@@ -21,4 +21,11 @@ test("conserta senha com símbolos, colchetes mantidos e aspas", () => {
   assert.equal(decodeURIComponent(ok("postgresql://postgres.abc:[Segredo123]@h.pooler.supabase.com:6543/postgres").password), "Segredo123");
   assert.equal(decodeURIComponent(ok('"postgresql://postgres.abc:x%40y@h:6543/postgres"').password), "x@y");
   assert.equal(ok("DATABASE_URL=postgresql://u:p@h:6543/postgres").username, "u");
+});
+
+test("SSL obrigatório fora do banco local, a menos que o endereço diga o sslmode", () => {
+  assert.equal(sslOption("postgresql://u:p@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"), "require");
+  assert.equal(sslOption("postgres://postgres@127.0.0.1:5499/postgres"), false);
+  assert.equal(sslOption("postgres://u:p@localhost/postgres"), false);
+  assert.equal(sslOption("postgres://u:p@h:6543/postgres?sslmode=verify-full"), undefined);
 });

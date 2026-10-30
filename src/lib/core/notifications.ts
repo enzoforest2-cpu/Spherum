@@ -16,7 +16,7 @@ export async function listNotifications(sql: Sql, agencyId: string, userId: stri
 }
 
 export async function markNotificationsRead(sql: Sql, agencyId: string, userId: string, raw: unknown) {
-  const { ids } = z.object({ ids: z.array(z.number().int().positive()).max(200).optional() }).parse(raw ?? {});
+  const { ids } = z.object({ ids: z.array(z.coerce.number().int().positive()).max(200).optional() }).parse(raw ?? {});
   const r = await sql.query<{ id: number }>(
     `update notifications set read_at = now() where agency_id = $1 and (user_id is null or user_id = $2) and read_at is null
         and ($3::bigint[] is null or id = any($3::bigint[])) returning id`, [agencyId, userId, ids ?? null]);

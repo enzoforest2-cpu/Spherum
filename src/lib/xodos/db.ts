@@ -9,6 +9,17 @@ export interface Sql {
   query<T = Row>(text: string, params?: unknown[]): Promise<T[]>;
   /** Abre uma transação. Dentro de uma transação, apenas reaproveita a atual. */
   transaction<T>(fn: (tx: Sql) => Promise<T>): Promise<T>;
+  /**
+   * Isola um trecho: dentro de uma transação vira um savepoint (um erro desfaz só o trecho e a
+   * transação segue); fora, é uma transação. Use em vez de "savepoint x" à mão: o driver de
+   * produção derruba a transação inteira no fim se qualquer consulta dela falhou, mesmo tratada.
+   */
+  savepoint?<T>(fn: (tx: Sql) => Promise<T>): Promise<T>;
+}
+
+/** Roda fn isolado (savepoint numa transação); bancos de mentira dos testes sem savepoint rodam direto. */
+export function isolated<T>(sql: Sql, fn: (tx: Sql) => Promise<T>): Promise<T> {
+  return sql.savepoint ? sql.savepoint(fn) : fn(sql);
 }
 
 export type Row = Record<string, unknown>;
@@ -35,6 +46,7 @@ export async function one<T = Row>(sql: Sql, text: string, params?: unknown[]): 
 type PostgresLike = {
   unsafe(text: string, params?: unknown[]): Promise<unknown>;
   begin<T>(fn: (tx: PostgresLike) => Promise<T>): Promise<T>;
+  savepoint?<T>(fn: (tx: PostgresLike) => Promise<T>): Promise<T>;
 };
 
 export function fromPostgres(client: PostgresLike, inTransaction = false): Sql {
@@ -45,6 +57,10 @@ export function fromPostgres(client: PostgresLike, inTransaction = false): Sql {
     transaction(fn) {
       if (inTransaction) return fn(this);
       return client.begin((tx) => fn(fromPostgres(tx, true)));
+    },
+    savepoint(fn) {
+      if (inTransaction && client.savepoint) return client.savepoint((tx) => fn(fromPostgres(tx, true)));
+      return this.transaction(fn);
     },
   };
 }
@@ -63,8 +79,23 @@ export function fromPGlite(db: PGliteLike, inTransaction = false): Sql {
       if (inTransaction || !db.transaction) return fn(this);
       return db.transaction((tx) => fn(fromPGlite(tx, true)));
     },
+    async savepoint(fn) {
+      if (!inTransaction) return this.transaction(fn);
+      const name = `sp_${(savepointSeq += 1)}`;
+      await db.query(`savepoint ${name}`);
+      try {
+        const out = await fn(this);
+        await db.query(`release savepoint ${name}`);
+        return out;
+      } catch (error) {
+        await db.query(`rollback to savepoint ${name}`);
+        throw error;
+      }
+    },
   };
 }
+
+let savepointSeq = 0;
 
 let shared: Sql | null = null;
 
@@ -102,11 +133,38 @@ export function databaseUrl(env: Record<string, string | undefined>): string | n
  * Conexão de serviço do servidor (DATABASE_URL do Supabase, de preferência o pooler
  * em modo transação, porta 6543). Ignora RLS; por isso todo SQL do motor filtra por agency_id.
  */
+/**
+ * O driver serializa parâmetros json/jsonb com JSON.stringify. Todo o código manda o JSON já em
+ * texto (json()), e sem isto o texto virava uma string JSON ("{\"a\":1}") em vez do objeto.
+ */
+export const POSTGRES_TYPES = {
+  json: {
+    to: 114,
+    from: [114, 3802],
+    serialize: (x: unknown) => (typeof x === "string" ? x : JSON.stringify(x)),
+    parse: (x: string) => JSON.parse(x),
+  },
+};
+
+/**
+ * SSL: a Supabase exige (o pooler recusa com ESSLREQUIRED). Fica de fora só o banco local e quem
+ * escreveu sslmode=disable no endereço; outro sslmode do endereço o driver já respeita.
+ */
+export function sslOption(url: string): "require" | false | undefined {
+  try {
+    const u = new URL(url);
+    if (u.searchParams.has("sslmode")) return undefined;
+    return ["localhost", "127.0.0.1", "::1"].includes(u.hostname) ? false : "require";
+  } catch {
+    return "require";
+  }
+}
+
 export async function serverSql(): Promise<Sql> {
   if (shared) return shared;
   const url = databaseUrl(process.env);
   if (!url) throw new Error("DATABASE_URL não configurada");
   const { default: postgres } = await import("postgres");
-  shared = fromPostgres(postgres(url, { prepare: false, max: 5 }) as unknown as PostgresLike);
+  shared = fromPostgres(postgres(url, { prepare: false, max: 5, types: POSTGRES_TYPES, ...(sslOption(url) === undefined ? {} : { ssl: sslOption(url) }) }) as unknown as PostgresLike);
   return shared;
 }

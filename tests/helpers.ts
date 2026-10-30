@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
+import { after } from "node:test";
 import {
   createModels,
   fauxAssistantMessage,
@@ -11,7 +12,7 @@ import {
   type Tool,
 } from "@earendil-works/pi-ai";
 import { PGlite } from "@electric-sql/pglite";
-import { fromPGlite, one, type Sql } from "../src/lib/xodos/db";
+import { fromPGlite, fromPostgres, one, POSTGRES_TYPES, type Sql } from "../src/lib/xodos/db";
 import { llmFromModels, type LlmClient } from "../src/lib/xodos/llm";
 import type { EngineDeps } from "../src/lib/xodos/runner";
 import type { ToolCall, ToolResult, Xodo } from "../src/lib/xodos/types";
@@ -23,7 +24,38 @@ const MIGRATIONS = readdirSync("supabase/migrations")
   .sort()
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"));
 
+/**
+ * Com TEST_PG_URL (ex.: postgres://postgres@127.0.0.1:5499/postgres), cada banco de teste é um
+ * banco novo num Postgres de verdade, usando o mesmo driver e as mesmas opções da produção. Pega
+ * diferenças que o PGlite esconde (como a serialização de jsonb do driver).
+ */
+const openClients: { end(): Promise<void> }[] = [];
+if (process.env.TEST_PG_URL) after(() => Promise.all(openClients.map((c) => c.end())));
+
+async function createRealDb(admin: string): Promise<{ db: PGlite; sql: Sql }> {
+  const { default: postgres } = await import("postgres");
+  const name = `t_${randomUUID().replace(/-/g, "")}`;
+  const root = postgres(admin, { max: 1, onnotice: () => {} });
+  await root.unsafe(`create database ${name}`);
+  await root.end();
+  const url = new URL(admin);
+  url.pathname = `/${name}`;
+  // Uma conexão só: os testes de RLS trocam de papel (set role) e esperam continuar nela.
+  const client = postgres(url.toString(), { prepare: false, max: 1, types: POSTGRES_TYPES, onnotice: () => {} });
+  openClients.push(client);
+  await client.unsafe(FOUNDATION);
+  for (const migration of MIGRATIONS) await client.unsafe(migration);
+  const sql = fromPostgres(client as never);
+  // O que os testes usam do PGlite diretamente: query (com rows) e exec.
+  const db = {
+    query: async (text: string, params: unknown[] = []) => ({ rows: [...(await client.unsafe(text, params as never[]))] }),
+    exec: async (text: string) => { await client.unsafe(text); },
+  } as unknown as PGlite;
+  return { db, sql };
+}
+
 export async function createTestDb(): Promise<{ db: PGlite; sql: Sql }> {
+  if (process.env.TEST_PG_URL) return createRealDb(process.env.TEST_PG_URL);
   const db = new PGlite();
   await db.exec(FOUNDATION);
   for (const migration of MIGRATIONS) await db.exec(migration);

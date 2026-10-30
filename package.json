@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "test:pg": "TEST_PG_URL=${TEST_PG_URL:-postgres://postgres@127.0.0.1:5432/postgres} node --import tsx --test --test-concurrency=4 tests/*.test.ts"
   },
   "dependencies": {
     "@daytonaio/sdk": "0.226.0",

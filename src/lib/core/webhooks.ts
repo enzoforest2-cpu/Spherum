@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { one, type Sql } from "../xodos/db";
+import { isolated, one, type Sql } from "../xodos/db";
 import { XodoError } from "../xodos/errors";
 import { assertPublicUrl, type Resolver } from "../xodos/net";
 import { masterKeyFromEnv, openSecret, sealSecret } from "../xodos/vault";
@@ -145,23 +145,18 @@ export async function testWebhook(sql: Sql, agencyId: string, id: string, fetchI
 
 /**
  * Põe o evento na fila de cada endereço ativo da agência inscrito nele. Nunca lança: falha vai para
- * o log. Numa transação que já gravou algo, usa um savepoint, para um erro aqui não estragar a transação.
+ * o log. Numa transação, roda num savepoint, para um erro aqui não estragar a transação.
  */
 export async function emitEvent(sql: Sql, agencyId: string, type: WebhookEvent, payload: Record<string, unknown>, now = new Date()) {
-  let inTx = false;
   try {
-    inTx = !!(await one<{ tx: boolean }>(sql, `select pg_current_xact_id_if_assigned() is not null as tx`))?.tx;
-    if (inTx) await sql.query(`savepoint spherum_emit_event`);
     const event = { id: randomUUID(), type, created_at: now.toISOString(), agency_id: agencyId, data: payload };
-    await sql.query(
+    await isolated(sql, (sp) => sp.query(
       `insert into webhook_deliveries (endpoint_id, agency_id, event_id, event_type, body, next_at)
        select id, agency_id, $3::uuid, $2, $4, $5::timestamptz from webhook_endpoints
         where agency_id = $1 and disabled_at is null and $2 = any(events)`,
       [agencyId, type, event.id, JSON.stringify(event), now.toISOString()],
-    );
-    if (inTx) await sql.query(`release savepoint spherum_emit_event`);
+    ));
   } catch (error) {
-    if (inTx) await sql.query(`rollback to savepoint spherum_emit_event`).catch(() => {});
     console.error(`[webhooks] evento ${type} não entrou na fila`, error);
   }
 }

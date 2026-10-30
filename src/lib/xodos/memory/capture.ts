@@ -4,7 +4,7 @@ import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Cron } from "croner";
 import { callWithFallback, loadCandidates } from "../brain";
 import { dayIn } from "../budget";
-import { json, num, one, parseJson, type Sql } from "../db";
+import { isolated, json, num, one, parseJson, type Sql } from "../db";
 import { XodoError } from "../errors";
 import { usdBrl } from "../fx";
 import { providerErrorMessage } from "../llm";
@@ -761,12 +761,11 @@ async function processOne(deps: EngineDeps, row: CaptureRow, now: Date): Promise
   return withMemoryLock(sql, xodo.id, async (tx) => {
     const descartados = [...parsed.descartados];
     const notas: number[] = [];
-    for (const [i, c] of parsed.itens.entries()) {
+    for (const c of parsed.itens) {
       // Cada nota num savepoint: uma que falhe no banco não derruba as outras do lote.
-      await tx.query(`savepoint captura_${i}`);
       try {
-        const added = await addItemLocked(
-          tx,
+        const added = await isolated(tx, (sp) => addItemLocked(
+          sp,
           memXodo,
           {
             content: c.texto,
@@ -781,12 +780,10 @@ async function processOne(deps: EngineDeps, row: CaptureRow, now: Date): Promise
           },
           who,
           batch,
-        );
-        await tx.query(`release savepoint captura_${i}`);
+        ));
         if (added.created) notas.push(added.item.n);
         else descartados.push({ texto: c.texto, motivo: `já está nas notas (#${added.item.n})` });
       } catch (error) {
-        await tx.query(`rollback to savepoint captura_${i}`);
         if (!(error instanceof XodoError)) console.warn("[memória] nota da captura recusada pelo banco", row.id, error instanceof Error ? error.message : error);
         descartados.push({ texto: c.texto, motivo: error instanceof XodoError ? error.message : "o banco recusou a nota" });
       }

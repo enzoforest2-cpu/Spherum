@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { callWithFallback, loadCandidates, type Candidate } from "../brain";
 import { dayIn } from "../budget";
-import { json, num, one, type Sql } from "../db";
+import { isolated, json, num, one, type Sql } from "../db";
 import { XodoError } from "../errors";
 import { usdBrl } from "../fx";
 import { providerErrorMessage } from "../llm";
@@ -663,7 +663,7 @@ async function applyPairs(ctx: ModelCtx, pairs: Pair[], byN: Map<number, MemoryI
   const changed = await withMemoryLock(ctx.deps.sql, mem.id, async (tx) => {
     const touched = new Set<string>();
     let count = 0;
-    for (const [i, pair] of pairs.entries()) {
+    for (const pair of pairs) {
       const a = byN.get(pair.a)!;
       const b = byN.get(pair.b)!;
       // Só no mesmo lugar: mesmo tópico (ou os dois no núcleo) e mesmo cliente.
@@ -702,19 +702,17 @@ async function applyPairs(ctx: ModelCtx, pairs: Pair[], byN: Map<number, MemoryI
         continue;
       }
       // Um resto que o banco recuse (tópico cheio, texto vazio) não desfaz o par.
-      await tx.query(`savepoint arrumacao_resto_${i}`);
+      const rest = pair.rest;
       try {
-        const added = await addItemLocked(
-          tx,
+        const added = await isolated(tx, (sp) => addItemLocked(
+          sp,
           mem,
-          { content: pair.rest, kind: l.kind, topic: l.topic, clientId: l.client_id, validUntil: l.valid_until, source: "arrumacao" },
+          { content: rest, kind: l.kind, topic: l.topic, clientId: l.client_id, validUntil: l.valid_until, source: "arrumacao" },
           { actor: "arrumacao", reason: `resto da nota #${l.n}` },
           batch,
-        );
-        await tx.query(`release savepoint arrumacao_resto_${i}`);
+        ));
         if (added.created) report.restos += 1;
       } catch (error) {
-        await tx.query(`rollback to savepoint arrumacao_resto_${i}`);
         report.avisos.push(`resto da nota #${l.n} não entrou: ${error instanceof XodoError ? error.message : "o banco recusou"}`);
       }
     }
