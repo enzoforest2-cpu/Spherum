@@ -50,6 +50,10 @@ test("domínio próprio: Escala cadastra na Vercel, mostra o DNS e fica ativo qu
   const ag = await agency("agencia");
   await assert.rejects(setDomain(sql, vercel(false, true).fn, ENV, ag.id, ag.dona, { domain: "portal.lumen.com.br" }), /Escala/);
   await assert.rejects(setDomain(sql, vercel(false, true).fn, ENV, ag.id, ag.dona, { domain: "x.spherum.com.br" }), /domínio da sua agência/);
+  // No Agência, o add-on "Portal no seu próprio domínio" libera.
+  const comAddon = await agency("agencia");
+  await sql.query(`insert into agency_addons (agency_id, addon_id, qty) values ($1, 'domain', 1)`, [comAddon.id]);
+  assert.equal((await setDomain(sql, vercel(false, true).fn, ENV, comAddon.id, comAddon.dona, { domain: "portal.addon.com.br" }))!.domain, "portal.addon.com.br");
   const esc = await agency("escala");
   const v1 = vercel(false, true);
   const d = await setDomain(sql, v1.fn, ENV, esc.id, esc.dona, { domain: "https://Portal.Lumen.com.br/" });

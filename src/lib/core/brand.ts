@@ -10,7 +10,7 @@ import { rankOf, type PlanId } from "./subscription";
  *
  * - Portal do cliente com a marca: a partir do plano Agência.
  * - Portal da agência com a marca e sem "Desenvolvido com Spherum": a partir do Escala.
- * - Domínio próprio (ex.: portal.suaagencia.com.br): a partir do Escala. O Spherum cadastra o
+ * - Domínio próprio (ex.: portal.suaagencia.com.br): a partir do Escala, ou no Agência com o add-on. O Spherum cadastra o
  *   domínio no projeto da Vercel (VERCEL_TOKEN, VERCEL_PROJECT_ID, VERCEL_TEAM_ID) e a agência cria
  *   o registro de DNS que a Vercel pede; quem abre o domínio cai no portal do cliente.
  * No teste grátis valem os limites do plano Agência.
@@ -134,7 +134,9 @@ export async function setDomain(sql: Sql, http: Fetch, env: VercelEnv, agencyId:
   const input = domainInput.parse(raw);
   const own = "domain" in input, domain = own ? input.domain : `${input.sub}.spherum.com.br`;
   const rank = await planRank(sql, agencyId);
-  if (own && rank < 2) throw new XodoError("O domínio próprio começa no plano Escala.", 402);
+  // Domínio próprio: incluso no Escala; no Agência, com o add-on "Portal no seu próprio domínio".
+  const addon = own && rank === 1 ? await one(sql, `select 1 from agency_addons where agency_id = $1 and addon_id = 'domain' and qty > 0`, [agencyId]) : null;
+  if (own && rank < 2 && !addon) throw new XodoError(rank === 1 ? "O domínio próprio vem no plano Escala ou com o add-on “Portal no seu próprio domínio” (Configurações → Plano e cobrança)." : "O domínio próprio começa no plano Escala.", 402);
   if (!own && rank < 1) throw new XodoError("O subdomínio com o nome da agência começa no plano Agência.", 402);
   const taken = await one(sql, `select 1 from agency_domains where domain = $1 and agency_id <> $2`, [domain, agencyId]);
   if (taken) throw new XodoError("Esse domínio já está em uso em outra agência.", 409);

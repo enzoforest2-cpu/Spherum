@@ -42,7 +42,7 @@ type Incident = Status["open"][number];
 const card: React.CSSProperties = { background: "#FFFFFF", borderRadius: 16, boxShadow: "0 1px 2px rgba(16,24,40,.04), 0 8px 24px -12px rgba(16,24,40,.10)", overflow: "hidden" };
 
 export default async function StatusPage() {
-  const data = await publicStatus(await serverSql()).catch(() => null);
+  const data = await serverSql().then((sql) => publicStatus(sql)).catch(() => null);
   const names = new Map<string, string>((data?.services ?? []).map((s) => [s.id, s.name]));
   return (
     <div className={geist.className} style={{ minHeight: "100vh", background: "#F5F6F8", color: "#101828", fontSize: 14, lineHeight: 1.5, WebkitFontSmoothing: "antialiased" }}>

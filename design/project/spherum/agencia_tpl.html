@@ -3666,7 +3666,7 @@ const ADDONS = [
 ].map(a => ({ id: a[0], g: a[1], icon: a[2], n: a[3], d: a[4], price: a[5], unit: a[6], from: a[7], incl: a[8], max: a[9], gate: a[10] }));
 const AD_PLAN_N = ['Solo', 'Agência', 'Escala', 'Rede', 'Empresarial'], AD_PLAN_P = [190, 490, 990, 1990, null];
 // Add-ons cujas funcionalidades ainda não existem: em modo real aparecem como "Em breve".
-const AD_SOON = ['pros', 'disp', 'domain', 'appb', 'api', 'sso'];
+const AD_SOON = ['appb', 'sso'];
 const AD_GROUPS = ['Vender', 'Entregar', 'Sua marca', 'Equipe', 'Xodó', 'Capacidade', 'Segurança e dados'];
 function adState(a, rk) { if (a.incl != null && rk >= a.incl) return 'incl'; if (rk < a.from) return 'lock'; return 'buy'; }
 function adTotal(sel, rk, price) { return ADDONS.reduce((t, a) => { const q = sel[a.id] || 0; return adState(a, rk) === 'buy' && q ? t + price(a.price) * q : t; }, 0); }
@@ -6935,10 +6935,11 @@ class Component extends DCLogic {
     const intg = [['Anúncios', [['meta', 'Meta Ads', 'Campanhas, gasto e conversões'], ['gads', 'Google Ads', 'Pesquisa, PMax, YouTube'], ['tiktok', 'TikTok Ads', 'Campanhas e Spark Ads'], [null, 'LinkedIn Ads', 'Em breve']]],
       ['Analytics', [['ga4', 'Google Analytics 4', 'Receita e conversões atribuídas'], [null, 'Google Tag Manager', 'Em breve']]],
       ['Recebimento dos clientes', [['$asaas', 'Asaas', 'Pix, boleto e cartão na mesma fatura'], ['$mercadopago', 'Mercado Pago', 'Pix, cartão e boleto pelo Checkout'], ['$stripe', 'Stripe', 'Cartão (e Pix e boleto, se a conta liberar)'], ['$itau', 'Itaú', 'Pix com vencimento pela API do banco (precisa de certificado)']]],
-      ['Comunicação', [[null, 'WhatsApp Business', 'Em breve'], [null, 'E-mail (SMTP próprio)', 'Em breve']]]]
-      .map(g => ({ g: g[0], items: g[1].map(i => { const pay = i[0] && i[0][0] === '$' ? i[0].slice(1) : null, acc = pay && this.spPay(pay), ok = pay ? !!acc : i[0] ? this.spInSt(i[0]) === 'ok' : false;
+      ['Comunicação', [['#whatsapp_cloud', 'WhatsApp oficial', 'Prospecção, xodós e avisos pela API da Meta'], ['#whatsapp_qr', 'WhatsApp por QR Code', 'Grupos e conversas do número da agência'], ['#telegram', 'Telegram', 'Xodós e avisos no Telegram'], ['#slack', 'Slack', 'Xodós e aprovações no Slack'], [null, 'E-mail (SMTP próprio)', 'Em breve']]]]
+      .map(g => ({ g: g[0], items: g[1].map(i => { const pay = i[0] && i[0][0] === '$' ? i[0].slice(1) : null, acc = pay && this.spPay(pay), chan = i[0] && i[0][0] === '#' ? i[0].slice(1) : null,
+        ok = pay ? !!acc : chan ? (this.R.connections || []).some(c => c.provider === chan && c.status === 'active') : i[0] ? this.spInSt(i[0]) === 'ok' : false;
         return { l: i[1], d: acc ? acc.label + (acc.environment === 'teste' ? ' · teste' : '') + (acc.is_default ? ' · cobranças novas saem por aqui' : '') : i[2], ini: i[1].split(' ').map(w => w[0]).join('').slice(0, 2), soon: !i[0], ready: !!i[0], st: !i[0] ? '' : ok ? 'Conectado' : 'Não conectado', btn: ok ? 'Gerenciar' : 'Conectar',
-          run: () => pay ? this.spPayManage(pay, i[1]) : this.go('integrations', { inTab: 'accts' }) }; }) }));
+          run: () => pay ? this.spPayManage(pay, i[1]) : chan ? this.go('xodo', { xoTab: 'integ' }) : this.go('integrations', { inTab: 'accts' }) }; }) }));
     const brandColors = ['#465FFF', '#0E9384', '#C4320A', '#101828'];
     const SB = this.spSub(), sett = { sub: this.spSubView(), nextBill: SB ? (SB.current_period_end && !SB.cancel_at_period_end ? 'Próxima fatura · ' + this.spDmy(SB.current_period_end) : SB.plan_status === 'trial' ? 'Primeira fatura no fim do teste · ' + this.spDmy(SB.trial_ends_at) : 'Sem renovação programada') : 'Próxima fatura · 1 de ' + ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][(new Date().getMonth() + 1) % 12], tabs: this.tabsOf([['workspace', 'Empresa'], ['integrations', 'Integrações'], ['brand', 'Marca e portais'], ['api', 'API e webhooks'], ['plan', 'Plano e cobrança'], ['pipeline', 'Preferências']], S.setTab, v => { set('setTab')(v); if (v === 'api') this.spApiLoad(); }),
       isApi: S.setTab === 'api', api: S.setTab === 'api' ? this.vApiKeys() : {},
