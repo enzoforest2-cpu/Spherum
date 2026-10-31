@@ -57,3 +57,9 @@ Guias: [`docs/XODOS.md`](docs/XODOS.md), [`docs/INTEGRACOES.md`](docs/INTEGRACOE
 ```bash
 npm test   # 465 testes com PGlite, sem precisar de banco
 ```
+
+## Xodós local (app de computador)
+
+O app que roda os xodós no computador da agência fica em [`xodos-local/`](xodos-local/README.md),
+neste mesmo repositório (antes era o repositório separado `xodos`). Tem as próprias dependências:
+`cd xodos-local && npm install && npm test`.
